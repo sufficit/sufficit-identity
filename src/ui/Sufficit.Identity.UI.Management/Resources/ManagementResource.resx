@@ -2161,4 +2161,80 @@
   <data name="OneTimeToken.Discard" xml:space="preserve"><value>Close without copying</value></data>
   <data name="OneTimeToken.DiscardTitle" xml:space="preserve"><value>The value has not been copied yet</value></data>
   <data name="OneTimeToken.DiscardMessage" xml:space="preserve"><value>It cannot be shown again. To use it later you will have to issue a new one.</value></data>
+  <data name="Overview.Module.SystemUsers.Title" xml:space="preserve"><value>System users</value></data>
+  <data name="Overview.Module.SystemUsers.Description" xml:space="preserve"><value>Users applications see as ordinary users that never sign in. Their credential comes from an enrollment code.</value></data>
+  <data name="SystemUsers.PageTitle" xml:space="preserve"><value>System users</value></data>
+  <data name="SystemUsers.HeaderTitle" xml:space="preserve"><value>System users</value></data>
+  <data name="SystemUsers.HeaderDescription" xml:space="preserve"><value>Users valid to every application that never sign in. Each credential is obtained by the software itself with an enrollment code.</value></data>
+  <data name="SystemUsers.Reload" xml:space="preserve"><value>Reload</value></data>
+  <data name="SystemUsers.New" xml:space="preserve"><value>New system user</value></data>
+  <data name="SystemUsers.Explain.Title" xml:space="preserve"><value>How it works</value></data>
+  <data name="SystemUsers.Explain.Body" xml:space="preserve"><value>To applications it is an ordinary user (claims, entitlements, userinfo). It has no password or external login and any sign-in attempt is refused. You issue a one-time code for a client; the software redeems it for the credential, which you never see.</value></data>
+  <data name="SystemUsers.Create.Title" xml:space="preserve"><value>New system user</value></data>
+  <data name="SystemUsers.Field.UserName" xml:space="preserve"><value>User name</value></data>
+  <data name="SystemUsers.Field.UserNameHelp" xml:space="preserve"><value>Unique identifier, e.g. agent-github-engineer.</value></data>
+  <data name="SystemUsers.Field.DisplayName" xml:space="preserve"><value>Display name</value></data>
+  <data name="SystemUsers.Field.DisplayNameHelp" xml:space="preserve"><value>Optional. The name applications show.</value></data>
+  <data name="SystemUsers.Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="SystemUsers.Create.Submit" xml:space="preserve"><value>Create system user</value></data>
+  <data name="SystemUsers.Loading" xml:space="preserve"><value>Loading system users…</value></data>
+  <data name="SystemUsers.Empty.Title" xml:space="preserve"><value>No system users</value></data>
+  <data name="SystemUsers.Empty.Description" xml:space="preserve"><value>Create one to give software a user identity without sign-in.</value></data>
+  <data name="SystemUsers.Table.AriaLabel" xml:space="preserve"><value>System users</value></data>
+  <data name="SystemUsers.Table.Name" xml:space="preserve"><value>Name</value></data>
+  <data name="SystemUsers.Table.Created" xml:space="preserve"><value>Created</value></data>
+  <data name="SystemUsers.Table.Credentials" xml:space="preserve"><value>Active credentials</value></data>
+  <data name="SystemUsers.Table.State" xml:space="preserve"><value>State</value></data>
+  <data name="SystemUsers.Table.Actions" xml:space="preserve"><value>Actions</value></data>
+  <data name="SystemUsers.State.Enabled" xml:space="preserve"><value>Enabled</value></data>
+  <data name="SystemUsers.State.Disabled" xml:space="preserve"><value>Disabled</value></data>
+  <data name="SystemUsers.Action.Credentials" xml:space="preserve"><value>Credentials</value></data>
+  <data name="SystemUsers.Action.Enable" xml:space="preserve"><value>Enable</value></data>
+  <data name="SystemUsers.Action.Disable" xml:space="preserve"><value>Disable</value></data>
+  <data name="SystemUsers.Credentials.TitleFormat" xml:space="preserve"><value>Credentials of {0}</value></data>
+  <data name="SystemUsers.Credentials.Description" xml:space="preserve"><value>Each code works once, for one client. Revoking ends the code and the credential it produced.</value></data>
+  <data name="SystemUsers.Credentials.Close" xml:space="preserve"><value>Close</value></data>
+  <data name="SystemUsers.Credentials.DisabledNote" xml:space="preserve"><value>Enable the user to issue a new code.</value></data>
+  <data name="SystemUsers.Credentials.Empty" xml:space="preserve"><value>No code issued yet.</value></data>
+  <data name="SystemUsers.Credentials.TableAriaLabel" xml:space="preserve"><value>Codes and credentials</value></data>
+  <data name="SystemUsers.Credentials.Client" xml:space="preserve"><value>Client</value></data>
+  <data name="SystemUsers.Credentials.Label" xml:space="preserve"><value>Label</value></data>
+  <data name="SystemUsers.Credentials.State" xml:space="preserve"><value>State</value></data>
+  <data name="SystemUsers.Credentials.Issued" xml:space="preserve"><value>Issued</value></data>
+  <data name="SystemUsers.Credentials.Revoke" xml:space="preserve"><value>Revoke</value></data>
+  <data name="SystemUsers.Issue.Client" xml:space="preserve"><value>Client</value></data>
+  <data name="SystemUsers.Issue.ClientHelp" xml:space="preserve"><value>client_id of the software that will redeem the code.</value></data>
+  <data name="SystemUsers.Issue.Label" xml:space="preserve"><value>Label</value></data>
+  <data name="SystemUsers.Issue.LabelHelp" xml:space="preserve"><value>Where the credential will live (host, pod, agent).</value></data>
+  <data name="SystemUsers.Issue.Lifetime" xml:space="preserve"><value>Code lifetime</value></data>
+  <data name="SystemUsers.Issue.Lifetime1h" xml:space="preserve"><value>1 hour</value></data>
+  <data name="SystemUsers.Issue.Lifetime24h" xml:space="preserve"><value>24 hours</value></data>
+  <data name="SystemUsers.Issue.Lifetime72h" xml:space="preserve"><value>3 days</value></data>
+  <data name="SystemUsers.Issue.Lifetime7d" xml:space="preserve"><value>7 days</value></data>
+  <data name="SystemUsers.Issue.Submit" xml:space="preserve"><value>Issue code</value></data>
+  <data name="SystemUsers.Created.Format" xml:space="preserve"><value>System user {0} created.</value></data>
+  <data name="SystemUsers.Disable.ConfirmTitle" xml:space="preserve"><value>Disable system user?</value></data>
+  <data name="SystemUsers.Disable.ConfirmFormat" xml:space="preserve"><value>{0} stops receiving tokens and every credential is revoked. To come back, enable it and issue a new code.</value></data>
+  <data name="SystemUsers.Disabled.Toast" xml:space="preserve"><value>System user disabled and credentials revoked.</value></data>
+  <data name="SystemUsers.Enabled.Toast" xml:space="preserve"><value>System user enabled. Issue it a new code.</value></data>
+  <data name="SystemUsers.Revoke.ConfirmTitle" xml:space="preserve"><value>Revoke credential?</value></data>
+  <data name="SystemUsers.Revoke.ConfirmFormat" xml:space="preserve"><value>Code "{0}" for client {1} and the credential it produced stop working.</value></data>
+  <data name="SystemUsers.Revoked.Toast" xml:space="preserve"><value>Credential revoked.</value></data>
+  <data name="SystemUsers.Code.Title" xml:space="preserve"><value>Enrollment code</value></data>
+  <data name="SystemUsers.Code.DescriptionFormat" xml:space="preserve"><value>Give it to the software of client {0}. It redeems the code for the credential; the code works once.</value></data>
+  <data name="SystemUsers.Code.AriaLabel" xml:space="preserve"><value>Enrollment code</value></data>
+  <data name="SystemUsers.Code.ExpiresFormat" xml:space="preserve"><value>Valid until {0}</value></data>
+  <data name="SystemUsers.Code.DetailFormat" xml:space="preserve"><value>Redeem: POST /connect/token with grant_type={0} and {1}=&lt;code&gt;.</value></data>
+  <data name="SystemUsers.Code.Copy" xml:space="preserve"><value>Copy code</value></data>
+  <data name="SystemUsers.Status.Active" xml:space="preserve"><value>Active credential</value></data>
+  <data name="SystemUsers.Status.Pending" xml:space="preserve"><value>Awaiting redemption</value></data>
+  <data name="SystemUsers.Status.Expired" xml:space="preserve"><value>Expired</value></data>
+  <data name="SystemUsers.Status.Revoked" xml:space="preserve"><value>Revoked</value></data>
+  <data name="SystemUsers.Status.RedeemedFormat" xml:space="preserve"><value>Redeemed {0}</value></data>
+  <data name="SystemUsers.Status.ExpiresFormat" xml:space="preserve"><value>Expires {0}</value></data>
+  <data name="Error.system_user_name_taken" xml:space="preserve"><value>A user with this name already exists.</value></data>
+  <data name="Error.system_user_name_required" xml:space="preserve"><value>Enter the user name.</value></data>
+  <data name="Error.system_user_disabled" xml:space="preserve"><value>Enable the system user before issuing a code.</value></data>
+  <data name="Error.system_user_enrollment_client_not_allowed" xml:space="preserve"><value>The client must exist and allow the system-user enrollment grant and refresh tokens.</value></data>
+  <data name="Error.system_user_enrollment_label_required" xml:space="preserve"><value>Say where the credential will live.</value></data>
 </root>

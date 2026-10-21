@@ -21,6 +21,7 @@ public sealed class ManagementOverviewService(
     private static readonly ModuleDefinition[] ModuleCatalog =
     [
         new("users", ManagementCapabilities.UsersRead),
+        new("system-users", ManagementCapabilities.UsersRead),
         new("claims", ManagementCapabilities.ClaimsRead),
         new("clients", ManagementCapabilities.ClientsRead),
         new("service-accounts", ManagementCapabilities.ClientsRead),

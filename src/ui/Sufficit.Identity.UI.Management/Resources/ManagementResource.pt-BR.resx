@@ -2161,4 +2161,80 @@
   <data name="OneTimeToken.Discard" xml:space="preserve"><value>Fechar sem copiar</value></data>
   <data name="OneTimeToken.DiscardTitle" xml:space="preserve"><value>O valor ainda não foi copiado</value></data>
   <data name="OneTimeToken.DiscardMessage" xml:space="preserve"><value>Ele não poderá ser exibido de novo. Para usá-lo depois, será preciso gerar outro.</value></data>
+  <data name="Overview.Module.SystemUsers.Title" xml:space="preserve"><value>Usuários de sistema</value></data>
+  <data name="Overview.Module.SystemUsers.Description" xml:space="preserve"><value>Usuários que as aplicações enxergam normalmente, mas que nunca entram pela tela. A credencial é emitida por código de habilitação.</value></data>
+  <data name="SystemUsers.PageTitle" xml:space="preserve"><value>Usuários de sistema</value></data>
+  <data name="SystemUsers.HeaderTitle" xml:space="preserve"><value>Usuários de sistema</value></data>
+  <data name="SystemUsers.HeaderDescription" xml:space="preserve"><value>Usuários válidos para todas as aplicações que nunca fazem login. A credencial de cada um é obtida pelo próprio software com um código de habilitação.</value></data>
+  <data name="SystemUsers.Reload" xml:space="preserve"><value>Atualizar</value></data>
+  <data name="SystemUsers.New" xml:space="preserve"><value>Novo usuário de sistema</value></data>
+  <data name="SystemUsers.Explain.Title" xml:space="preserve"><value>Como funciona</value></data>
+  <data name="SystemUsers.Explain.Body" xml:space="preserve"><value>Para as aplicações é um usuário comum (claims, entitlements, userinfo). Ele não tem senha nem login externo e qualquer tentativa de entrada é recusada. Você emite um código de uso único para um cliente; o software troca o código pela credencial, que você nunca vê.</value></data>
+  <data name="SystemUsers.Create.Title" xml:space="preserve"><value>Novo usuário de sistema</value></data>
+  <data name="SystemUsers.Field.UserName" xml:space="preserve"><value>Nome de usuário</value></data>
+  <data name="SystemUsers.Field.UserNameHelp" xml:space="preserve"><value>Identificador único, por exemplo agente-github-engineer.</value></data>
+  <data name="SystemUsers.Field.DisplayName" xml:space="preserve"><value>Nome de exibição</value></data>
+  <data name="SystemUsers.Field.DisplayNameHelp" xml:space="preserve"><value>Opcional. É o nome que as aplicações mostram.</value></data>
+  <data name="SystemUsers.Cancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="SystemUsers.Create.Submit" xml:space="preserve"><value>Criar usuário de sistema</value></data>
+  <data name="SystemUsers.Loading" xml:space="preserve"><value>Carregando usuários de sistema…</value></data>
+  <data name="SystemUsers.Empty.Title" xml:space="preserve"><value>Nenhum usuário de sistema</value></data>
+  <data name="SystemUsers.Empty.Description" xml:space="preserve"><value>Crie um para dar a um software uma identidade de usuário sem login.</value></data>
+  <data name="SystemUsers.Table.AriaLabel" xml:space="preserve"><value>Usuários de sistema</value></data>
+  <data name="SystemUsers.Table.Name" xml:space="preserve"><value>Nome</value></data>
+  <data name="SystemUsers.Table.Created" xml:space="preserve"><value>Criado</value></data>
+  <data name="SystemUsers.Table.Credentials" xml:space="preserve"><value>Credenciais ativas</value></data>
+  <data name="SystemUsers.Table.State" xml:space="preserve"><value>Situação</value></data>
+  <data name="SystemUsers.Table.Actions" xml:space="preserve"><value>Ações</value></data>
+  <data name="SystemUsers.State.Enabled" xml:space="preserve"><value>Ativo</value></data>
+  <data name="SystemUsers.State.Disabled" xml:space="preserve"><value>Desativado</value></data>
+  <data name="SystemUsers.Action.Credentials" xml:space="preserve"><value>Credenciais</value></data>
+  <data name="SystemUsers.Action.Enable" xml:space="preserve"><value>Reativar</value></data>
+  <data name="SystemUsers.Action.Disable" xml:space="preserve"><value>Desativar</value></data>
+  <data name="SystemUsers.Credentials.TitleFormat" xml:space="preserve"><value>Credenciais de {0}</value></data>
+  <data name="SystemUsers.Credentials.Description" xml:space="preserve"><value>Cada código serve para um cliente, uma única vez. Revogar encerra o código e a credencial que ele gerou.</value></data>
+  <data name="SystemUsers.Credentials.Close" xml:space="preserve"><value>Fechar</value></data>
+  <data name="SystemUsers.Credentials.DisabledNote" xml:space="preserve"><value>Reative o usuário para emitir um novo código.</value></data>
+  <data name="SystemUsers.Credentials.Empty" xml:space="preserve"><value>Nenhum código emitido ainda.</value></data>
+  <data name="SystemUsers.Credentials.TableAriaLabel" xml:space="preserve"><value>Códigos e credenciais</value></data>
+  <data name="SystemUsers.Credentials.Client" xml:space="preserve"><value>Cliente</value></data>
+  <data name="SystemUsers.Credentials.Label" xml:space="preserve"><value>Rótulo</value></data>
+  <data name="SystemUsers.Credentials.State" xml:space="preserve"><value>Situação</value></data>
+  <data name="SystemUsers.Credentials.Issued" xml:space="preserve"><value>Emitido</value></data>
+  <data name="SystemUsers.Credentials.Revoke" xml:space="preserve"><value>Revogar</value></data>
+  <data name="SystemUsers.Issue.Client" xml:space="preserve"><value>Cliente</value></data>
+  <data name="SystemUsers.Issue.ClientHelp" xml:space="preserve"><value>client_id do software que vai trocar o código.</value></data>
+  <data name="SystemUsers.Issue.Label" xml:space="preserve"><value>Rótulo</value></data>
+  <data name="SystemUsers.Issue.LabelHelp" xml:space="preserve"><value>Onde a credencial vai morar (host, pod, agente).</value></data>
+  <data name="SystemUsers.Issue.Lifetime" xml:space="preserve"><value>Validade do código</value></data>
+  <data name="SystemUsers.Issue.Lifetime1h" xml:space="preserve"><value>1 hora</value></data>
+  <data name="SystemUsers.Issue.Lifetime24h" xml:space="preserve"><value>24 horas</value></data>
+  <data name="SystemUsers.Issue.Lifetime72h" xml:space="preserve"><value>3 dias</value></data>
+  <data name="SystemUsers.Issue.Lifetime7d" xml:space="preserve"><value>7 dias</value></data>
+  <data name="SystemUsers.Issue.Submit" xml:space="preserve"><value>Emitir código</value></data>
+  <data name="SystemUsers.Created.Format" xml:space="preserve"><value>Usuário de sistema {0} criado.</value></data>
+  <data name="SystemUsers.Disable.ConfirmTitle" xml:space="preserve"><value>Desativar usuário de sistema?</value></data>
+  <data name="SystemUsers.Disable.ConfirmFormat" xml:space="preserve"><value>{0} deixa de receber tokens e todas as credenciais são revogadas. Para voltar, reative e emita um novo código.</value></data>
+  <data name="SystemUsers.Disabled.Toast" xml:space="preserve"><value>Usuário de sistema desativado e credenciais revogadas.</value></data>
+  <data name="SystemUsers.Enabled.Toast" xml:space="preserve"><value>Usuário de sistema reativado. Emita um novo código para ele.</value></data>
+  <data name="SystemUsers.Revoke.ConfirmTitle" xml:space="preserve"><value>Revogar credencial?</value></data>
+  <data name="SystemUsers.Revoke.ConfirmFormat" xml:space="preserve"><value>O código "{0}" do cliente {1} e a credencial gerada por ele deixam de funcionar.</value></data>
+  <data name="SystemUsers.Revoked.Toast" xml:space="preserve"><value>Credencial revogada.</value></data>
+  <data name="SystemUsers.Code.Title" xml:space="preserve"><value>Código de habilitação</value></data>
+  <data name="SystemUsers.Code.DescriptionFormat" xml:space="preserve"><value>Entregue ao software do cliente {0}. Ele troca o código pela credencial; o código vale uma única vez.</value></data>
+  <data name="SystemUsers.Code.AriaLabel" xml:space="preserve"><value>Código de habilitação</value></data>
+  <data name="SystemUsers.Code.ExpiresFormat" xml:space="preserve"><value>Vale até {0}</value></data>
+  <data name="SystemUsers.Code.DetailFormat" xml:space="preserve"><value>Troca: POST /connect/token com grant_type={0} e {1}=&lt;código&gt;.</value></data>
+  <data name="SystemUsers.Code.Copy" xml:space="preserve"><value>Copiar código</value></data>
+  <data name="SystemUsers.Status.Active" xml:space="preserve"><value>Credencial ativa</value></data>
+  <data name="SystemUsers.Status.Pending" xml:space="preserve"><value>Aguardando troca</value></data>
+  <data name="SystemUsers.Status.Expired" xml:space="preserve"><value>Expirado</value></data>
+  <data name="SystemUsers.Status.Revoked" xml:space="preserve"><value>Revogado</value></data>
+  <data name="SystemUsers.Status.RedeemedFormat" xml:space="preserve"><value>Trocado em {0}</value></data>
+  <data name="SystemUsers.Status.ExpiresFormat" xml:space="preserve"><value>Expira {0}</value></data>
+  <data name="Error.system_user_name_taken" xml:space="preserve"><value>Já existe um usuário com esse nome.</value></data>
+  <data name="Error.system_user_name_required" xml:space="preserve"><value>Informe o nome de usuário.</value></data>
+  <data name="Error.system_user_disabled" xml:space="preserve"><value>Reative o usuário de sistema antes de emitir um código.</value></data>
+  <data name="Error.system_user_enrollment_client_not_allowed" xml:space="preserve"><value>O cliente precisa existir e permitir o grant de habilitação de usuário de sistema e refresh tokens.</value></data>
+  <data name="Error.system_user_enrollment_label_required" xml:space="preserve"><value>Informe onde a credencial vai morar.</value></data>
 </root>

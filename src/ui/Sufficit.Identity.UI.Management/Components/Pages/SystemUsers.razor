@@ -1,0 +1,440 @@
+@page "/system-users"
+@attribute [Authorize(Policy = ManagementUiPolicies.Access)]
+@using Sufficit.Identity.Management.SystemUsers
+@using Sufficit.Identity.UI.Management.SystemUsers
+@inject ManagementSystemUserDataSource SystemUserData
+@inject ISUIDialogService Dialogs
+@inject ISUIToast Toast
+
+<PageTitle>@L["SystemUsers.PageTitle"]</PageTitle>
+
+<SUIPageHeader Title="@L["SystemUsers.HeaderTitle"].Value"
+               Description="@L["SystemUsers.HeaderDescription"].Value">
+    <Actions>
+        <SUIButton ButtonTypeValue="SUIButtonType.Button"
+                   ColorValue="SUIColor.Secondary"
+                   OnClick="LoadAsync"
+                   Disabled="@loading">
+            <SUIIcon Name="refresh" Size="17" />
+            @L["SystemUsers.Reload"]
+        </SUIButton>
+        <SUIButton ButtonTypeValue="SUIButtonType.Button"
+                   OnClick="BeginCreate"
+                   Disabled="@(loading || creating)">
+            <SUIIcon Name="plus" Size="17" />
+            @L["SystemUsers.New"]
+        </SUIButton>
+    </Actions>
+</SUIPageHeader>
+
+<div class="contract-strip contract-strip--info" role="note">
+    <SUIIcon Name="info" Size="18" />
+    <div>
+        <strong>@L["SystemUsers.Explain.Title"]</strong>
+        <span>@L["SystemUsers.Explain.Body"]</span>
+    </div>
+</div>
+
+@if (showCreate)
+{
+    <section class="system-users-create" aria-labelledby="system-users-create-heading">
+        <h2 id="system-users-create-heading">@L["SystemUsers.Create.Title"]</h2>
+        <div class="system-users-create__fields" data-sui-align-row>
+            <IdentityTextField T="string"
+                               id="system-user-name"
+                               Immediate="true"
+                               Label="@L["SystemUsers.Field.UserName"].Value"
+                               HelperText="@L["SystemUsers.Field.UserNameHelp"].Value"
+                               MaxLength="256"
+                               Disabled="@creating"
+                               Value="@draftUserName"
+                               ValueChanged="@((string? value) => draftUserName = value ?? string.Empty)"
+                               autocomplete="off" />
+            <IdentityTextField T="string"
+                               id="system-user-display-name"
+                               Immediate="true"
+                               Label="@L["SystemUsers.Field.DisplayName"].Value"
+                               HelperText="@L["SystemUsers.Field.DisplayNameHelp"].Value"
+                               MaxLength="200"
+                               Disabled="@creating"
+                               Value="@draftDisplayName"
+                               ValueChanged="@((string? value) => draftDisplayName = value ?? string.Empty)"
+                               autocomplete="off" />
+        </div>
+        <footer class="system-users-create__actions">
+            <SUIButton ButtonTypeValue="SUIButtonType.Button"
+                       ColorValue="SUIColor.Secondary"
+                       Disabled="@creating"
+                       OnClick="@(() => showCreate = false)">
+                @L["SystemUsers.Cancel"]
+            </SUIButton>
+            <SUILoadingButton IsLoading="@creating"
+                              Disabled="@(creating || string.IsNullOrWhiteSpace(draftUserName))"
+                              OnClick="CreateAsync">
+                <SUIIcon Name="plus" Size="17" />
+                <span>@L["SystemUsers.Create.Submit"]</span>
+            </SUILoadingButton>
+        </footer>
+    </section>
+}
+
+@if (loading)
+{
+    <p aria-busy="true">@L["SystemUsers.Loading"]</p>
+}
+else if (loadError is not null)
+{
+    <div class="inline-notice inline-notice--danger" role="alert">
+        <SUIIcon Name="alert" Size="19" />
+        <div><span>@loadError</span></div>
+    </div>
+}
+else if (systemUsers.Count == 0)
+{
+    <SUIEmptyState Icon="server"
+                   Title="@L["SystemUsers.Empty.Title"].Value"
+                   Description="@L["SystemUsers.Empty.Description"].Value" />
+}
+else
+{
+    <div class="table-scroll">
+        <table class="data-table system-users-table" aria-label="@L["SystemUsers.Table.AriaLabel"].Value">
+            <thead>
+                <tr>
+                    <th>@L["SystemUsers.Table.Name"]</th>
+                    <th>@L["SystemUsers.Table.Created"]</th>
+                    <th>@L["SystemUsers.Table.Credentials"]</th>
+                    <th>@L["SystemUsers.Table.State"]</th>
+                    <th><span class="visually-hidden">@L["SystemUsers.Table.Actions"]</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in systemUsers)
+                {
+                    <tr class="@(selected?.UserId == item.UserId ? "is-selected" : null)">
+                        <td data-label="@L["SystemUsers.Table.Name"]">
+                            <strong>@(item.DisplayName ?? item.UserName)</strong>
+                            <small><code>@item.UserName</code> · <a href="users/@item.UserId">@item.UserId</a></small>
+                        </td>
+                        <td data-label="@L["SystemUsers.Table.Created"]">
+                            <span>@Time.Format(item.CreatedAtUtc)</span>
+                            <small>@item.CreatedBy</small>
+                        </td>
+                        <td data-label="@L["SystemUsers.Table.Credentials"]">@item.ActiveCredentials</td>
+                        <td data-label="@L["SystemUsers.Table.State"]">
+                            <SUIStatusBadge ToneValue="@(item.Disabled ? SUITone.Neutral : SUITone.Success)">
+                                @(item.Disabled ? L["SystemUsers.State.Disabled"] : L["SystemUsers.State.Enabled"])
+                            </SUIStatusBadge>
+                        </td>
+                        <td class="system-users-table__actions">
+                            <SUIButton ButtonTypeValue="SUIButtonType.Button"
+                                       VariantValue="SUIVariant.Outlined"
+                                       ColorValue="SUIColor.Primary"
+                                       OnClick="@(() => SelectAsync(item))">
+                                <SUIIcon Name="key" Size="16" />
+                                @L["SystemUsers.Action.Credentials"]
+                            </SUIButton>
+                            <SUIButton ButtonTypeValue="SUIButtonType.Button"
+                                       VariantValue="SUIVariant.Text"
+                                       ColorValue="@(item.Disabled ? SUIColor.Primary : SUIColor.Error)"
+                                       Disabled="@(toggling == item.UserId)"
+                                       OnClick="@(() => ToggleAsync(item))">
+                                @(item.Disabled ? L["SystemUsers.Action.Enable"] : L["SystemUsers.Action.Disable"])
+                            </SUIButton>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@if (selected is not null)
+{
+    <section class="system-user-credentials" aria-labelledby="system-user-credentials-heading">
+        <header>
+            <div>
+                <h2 id="system-user-credentials-heading">
+                    @string.Format(L["SystemUsers.Credentials.TitleFormat"].Value, selected.DisplayName ?? selected.UserName)
+                </h2>
+                <p>@L["SystemUsers.Credentials.Description"]</p>
+            </div>
+            <SUIButton ButtonTypeValue="SUIButtonType.Button"
+                       VariantValue="SUIVariant.Text"
+                       ColorValue="SUIColor.Default"
+                       OnClick="@(() => selected = null)">
+                @L["SystemUsers.Credentials.Close"]
+            </SUIButton>
+        </header>
+
+        @if (!selected.Disabled)
+        {
+            <div class="system-user-credentials__issue" data-sui-align-row>
+                <IdentityTextField T="string"
+                                   id="system-user-enrollment-client" Immediate="true"
+                                   Label="@L["SystemUsers.Issue.Client"].Value"
+                                   HelperText="@L["SystemUsers.Issue.ClientHelp"].Value"
+                                   MaxLength="100"
+                                   Disabled="@issuing"
+                                   Value="@draftClientId"
+                                   ValueChanged="@((string? value) => draftClientId = value ?? string.Empty)"
+                                   autocomplete="off" />
+                <IdentityTextField T="string"
+                                   id="system-user-enrollment-label" Immediate="true"
+                                   Label="@L["SystemUsers.Issue.Label"].Value"
+                                   HelperText="@L["SystemUsers.Issue.LabelHelp"].Value"
+                                   MaxLength="100"
+                                   Disabled="@issuing"
+                                   Value="@draftLabel"
+                                   ValueChanged="@((string? value) => draftLabel = value ?? string.Empty)"
+                                   autocomplete="off" />
+                <IdentitySelect T="int"
+                                id="system-user-enrollment-lifetime"
+                                Label="@L["SystemUsers.Issue.Lifetime"].Value"
+                                Disabled="@issuing"
+                                Value="@draftLifetimeHours"
+                                ValueChanged="@((int value) => draftLifetimeHours = value)">
+                    <SUISelectItem Value="@(1)">@L["SystemUsers.Issue.Lifetime1h"]</SUISelectItem>
+                    <SUISelectItem Value="@(24)">@L["SystemUsers.Issue.Lifetime24h"]</SUISelectItem>
+                    <SUISelectItem Value="@(72)">@L["SystemUsers.Issue.Lifetime72h"]</SUISelectItem>
+                    <SUISelectItem Value="@(168)">@L["SystemUsers.Issue.Lifetime7d"]</SUISelectItem>
+                </IdentitySelect>
+                <SUILoadingButton IsLoading="@issuing"
+                                  Disabled="@(issuing || string.IsNullOrWhiteSpace(draftClientId) || string.IsNullOrWhiteSpace(draftLabel))"
+                                  OnClick="IssueAsync">
+                    <SUIIcon Name="key" Size="17" />
+                    <span>@L["SystemUsers.Issue.Submit"]</span>
+                </SUILoadingButton>
+            </div>
+        }
+        else
+        {
+            <p class="system-user-credentials__disabled">@L["SystemUsers.Credentials.DisabledNote"]</p>
+        }
+
+        @if (enrollments.Count == 0)
+        {
+            <p class="system-user-credentials__empty">@L["SystemUsers.Credentials.Empty"]</p>
+        }
+        else
+        {
+            <div class="table-scroll">
+                <table class="data-table" aria-label="@L["SystemUsers.Credentials.TableAriaLabel"].Value">
+                    <thead>
+                        <tr>
+                            <th>@L["SystemUsers.Credentials.Client"]</th>
+                            <th>@L["SystemUsers.Credentials.Label"]</th>
+                            <th>@L["SystemUsers.Credentials.State"]</th>
+                            <th>@L["SystemUsers.Credentials.Issued"]</th>
+                            <th><span class="visually-hidden">@L["SystemUsers.Table.Actions"]</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var enrollment in enrollments)
+                        {
+                            <tr>
+                                <td data-label="@L["SystemUsers.Credentials.Client"]"><code>@enrollment.ClientId</code></td>
+                                <td data-label="@L["SystemUsers.Credentials.Label"]">
+                                    @enrollment.Label
+                                    <small>#@enrollment.CodeHint</small>
+                                </td>
+                                <td data-label="@L["SystemUsers.Credentials.State"]">
+                                    <SUIStatusBadge ToneValue="@StatusTone(enrollment.Status)">@StatusText(enrollment.Status)</SUIStatusBadge>
+                                    <small>@StatusDetail(enrollment)</small>
+                                </td>
+                                <td data-label="@L["SystemUsers.Credentials.Issued"]">
+                                    <span>@Time.Format(enrollment.CreatedAtUtc)</span>
+                                    <small>@enrollment.IssuedBy</small>
+                                </td>
+                                <td class="system-users-table__actions">
+                                    @if (enrollment.Status is SystemUserEnrollmentStatus.Pending or SystemUserEnrollmentStatus.Active)
+                                    {
+                                        <SUIButton ButtonTypeValue="SUIButtonType.Button"
+                                                   VariantValue="SUIVariant.Text"
+                                                   ColorValue="SUIColor.Error"
+                                                   OnClick="@(() => RevokeAsync(enrollment))">
+                                            @L["SystemUsers.Credentials.Revoke"]
+                                        </SUIButton>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+}
+
+@code {
+    [CascadingParameter]
+    private BrowserTime Time { get; set; } = BrowserTime.Server;
+
+    private IReadOnlyList<SystemUserSummary> systemUsers = [];
+    private IReadOnlyList<SystemUserEnrollmentSummary> enrollments = [];
+    private SystemUserSummary? selected;
+    private bool loading = true, creating, showCreate, issuing;
+    private string? loadError, toggling;
+    private string draftUserName = string.Empty, draftDisplayName = string.Empty;
+    private string draftClientId = string.Empty, draftLabel = string.Empty;
+    private int draftLifetimeHours = 24;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        var result = await SystemUserData.ListAsync();
+        loading = false;
+        loadError = result.IsSuccess ? null : result.ErrorMessage;
+        systemUsers = result.Value ?? [];
+        if (selected is not null)
+        {
+            selected = systemUsers.FirstOrDefault(x => x.UserId == selected.UserId);
+        }
+    }
+
+    private void BeginCreate()
+    {
+        draftUserName = string.Empty;
+        draftDisplayName = string.Empty;
+        showCreate = true;
+    }
+
+    private async Task CreateAsync()
+    {
+        creating = true;
+        var result = await SystemUserData.CreateAsync(new CreateSystemUserCommand(
+            draftUserName, string.IsNullOrWhiteSpace(draftDisplayName) ? null : draftDisplayName));
+        creating = false;
+        if (!result.IsSuccess)
+        {
+            Toast.Error(result.ErrorMessage ?? L["Common.Unavailable"].Value);
+            return;
+        }
+
+        showCreate = false;
+        Toast.Success(string.Format(L["SystemUsers.Created.Format"].Value, result.Value!.UserName));
+        await LoadAsync();
+        await SelectAsync(result.Value);
+    }
+
+    private async Task SelectAsync(SystemUserSummary item)
+    {
+        selected = item;
+        draftClientId = string.Empty;
+        draftLabel = string.Empty;
+        draftLifetimeHours = 24;
+        await LoadEnrollmentsAsync();
+    }
+
+    private async Task LoadEnrollmentsAsync()
+    {
+        if (selected is null) return;
+        var result = await SystemUserData.ListEnrollmentsAsync(selected.UserId);
+        enrollments = result.Value ?? [];
+        if (!result.IsSuccess) Toast.Error(result.ErrorMessage ?? L["Common.Unavailable"].Value);
+    }
+
+    private async Task ToggleAsync(SystemUserSummary item)
+    {
+        if (!item.Disabled && !await Dialogs.ConfirmAsync(
+                L["SystemUsers.Disable.ConfirmTitle"].Value,
+                string.Format(L["SystemUsers.Disable.ConfirmFormat"].Value, item.DisplayName ?? item.UserName)))
+        {
+            return;
+        }
+
+        toggling = item.UserId;
+        var result = await SystemUserData.ToggleAsync(item.UserId, item.Disabled);
+        toggling = null;
+        if (!result.IsSuccess)
+        {
+            Toast.Error(result.ErrorMessage ?? L["Common.Unavailable"].Value);
+            return;
+        }
+
+        Toast.Success(result.Value!.Disabled ? L["SystemUsers.Disabled.Toast"].Value : L["SystemUsers.Enabled.Toast"].Value);
+        await LoadAsync();
+        await LoadEnrollmentsAsync();
+    }
+
+    private async Task IssueAsync()
+    {
+        if (selected is null) return;
+        issuing = true;
+        var result = await SystemUserData.IssueEnrollmentAsync(selected.UserId,
+            new IssueSystemUserEnrollmentCommand(draftClientId, draftLabel, draftLifetimeHours));
+        issuing = false;
+        if (!result.IsSuccess)
+        {
+            Toast.Error(result.ErrorMessage ?? L["Common.Unavailable"].Value);
+            return;
+        }
+
+        var issued = result.Value!;
+        draftLabel = string.Empty;
+        await LoadEnrollmentsAsync();
+        StateHasChanged();
+        await OneTimeTokenDialog.ShowAsync(
+            Dialogs,
+            L["SystemUsers.Code.Title"].Value,
+            new OneTimeTokenRequest(
+                issued.Code,
+                string.Format(L["SystemUsers.Code.DescriptionFormat"].Value, issued.Enrollment.ClientId),
+                L["SystemUsers.Code.AriaLabel"].Value,
+                string.Format(L["SystemUsers.Code.ExpiresFormat"].Value,
+                    Time.Format(issued.Enrollment.ExpiresAtUtc)),
+                string.Format(L["SystemUsers.Code.DetailFormat"].Value,
+                    issued.GrantType, SystemUserEnrollmentProtocol.CodeParameter),
+                L["SystemUsers.Code.Copy"].Value));
+        await LoadAsync();
+    }
+
+    private async Task RevokeAsync(SystemUserEnrollmentSummary enrollment)
+    {
+        if (selected is null) return;
+        if (!await Dialogs.ConfirmAsync(
+                L["SystemUsers.Revoke.ConfirmTitle"].Value,
+                string.Format(L["SystemUsers.Revoke.ConfirmFormat"].Value, enrollment.Label, enrollment.ClientId)))
+        {
+            return;
+        }
+
+        var result = await SystemUserData.RevokeEnrollmentAsync(selected.UserId, enrollment.Id);
+        if (!result.IsSuccess)
+        {
+            Toast.Error(result.ErrorMessage ?? L["Common.Unavailable"].Value);
+            return;
+        }
+
+        Toast.Success(L["SystemUsers.Revoked.Toast"].Value);
+        await LoadEnrollmentsAsync();
+        await LoadAsync();
+    }
+
+    private static SUITone StatusTone(string status) => status switch
+    {
+        SystemUserEnrollmentStatus.Active => SUITone.Success,
+        SystemUserEnrollmentStatus.Pending => SUITone.Warning,
+        _ => SUITone.Neutral,
+    };
+
+    private string StatusText(string status) => status switch
+    {
+        SystemUserEnrollmentStatus.Active => L["SystemUsers.Status.Active"].Value,
+        SystemUserEnrollmentStatus.Pending => L["SystemUsers.Status.Pending"].Value,
+        SystemUserEnrollmentStatus.Expired => L["SystemUsers.Status.Expired"].Value,
+        _ => L["SystemUsers.Status.Revoked"].Value,
+    };
+
+    private string StatusDetail(SystemUserEnrollmentSummary enrollment) => enrollment.Status switch
+    {
+        SystemUserEnrollmentStatus.Active => string.Format(L["SystemUsers.Status.RedeemedFormat"].Value,
+            Time.Format(enrollment.RedeemedAtUtc!.Value)),
+        SystemUserEnrollmentStatus.Pending => string.Format(L["SystemUsers.Status.ExpiresFormat"].Value,
+            Time.Format(enrollment.ExpiresAtUtc)),
+        SystemUserEnrollmentStatus.Revoked => Time.Format(enrollment.RevokedAtUtc!.Value),
+        _ => Time.Format(enrollment.ExpiresAtUtc),
+    };
+}

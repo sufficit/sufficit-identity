@@ -34,6 +34,15 @@ public static class ManagementModulePresentations
             "users",
             "users"),
         new(
+            "system-users",
+            localizer["Capability.Group.Identity"].Value,
+            10,
+            15,
+            localizer["Overview.Module.SystemUsers.Title"].Value,
+            localizer["Overview.Module.SystemUsers.Description"].Value,
+            "system-users",
+            "server"),
+        new(
             "claims",
             localizer["Capability.Group.Identity"].Value,
             10,
