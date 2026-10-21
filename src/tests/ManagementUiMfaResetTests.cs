@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Net;
 using Microsoft.AspNetCore.TestHost;
+using Sufficit.Identity.Tests.Infrastructure;
 using Xunit;
 
 namespace Sufficit.Identity.Tests;
@@ -37,10 +38,12 @@ public sealed partial class ManagementUiRoutingTests
         Assert.Contains("Verifique a identidade do titular", html);
     }
 
+    [Trait("Category", "BrowserHost")]
+
     [Fact]
     public async Task Mfa_reset_browser_exercises_confirmation_and_mobile_layout()
     {
-        var script = Environment.GetEnvironmentVariable("IDENTITY_MFA_BROWSER_SCRIPT");
+        var script = BrowserHostScript.Resolve("IDENTITY_MFA_BROWSER_SCRIPT");
         if (string.IsNullOrWhiteSpace(script)) return;
         await using var app = await CreateHostAsync(useKestrel: true);
         var start = new ProcessStartInfo("node") { RedirectStandardOutput = true, RedirectStandardError = true };

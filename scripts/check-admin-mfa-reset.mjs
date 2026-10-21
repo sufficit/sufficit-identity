@@ -26,9 +26,22 @@ try {
   const actionsMenu = page.locator('#user-account-actions-menu');
   assert.equal(await accountActions.isVisible(), false);
   assert.equal(await actionsMenu.isVisible(), true);
-  const desktopActionPositions = await page.locator('.user-account-action').evaluateAll(elements =>
-    elements.map(element => Math.round(element.getBoundingClientRect().top)));
-  assert.equal(new Set(desktopActionPositions).size, 1);
+  // The actions are a grid of cards (rows of up to three): none may overlap
+  // another or leave the viewport.
+  const desktopActionBoxes = await page.locator('.user-account-action').evaluateAll(elements =>
+    elements.map(element => {
+      const r = element.getBoundingClientRect();
+      return { left: r.left, top: r.top, right: r.right, bottom: r.bottom };
+    }));
+  assert.ok(desktopActionBoxes.length > 0, 'desktop: no account actions');
+  for (const [i, a] of desktopActionBoxes.entries()) {
+    assert.ok(a.right <= 1440 + 0.5, `desktop: action ${i} leaves the viewport`);
+    for (const b of desktopActionBoxes.slice(i + 1)) {
+      const overlap = a.left < b.right - 0.5 && b.left < a.right - 0.5
+        && a.top < b.bottom - 0.5 && b.top < a.bottom - 0.5;
+      assert.ok(!overlap, 'desktop: account actions overlap');
+    }
+  }
   await page.screenshot({ path: `${output}/desktop-actions.png`, fullPage: true, animations: 'disabled' });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'desktop: action row overflow');
   await page.setViewportSize({ width: 390, height: 844 });

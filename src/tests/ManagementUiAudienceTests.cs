@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.TestHost;
+using Sufficit.Identity.Tests.Infrastructure;
 using Xunit;
 
 namespace Sufficit.Identity.Tests;
@@ -49,6 +50,7 @@ public sealed partial class ManagementUiRoutingTests
 
     // Always exercises the real HTTP host. Set IDENTITY_AUDIENCE_BROWSER_SCRIPT
     // to run the optional Playwright interaction/viewport checks against it too.
+    [Trait("Category", "BrowserHost")]
     [Fact]
     public async Task Audience_browser_host_serves_authenticated_screen()
     {
@@ -59,7 +61,7 @@ public sealed partial class ManagementUiRoutingTests
         using var response = await client.GetAsync("/management/audiences");
         response.EnsureSuccessStatusCode();
         Assert.Contains("test-api", await response.Content.ReadAsStringAsync());
-        var script = Environment.GetEnvironmentVariable("IDENTITY_AUDIENCE_BROWSER_SCRIPT");
+        var script = BrowserHostScript.Resolve("IDENTITY_AUDIENCE_BROWSER_SCRIPT");
         if (string.IsNullOrWhiteSpace(script)) return;
         var start = new ProcessStartInfo("node") { RedirectStandardOutput = true, RedirectStandardError = true };
         start.ArgumentList.Add(script);

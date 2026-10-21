@@ -10,7 +10,8 @@ const require = createRequire(process.env.IDENTITY_PLAYWRIGHT_PACKAGE || import.
 const { chromium } = require('playwright');
 const origin = process.argv[2];
 assert.equal(new URL(origin).hostname, '127.0.0.1', 'Only isolated loopback hosts are allowed');
-const output = fileURLToPath(new URL('../.impeccable/review/', import.meta.url));
+const output = process.env.IDENTITY_AUDIENCE_SCREENSHOTS
+  || fileURLToPath(new URL('../.impeccable/review/', import.meta.url));
 await mkdir(output, { recursive: true });
 const browser = await chromium.launch({ headless: true });
 try {
