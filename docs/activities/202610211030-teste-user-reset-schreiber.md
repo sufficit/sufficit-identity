@@ -42,3 +42,13 @@ Horário: 2026-10-21 10:30 -03. Solicitado pelo dono nesta sessão.
 
 `aiuser` pode ser reprovisionado pelo `ScopeEntitlementProvisioner` em
 `aiuser:000…0` (contexto próprio) se o usuário aprovar escopo de AI.
+
+## Painel de telefonia (11:10 -03)
+
+Adicionados via `POST api/claims`, no contexto da Schreiber:
+`telephony.panel:026246a851a7485991e0b06e1bebb045` e
+`telephony.monitor:026246a851a7485991e0b06e1bebb045`.
+
+Os mesmos itens entraram nos presets `telephony` (padrão) e `operator` em
+`intranet.entitlementpresetitems`; a validação de chave pontuada foi liberada
+em sufficit-standard `bfa660b` (teste em sufficit-endpoints `288e841`).
