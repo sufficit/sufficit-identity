@@ -109,10 +109,9 @@ Blazor). O Management passa a mostrar os dois tipos com nomes distintos.
 Para referência; não fazem parte das entregas do identity.
 
 - **Agentes do Genius (orquestrados pelo Fleet).** Decisão do dono em
-  21/10: **não** usam usuário de sistema nem um por agente ou por organização.
-  O agente roda sempre com o **usuário logado**, ou seja, a credencial
-  delegada de quem o opera, já suportada pelo identity. O usuário de sistema
-  fica para quando não houver pessoa por trás.
+  21/10: o agente roda com o usuário de **quem o criou** (credencial delegada,
+  já suportada pelo identity). Para os agentes da própria Sufficit, **um
+  usuário de sistema por agente**, habilitado por código.
 - **Futuro: um usuário de sistema por contexto ou cliente.** Admitido pelo
   dono, mas só depois de definir como ficam os **controles de crédito**:
   consumo e atribuição de custo de um usuário que não é pessoa. Sem prazo.
@@ -129,8 +128,9 @@ Para referência; não fazem parte das entregas do identity.
   aplicações: **sim** (decisão do dono, 21/10).
 - Cliente próprio por usuário de sistema: **não**. O cliente identifica o
   software; a credencial pertence ao usuário.
-- Agentes do Genius/Fleet: **usuário logado** (credencial delegada), nem
-  usuário de sistema por agente nem por organização (decisão do dono, 21/10).
+- Agentes do Genius/Fleet: usuário de **quem cria o agente** (credencial
+  delegada); agentes da própria Sufficit, um usuário de sistema por agente
+  (decisão do dono, 21/10).
 - Usuário de sistema por contexto ou cliente: possível no futuro, depois de
   definir os controles de crédito.
 
