@@ -118,6 +118,7 @@ public static partial class ServiceCollectionExtensions
         }
         services.AddSingleton(options);
         services.TryAddSingleton<Sufficit.Identity.Core.Services.DcrInitialAccessTokenStore>();
+        services.TryAddSingleton<Sufficit.Identity.Core.Services.SystemUserStore>();
         services.Replace(ServiceDescriptor.Singleton<
             IIdentityRuntimeCapabilityCatalog>(
             new SufficitIdentityRuntimeCapabilityCatalog(options)));
@@ -739,6 +740,9 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<Grants.ITokenGrantHandler, Grants.DeviceCodeGrantHandler>();
         services.AddScoped<Grants.ITokenGrantHandler, Grants.ClientCredentialsGrantHandler>();
         services.AddScoped<Grants.ITokenGrantHandler, Grants.PasswordGrantHandler>();
+        services.TryAddSingleton(configuration.GetSection("Sufficit:Identity:SystemUsers")
+            .Get<Grants.SystemUserOptions>() ?? new Grants.SystemUserOptions());
+        services.AddScoped<Grants.ITokenGrantHandler, Grants.SystemUserEnrollmentGrantHandler>();
         // The same section GrantOperations reads; registered so the resolver
         // does not have to carry the whole options graph to reach one flag.
         var tokenExchange = configuration.GetSection("Sufficit:Identity:TokenExchange")

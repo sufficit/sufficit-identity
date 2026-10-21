@@ -132,6 +132,11 @@ public sealed class AppDbContext
     public DbSet<Entities.DcrInitialAccessToken> DcrInitialAccessTokens =>
         Set<Entities.DcrInitialAccessToken>();
 
+    public DbSet<Entities.SystemUser> SystemUsers => Set<Entities.SystemUser>();
+
+    public DbSet<Entities.SystemUserEnrollment> SystemUserEnrollments =>
+        Set<Entities.SystemUserEnrollment>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -153,6 +158,7 @@ public sealed class AppDbContext
         ProtocolSecurityStateMapping.Apply(builder);
         OAuthClientCredentialMapping.Apply(builder);
         DcrInitialAccessTokenMapping.Apply(builder);
+        SystemUserMapping.Apply(builder);
 
         // F-3 (eval 2026-08-14): opaque CSPRNG identifiers are matched by
         // equality and must not fold case. Applied only under MySQL/MariaDB —

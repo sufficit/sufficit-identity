@@ -17,7 +17,7 @@ namespace Sufficit.Identity.Core.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.11")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
             MySqlModelBuilderExtensions.AutoIncrementColumns(modelBuilder);
@@ -1643,6 +1643,123 @@ namespace Sufficit.Identity.Core.Migrations
                     b.ToTable("ssfstreams", (string)null);
                 });
 
+            modelBuilder.Entity("Sufficit.Identity.Core.Entities.SystemUser", b =>
+                {
+                    b.Property<string>("UserId")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)")
+                        .HasColumnName("userid");
+
+                    b.Property<string>("CorrelationId")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)")
+                        .HasColumnName("correlationid");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("createdatutc");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)")
+                        .HasColumnName("createdby");
+
+                    b.Property<DateTime?>("DisabledAtUtc")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("disabledatutc");
+
+                    b.Property<string>("DisabledBy")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)")
+                        .HasColumnName("disabledby");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("systemusers", (string)null);
+                });
+
+            modelBuilder.Entity("Sufficit.Identity.Core.Entities.SystemUserEnrollment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AuthorizationId")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
+                        .HasColumnName("authorizationid");
+
+                    b.Property<string>("ClientId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
+                        .HasColumnName("clientid");
+
+                    b.Property<string>("CodeHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)")
+                        .HasColumnName("codehash");
+
+                    b.Property<string>("CodeHint")
+                        .IsRequired()
+                        .HasMaxLength(12)
+                        .HasColumnType("varchar(12)")
+                        .HasColumnName("codehint");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("createdatutc");
+
+                    b.Property<DateTime>("ExpiresAtUtc")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("expiresatutc");
+
+                    b.Property<string>("IssuedBy")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)")
+                        .HasColumnName("issuedby");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
+                        .HasColumnName("label");
+
+                    b.Property<DateTime?>("RedeemedAtUtc")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("redeemedatutc");
+
+                    b.Property<DateTime?>("RevokedAtUtc")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("revokedatutc");
+
+                    b.Property<string>("RevokedBy")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)")
+                        .HasColumnName("revokedby");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)")
+                        .HasColumnName("userid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CodeHash")
+                        .IsUnique()
+                        .HasDatabaseName("IX_systemuserenrollments_codehash");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("IX_systemuserenrollments_userid");
+
+                    b.ToTable("systemuserenrollments", (string)null);
+                });
+
             modelBuilder.Entity("Sufficit.Identity.Core.Entities.TrustedProxyConfiguration", b =>
                 {
                     b.Property<int>("Id")
@@ -2079,6 +2196,24 @@ namespace Sufficit.Identity.Core.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Sufficit.Identity.Core.Entities.SystemUser", b =>
+                {
+                    b.HasOne("Sufficit.Identity.Core.Entities.ApplicationUser", null)
+                        .WithOne()
+                        .HasForeignKey("Sufficit.Identity.Core.Entities.SystemUser", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Sufficit.Identity.Core.Entities.SystemUserEnrollment", b =>
+                {
+                    b.HasOne("Sufficit.Identity.Core.Entities.SystemUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("OpenIddict.EntityFrameworkCore.Models.OpenIddictEntityFrameworkCoreApplication", b =>

@@ -168,7 +168,11 @@ public static partial class ServiceCollectionExtensions
               .AllowClientCredentialsFlow()
               .AllowDeviceAuthorizationFlow()
               .AllowRefreshTokenFlow()
-              .AllowTokenExchangeFlow();
+              .AllowTokenExchangeFlow()
+              // Operator-issued enrollment of a system user's credential
+              // (Grants/SystemUserEnrollmentGrant.cs). Clients still need the
+              // matching gt: permission.
+              .AllowCustomFlow(Grants.SystemUserEnrollmentGrant.GrantType);
 
         // Optional protocol features contribute their flows, handlers and
         // server options; see Features/ProtocolFeatureCatalog.

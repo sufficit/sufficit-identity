@@ -149,6 +149,13 @@ build refuses to start while the retired shared token
 `allowedgranttypesjson` and `allowedscopesjson` columns to that table. It is
 additive; apply it before deploying the build that issues tokens with a policy.
 
+`100-add-system-users.sql` creates `systemusers` (the marker of a user that
+never signs in interactively, with who created it and when) and
+`systemuserenrollments` (the one-time codes an operator issues so a client can
+obtain that user's credential). It is additive; apply it before deploying the
+build that creates system users. Without it the build fails at runtime on any
+sign-in or token request, because every sign-in checks the marker.
+
 That same evaluation made `Sufficit:Identity:DeploymentTopology` a **required
 configuration key** outside Development: the production posture check refuses to
 start with `deployment-topology-undeclared` until the deployment states its

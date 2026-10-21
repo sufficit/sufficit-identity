@@ -1,7 +1,7 @@
 # Plano — usuários de sistema
 
-Aberto em 21/10/2026. Estado: **desenho aprovado em conversa; implementação
-pendente**.
+Aberto em 21/10/2026. Estado: **em implementação** (banco e STS entregues;
+Management em andamento).
 
 ## Problema
 
@@ -60,18 +60,25 @@ de Management, como para qualquer usuário.
    sistema usa os clientes que já existem para o software que o executa,
    exatamente como uma pessoa. O `client_id` continua dizendo *qual software*;
    o `sub`, *quem*.
-4. **Credencial pertence ao usuário.** Um operador com a capacidade de
-   Management correspondente, e MFA recente, emite para o usuário de sistema
-   uma **credencial de longa duração para um cliente** (um refresh token).
-   - Opcionalmente presa a uma chave DPoP (`dpop_jkt`); recomendada para
-     executores.
-   - Exibida uma única vez (popup de exibição única do Management).
-   - Revogável e rotacionável por credencial.
-   - O software a resgata com o grant `refresh_token` e recebe access tokens
-     com `sub` = usuário de sistema.
-   - Reaproveita o emissor da credencial delegada. Só muda **quem autoriza**:
-     lá, o próprio usuário com login recente; aqui, o operador com MFA
-     recente, registrado na auditoria.
+4. **Credencial pertence ao usuário, e o operador nunca a vê.** Um operador
+   com a capacidade de Management correspondente (e MFA recente, exigido por
+   todo o Management) emite para o usuário de sistema um **código de
+   habilitação**.
+   - O código serve para um cliente, é de uso único, curta duração e exibido
+     uma única vez (popup). No banco fica só o hash
+     (`systemuserenrollments`), como nos tokens de registro DCR.
+   - O próprio software troca o código no `/connect/token` com o grant
+     `urn:sufficit:params:oauth:grant-type:system-user-enrollment`
+     (parâmetro `enrollment_code`). Recebe um refresh token de longa duração
+     (`Sufficit:Identity:SystemUsers:CredentialLifetimeDays`, padrão 365)
+     mais um access token, com `sub` = usuário de sistema.
+   - Com prova DPoP na troca, a credencial fica presa a essa chave pela vida
+     inteira (recomendado para executores).
+   - Depois disso segue o caminho da credencial delegada: escopos fixos,
+     prazo absoluto que o refresh não estende, revogável pela autorização.
+   - Um pedido recusado por outro motivo não consome o código, e duas trocas
+     simultâneas têm um único vencedor.
+   - O cliente precisa da permissão `gt:` desse grant e de `refresh_token`.
 5. **Mesmas regras de token.** Escopos, audiências, claims e destinos seguem
    a política normal de usuários, inclusive entitlements server-resolved. Não
    existe atalho de privilégio por ser "sistema".
@@ -88,10 +95,14 @@ de Management, como para qualquer usuário.
 | 6 | Testes: login recusado em cada caminho; token e userinfo de usuário de sistema iguais aos de pessoa; desativação corta emissão e renovação; DPoP | Testes + roteiro de navegador |
 | 7 | Documento de uso (`docs/usage/USAGE-SYSTEM-USERS.md`) | Docs |
 
-As "contas de sistema" atuais (cliente sem usuário) **continuam existindo**
-para serviço puro, ou seja, software que não age como usuário (ex.: ponte
-servidor-a-servidor). O Management passa a mostrar os dois tipos com nomes
-distintos.
+As "contas de sistema" atuais (cliente sem usuário) **continuam existindo
+por enquanto** para serviço puro (ex.: a ponte servidor-a-servidor do
+Blazor). O Management passa a mostrar os dois tipos com nomes distintos.
+
+> **Próximo passo, anotado pelo dono em 21/10:** rever as contas de sistema
+> atuais (clientes sem usuário). Decidir se continuam existindo, se migram
+> para usuário de sistema ou se ficam restritas a serviço puro. Inclui a ponte
+> `sufficit-blazor-ai-bridge`.
 
 ## Consumidores (fora deste repositório)
 
