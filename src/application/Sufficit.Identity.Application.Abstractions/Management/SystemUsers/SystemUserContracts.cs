@@ -29,10 +29,15 @@ public sealed record SystemUserSummary(
     DateTime? DisabledAtUtc,
     int ActiveCredentials);
 
-/// <summary>Creates a system user. It has no password, e-mail or external login.</summary>
+/// <summary>
+/// Creates a system user. It has no password, e-mail or external login.
+/// <paramref name="UserId"/> lets the caller reuse an ID it already owns (for
+/// example its own record of the agent); empty means a new one.
+/// </summary>
 public sealed record CreateSystemUserCommand(
     string UserName,
-    string? DisplayName = null);
+    string? DisplayName = null,
+    Guid? UserId = null);
 
 /// <summary>Status of an enrollment code, from the operator's point of view.</summary>
 public static class SystemUserEnrollmentStatus

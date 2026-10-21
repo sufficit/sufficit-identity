@@ -93,8 +93,24 @@ internal sealed class SystemUserManagementService(
                 "system_user_name_taken", "A user with this name already exists.");
         }
 
+        if (command.UserId == Guid.Empty)
+        {
+            throw new ManagementValidationException(
+                "system_user_id_invalid", "The user ID must not be empty.", "userId");
+        }
+
         // No password, no e-mail, no external login: nothing a sign-in could use.
         var user = new ApplicationUser { UserName = userName };
+        if (command.UserId is { } requestedId)
+        {
+            // Never adopt an existing account: a caller-chosen ID must be new.
+            user.Id = requestedId.ToString("D");
+            if (await users.FindByIdAsync(user.Id) is not null)
+            {
+                throw new ManagementConflictException(
+                    "system_user_id_taken", "A user with this ID already exists.");
+            }
+        }
         var created = await users.CreateAsync(user);
         if (!created.Succeeded)
         {

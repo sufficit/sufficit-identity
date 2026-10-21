@@ -35,6 +35,10 @@ POST /api/system-users
 { "userName": "agent-github-engineer", "displayName": "GitHub engineer" }
 ```
 
+`userId` (UUID) é opcional: permite reaproveitar um id que o chamador já usa
+(por exemplo, o id do agente). Se já existir usuário com esse id, a resposta é
+409; o identity nunca adota uma conta existente.
+
 Entitlements, papéis e claims são dados como para qualquer usuário (página do
 usuário). A criação fica auditada com o operador.
 
@@ -71,6 +75,13 @@ grant_type=urn:sufficit:params:oauth:grant-type:system-user-enrollment
 Resposta: `access_token` e `refresh_token` em nome do usuário de sistema. Com
 prova DPoP, a credencial fica presa a essa chave: todo refresh precisa de prova
 com a mesma chave. O operador nunca vê a credencial de longa duração.
+
+**Habilitar em nome de um dispositivo.** Quando quem troca o código não é quem
+vai usar a credencial (um provisionador que entrega o refresh token a um
+executor cuja chave nunca sai dele), envie `dpop_jkt=<thumbprint RFC 7638 da
+chave do dispositivo>` no lugar da prova. A credencial fica presa a essa chave;
+o provisionador não consegue usá-la. `dpop_jkt` inválido, ou diferente da chave
+de uma prova enviada junto, é recusado sem gastar o código.
 
 Depois disso, o software usa o grant `refresh_token` normalmente. A credencial
 tem prazo absoluto (`Sufficit:Identity:SystemUsers:CredentialLifetimeDays`,

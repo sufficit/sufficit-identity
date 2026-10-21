@@ -124,6 +124,30 @@ public sealed class SystemUserManagementTests
         Assert.False(string.IsNullOrEmpty(marker.CreatedBy));
     }
 
+    [Fact]
+    public async Task Operator_can_create_a_system_user_with_a_chosen_id_once()
+    {
+        using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        var operatorClient = factory.CreateClient();
+        var id = Guid.CreateVersion7();
+
+        using var created = await operatorClient.PostAsJsonAsync(
+            "/api/system-users", new { userName = "agent-chosen-id", userId = id });
+        Assert.Equal(HttpStatusCode.OK, created.StatusCode);
+        Assert.Equal(id.ToString("D"),
+            (await created.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("userId").GetString());
+
+        // The same ID under another name is refused: an existing account is never adopted.
+        using var taken = await operatorClient.PostAsJsonAsync(
+            "/api/system-users", new { userName = "agent-other-name", userId = id });
+        Assert.Equal(HttpStatusCode.Conflict, taken.StatusCode);
+
+        using var empty = await operatorClient.PostAsJsonAsync(
+            "/api/system-users", new { userName = "agent-empty-id", userId = Guid.Empty });
+        Assert.Equal(HttpStatusCode.BadRequest, empty.StatusCode);
+    }
+
     private static async Task RegisterAgentClientAsync(ManagementTestFactory factory)
     {
         using var scope = factory.Services.CreateScope();

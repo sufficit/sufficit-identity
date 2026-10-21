@@ -84,6 +84,38 @@ public sealed class SystemUserTests
     }
 
     [Fact]
+    public async Task A_provisioner_binds_the_credential_to_a_device_key_it_never_holds()
+    {
+        await using var env = await Environment.CreateAsync();
+        var user = await env.CreateSystemUserAsync();
+        var device = NewKey();
+        var code = await env.IssueCodeAsync(user.Id, AgentClientId);
+
+        // Malformed or contradicted dpop_jkt is refused without burning the code.
+        var (malformed, _) = await env.RedeemAsync(code, AgentClientId, key: null,
+            new() { ["dpop_jkt"] = "not-a-thumbprint" });
+        Assert.Equal(HttpStatusCode.BadRequest, malformed);
+        var (contradicted, _) = await env.RedeemAsync(code, AgentClientId, NewKey(),
+            new() { ["dpop_jkt"] = Thumbprint(device) });
+        Assert.Equal(HttpStatusCode.BadRequest, contradicted);
+
+        // The provisioner names the device key; it holds no key itself.
+        var (status, body) = await env.RedeemAsync(code, AgentClientId, key: null,
+            new() { ["dpop_jkt"] = Thumbprint(device) });
+        Assert.True(status == HttpStatusCode.OK, body.ToString());
+        var refresh = body.GetProperty("refresh_token").GetString()!;
+
+        // Only the device can use it.
+        var (noKey, _) = await env.RefreshAsync(refresh, AgentClientId, key: null);
+        Assert.Equal(HttpStatusCode.BadRequest, noKey);
+        var (otherKey, _) = await env.RefreshAsync(refresh, AgentClientId, NewKey());
+        Assert.Equal(HttpStatusCode.BadRequest, otherKey);
+        var (refreshed, refreshedBody) = await env.RefreshAsync(refresh, AgentClientId, device);
+        Assert.True(refreshed == HttpStatusCode.OK, refreshedBody.ToString());
+        Assert.Equal("DPoP", refreshedBody.GetProperty("token_type").GetString());
+    }
+
+    [Fact]
     public async Task A_code_works_only_for_its_client_and_only_while_valid()
     {
         await using var env = await Environment.CreateAsync();
@@ -153,6 +185,13 @@ public sealed class SystemUserTests
     }
 
     private static ECDsaSecurityKey NewKey() => new(ECDsa.Create(ECCurve.NamedCurves.nistP256));
+
+    private static string Thumbprint(ECDsaSecurityKey key)
+    {
+        var jwk = JsonWebKeyConverter.ConvertFromECDsaSecurityKey(key);
+        jwk.D = null;
+        return Base64UrlEncoder.Encode(jwk.ComputeJwkThumbprint());
+    }
 
     private static string Proof(ECDsaSecurityKey key, string url)
     {
@@ -265,14 +304,22 @@ public sealed class SystemUserTests
         }
 
         public Task<(HttpStatusCode Status, JsonElement Body)> RedeemAsync(
-            string code, string clientId, ECDsaSecurityKey? key) =>
-            PostAsync(new Dictionary<string, string>
+            string code, string clientId, ECDsaSecurityKey? key, Dictionary<string, string>? extra = null)
+        {
+            var form = new Dictionary<string, string>
             {
                 ["grant_type"] = SystemUserEnrollmentGrant.GrantType,
                 [SystemUserEnrollmentGrant.CodeParameter] = code,
                 ["client_id"] = clientId,
                 ["scope"] = TestDataSeeder.ScopeName,
-            }, key);
+            };
+            foreach (var (name, value) in extra ?? [])
+            {
+                form[name] = value;
+            }
+
+            return PostAsync(form, key);
+        }
 
         public Task<(HttpStatusCode Status, JsonElement Body)> RefreshAsync(
             string refreshToken, string clientId, ECDsaSecurityKey? key) =>

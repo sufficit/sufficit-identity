@@ -38,7 +38,10 @@ public sealed class SystemUserOptions
 /// Redeems an enrollment code: the authenticated client presents the code the
 /// operator issued for it and receives a refresh token (plus an access token)
 /// in the system user's name. With a DPoP proof on the request the credential
-/// is bound to that key for its whole life. The credential travels the
+/// is bound to that key for its whole life. A provisioner redeeming on behalf
+/// of a device that never lets its key out names that key with
+/// <c>dpop_jkt</c> instead (as the delegated credential does); the device then
+/// proves possession on every refresh. The credential travels the
 /// delegated-credential path afterwards: fixed scopes, absolute deadline,
 /// revocable through its authorization.
 /// </summary>
@@ -73,6 +76,26 @@ public sealed class SystemUserEnrollmentGrantHandler(
         if (system is null || system.DisabledAtUtc is not null || user is null)
         {
             return TokenGrantDispatcher.ForbidError(Errors.InvalidGrant, InvalidCode);
+        }
+
+        // Bind to the named key when given; a proof for another key contradicts it.
+        var boundKey = proof?.KeyThumbprint;
+        if (request.GetParameter(DelegatedCredential.DpopJktParameter) is { } jktParameter)
+        {
+            var jkt = (string?)jktParameter;
+            if (!DelegatedCredential.IsValidThumbprint(jkt))
+            {
+                return TokenGrantDispatcher.ForbidError(Errors.InvalidRequest,
+                    "dpop_jkt must be the base64url SHA-256 JWK thumbprint (RFC 7638) of the device key.");
+            }
+
+            if (proof is not null && !string.Equals(proof.KeyThumbprint, jkt, StringComparison.Ordinal))
+            {
+                return TokenGrantDispatcher.ForbidError(Errors.InvalidRequest,
+                    "The dpop_jkt parameter does not match the key of the DPoP proof.");
+            }
+
+            boundKey = jkt;
         }
 
         var application = await ops.ApplicationManager.FindByClientIdAsync(clientId, ct);
@@ -122,11 +145,14 @@ public sealed class SystemUserEnrollmentGrantHandler(
         identity.SetClaim(DelegatedCredential.ExpiresAtClaimType,
             expiresAt.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture));
         identity.SetClaim(DelegatedCredential.LabelClaimType, label);
-        GrantOperations.ApplyDpopBinding(identity, proof);
+        if (boundKey is not null)
+        {
+            identity.SetClaim(Dpop.DpopProofValidator.BindingThumbprintClaimType, boundKey);
+        }
 
         logger.LogInformation(
             "System user {UserId} enrolled client {ClientId} (enrollment {EnrollmentId}, DPoP bound: {Bound}).",
-            user.Id, clientId, enrollment.Id, proof is not null);
+            user.Id, clientId, enrollment.Id, boundKey is not null);
 
         return ops.SignIn(identity, request);
     }
