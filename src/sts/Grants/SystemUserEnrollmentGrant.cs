@@ -12,14 +12,11 @@ namespace Sufficit.Identity.STS.Grants;
 /// <summary>Names of the system-user enrollment grant.</summary>
 public static class SystemUserEnrollmentGrant
 {
-    /// <summary>
-    /// Extension grant (RFC 6749 §4.5) that redeems an operator-issued,
-    /// one-time enrollment code for a system user's long-lived credential.
-    /// </summary>
-    public const string GrantType = "urn:sufficit:params:oauth:grant-type:system-user-enrollment";
+    /// <inheritdoc cref="Management.SystemUsers.SystemUserEnrollmentProtocol.GrantType"/>
+    public const string GrantType = Management.SystemUsers.SystemUserEnrollmentProtocol.GrantType;
 
-    /// <summary>The one-time code issued through the management API.</summary>
-    public const string CodeParameter = "enrollment_code";
+    /// <inheritdoc cref="Management.SystemUsers.SystemUserEnrollmentProtocol.CodeParameter"/>
+    public const string CodeParameter = Management.SystemUsers.SystemUserEnrollmentProtocol.CodeParameter;
 
     /// <summary>Recorded as the delegator of the credential's authorization.</summary>
     public const string Issuer = "system-user-enrollment";
