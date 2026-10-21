@@ -1,0 +1,32 @@
+@* A localized sentence with an instant inside, e.g. "Atualizado em {0}".
+   Format the resource with Slot where the time goes; this renders the text
+   around it and the instant as LocalTime, so static pages can still show it
+   in the reader's zone. *@
+@namespace Sufficit.Identity.UI.Components.Dates
+@using Microsoft.AspNetCore.Components
+
+@{
+    var at = Text.IndexOf(Slot, StringComparison.Ordinal);
+}
+@if (at < 0)
+{
+    @Text
+}
+else
+{
+    @Text[..at]<LocalTime Instant="Instant" Style="Style" />@Text[(at + Slot.Length)..]
+}
+
+@code {
+    /// <summary>Placeholder to pass into string.Format where the time belongs.</summary>
+    public const string Slot = "⁣time⁣";
+
+    [Parameter, EditorRequired]
+    public string Text { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public DateTimeOffset Instant { get; set; }
+
+    [Parameter]
+    public TimeStyle Style { get; set; } = TimeStyle.DateTime;
+}

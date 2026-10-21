@@ -87,7 +87,7 @@
                                 </td>
                                 <td data-label="@L["Clients.Registrations.ColumnRegisteredAt"].Value">
                                     @(client.RegisteredAtUtc is { } instant
-                                        ? instant.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                        ? Time.Format(instant)
                                         : "—")
                                 </td>
                                 <td data-label="@L["Clients.Registrations.ColumnOrigin"].Value">
@@ -153,6 +153,10 @@
 </section>
 
 @code {
+    // The reader's zone once the browser answers (BrowserTimeProvider in the layout).
+    [CascadingParameter]
+    private BrowserTime Time { get; set; } = BrowserTime.Server;
+
     private ManagementDataResult<ManagementClientPage>? result;
     private string? loadedFingerprint;
 

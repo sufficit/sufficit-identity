@@ -55,7 +55,7 @@ else
                 @if (SelectedDay is not null)
                 {
                     <a class="filter-chip" href="@UrlFor(day: null, clearDay: true, page: 1)">
-                        @SelectedDay.Value.ToString("dd/MM/yyyy", PtBr)
+                        @BrowserTime.FormatDay(SelectedDay.Value)
                         <SUIIcon Name="x" Size="14" />
                     </a>
                 }
@@ -96,7 +96,7 @@ else
                                         @onclick="() => SelectDay(day.Date)">
                                     <span class="registration-bar__value">@(day.Count > 0 ? day.Count : null)</span>
                                     <span class="registration-bar__column" style="--registration-height: @BarHeight(day.Count)%"></span>
-                                    <span class="registration-bar__date">@day.Date.ToString("dd/MM", PtBr)</span>
+                                    <span class="registration-bar__date">@BrowserTime.FormatDay(day.Date, TimeStyle.DayMonth)</span>
                                 </button>
                             }
                         </div>
@@ -269,7 +269,7 @@ else
                                             }
                                         </span>
                                     </td>
-                                    <td data-label="@L["Users.Table.Registered"]"><time datetime="@user.CreatedAtUtc.ToString("O")"><strong>@user.CreatedAtUtc.ToString("dd/MM/yyyy", PtBr)</strong><span>@user.CreatedAtUtc.ToString("HH:mm", PtBr) UTC</span></time></td>
+                                    <td data-label="@L["Users.Table.Registered"]"><time datetime="@user.CreatedAtUtc.ToString("O")"><strong>@Time.Format(user.CreatedAtUtc, TimeStyle.Date)</strong><span>@Time.Format(user.CreatedAtUtc, TimeStyle.Time)</span></time></td>
                                     <td data-label="@L["Users.Table.ExternalAccess"]"><SUIStatusBadge ToneValue="@(user.HasExternalLogin ? SUITone.Info : SUITone.Warning)">@(user.HasExternalLogin ? L["Users.Table.Linked"] : L["Users.Table.Missing"])</SUIStatusBadge></td>
                                     <td data-label="@L["Users.Filters.Mfa"]"><SUIStatusBadge ToneValue="@(user.TwoFactorEnabled ? SUITone.Success : SUITone.Neutral)">@(user.TwoFactorEnabled ? L["Users.Filters.Active"] : L["Users.Filters.Inactive"])</SUIStatusBadge></td>
                                     <td data-label="@L["Users.Filters.State"]"><span class="registration-state"><span class="status-dot @(user.IsLockedOut ? "status-dot--danger" : "status-dot--success")" aria-hidden="true"></span>@(user.IsLockedOut ? L["Users.Table.Locked"] : L["Users.Filters.Active"])</span></td>
@@ -297,6 +297,10 @@ else
 }
 
 @code {
+    // The reader's zone once the browser answers (BrowserTimeProvider in the layout).
+    [CascadingParameter]
+    private BrowserTime Time { get; set; } = BrowserTime.Server;
+
     private static readonly CultureInfo PtBr = CultureInfo.GetCultureInfo("pt-BR");
     [SupplyParameterFromQuery(Name = "deleted")] public int DeletedFlag { get; set; }
     [SupplyParameterFromQuery(Name = "q")] public string? QuerySearch { get; set; }
@@ -346,7 +350,7 @@ else
     private string AccessErrorTitle => accessResult?.Outcome is ManagementDataOutcome.StepUpRequired ? L["Users.Error.StepUpTitle"] : L["Users.Error.AccessDeniedTitle"];
     private string UsersErrorTitle => usersResult?.Outcome is ManagementDataOutcome.StepUpRequired ? L["Users.Error.MfaRequiredTitle"] : usersResult?.Outcome is ManagementDataOutcome.Forbidden ? L["Users.Error.DirectoryDeniedTitle"] : L["Users.Error.QueryFailedTitle"];
     private string AnalyticsRangeLabel => L["Users.Overview.RangeLabel", analyticsDays];
-    private string ResultContextLabel => IsStaleUnverifiedReview ? L["Users.Results.StaleContext"] : SelectedDay is { } day ? L["Users.Results.DayContext", day.ToString("dd/MM/yyyy", PtBr)] : L["Users.Results.DefaultContext"];
+    private string ResultContextLabel => IsStaleUnverifiedReview ? L["Users.Results.StaleContext"] : SelectedDay is { } day ? L["Users.Results.DayContext", BrowserTime.FormatDay(day)] : L["Users.Results.DefaultContext"];
     private string ResultCountLabel => usersLoading ? L["Users.Results.Updating"] : $"{Page.TotalCount:N0} {Pluralize(Page.TotalCount, L["Users.Count.AccountSingular"], L["Users.Count.AccountPlural"])}";
     private string PaginationLabel => Page.TotalCount == 0 ? L["Users.Pagination.NoResults"] : L["Users.Pagination.Showing", ((Page.Page - 1) * Page.PageSize + 1).ToString("N0"), Math.Min(Page.Page * Page.PageSize, Page.TotalCount).ToString("N0"), Page.TotalCount.ToString("N0")];
     private string ActiveFilterLabel { get { var count = 0; if (!string.IsNullOrWhiteSpace(QuerySearch)) count++; if (QueryFrom is not null || QueryTo is not null) count++; if (QueryDay is not null) count++; if (QueryState != ManagementUserStateFilter.All) count++; if (QueryEmail != ManagementUserBooleanFilter.All) count++; if (QueryMfa != ManagementUserBooleanFilter.All) count++; if (QueryReview != ManagementUserReviewFilter.All) count++; return count == 0 ? L["Users.Filters.None"] : $"{count} {Pluralize(count, L["Users.Filters.ActiveSingular"], L["Users.Filters.ActivePlural"])}"; } }

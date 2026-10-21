@@ -262,7 +262,7 @@ else
                         <div class="operator-token-list__main">
                             <div>
                                 <strong>@token.Purpose</strong>
-                                <span>@L["OperatorTokens.Active.IssuedExpires", token.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm"), token.ExpiresAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")]</span>
+                                <span>@L["OperatorTokens.Active.IssuedExpires", Time.Format(token.CreatedAtUtc), Time.Format(token.ExpiresAtUtc)]</span>
                             </div>
                             <SUIStatusBadge ToneValue="SUITone.Success">@L["OperatorTokens.Active.StatusBadge"]</SUIStatusBadge>
                         </div>
@@ -316,6 +316,10 @@ else
 }
 
 @code {
+    // The reader's zone once the browser answers (BrowserTimeProvider in the layout).
+    [CascadingParameter]
+    private BrowserTime Time { get; set; } = BrowserTime.Server;
+
     [Parameter, SupplyParameterFromQuery(Name = "action")]
     public string? RequestedAction { get; set; }
 
@@ -507,7 +511,7 @@ else
                     shown.AccessToken,
                     L["OperatorTokens.Reveal.Description"].Value,
                     L["OperatorTokens.Reveal.TokenAriaLabel"].Value,
-                    L["OperatorTokens.Reveal.ExpiresBadge", shown.ExpiresAtUtc.ToLocalTime().ToString("dd/MM HH:mm:ss")].Value,
+                    L["OperatorTokens.Reveal.ExpiresBadge", Time.Format(shown.ExpiresAtUtc, TimeStyle.DayMonthTimeSeconds)].Value,
                     L["OperatorTokens.Reveal.CapabilitiesCount", shown.Capabilities.Count].Value));
         }
     }

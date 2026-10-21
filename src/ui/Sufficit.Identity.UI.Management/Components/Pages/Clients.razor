@@ -63,7 +63,7 @@
                     <span class="draft-item__body">
                         <strong>@DraftName(item)</strong>
                         <span>@item.ProfileDisplayName · @L["Clients.List.StepLabel"] @DraftStepLabel(item.CurrentStep)</span>
-                        <small>@L["Clients.List.UpdatedLabel"] @FormatRelative(item.UpdatedAt) · @L["Clients.List.ExpiresInLabel"] @item.ExpiresAt.ToLocalTime().ToString("dd/MM/yyyy")</small>
+                        <small>@L["Clients.List.UpdatedLabel"] @FormatRelative(item.UpdatedAt) · @L["Clients.List.ExpiresInLabel"] @Time.Format(item.ExpiresAt, TimeStyle.Date)</small>
                     </span>
                     <SUIStatusBadge ToneValue="@(item.IsReady ? SUITone.Success : SUITone.Neutral)">@(item.IsReady ? L["Clients.List.ReadyStatus"] : L["Clients.List.InProgressStatus"])</SUIStatusBadge>
                     <SUIIcon Name="arrow-right" Size="17" />
@@ -262,6 +262,10 @@
 </div>
 
 @code {
+    // The reader's zone once the browser answers (BrowserTimeProvider in the layout).
+    [CascadingParameter]
+    private BrowserTime Time { get; set; } = BrowserTime.Server;
+
     private ManagementDataResult<ManagementClientPage>? result;
     private ManagementDataResult<IReadOnlyList<ManagementClientDraftSummary>>? draftsResult;
     private bool loading = true;
@@ -524,7 +528,7 @@
         if (elapsed < TimeSpan.FromMinutes(1)) return L["Clients.List.JustNow"].Value;
         if (elapsed < TimeSpan.FromHours(1)) return L["Clients.List.MinutesAgo", (int)elapsed.TotalMinutes].Value;
         if (elapsed < TimeSpan.FromDays(1)) return L["Clients.List.HoursAgo", (int)elapsed.TotalHours].Value;
-        return $"{L["Clients.List.OnDatePrefix"].Value} {value.ToLocalTime():dd/MM/yyyy}";
+        return $"{L["Clients.List.OnDatePrefix"].Value} {Time.Format(value, TimeStyle.Date)}";
     }
 
     private static string NormalizeType(string? value) => value?.ToLowerInvariant() switch

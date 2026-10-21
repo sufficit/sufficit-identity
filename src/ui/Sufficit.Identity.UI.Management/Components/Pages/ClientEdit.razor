@@ -889,6 +889,10 @@ else
 }
 
 @code {
+    // The reader's zone once the browser answers (BrowserTimeProvider in the layout).
+    [CascadingParameter]
+    private BrowserTime Time { get; set; } = BrowserTime.Server;
+
     [Parameter] public string Id { get; set; } = string.Empty;
 
     [SupplyParameterFromQuery(Name = "section")]
@@ -1661,8 +1665,8 @@ else
         _ => "neutral",
     };
 
-    private static string FormatCredentialDate(DateTimeOffset? value) =>
-        value?.ToLocalTime().ToString("dd/MM/yyyy", System.Globalization.CultureInfo.CurrentCulture)
+    private string FormatCredentialDate(DateTimeOffset? value) =>
+        Time.Format(value, TimeStyle.Date)
         ?? "—";
 
     private static string FormatCertificateThumbprint(string value)

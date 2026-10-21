@@ -478,6 +478,10 @@
 }
 
 @code {
+    // The reader's zone once the browser answers (BrowserTimeProvider in the layout).
+    [CascadingParameter]
+    private BrowserTime Time { get; set; } = BrowserTime.Server;
+
     private const string FallbackIcon =
         "/_content/Sufficit.Identity.UI.Management/img/logo-mark.png";
 
@@ -736,8 +740,8 @@
     private string DisplayColor(string? color) =>
         color ?? L["Branding.HostDefault"].Value;
 
-    private static string FormatDate(DateTime value) =>
-        value.ToLocalTime().ToString("dd/MM/yyyy HH:mm");
+    private string FormatDate(DateTime value) =>
+        Time.Format(value);
 
     private static ManagementDataResult<object> Box<T>(
         ManagementDataResult<T> result) =>

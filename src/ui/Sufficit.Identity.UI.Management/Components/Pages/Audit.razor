@@ -95,7 +95,7 @@
                                 <tr>
                                     <td data-label="@L["Audit.Table.When"].Value">
                                         <time datetime="@entry.OccurredAtUtc.ToString("O")">
-                                            @entry.OccurredAtUtc.ToString("dd/MM/yyyy HH:mm:ss")
+                                            @Time.Format(entry.OccurredAtUtc, TimeStyle.DateTimeSeconds)
                                         </time>
                                     </td>
                                     <td data-label="@L["Audit.Table.Operator"].Value">
@@ -175,6 +175,10 @@
 </div>
 
 @code {
+    // The reader's zone once the browser answers (BrowserTimeProvider in the layout).
+    [CascadingParameter]
+    private BrowserTime Time { get; set; } = BrowserTime.Server;
+
     private ManagementDataResult<IReadOnlyList<ManagementAuditRecord>>? result;
     private bool loading = true;
     private string search = string.Empty;

@@ -4,6 +4,7 @@
 @rendermode InteractiveServer
 @layout VaultLayout
 @inject VaultDataSource Data
+@inject IJSRuntime JS
 @inject NavigationManager Navigation
 
 <PageTitle>@L["Vault.AdminVault.PageTitle"].Value | Sufficit Identity</PageTitle>
@@ -297,8 +298,23 @@ else
         return item.OwnerSubject;
     }
 
-    private static string FormatDate(DateTime value) =>
-        value.ToLocalTime().ToString("dd/MM/yyyy HH:mm");
+    // This page is its own interactive island, outside any BrowserTime
+    // cascade: it asks the browser for its zone after the first render.
+    private BrowserTime time = BrowserTime.Server;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+        var resolved = await BrowserTime.ResolveAsync(JS);
+        if (resolved.Resolved)
+        {
+            time = resolved;
+            StateHasChanged();
+        }
+    }
+
+    private string FormatDate(DateTime value) => time.Format(value);
 
     private sealed class AdminSecretForm : IValidatableObject
     {

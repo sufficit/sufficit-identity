@@ -144,7 +144,7 @@ else if (result?.IsSuccess is true && result.Value is not null)
                     </div>
                     <div>
                         <dt>@L["Users.Detail.States.LastUpdated"]</dt>
-                        <dd>@user.UpdatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</dd>
+                        <dd>@Time.Format(user.UpdatedAt)</dd>
                     </div>
                 </dl>
             </div>
@@ -230,6 +230,10 @@ else
 }
 
 @code {
+    // The reader's zone once the browser answers (BrowserTimeProvider in the layout).
+    [CascadingParameter]
+    private BrowserTime Time { get; set; } = BrowserTime.Server;
+
     [Parameter]
     public string Id { get; set; } = string.Empty;
 
@@ -314,7 +318,7 @@ else
         return user.LockoutEnd is { } end && end > DateTimeOffset.UtcNow
             ? string.Format(
                 L["Users.Detail.Security.LockedUntilFormat"].Value,
-                end.ToLocalTime().ToString("dd/MM/yyyy HH:mm"))
+                Time.Format(end))
             : L["Users.Detail.Security.NoActiveLockout"].Value;
     }
 

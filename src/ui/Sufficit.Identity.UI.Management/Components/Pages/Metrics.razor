@@ -98,10 +98,10 @@ else
                 <div class="usage-chart" role="img" aria-label="@L["Metrics.Chart.Aria"].Value">
                     @foreach (var point in overview.Daily)
                     {
-                        <div class="usage-chart__column" title="@point.DateUtc.ToString("dd/MM/yyyy"): @point.Count">
+                        <div class="usage-chart__column" title="@BrowserTime.FormatDay(point.DateUtc): @point.Count">
                             <span class="usage-chart__value">@FormatCompact(point.Count)</span>
                             <span class="usage-chart__bar" style="height: @BarHeight(point.Count, overview.Daily)%"></span>
-                            <span class="usage-chart__date">@point.DateUtc.ToString("dd/MM")</span>
+                            <span class="usage-chart__date">@BrowserTime.FormatDay(point.DateUtc, TimeStyle.DayMonth)</span>
                         </div>
                     }
                 </div>
@@ -134,7 +134,7 @@ else
                 {
                     <div class="metrics-application-row">
                         <div><strong>@application.DisplayName</strong><code>@application.ClientId</code></div>
-                        <div><strong>@FormatNumber(application.Count)</strong><span>@L["Metrics.TopApplications.LastUsed", application.LastUsedAtUtc.ToString("dd/MM HH:mm")]</span></div>
+                        <div><strong>@FormatNumber(application.Count)</strong><span>@L["Metrics.TopApplications.LastUsed", Time.Format(application.LastUsedAtUtc, TimeStyle.DayMonthTime)]</span></div>
                     </div>
                 }
             </div>
@@ -260,6 +260,10 @@ else
 </div>
 
 @code {
+    // The reader's zone once the browser answers (BrowserTimeProvider in the layout).
+    [CascadingParameter]
+    private BrowserTime Time { get; set; } = BrowserTime.Server;
+
     [SupplyParameterFromQuery(Name = "days")] public int? Days { get; set; }
     [SupplyParameterFromQuery(Name = "client")] public string? ClientId { get; set; }
     private int selectedDays = 30;

@@ -104,6 +104,52 @@ window.sufficitIdentityFormatLocalTime = function (epochMs) {
     document.addEventListener('change', clear, true);
 })();
 
+/**
+ * <time data-local-time> (LocalTime component) on pages without a live
+ * circuit renders in the server's zone; rewrite it in the reader's zone and
+ * the page language. Interactive pages already render the right text and
+ * this leaves the same value in place.
+ */
+(function () {
+    var styles = {
+        'date': { day: '2-digit', month: '2-digit', year: 'numeric' },
+        'datetime': { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' },
+        'datetime-seconds': { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' },
+        'time': { hour: '2-digit', minute: '2-digit' },
+        'day-month': { day: '2-digit', month: '2-digit' },
+        'day-month-time': { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' },
+        'day-month-time-seconds': { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }
+    };
+
+    function localize() {
+        var lang = document.documentElement.lang || undefined;
+        var nodes = document.querySelectorAll('time[data-local-time][datetime]');
+        for (var i = 0; i < nodes.length; i++) {
+            var node = nodes[i];
+            var instant = new Date(node.getAttribute('datetime'));
+            if (isNaN(instant.getTime())) continue;
+            var options = styles[node.getAttribute('data-local-time')] || styles.datetime;
+            try {
+                var text = instant.toLocaleString(lang, options);
+                if (node.textContent !== text) node.textContent = text;
+            } catch (e) { /* keep the server rendering */ }
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', localize);
+    if (document.readyState !== 'loading') localize();
+    if (window.Blazor && typeof window.Blazor.addEventListener === 'function') {
+        window.Blazor.addEventListener('enhancedload', localize);
+    } else {
+        window.addEventListener('load', function () {
+            if (window.Blazor && typeof window.Blazor.addEventListener === 'function') {
+                window.Blazor.addEventListener('enhancedload', localize);
+            }
+            localize();
+        }, { once: true });
+    }
+})();
+
 // Continue a registration for an existing account through the normal HTTP
 // password endpoint. Credentials stay in the POST body and are read from the
 // current inputs; never copy them into a URL or browser storage.

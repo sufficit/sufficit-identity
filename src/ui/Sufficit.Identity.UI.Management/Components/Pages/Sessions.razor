@@ -234,6 +234,10 @@
 }
 
 @code {
+    // The reader's zone once the browser answers (BrowserTimeProvider in the layout).
+    [CascadingParameter]
+    private BrowserTime Time { get; set; } = BrowserTime.Server;
+
     [SupplyParameterFromQuery(Name = "user")]
     public string? UserId { get; set; }
 
@@ -402,5 +406,5 @@
         };
 
     private string DateLabel(DateTimeOffset? value) =>
-        value?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? L["Sessions.NoExpiration"].Value;
+        Time.Format(value) ?? L["Sessions.NoExpiration"].Value;
 }

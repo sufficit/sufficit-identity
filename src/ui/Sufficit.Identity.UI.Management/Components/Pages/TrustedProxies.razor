@@ -108,12 +108,16 @@ else
 }
 
 @code {
+    // The reader's zone once the browser answers (BrowserTimeProvider in the layout).
+    [CascadingParameter]
+    private BrowserTime Time { get; set; } = BrowserTime.Server;
+
     private ManagementTrustedProxies? configuration;
     private ProxyForm model = new();
     private bool loading = true, saving, error;
     private string? message;
     private string UpdatedLabel => configuration?.UpdatedAtUtc is { } time && time > DateTime.UnixEpoch
-        ? time.ToString("dd/MM/yyyy HH:mm:ss") : L["TrustedProxies.NoChanges"].Value;
+        ? Time.Format(time, TimeStyle.DateTimeSeconds) : L["TrustedProxies.NoChanges"].Value;
 
     protected override Task OnInitializedAsync()
     {

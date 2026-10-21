@@ -235,6 +235,10 @@ else
 }
 
 @code {
+    // The reader's zone once the browser answers (BrowserTimeProvider in the layout).
+    [CascadingParameter]
+    private BrowserTime Time { get; set; } = BrowserTime.Server;
+
     private readonly CancellationTokenSource disposal = new();
     private readonly TaskCompletionSource<bool> initialSnapshot =
         new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -545,8 +549,8 @@ else
             "N0",
             System.Globalization.CultureInfo.GetCultureInfo("pt-BR"));
 
-    private static string FormatTimestamp(DateTimeOffset value) =>
-        value.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss");
+    private string FormatTimestamp(DateTimeOffset value) =>
+        Time.Format(value, TimeStyle.DateTimeSeconds);
 
     private string FormatElapsed(DateTimeOffset value)
     {

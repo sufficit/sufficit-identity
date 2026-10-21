@@ -108,7 +108,7 @@ else
                 else if (savedAt is not null)
                 {
                     <span class="wizard-save-state__icon"><SUIIcon Name="check" Size="15" /></span>
-                    <span>@L["Clients.Draft.SavedAt", savedAt.Value.ToLocalTime().ToString("HH:mm")]</span>
+                    <span>@L["Clients.Draft.SavedAt", Time.Format(savedAt.Value, TimeStyle.Time)]</span>
                 }
                 else
                 {
@@ -407,6 +407,10 @@ else
 }
 
 @code {
+    // The reader's zone once the browser answers (BrowserTimeProvider in the layout).
+    [CascadingParameter]
+    private BrowserTime Time { get; set; } = BrowserTime.Server;
+
     [Parameter] public Guid Id { get; set; }
     [Parameter] public string Step { get; set; } = ManagementClientDraftSteps.Identity;
 

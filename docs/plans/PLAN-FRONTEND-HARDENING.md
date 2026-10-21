@@ -13,7 +13,7 @@ porque barateiam e protegem todos os outros.
 | 1 | Testes de navegador na CI | feito |
 | 2 | CSS por componente nas páginas mais mexidas | feito |
 | 3 | Atualização do SUI e correções upstream | pendente |
-| 4 | Datas no fuso e no idioma de quem vê | pendente |
+| 4 | Datas no fuso e no idioma de quem vê | feito |
 | 5 | Todo segredo exibido uma vez passa pelo popup | pendente |
 | 6 | Mensagens de validação dentro da página | pendente |
 | 7 | Ajustes menores (URL do erro, nginx do apoint, baseline visual) | pendente |

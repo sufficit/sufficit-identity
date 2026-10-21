@@ -1,0 +1,32 @@
+@* Cascades a BrowserTime to everything inside. It starts on the server zone
+   (prerendering cannot ask the browser) and switches once the browser
+   answers; the new value re-renders every consumer of the cascade. Use it
+   where the whole subtree is interactive; a page that is its own interactive
+   island resolves BrowserTime itself. *@
+@namespace Sufficit.Identity.UI.Components.Dates
+@using Microsoft.AspNetCore.Components
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
+
+<CascadingValue Value="current">
+    @ChildContent
+</CascadingValue>
+
+@code {
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private BrowserTime current = BrowserTime.Server;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+        var resolved = await BrowserTime.ResolveAsync(JS);
+        if (resolved.Resolved)
+        {
+            current = resolved;
+            StateHasChanged();
+        }
+    }
+}

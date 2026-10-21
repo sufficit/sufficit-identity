@@ -65,7 +65,7 @@
                     <span class="vault-list__icon"><SUIIcon Name="key" Size="18" /></span>
                     <div class="vault-list__copy">
                         <strong>@CredentialDisplayName(item)</strong>
-                        <span>@CredentialDescription(item)</span>
+                        <span><TimeInText Text="@CredentialDescription(item)" Instant="@Utc(item.UpdatedAtUtc)" /></span>
                     </div>
                     <div class="vault-list__status">
                         @if (IsExpired(item))
@@ -118,7 +118,7 @@
         <div class="vault-list">
             @foreach (var item in personalSecrets)
             {
-                <div class="vault-list__item"><span class="vault-list__icon"><SUIIcon Name="key" Size="18" /></span><div class="vault-list__copy"><strong>@item.Name</strong><span>@string.Format(L["Vault.UserVault.UpdatedOn"].Value, item.UpdatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm"))</span></div><SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" OnClick="() => DeleteAsync(item.Name)" Disabled="@saving">@L["Vault.Common.Remove"]</SUIButton></div>
+                <div class="vault-list__item"><span class="vault-list__icon"><SUIIcon Name="key" Size="18" /></span><div class="vault-list__copy"><strong>@item.Name</strong><span><TimeInText Text="@string.Format(L["Vault.UserVault.UpdatedOn"].Value, TimeInText.Slot)" Instant="@Utc(item.UpdatedAtUtc)" /></span></div><SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" OnClick="() => DeleteAsync(item.Name)" Disabled="@saving">@L["Vault.Common.Remove"]</SUIButton></div>
             }
         </div>
     }
@@ -234,6 +234,10 @@
         return string.Format(
             L["Vault.UserVault.CredentialUpdatedOn"].Value,
             origin,
-            item.UpdatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm"));
+            TimeInText.Slot);
     }
+
+    // Stored instants are UTC; the round trip may drop the kind.
+    private static DateTimeOffset Utc(DateTime value) =>
+        new(DateTime.SpecifyKind(value, DateTimeKind.Utc));
 }

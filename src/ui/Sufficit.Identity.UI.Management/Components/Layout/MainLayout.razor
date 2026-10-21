@@ -85,7 +85,9 @@
 
         <main id="main-content" class="app-main" tabindex="-1">
             <div class="page-container">
-                @Body
+                <BrowserTimeProvider>
+                    @Body
+                </BrowserTimeProvider>
             </div>
         </main>
     </div>

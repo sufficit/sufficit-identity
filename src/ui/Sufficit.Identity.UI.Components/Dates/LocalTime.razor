@@ -1,0 +1,33 @@
+@* An instant as <time>. With a BrowserTime cascade (interactive subtrees)
+   the text is already in the reader's zone; without one (static pages) it
+   starts on the server zone and identity.js rewrites it in the browser from
+   the ISO value, using the page language. *@
+@namespace Sufficit.Identity.UI.Components.Dates
+@using Microsoft.AspNetCore.Components
+
+<time datetime="@Instant.ToString("O")" data-local-time="@StyleName">@Clock.Format(Instant, Style)</time>
+
+@code {
+    [CascadingParameter]
+    private BrowserTime? Cascaded { get; set; }
+
+    /// <summary>The instant; UTC by storage convention.</summary>
+    [Parameter, EditorRequired]
+    public DateTimeOffset Instant { get; set; }
+
+    [Parameter]
+    public TimeStyle Style { get; set; } = TimeStyle.DateTime;
+
+    private BrowserTime Clock => Cascaded ?? BrowserTime.Server;
+
+    private string StyleName => Style switch
+    {
+        TimeStyle.Date => "date",
+        TimeStyle.DateTimeSeconds => "datetime-seconds",
+        TimeStyle.Time => "time",
+        TimeStyle.DayMonth => "day-month",
+        TimeStyle.DayMonthTime => "day-month-time",
+        TimeStyle.DayMonthTimeSeconds => "day-month-time-seconds",
+        _ => "datetime",
+    };
+}

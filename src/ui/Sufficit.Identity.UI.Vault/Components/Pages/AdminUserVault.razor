@@ -3,6 +3,7 @@
 @rendermode InteractiveServer
 @layout VaultLayout
 @inject VaultDataSource Data
+@inject IJSRuntime JS
 
 <PageTitle>@L["Vault.AdminUserVault.DefaultTitle"].Value | Sufficit Identity</PageTitle>
 
@@ -294,6 +295,21 @@ else
             ? L["Vault.AdminUserVault.ConnectedIntegration"].Value
             : char.ToUpperInvariant(provider[0]) + provider[1..];
 
-    private static string FormatDate(DateTime value) =>
-        value.ToLocalTime().ToString("dd/MM/yyyy HH:mm");
+    // This page is its own interactive island, outside any BrowserTime
+    // cascade: it asks the browser for its zone after the first render.
+    private BrowserTime time = BrowserTime.Server;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+        var resolved = await BrowserTime.ResolveAsync(JS);
+        if (resolved.Resolved)
+        {
+            time = resolved;
+            StateHasChanged();
+        }
+    }
+
+    private string FormatDate(DateTime value) => time.Format(value);
 }

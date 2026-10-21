@@ -262,6 +262,10 @@ else if (applyResult?.IsSuccess is true)
 }
 
 @code {
+    // The reader's zone once the browser answers (BrowserTimeProvider in the layout).
+    [CascadingParameter]
+    private BrowserTime Time { get; set; } = BrowserTime.Server;
+
     private const string InitialManifest =
         """
         {
@@ -304,7 +308,7 @@ else if (applyResult?.IsSuccess is true)
     private bool IsBusy => previewing || applying || tokenIssuing;
 
     private string TokenExpirationLabel(DateTimeOffset? expiresAt) =>
-        expiresAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")
+        Time.Format(expiresAt, TimeStyle.DateTimeSeconds)
         ?? L["Provisioning.TemporaryToken.ExpiresSoon"].Value;
 
     private bool HasFreshPreview =>

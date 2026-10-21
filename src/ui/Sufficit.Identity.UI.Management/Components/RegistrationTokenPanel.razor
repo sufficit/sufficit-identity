@@ -208,6 +208,10 @@
 </section>
 
 @code {
+    // The reader's zone once the browser answers (BrowserTimeProvider in the layout).
+    [CascadingParameter]
+    private BrowserTime Time { get; set; } = BrowserTime.Server;
+
     private static readonly int[] LifetimeOptions = [1, 24, 168, 720];
 
     private ManagementDataResult<IReadOnlyList<DcrInitialAccessTokenSummary>>? tokens;
@@ -290,8 +294,6 @@
     };
 
     // Stored instants are UTC; the database round trip drops the kind.
-    private static string FormatInstant(DateTime utc) =>
-        DateTime.SpecifyKind(utc, DateTimeKind.Utc)
-            .ToLocalTime()
-            .ToString("dd/MM/yyyy HH:mm");
+    private string FormatInstant(DateTime utc) =>
+        Time.Format(DateTime.SpecifyKind(utc, DateTimeKind.Utc));
 }
