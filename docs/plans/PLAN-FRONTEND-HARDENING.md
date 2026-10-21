@@ -12,7 +12,7 @@ porque barateiam e protegem todos os outros.
 |---|------|--------|
 | 1 | Testes de navegador na CI | feito |
 | 2 | CSS por componente nas páginas mais mexidas | feito |
-| 3 | Atualização do SUI e correções upstream | pendente |
+| 3 | Atualização do SUI e correções upstream | feito (lock 2.26.1021.1317; `CloseLabel` aguarda a 2.26.1021.1434 no NuGet) |
 | 4 | Datas no fuso e no idioma de quem vê | feito |
 | 5 | Todo segredo exibido uma vez passa pelo popup | feito |
 | 6 | Mensagens de validação dentro da página | feito |
@@ -134,5 +134,23 @@ nos dois idiomas, com o atributo de acessibilidade.
 
 ## Registro de execução
 
-Cada item fecha com commit próprio e, quando muda produção, deploy nos três
-nós com conferência de versão e health.
+Cada item fechou com commit próprio. O deploy final leva todos aos três nós,
+com conferência de versão e health.
+
+| Item | Commits | Verificação |
+|------|---------|-------------|
+| 1 | `49732df` | Job `browser` verde na CI. O roteiro de reset de MFA ainda esperava ações numa linha; a página passou a usar grade de cartões. |
+| 2 | `9c575ee` | Capturas antes e depois de Tokens, Provisioning, Registros (desktop e mobile) e do popup: idênticas em pixels, exceto o relógio do stub. |
+| 3 | SUI `ce6dcf9` (release `v2.26.1021.1434`); identity: lock 920→1317 e ponte do spinner removida | Teste de regressão da corrida falha sem a correção e passa com ela. Suíte inteira e roteiros de navegador verdes com o pacote 1317 (não com o irmão local). |
+| 4 | `20e0764` | No navegador, a mesma expiração aparece 10:30 em `America/Sao_Paulo` e 22:30 em `Asia/Tokyo`. |
+| 5 | `446b849` | Teste de arquitetura: nenhuma das 6 telas revela segredo fora do popup. |
+| 6 | `9eb9d9a` | Roteiro no navegador, com idioma do navegador diferente do da página: mensagem abaixo do campo, `aria-invalid`, foco e limpeza. |
+| 7 | `1b4038c`; sufficit-servers `357ac76`; PNGs em `49732df` | apoint abre `wss://…/_blazor` sem erro no console; URL sem `error` depois de exibir a mensagem. |
+
+**Decisão preservada.** Os campos de filtro por data do diretório de
+usuários continuam em pt-BR mesmo com a interface em inglês. É uma escolha
+coberta por teste desde o primeiro commit. As datas exibidas seguem o leitor.
+
+**Achado lateral.** O gitleaks falhava em `8304cb9`, uma nota de atividade
+com um contexto de entitlement. É falso positivo, liberado só para esse
+commit em `e7a8e23`.

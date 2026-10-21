@@ -152,16 +152,6 @@ window.sufficitIdentityFormatLocalTime = function (epochMs) {
         var field = event.target;
         if (!field || !field.validity) return;
 
-        // SUILoadingButton marks a submit pending on click; when validation
-        // stops the submission the spinner would keep turning beside this
-        // message. Fixed in SUI 2.26.1021.1317 — this bridges older packages.
-        if (field.form) {
-            var pending = field.form.querySelectorAll('.sui-btn--pending');
-            for (var i = 0; i < pending.length; i++) {
-                pending[i].classList.remove('sui-btn--pending');
-            }
-        }
-
         // An error a page sets on purpose (setCustomValidity) is shown as
         // written; native states get the page-language message.
         var message = field.validity.customError
