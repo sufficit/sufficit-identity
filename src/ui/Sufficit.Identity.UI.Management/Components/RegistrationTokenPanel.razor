@@ -2,7 +2,7 @@
 @using Sufficit.Identity.Management.Registration
 @using Sufficit.Identity.UI.Management.Clients
 @inject ManagementRegistrationTokenDataSource TokenData
-@inject IJSRuntime JS
+@inject ISUIDialogService Dialogs
 
 @* Initial access tokens for dynamic client registration: issued here, one per
    registrant, and shown only once. *@
@@ -95,43 +95,6 @@
             </SUILoadingButton>
         </div>
 
-        @if (issuedToken is not null)
-        {
-            <section class="operator-token-reveal" aria-labelledby="registration-token-reveal-heading" role="status">
-                <header>
-                    <div>
-                        <h2 id="registration-token-reveal-heading">@L["Clients.RegistrationTokens.RevealTitle"]</h2>
-                        <p>@L["Clients.RegistrationTokens.RevealDescription"]</p>
-                    </div>
-                    <SUIStatusBadge ToneValue="SUITone.Warning">@L["Clients.RegistrationTokens.RevealExpires", FormatInstant(issuedExpiresAtUtc)]</SUIStatusBadge>
-                </header>
-                <textarea class="operator-token-value"
-                          aria-label="@L["Clients.RegistrationTokens.RevealAriaLabel"].Value"
-                          readonly
-                          spellcheck="false"
-                          autocomplete="off">@issuedToken</textarea>
-                <footer>
-                    <span></span>
-                    <div>
-                        <SUIButton VariantValue="SUIVariant.Outlined"
-                                   ColorValue="SUIColor.Primary"
-                                   OnClick="CopyIssuedTokenAsync">
-                            <SUIIcon Name="code" Size="17" />
-                            @(tokenCopied ? L["Clients.RegistrationTokens.Copied"] : L["Clients.RegistrationTokens.Copy"])
-                        </SUIButton>
-                        <SUIButton VariantValue="SUIVariant.Text"
-                                   ColorValue="SUIColor.Default"
-                                   OnClick="HideIssuedToken">
-                            @L["Clients.RegistrationTokens.Hide"]
-                        </SUIButton>
-                    </div>
-                </footer>
-                @if (clipboardUnavailable)
-                {
-                    <span class="operator-token-clipboard-note">@L["Clients.RegistrationTokens.ClipboardBlocked"]</span>
-                }
-            </section>
-        }
 
         @if (!string.IsNullOrWhiteSpace(revokeError))
         {
@@ -255,10 +218,6 @@
     private bool singleUse = true;
     private bool issuing;
     private string? issueError;
-    private string? issuedToken;
-    private DateTime issuedExpiresAtUtc;
-    private bool tokenCopied;
-    private bool clipboardUnavailable;
     private Guid? pendingRevokeId;
     private bool revoking;
     private string? revokeError;
@@ -273,9 +232,6 @@
     {
         issuing = true;
         issueError = null;
-        issuedToken = null;
-        tokenCopied = false;
-        clipboardUnavailable = false;
         var result = await TokenData.IssueAsync(
             new IssueDcrInitialAccessTokenCommand(
                 label,
@@ -291,37 +247,20 @@
             return;
         }
 
-        issuedToken = result.Value.InitialAccessToken;
-        issuedExpiresAtUtc = result.Value.Token.ExpiresAtUtc;
+        var issued = result.Value;
         label = string.Empty;
         grantsText = string.Empty;
         scopesText = string.Empty;
         await LoadAsync();
-    }
-
-    private async Task CopyIssuedTokenAsync()
-    {
-        if (string.IsNullOrWhiteSpace(issuedToken))
-        {
-            return;
-        }
-        try
-        {
-            await JS.InvokeVoidAsync("navigator.clipboard.writeText", issuedToken);
-            tokenCopied = true;
-            clipboardUnavailable = false;
-        }
-        catch (JSException)
-        {
-            clipboardUnavailable = true;
-        }
-    }
-
-    private void HideIssuedToken()
-    {
-        issuedToken = null;
-        tokenCopied = false;
-        clipboardUnavailable = false;
+        StateHasChanged();
+        await OneTimeTokenDialog.ShowAsync(
+            Dialogs,
+            L["Clients.RegistrationTokens.RevealTitle"].Value,
+            new OneTimeTokenRequest(
+                issued.InitialAccessToken,
+                L["Clients.RegistrationTokens.RevealDescription"].Value,
+                L["Clients.RegistrationTokens.RevealAriaLabel"].Value,
+                L["Clients.RegistrationTokens.RevealExpires", FormatInstant(issued.Token.ExpiresAtUtc)].Value));
     }
 
     private async Task RevokeAsync(Guid id)

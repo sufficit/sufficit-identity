@@ -674,7 +674,7 @@ public sealed partial class ManagementUiArchitectureTests
             3,
             page.Split("<SUILoadingButton", StringSplitOptions.None).Length - 1);
         Assert.Equal(
-            2,
+            0,
             page.Split("<SUIButton", StringSplitOptions.None).Length - 1);
         Assert.DoesNotContain("<select", page, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("class=\"button ", page, StringComparison.Ordinal);

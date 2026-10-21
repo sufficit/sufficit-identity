@@ -1,0 +1,157 @@
+@* A freshly issued token, shown once, in a modal: it is the one thing the
+   person must act on before anything else on the page, and a panel further
+   down the form was easy to scroll past. Open it through ShowAsync.
+
+   Closing a token that was never copied asks first, inside this same dialog.
+   Escape, a click on the backdrop and the header's close button are caught
+   before the dialog host sees them (OneTimeTokenDialog.razor.js): the host
+   would dismiss straight away, and chaining a second dialog after a dismissal
+   races the host's own close. *@
+@using Microsoft.JSInterop
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<div class="one-time-token-dialog" @ref="root">
+    <p class="one-time-token-dialog__description">@Request.Description</p>
+    @if (!string.IsNullOrEmpty(Request.ExpiresLabel))
+    {
+        <SUIStatusBadge ToneValue="SUITone.Warning">@Request.ExpiresLabel</SUIStatusBadge>
+    }
+    <textarea class="operator-token-value one-time-token-dialog__value"
+              aria-label="@Request.AriaLabel"
+              readonly
+              spellcheck="false"
+              autocomplete="off">@Request.Token</textarea>
+    @if (!string.IsNullOrEmpty(Request.Detail))
+    {
+        <p class="one-time-token-dialog__detail">@Request.Detail</p>
+    }
+    @if (clipboardUnavailable)
+    {
+        <p class="operator-token-clipboard-note" role="alert">@L["OneTimeToken.ClipboardBlocked"]</p>
+    }
+    @if (confirmingDiscard)
+    {
+        <div class="one-time-token-dialog__discard" role="alert">
+            <strong>@L["OneTimeToken.DiscardTitle"]</strong>
+            <span>@L["OneTimeToken.DiscardMessage"]</span>
+        </div>
+        <footer class="sui-dialog__actions">
+            <SUIButton VariantValue="SUIVariant.Text"
+                       ColorValue="SUIColor.Error"
+                       OnClick="Discard">
+                @L["OneTimeToken.Discard"]
+            </SUIButton>
+            <SUIButton VariantValue="SUIVariant.Filled"
+                       ColorValue="SUIColor.Primary"
+                       OnClick="CopyAsync">
+                <SUIIcon Name="@SUIIcons.Copy" Size="17" />
+                @L["OneTimeToken.Copy"]
+            </SUIButton>
+        </footer>
+    }
+    else
+    {
+        <footer class="sui-dialog__actions">
+            <SUIButton VariantValue="SUIVariant.Text"
+                       ColorValue="SUIColor.Default"
+                       OnClick="RequestClose">
+                @L["OneTimeToken.Done"]
+            </SUIButton>
+            <SUIButton VariantValue="SUIVariant.Filled"
+                       ColorValue="SUIColor.Primary"
+                       OnClick="CopyAsync">
+                <SUIIcon Name="@SUIIcons.Copy" Size="17" />
+                @(copied ? L["OneTimeToken.Copied"] : L["OneTimeToken.Copy"])
+            </SUIButton>
+        </footer>
+    }
+</div>
+
+@code {
+    [CascadingParameter]
+    public SUIDialogReference? Reference { get; set; }
+
+    [Parameter, EditorRequired]
+    public OneTimeTokenRequest Request { get; set; } = default!;
+
+    private ElementReference root;
+    private IJSObjectReference? module;
+    private IJSObjectReference? guard;
+    private DotNetObjectReference<OneTimeTokenDialog>? self;
+    private bool copied;
+    private bool clipboardUnavailable;
+    private bool confirmingDiscard;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+        try
+        {
+            module = await JS.InvokeAsync<IJSObjectReference>(
+                "import",
+                "./_content/Sufficit.Identity.UI.Management/Components/OneTimeTokenDialog.razor.js");
+            self = DotNetObjectReference.Create(this);
+            guard = await module.InvokeAsync<IJSObjectReference>("guard", root, self);
+        }
+        catch (JSDisconnectedException) { }
+    }
+
+    private async Task CopyAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", Request.Token);
+            copied = true;
+            clipboardUnavailable = false;
+            confirmingDiscard = false;
+        }
+        catch (JSException)
+        {
+            clipboardUnavailable = true;
+        }
+    }
+
+    /// <summary>Any way of closing: Done, Escape, backdrop, header close.</summary>
+    [JSInvokable]
+    public Task RequestClose()
+    {
+        if (copied)
+            Reference?.Complete(true);
+        else
+            confirmingDiscard = true;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private void Discard() => Reference?.Complete(false);
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (guard is not null)
+            {
+                await guard.InvokeVoidAsync("dispose");
+                await guard.DisposeAsync();
+            }
+            if (module is not null)
+                await module.DisposeAsync();
+        }
+        catch (JSDisconnectedException) { }
+        self?.Dispose();
+    }
+
+    /// <summary>Shows the token and returns once the dialog has closed.</summary>
+    public static async Task ShowAsync(
+        ISUIDialogService dialogs,
+        string title,
+        OneTimeTokenRequest request)
+    {
+        var reference = await dialogs.ShowAsync<OneTimeTokenDialog>(
+            title,
+            new Dictionary<string, object?> { [nameof(Request)] = request });
+        await reference.Result;
+    }
+}

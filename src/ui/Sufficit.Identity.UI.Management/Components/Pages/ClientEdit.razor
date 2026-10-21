@@ -448,7 +448,7 @@ else
                                    aria-label="@L["Clients.Edit.NewCredentialAriaLabel"].Value" />
                             <div class="client-credential-reveal__actions">
                                 <button class="button button--primary" type="button" @onclick="CopyRotatedSecretAsync">
-                                    <SUIIcon Name="copy" Size="17" />
+                                    <SUIIcon Name="@SUIIcons.Copy" Size="17" />
                                     @(credentialCopied ? L["Clients.Edit.Copied"] : L["Clients.Edit.CopyCredentialAction"])
                                 </button>
                                 <button class="button button--secondary" type="button" @onclick="HideRotatedSecret">

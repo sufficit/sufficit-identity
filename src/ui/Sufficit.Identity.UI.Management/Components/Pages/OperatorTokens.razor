@@ -6,7 +6,7 @@
 @using Sufficit.Identity.UI.Management.OperatorTokens
 @attribute [Authorize(Policy = ManagementUiPolicies.ManageOperatorTokens)]
 @inject ManagementOperatorTokenDataSource TokenData
-@inject IJSRuntime JS
+@inject ISUIDialogService Dialogs
 @inject NavigationManager Navigation
 
 <PageTitle>@L["OperatorTokens.PageTitle"]</PageTitle>
@@ -238,44 +238,6 @@ else
         </aside>
     </div>
 
-    @if (issuedToken is not null)
-    {
-        <section class="operator-token-reveal" aria-labelledby="operator-token-reveal-heading" role="status">
-            <header>
-                <div>
-                    <h2 id="operator-token-reveal-heading">@L["OperatorTokens.Reveal.Title"]</h2>
-                    <p>@L["OperatorTokens.Reveal.Description"]</p>
-                </div>
-                <SUIStatusBadge ToneValue="SUITone.Warning">@L["OperatorTokens.Reveal.ExpiresBadge", issuedExpiresAt.ToLocalTime().ToString("dd/MM HH:mm:ss")]</SUIStatusBadge>
-            </header>
-            <textarea class="operator-token-value"
-                      aria-label="@L["OperatorTokens.Reveal.TokenAriaLabel"].Value"
-                      readonly
-                      spellcheck="false"
-                      autocomplete="off">@issuedToken</textarea>
-            <footer>
-                <span>@L["OperatorTokens.Reveal.CapabilitiesCount", issuedCapabilities.Count]</span>
-                <div>
-                    <SUIButton VariantValue="SUIVariant.Outlined"
-                               ColorValue="SUIColor.Primary"
-                               OnClick="CopyIssuedTokenAsync">
-                        <SUIIcon Name="code" Size="17" />
-                        @(tokenCopied ? L["OperatorTokens.Reveal.Copied"] : L["OperatorTokens.Reveal.CopyButton"])
-                    </SUIButton>
-                    <SUIButton VariantValue="SUIVariant.Text"
-                               ColorValue="SUIColor.Default"
-                               OnClick="HideIssuedToken">
-                        @L["OperatorTokens.Reveal.Hide"]
-                    </SUIButton>
-                </div>
-            </footer>
-            @if (clipboardUnavailable)
-            {
-                <span class="operator-token-clipboard-note">@L["OperatorTokens.Reveal.ClipboardBlocked"]</span>
-            }
-        </section>
-    }
-
     <section class="operator-token-active" aria-labelledby="operator-token-active-heading">
         <header>
             <div>
@@ -384,11 +346,6 @@ else
     private bool revoking;
     private string? pendingRevokeId;
     private string? revokedPurpose;
-    private string? issuedToken;
-    private DateTimeOffset issuedExpiresAt;
-    private IReadOnlyList<string> issuedCapabilities = [];
-    private bool tokenCopied;
-    private bool clipboardUnavailable;
 
     protected override async Task OnInitializedAsync()
     {
@@ -522,9 +479,6 @@ else
 
         issuing = true;
         revokedPurpose = null;
-        issuedToken = null;
-        tokenCopied = false;
-        clipboardUnavailable = false;
         var result = await TokenData.IssueAsync(
             new IssueOperatorTokenCommand(
                 purpose,
@@ -533,9 +487,6 @@ else
         operationResult = ToObjectResult(result);
         if (result.IsSuccess && result.Value is { } issued)
         {
-            issuedToken = issued.AccessToken;
-            issuedExpiresAt = issued.ExpiresAtUtc;
-            issuedCapabilities = issued.Capabilities;
             workspace = workspace with
             {
                 ActiveTokens = [
@@ -545,6 +496,20 @@ else
             };
         }
         issuing = false;
+
+        if (result.IsSuccess && result.Value is { } shown)
+        {
+            StateHasChanged();
+            await OneTimeTokenDialog.ShowAsync(
+                Dialogs,
+                L["OperatorTokens.Reveal.Title"].Value,
+                new OneTimeTokenRequest(
+                    shown.AccessToken,
+                    L["OperatorTokens.Reveal.Description"].Value,
+                    L["OperatorTokens.Reveal.TokenAriaLabel"].Value,
+                    L["OperatorTokens.Reveal.ExpiresBadge", shown.ExpiresAtUtc.ToLocalTime().ToString("dd/MM HH:mm:ss")].Value,
+                    L["OperatorTokens.Reveal.CapabilitiesCount", shown.Capabilities.Count].Value));
+        }
     }
 
     private async Task RevokeAsync(OperatorTokenSummary token)
@@ -569,31 +534,6 @@ else
             pendingRevokeId = null;
         }
         revoking = false;
-    }
-
-    private async Task CopyIssuedTokenAsync()
-    {
-        if (string.IsNullOrWhiteSpace(issuedToken))
-        {
-            return;
-        }
-        try
-        {
-            await JS.InvokeVoidAsync("navigator.clipboard.writeText", issuedToken);
-            tokenCopied = true;
-            clipboardUnavailable = false;
-        }
-        catch (JSException)
-        {
-            clipboardUnavailable = true;
-        }
-    }
-
-    private void HideIssuedToken()
-    {
-        issuedToken = null;
-        tokenCopied = false;
-        clipboardUnavailable = false;
     }
 
     private Task PurposeChanged(string? value)

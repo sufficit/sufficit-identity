@@ -1585,10 +1585,6 @@
   <data name="Provisioning.TemporaryToken.ValueAriaLabel" xml:space="preserve"><value>Temporary provisioning token</value></data>
   <data name="Provisioning.TemporaryToken.CapabilitiesLabel" xml:space="preserve"><value>Capabilities:</value></data>
   <data name="Provisioning.Common.And" xml:space="preserve"><value>and</value></data>
-  <data name="Provisioning.TemporaryToken.Copied" xml:space="preserve"><value>Copied</value></data>
-  <data name="Provisioning.TemporaryToken.CopyButton" xml:space="preserve"><value>Copy token</value></data>
-  <data name="Provisioning.TemporaryToken.HideButton" xml:space="preserve"><value>Hide token</value></data>
-  <data name="Provisioning.TemporaryToken.ClipboardUnavailable" xml:space="preserve"><value>Automatic copy is not available in this browser; select the value above and use Ctrl+C.</value></data>
   <data name="Provisioning.TemporaryToken.HiddenTitle" xml:space="preserve"><value>Token hidden</value></data>
   <data name="Provisioning.TemporaryToken.HiddenDescription" xml:space="preserve"><value>The value cannot be recovered through the interface. Issue another one only if necessary.</value></data>
   <data name="Provisioning.Workflow.Aria" xml:space="preserve"><value>Provisioning steps</value></data>
@@ -1693,10 +1689,6 @@
   <data name="OperatorTokens.Reveal.ExpiresBadge" xml:space="preserve"><value>Expires {0}</value></data>
   <data name="OperatorTokens.Reveal.TokenAriaLabel" xml:space="preserve"><value>Temporary Management token</value></data>
   <data name="OperatorTokens.Reveal.CapabilitiesCount" xml:space="preserve"><value>Bearer · {0} capability(s)</value></data>
-  <data name="OperatorTokens.Reveal.Copied" xml:space="preserve"><value>Copied</value></data>
-  <data name="OperatorTokens.Reveal.CopyButton" xml:space="preserve"><value>Copy token</value></data>
-  <data name="OperatorTokens.Reveal.Hide" xml:space="preserve"><value>Hide</value></data>
-  <data name="OperatorTokens.Reveal.ClipboardBlocked" xml:space="preserve"><value>Automatic copy was blocked; select the value and use Ctrl+C.</value></data>
   <data name="OperatorTokens.Active.Title" xml:space="preserve"><value>Active tokens</value></data>
   <data name="OperatorTokens.Active.Description" xml:space="preserve"><value>Only temporary credentials issued for this operator are shown.</value></data>
   <data name="OperatorTokens.Active.CountBadge" xml:space="preserve"><value>{0} active</value></data>
@@ -2050,10 +2042,6 @@
   <data name="Clients.RegistrationTokens.RevealDescription" xml:space="preserve"><value>It will not be shown again. Send it to the registrant through a secure channel; it goes in the Authorization: Bearer header of the registration request.</value></data>
   <data name="Clients.RegistrationTokens.RevealExpires" xml:space="preserve"><value>Expires {0}</value></data>
   <data name="Clients.RegistrationTokens.RevealAriaLabel" xml:space="preserve"><value>Registration token value</value></data>
-  <data name="Clients.RegistrationTokens.Copy" xml:space="preserve"><value>Copy</value></data>
-  <data name="Clients.RegistrationTokens.Copied" xml:space="preserve"><value>Copied</value></data>
-  <data name="Clients.RegistrationTokens.Hide" xml:space="preserve"><value>Hide</value></data>
-  <data name="Clients.RegistrationTokens.ClipboardBlocked" xml:space="preserve"><value>The browser blocked the clipboard. Select the text and copy it manually.</value></data>
   <data name="Clients.RegistrationTokens.Loading" xml:space="preserve"><value>Loading registration tokens</value></data>
   <data name="Clients.RegistrationTokens.LoadError" xml:space="preserve"><value>Registration tokens are unavailable.</value></data>
   <data name="Clients.RegistrationTokens.EmptyTitle" xml:space="preserve"><value>No registration tokens</value></data>
@@ -2168,4 +2156,11 @@
   <data name="Users.ExternalLogins.ForbiddenDescription" xml:space="preserve"><value>Your operator permissions do not include changing this user's sign-in credentials.</value></data>
   <data name="Error.user_external_login_not_found" xml:space="preserve"><value>The linked account was not found. It may have been removed already.</value></data>
   <data name="Error.user_external_login_remove_failed" xml:space="preserve"><value>The linked account could not be removed.</value></data>
+  <data name="OneTimeToken.Copy" xml:space="preserve"><value>Copy token</value></data>
+  <data name="OneTimeToken.Copied" xml:space="preserve"><value>Copied</value></data>
+  <data name="OneTimeToken.Done" xml:space="preserve"><value>Done</value></data>
+  <data name="OneTimeToken.ClipboardBlocked" xml:space="preserve"><value>The browser blocked the clipboard. Select the token and copy it manually.</value></data>
+  <data name="OneTimeToken.Discard" xml:space="preserve"><value>Close without copying</value></data>
+  <data name="OneTimeToken.DiscardTitle" xml:space="preserve"><value>The token has not been copied yet</value></data>
+  <data name="OneTimeToken.DiscardMessage" xml:space="preserve"><value>The token was not copied and cannot be shown again. To use it later you will have to issue a new one.</value></data>
 </root>

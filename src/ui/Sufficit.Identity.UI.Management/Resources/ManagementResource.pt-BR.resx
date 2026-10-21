@@ -1585,10 +1585,6 @@
   <data name="Provisioning.TemporaryToken.ValueAriaLabel" xml:space="preserve"><value>Token temporário de provisioning</value></data>
   <data name="Provisioning.TemporaryToken.CapabilitiesLabel" xml:space="preserve"><value>Capacidades:</value></data>
   <data name="Provisioning.Common.And" xml:space="preserve"><value>e</value></data>
-  <data name="Provisioning.TemporaryToken.Copied" xml:space="preserve"><value>Copiado</value></data>
-  <data name="Provisioning.TemporaryToken.CopyButton" xml:space="preserve"><value>Copiar token</value></data>
-  <data name="Provisioning.TemporaryToken.HideButton" xml:space="preserve"><value>Ocultar token</value></data>
-  <data name="Provisioning.TemporaryToken.ClipboardUnavailable" xml:space="preserve"><value>A cópia automática não está disponível neste navegador; selecione o valor acima e use Ctrl+C.</value></data>
   <data name="Provisioning.TemporaryToken.HiddenTitle" xml:space="preserve"><value>Token ocultado</value></data>
   <data name="Provisioning.TemporaryToken.HiddenDescription" xml:space="preserve"><value>O valor não pode ser recuperado pela interface. Emita outro somente se necessário.</value></data>
   <data name="Provisioning.Workflow.Aria" xml:space="preserve"><value>Etapas do provisionamento</value></data>
@@ -1693,10 +1689,6 @@
   <data name="OperatorTokens.Reveal.ExpiresBadge" xml:space="preserve"><value>Expira {0}</value></data>
   <data name="OperatorTokens.Reveal.TokenAriaLabel" xml:space="preserve"><value>Token temporário de Management</value></data>
   <data name="OperatorTokens.Reveal.CapabilitiesCount" xml:space="preserve"><value>Bearer · {0} capability(s)</value></data>
-  <data name="OperatorTokens.Reveal.Copied" xml:space="preserve"><value>Copiado</value></data>
-  <data name="OperatorTokens.Reveal.CopyButton" xml:space="preserve"><value>Copiar token</value></data>
-  <data name="OperatorTokens.Reveal.Hide" xml:space="preserve"><value>Ocultar</value></data>
-  <data name="OperatorTokens.Reveal.ClipboardBlocked" xml:space="preserve"><value>A cópia automática foi bloqueada; selecione o valor e use Ctrl+C.</value></data>
   <data name="OperatorTokens.Active.Title" xml:space="preserve"><value>Tokens ativos</value></data>
   <data name="OperatorTokens.Active.Description" xml:space="preserve"><value>Somente credenciais temporárias emitidas para este operador são exibidas.</value></data>
   <data name="OperatorTokens.Active.CountBadge" xml:space="preserve"><value>{0} ativo(s)</value></data>
@@ -2050,10 +2042,6 @@
   <data name="Clients.RegistrationTokens.RevealDescription" xml:space="preserve"><value>Ele não será exibido de novo. Envie ao registrante por um canal seguro; ele vai no cabeçalho Authorization: Bearer do pedido de registro.</value></data>
   <data name="Clients.RegistrationTokens.RevealExpires" xml:space="preserve"><value>Expira em {0}</value></data>
   <data name="Clients.RegistrationTokens.RevealAriaLabel" xml:space="preserve"><value>Valor do token de registro</value></data>
-  <data name="Clients.RegistrationTokens.Copy" xml:space="preserve"><value>Copiar</value></data>
-  <data name="Clients.RegistrationTokens.Copied" xml:space="preserve"><value>Copiado</value></data>
-  <data name="Clients.RegistrationTokens.Hide" xml:space="preserve"><value>Ocultar</value></data>
-  <data name="Clients.RegistrationTokens.ClipboardBlocked" xml:space="preserve"><value>O navegador bloqueou a área de transferência. Selecione o texto e copie manualmente.</value></data>
   <data name="Clients.RegistrationTokens.Loading" xml:space="preserve"><value>Carregando tokens de registro</value></data>
   <data name="Clients.RegistrationTokens.LoadError" xml:space="preserve"><value>Os tokens de registro estão indisponíveis.</value></data>
   <data name="Clients.RegistrationTokens.EmptyTitle" xml:space="preserve"><value>Nenhum token de registro</value></data>
@@ -2168,4 +2156,11 @@
   <data name="Users.ExternalLogins.ForbiddenDescription" xml:space="preserve"><value>Suas permissões de operador não incluem alterar as credenciais de entrada deste usuário.</value></data>
   <data name="Error.user_external_login_not_found" xml:space="preserve"><value>A conta vinculada não foi encontrada. Ela pode já ter sido removida.</value></data>
   <data name="Error.user_external_login_remove_failed" xml:space="preserve"><value>Não foi possível remover a conta vinculada.</value></data>
+  <data name="OneTimeToken.Copy" xml:space="preserve"><value>Copiar token</value></data>
+  <data name="OneTimeToken.Copied" xml:space="preserve"><value>Copiado</value></data>
+  <data name="OneTimeToken.Done" xml:space="preserve"><value>Concluído</value></data>
+  <data name="OneTimeToken.ClipboardBlocked" xml:space="preserve"><value>O navegador bloqueou a área de transferência. Selecione o token e copie manualmente.</value></data>
+  <data name="OneTimeToken.Discard" xml:space="preserve"><value>Fechar sem copiar</value></data>
+  <data name="OneTimeToken.DiscardTitle" xml:space="preserve"><value>O token ainda não foi copiado</value></data>
+  <data name="OneTimeToken.DiscardMessage" xml:space="preserve"><value>O token não foi copiado e não poderá ser exibido de novo. Para usá-lo depois, será preciso gerar outro.</value></data>
 </root>

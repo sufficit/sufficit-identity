@@ -3571,9 +3571,7 @@ h3 {
 }
 
 .temporary-token-panel__copy,
-.temporary-token-panel__heading,
-.temporary-token-panel__reveal-heading,
-.temporary-token-panel__actions {
+.temporary-token-panel__heading {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -3619,82 +3617,6 @@ h3 {
 .temporary-token-field {
     width: 172px;
     min-width: 172px;
-}
-
-.temporary-token-value:focus {
-    outline: 2px solid var(--info);
-    outline-offset: 2px;
-}
-
-.temporary-token-panel__reveal {
-    display: grid;
-    gap: 12px;
-    padding: 16px;
-    border: 1px solid rgba(23, 92, 211, 0.2);
-    border-radius: var(--radius);
-    background: var(--surface);
-}
-
-.temporary-token-panel__reveal-heading {
-    align-items: flex-start;
-}
-
-.temporary-token-panel__reveal-heading > div {
-    display: grid;
-    gap: 3px;
-}
-
-.temporary-token-panel__reveal-heading strong {
-    color: var(--ink-strong);
-    font-size: 12px;
-}
-
-.temporary-token-panel__reveal-heading span {
-    color: var(--ink-muted);
-    font-size: 11px;
-    line-height: 1.45;
-}
-
-.temporary-token-value {
-    width: 100%;
-    min-height: 88px;
-    resize: vertical;
-    padding: 12px;
-    border: 1px solid var(--line-strong);
-    border-radius: var(--radius-sm);
-    background: var(--surface-sunken);
-    color: var(--ink-strong);
-    font-family: var(--font-mono);
-    font-size: 11px;
-    line-height: 1.5;
-    overflow-wrap: anywhere;
-}
-
-.temporary-token-panel__actions {
-    align-items: flex-end;
-}
-
-.temporary-token-panel__actions > div {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 8px;
-}
-
-.temporary-token-panel__hint,
-.temporary-token-panel__clipboard-note {
-    color: var(--ink-muted);
-    font-size: 10px;
-    line-height: 1.45;
-}
-
-.temporary-token-panel__hint code {
-    color: var(--info);
-    font-family: var(--font-mono);
-}
-
-.temporary-token-panel__clipboard-note {
-    color: var(--warning);
 }
 
 .provisioning-errors {
@@ -5554,7 +5476,6 @@ h3 {
 .operator-token-request h2,
 .operator-token-issuer h2,
 .operator-token-safety h2,
-.operator-token-reveal h2,
 .operator-token-active h2 {
     margin: 0;
     color: var(--ink-strong);
@@ -5563,7 +5484,6 @@ h3 {
 
 .operator-token-request p,
 .operator-token-issuer header p,
-.operator-token-reveal header p,
 .operator-token-active header p {
     margin: 3px 0 0;
     color: var(--ink-muted);
@@ -5607,7 +5527,65 @@ h3 {
 
 .operator-token-issuer,
 .operator-token-safety,
-.operator-token-reveal,
+/* One-time token dialog: the token is the only content; actions stay at the
+   foot so Copy is the last thing read. SUI sizes dialogs for a sentence and
+   two buttons (480px); a token reads better a little wider. */
+.sui-dialog:has(> .one-time-token-dialog) {
+    width: min(92vw, 640px);
+}
+
+.one-time-token-dialog {
+    display: grid;
+    gap: 12px;
+    min-width: 0;
+    justify-items: start;
+}
+
+.one-time-token-dialog__description,
+.one-time-token-dialog__detail {
+    margin: 0;
+    color: var(--ink-muted);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.one-time-token-dialog .one-time-token-dialog__value {
+    width: 100%;
+    margin: 0;
+    box-sizing: border-box;
+}
+
+.one-time-token-dialog .operator-token-clipboard-note {
+    margin: 0;
+    padding: 0;
+}
+
+.one-time-token-dialog__discard {
+    display: grid;
+    gap: 2px;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 12px;
+    border-left: 3px solid var(--warning);
+    border-radius: var(--radius-sm);
+    background: var(--warning-soft);
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.one-time-token-dialog__discard strong {
+    color: var(--ink-strong);
+}
+
+.one-time-token-dialog__discard span {
+    color: var(--ink-muted);
+}
+
+.one-time-token-dialog .sui-dialog__actions {
+    width: 100%;
+    margin-top: 4px;
+}
+
 .operator-token-active {
     min-width: 0;
     border: 1px solid var(--line);
@@ -5616,7 +5594,6 @@ h3 {
 }
 
 .operator-token-issuer > header,
-.operator-token-reveal > header,
 .operator-token-active > header {
     display: flex;
     min-height: 68px;
@@ -5949,11 +5926,6 @@ h3 {
     line-height: 1.55;
 }
 
-.operator-token-reveal {
-    margin-bottom: 24px;
-    border-color: rgba(146, 84, 10, 0.28);
-}
-
 .operator-token-value {
     display: block;
     width: calc(100% - 36px);
@@ -5977,7 +5949,6 @@ h3 {
     box-shadow: 0 0 0 3px var(--brand-ring);
 }
 
-.operator-token-reveal > footer,
 .operator-token-list article > footer {
     display: flex;
     align-items: center;
@@ -5987,13 +5958,11 @@ h3 {
     border-top: 1px solid var(--line);
 }
 
-.operator-token-reveal > footer > span,
 .operator-token-clipboard-note {
     color: var(--ink-muted);
     font-size: 10px;
 }
 
-.operator-token-reveal > footer > div,
 .operator-token-revoke-confirmation {
     display: flex;
     align-items: center;
@@ -6693,8 +6662,7 @@ h3 {
         grid-template-columns: minmax(0, 1fr);
     }
 
-    .temporary-token-panel__copy,
-    .temporary-token-panel__actions {
+    .temporary-token-panel__copy {
         align-items: stretch;
         flex-direction: column;
     }
@@ -6705,17 +6673,8 @@ h3 {
     }
 
     .temporary-token-field,
-    .temporary-token-panel__controls .sui-btn,
-    .temporary-token-panel__actions > div {
+    .temporary-token-panel__controls .sui-btn {
         width: 100%;
-    }
-
-    .temporary-token-panel__actions > div {
-        justify-content: stretch;
-    }
-
-    .temporary-token-panel__actions > div .sui-btn {
-        flex: 1 1 auto;
     }
 
     .manifest-editor {
@@ -7147,15 +7106,10 @@ h3 {
     .operator-token-fields,
     .operator-token-capability-grid { grid-template-columns: minmax(0, 1fr); }
     .operator-token-issuer > header,
-    .operator-token-reveal > header,
     .operator-token-active > header,
     .operator-token-issue-actions,
-    .operator-token-reveal > footer,
     .operator-token-list article > footer { align-items: flex-start; flex-direction: column; }
-    .operator-token-issue-actions .sui-btn,
-    .operator-token-reveal > footer > div,
-    .operator-token-reveal > footer .sui-btn { width: 100%; }
-    .operator-token-reveal > footer > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .operator-token-issue-actions .sui-btn { width: 100%; }
     .operator-token-revoke-confirmation { width: 100%; flex-wrap: wrap; }
 }
 

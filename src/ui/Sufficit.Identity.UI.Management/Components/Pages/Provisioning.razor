@@ -3,7 +3,7 @@
 @attribute [Authorize(Policy = ManagementUiPolicies.ManageProvisioning)]
 @inject ManagementProvisioningDataSource ProvisioningData
 @inject ManagementProvisioningTokenDataSource TokenData
-@inject IJSRuntime JS
+@inject ISUIDialogService Dialogs
 
 <PageTitle>@L["Provisioning.PageTitle"]</PageTitle>
 
@@ -58,44 +58,7 @@
                 </div>
             </div>
 
-            @if (tokenResult?.IsSuccess is true && temporaryToken is not null)
-            {
-                <div class="temporary-token-panel__reveal" role="status">
-                    <div class="temporary-token-panel__reveal-heading">
-                        <div>
-                            <strong>@L["Provisioning.TemporaryToken.IssuedTitle"]</strong>
-                            <span>@L["Provisioning.TemporaryToken.IssuedDescription"]</span>
-                        </div>
-                        <SUIStatusBadge ToneValue="SUITone.Warning">@L["Provisioning.TemporaryToken.ExpiresBadge", TokenExpirationLabel]</SUIStatusBadge>
-                    </div>
-                    <textarea class="temporary-token-value"
-                              aria-label="@L["Provisioning.TemporaryToken.ValueAriaLabel"].Value"
-                              readonly
-                              spellcheck="false"
-                              autocomplete="off">@temporaryToken</textarea>
-                    <div class="temporary-token-panel__actions">
-                        <span class="temporary-token-panel__hint">@L["Provisioning.TemporaryToken.CapabilitiesLabel"].Value <code>identity.provisioning.preview</code> @L["Provisioning.Common.And"].Value <code>identity.provisioning.apply</code></span>
-                        <div>
-                            <SUIButton VariantValue="SUIVariant.Outlined"
-                                       ColorValue="SUIColor.Primary"
-                                       OnClick="CopyTemporaryTokenAsync">
-                                <SUIIcon Name="copy" Size="17" />
-                                @(tokenCopied ? L["Provisioning.TemporaryToken.Copied"] : L["Provisioning.TemporaryToken.CopyButton"])
-                            </SUIButton>
-                            <SUIButton VariantValue="SUIVariant.Text"
-                                       ColorValue="SUIColor.Default"
-                                       OnClick="HideTemporaryToken">
-                                @L["Provisioning.TemporaryToken.HideButton"]
-                            </SUIButton>
-                        </div>
-                    </div>
-                    @if (clipboardUnavailable)
-                    {
-                        <span class="temporary-token-panel__clipboard-note">@L["Provisioning.TemporaryToken.ClipboardUnavailable"]</span>
-                    }
-                </div>
-            }
-            else if (tokenResult?.IsSuccess is true)
+            @if (tokenResult?.IsSuccess is true && !tokenDialogOpen)
             {
                 <div class="inline-notice inline-notice--success" role="status">
                     <SUIIcon Name="check" Size="19" />
@@ -317,11 +280,8 @@ else if (applyResult?.IsSuccess is true)
     private bool confirmed;
     private int tokenLifetimeSeconds = 900;
     private bool tokenIssuing;
-    private string? temporaryToken;
-    private DateTimeOffset? temporaryTokenExpiresAt;
-    private bool tokenCopied;
-    private bool clipboardUnavailable;
     private ManagementDataResult<ProvisioningTokenIssueResult>? tokenResult;
+    private bool tokenDialogOpen;
 
     private string ManifestJson
     {
@@ -343,8 +303,8 @@ else if (applyResult?.IsSuccess is true)
 
     private bool IsBusy => previewing || applying || tokenIssuing;
 
-    private string TokenExpirationLabel =>
-        temporaryTokenExpiresAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")
+    private string TokenExpirationLabel(DateTimeOffset? expiresAt) =>
+        expiresAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")
         ?? L["Provisioning.TemporaryToken.ExpiresSoon"].Value;
 
     private bool HasFreshPreview =>
@@ -446,54 +406,38 @@ else if (applyResult?.IsSuccess is true)
         }
 
         tokenIssuing = true;
-        temporaryToken = null;
-        temporaryTokenExpiresAt = null;
-        tokenCopied = false;
-        clipboardUnavailable = false;
         tokenResult = await TokenData.IssueAsync(tokenLifetimeSeconds);
+        tokenIssuing = false;
         if (tokenResult.IsSuccess && tokenResult.Value is { } issued)
         {
-            temporaryToken = issued.AccessToken;
-            temporaryTokenExpiresAt = issued.ExpiresAtUtc;
+            tokenDialogOpen = true;
+            StateHasChanged();
+            try
+            {
+                await OneTimeTokenDialog.ShowAsync(
+                    Dialogs,
+                    L["Provisioning.TemporaryToken.IssuedTitle"].Value,
+                    new OneTimeTokenRequest(
+                        issued.AccessToken,
+                        L["Provisioning.TemporaryToken.IssuedDescription"].Value,
+                        L["Provisioning.TemporaryToken.ValueAriaLabel"].Value,
+                        L["Provisioning.TemporaryToken.ExpiresBadge", TokenExpirationLabel(issued.ExpiresAtUtc)].Value,
+                        L["Provisioning.TemporaryToken.CapabilitiesLabel"].Value
+                            + " identity.provisioning.preview "
+                            + L["Provisioning.Common.And"].Value
+                            + " identity.provisioning.apply"));
+            }
+            finally
+            {
+                tokenDialogOpen = false;
+            }
         }
-
-        tokenIssuing = false;
     }
 
     private Task TokenLifetimeChanged(int value)
     {
         tokenLifetimeSeconds = value;
         return Task.CompletedTask;
-    }
-
-    private async Task CopyTemporaryTokenAsync()
-    {
-        if (string.IsNullOrWhiteSpace(temporaryToken))
-        {
-            return;
-        }
-
-        try
-        {
-            await JS.InvokeVoidAsync(
-                "navigator.clipboard.writeText",
-                temporaryToken);
-            tokenCopied = true;
-            clipboardUnavailable = false;
-        }
-        catch (JSException)
-        {
-            tokenCopied = false;
-            clipboardUnavailable = true;
-        }
-    }
-
-    private void HideTemporaryToken()
-    {
-        temporaryToken = null;
-        temporaryTokenExpiresAt = null;
-        tokenCopied = false;
-        clipboardUnavailable = false;
     }
 
     private string StepClass(int step)
