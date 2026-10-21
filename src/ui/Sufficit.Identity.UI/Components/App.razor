@@ -1,5 +1,6 @@
 @inject IBrandingThemeProvider BrandingProvider
 @inject IUiModuleRegistry UiModules
+@inject IStringLocalizer<SharedResource> L
 @using System.Globalization
 @using Microsoft.AspNetCore.Http
 @using Sufficit.Identity.Application.Security
@@ -15,6 +16,27 @@
     // which case the emitted policy still carries 'unsafe-inline' and Razor
     // simply drops the null attribute (eval 2026-08-30, F-3).
     private string? CspNonceValue => CspNonce.From(HttpContext?.Items);
+
+    // The browser writes constraint-validation messages ("Please fill out this
+    // field.") in its own UI language, not the page's. identity.js swaps them
+    // for these, rendered in the culture the person picked.
+    private string BrowserValidationMessages => System.Text.Json.JsonSerializer.Serialize(
+        new Dictionary<string, string>
+        {
+            ["required"] = L["Validation.Browser.Required"],
+            ["checkboxRequired"] = L["Validation.Browser.CheckboxRequired"],
+            ["choiceRequired"] = L["Validation.Browser.ChoiceRequired"],
+            ["email"] = L["Validation.Browser.Email"],
+            ["url"] = L["Validation.Browser.Url"],
+            ["tooShort"] = L["Validation.Browser.TooShort"],
+            ["tooLong"] = L["Validation.Browser.TooLong"],
+            ["pattern"] = L["Validation.Browser.Pattern"],
+            ["number"] = L["Validation.Browser.Number"],
+            ["rangeUnderflow"] = L["Validation.Browser.RangeUnderflow"],
+            ["rangeOverflow"] = L["Validation.Browser.RangeOverflow"],
+            ["step"] = L["Validation.Browser.Step"],
+            ["invalid"] = L["Validation.Browser.Invalid"],
+        });
 
     protected override async Task OnInitializedAsync()
     {
@@ -32,6 +54,7 @@
     <link rel="apple-touch-icon" href="@(_theme?.FaviconUrl ?? "_content/Sufficit.Identity.UI/img/favicon.png")" />
     <link rel="preload" href="_content/Sufficit.Identity.UI/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="_content/Sufficit.Identity.UI/fonts/inter-latin-600.woff2" as="font" type="font/woff2" crossorigin />
+    <meta name="sufficit-validation-messages" content="@BrowserValidationMessages" />
     <meta name="theme-color" content="@(_theme?.ThemeColor ?? "#cc0000")" />
     <link rel="stylesheet" href="_content/Sufficit.Blazor.UI/sufficit-ui.css" />
     <link rel="stylesheet" href="Sufficit.Identity.Server.styles.css" />

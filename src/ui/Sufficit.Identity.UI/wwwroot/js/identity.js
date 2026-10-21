@@ -15,6 +15,84 @@ window.sufficitIdentityFormatLocalTime = function (epochMs) {
     }
 };
 
+/**
+ * Constraint validation speaks the browser's UI language, so a page in
+ * Portuguese could answer "Please fill out this field." The page renders its
+ * own messages (meta sufficit-validation-messages, in the selected culture);
+ * this swaps them in when a field is reported invalid. A message set here is
+ * a custom error, so it is cleared on the next edit and recomputed from the
+ * native validity state each time, never left to block a valid field.
+ */
+(function () {
+    var messages = null;
+
+    function loadMessages() {
+        if (messages !== null) return messages;
+        var meta = document.querySelector('meta[name="sufficit-validation-messages"]');
+        try {
+            messages = meta ? JSON.parse(meta.getAttribute('content') || '{}') : {};
+        } catch (e) {
+            messages = {};
+        }
+        return messages;
+    }
+
+    function format(template, args) {
+        return String(template).replace(/\{(\d+)\}/g, function (match, index) {
+            var value = args[Number(index)];
+            return value === undefined || value === null ? match : String(value);
+        });
+    }
+
+    function messageFor(field) {
+        var m = loadMessages();
+        var v = field.validity;
+        var type = (field.type || '').toLowerCase();
+        if (v.valueMissing) {
+            if (type === 'checkbox') return m.checkboxRequired;
+            if (type === 'radio' || field.tagName === 'SELECT') return m.choiceRequired;
+            return m.required;
+        }
+        if (v.typeMismatch) return type === 'email' ? m.email : type === 'url' ? m.url : m.invalid;
+        if (v.badInput) return type === 'number' ? m.number : m.invalid;
+        if (v.tooShort) return format(m.tooShort, [field.minLength, field.value.length]);
+        if (v.tooLong) return format(m.tooLong, [field.maxLength, field.value.length]);
+        if (v.patternMismatch) return field.title || m.pattern;
+        if (v.rangeUnderflow) return format(m.rangeUnderflow, [field.min]);
+        if (v.rangeOverflow) return format(m.rangeOverflow, [field.max]);
+        if (v.stepMismatch) return m.step;
+        return null;
+    }
+
+    function clear(event) {
+        var field = event.target;
+        if (field && field.dataset && field.dataset.sufficitValidity === 'true') {
+            field.setCustomValidity('');
+            delete field.dataset.sufficitValidity;
+        }
+    }
+
+    document.addEventListener('invalid', function (event) {
+        var field = event.target;
+        if (!field || typeof field.setCustomValidity !== 'function') return;
+        // Only replace what this script set: an error a page sets on purpose
+        // through setCustomValidity stays as written.
+        if (field.validity.customError && field.dataset.sufficitValidity !== 'true') return;
+
+        field.setCustomValidity('');
+        var message = messageFor(field);
+        if (message) {
+            field.setCustomValidity(message);
+            field.dataset.sufficitValidity = 'true';
+        } else {
+            delete field.dataset.sufficitValidity;
+        }
+    }, true);
+
+    document.addEventListener('input', clear, true);
+    document.addEventListener('change', clear, true);
+})();
+
 // Continue a registration for an existing account through the normal HTTP
 // password endpoint. Credentials stay in the POST body and are read from the
 // current inputs; never copy them into a URL or browser storage.

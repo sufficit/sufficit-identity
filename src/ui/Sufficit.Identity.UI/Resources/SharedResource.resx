@@ -419,6 +419,19 @@
   <data name="Common.BackHome" xml:space="preserve"><value>Back to home</value></data>
   <data name="Common.TryAgain" xml:space="preserve"><value>Try again</value></data>
   <data name="Common.NotProvided" xml:space="preserve"><value>Not provided</value></data>
+  <data name="Validation.Browser.Required" xml:space="preserve"><value>Please fill out this field.</value></data>
+  <data name="Validation.Browser.CheckboxRequired" xml:space="preserve"><value>Check this box to continue.</value></data>
+  <data name="Validation.Browser.ChoiceRequired" xml:space="preserve"><value>Please select an option.</value></data>
+  <data name="Validation.Browser.Email" xml:space="preserve"><value>Enter a valid email address, like name@example.com.</value></data>
+  <data name="Validation.Browser.Url" xml:space="preserve"><value>Enter a valid address, starting with https://.</value></data>
+  <data name="Validation.Browser.TooShort" xml:space="preserve"><value>Use at least {0} characters (currently {1}).</value></data>
+  <data name="Validation.Browser.TooLong" xml:space="preserve"><value>Use at most {0} characters (currently {1}).</value></data>
+  <data name="Validation.Browser.Pattern" xml:space="preserve"><value>Match the requested format.</value></data>
+  <data name="Validation.Browser.Number" xml:space="preserve"><value>Enter a number.</value></data>
+  <data name="Validation.Browser.RangeUnderflow" xml:space="preserve"><value>The value must be {0} or more.</value></data>
+  <data name="Validation.Browser.RangeOverflow" xml:space="preserve"><value>The value must be {0} or less.</value></data>
+  <data name="Validation.Browser.Step" xml:space="preserve"><value>Enter a valid value.</value></data>
+  <data name="Validation.Browser.Invalid" xml:space="preserve"><value>Check this field.</value></data>
   <data name="Validation.UserNameLength" xml:space="preserve"><value>The username must be between {2} and {1} characters.</value></data>
   <data name="Validation.UserNameRequired" xml:space="preserve"><value>Username is required.</value></data>
   <data name="Validation.EmailRequired" xml:space="preserve"><value>Email is required.</value></data>

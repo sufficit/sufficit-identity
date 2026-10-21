@@ -419,6 +419,19 @@
   <data name="Common.BackHome" xml:space="preserve"><value>Voltar ao início</value></data>
   <data name="Common.TryAgain" xml:space="preserve"><value>Tentar novamente</value></data>
   <data name="Common.NotProvided" xml:space="preserve"><value>Não informada</value></data>
+  <data name="Validation.Browser.Required" xml:space="preserve"><value>Preencha este campo.</value></data>
+  <data name="Validation.Browser.CheckboxRequired" xml:space="preserve"><value>Marque esta opção para continuar.</value></data>
+  <data name="Validation.Browser.ChoiceRequired" xml:space="preserve"><value>Selecione uma opção.</value></data>
+  <data name="Validation.Browser.Email" xml:space="preserve"><value>Informe um e-mail válido, como nome@exemplo.com.</value></data>
+  <data name="Validation.Browser.Url" xml:space="preserve"><value>Informe um endereço válido, começando com https://.</value></data>
+  <data name="Validation.Browser.TooShort" xml:space="preserve"><value>Use pelo menos {0} caracteres (agora: {1}).</value></data>
+  <data name="Validation.Browser.TooLong" xml:space="preserve"><value>Use no máximo {0} caracteres (agora: {1}).</value></data>
+  <data name="Validation.Browser.Pattern" xml:space="preserve"><value>Use o formato pedido.</value></data>
+  <data name="Validation.Browser.Number" xml:space="preserve"><value>Informe um número.</value></data>
+  <data name="Validation.Browser.RangeUnderflow" xml:space="preserve"><value>O valor deve ser {0} ou mais.</value></data>
+  <data name="Validation.Browser.RangeOverflow" xml:space="preserve"><value>O valor deve ser {0} ou menos.</value></data>
+  <data name="Validation.Browser.Step" xml:space="preserve"><value>Informe um valor válido.</value></data>
+  <data name="Validation.Browser.Invalid" xml:space="preserve"><value>Verifique este campo.</value></data>
   <data name="Validation.UserNameLength" xml:space="preserve"><value>O usuário deve ter entre {2} e {1} caracteres.</value></data>
   <data name="Validation.UserNameRequired" xml:space="preserve"><value>O usuário é obrigatório.</value></data>
   <data name="Validation.EmailRequired" xml:space="preserve"><value>O e-mail é obrigatório.</value></data>
