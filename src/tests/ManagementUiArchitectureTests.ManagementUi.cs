@@ -508,8 +508,9 @@ public sealed partial class ManagementUiArchitectureTests
             "OperatorTokens.razor"));
         var stylesheet = File.ReadAllText(Path.Combine(
             managementUi,
-            "wwwroot",
-            "app.css"));
+            "Components",
+            "Pages",
+            "OperatorTokens.razor.css"));
 
         Assert.Contains("data-sui-align-row", page, StringComparison.Ordinal);
         Assert.Contains("<IdentityTextField T=\"string\"", page, StringComparison.Ordinal);
@@ -524,7 +525,7 @@ public sealed partial class ManagementUiArchitectureTests
         Assert.DoesNotContain(".operator-token-issue-actions span", stylesheet, StringComparison.Ordinal);
         Assert.Contains(".operator-token-issue-summary span {", stylesheet, StringComparison.Ordinal);
         Assert.Contains(
-            ".operator-token-fields > .sui-field {",
+            ".operator-token-fields ::deep > .sui-field {",
             stylesheet,
             StringComparison.Ordinal);
         Assert.Contains("align-self: start;", stylesheet, StringComparison.Ordinal);

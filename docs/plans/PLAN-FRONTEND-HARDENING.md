@@ -11,7 +11,7 @@ porque barateiam e protegem todos os outros.
 | # | Item | Estado |
 |---|------|--------|
 | 1 | Testes de navegador na CI | feito |
-| 2 | CSS por componente nas páginas mais mexidas | pendente |
+| 2 | CSS por componente nas páginas mais mexidas | feito |
 | 3 | Atualização do SUI e correções upstream | pendente |
 | 4 | Datas no fuso e no idioma de quem vê | pendente |
 | 5 | Todo segredo exibido uma vez passa pelo popup | pendente |

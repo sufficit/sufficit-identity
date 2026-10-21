@@ -1,0 +1,21 @@
+/* Isolated styles for this component (PLAN-FRONTEND-HARDENING item 2).
+   Children rendered by SUI or Identity components are reached with ::deep. */
+
+.operator-token-fields {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) minmax(180px, 0.7fr);
+    align-items: start;
+    gap: 16px;
+    padding: 18px;
+}
+
+.operator-token-fields ::deep > .sui-field {
+    /* SUI fields own their internal label/control/helper rhythm. Keep both
+       columns anchored to the same row without inheriting local form margins. */
+    align-self: start;
+    min-width: 0;
+}
+
+@media (max-width: 640px) {
+    .operator-token-fields { grid-template-columns: minmax(0, 1fr); }
+}

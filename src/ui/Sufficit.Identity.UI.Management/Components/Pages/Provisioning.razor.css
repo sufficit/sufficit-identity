@@ -1,0 +1,305 @@
+/* Isolated styles for this component (PLAN-FRONTEND-HARDENING item 2).
+   Children rendered by SUI or Identity components are reached with ::deep. */
+
+.safety-panel__icon {
+    display: grid;
+    width: 40px;
+    height: 40px;
+    place-items: center;
+    margin-bottom: 14px;
+    border-radius: var(--radius);
+    background: var(--brand-soft);
+    color: var(--brand);
+}
+
+.workflow-steps {
+    display: grid;
+    grid-template-columns: auto minmax(40px, 1fr) auto minmax(40px, 1fr) auto;
+    align-items: center;
+    margin: 0 0 22px;
+    padding: 18px 20px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    list-style: none;
+}
+
+.workflow-connector {
+    height: 1px;
+    margin-inline: 14px;
+    background: var(--line);
+}
+
+.provisioning-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.65fr);
+    gap: 20px;
+}
+
+.manifest-editor {
+    display: block;
+    padding: 18px;
+}
+
+.manifest-editor textarea {
+    width: 100%;
+    min-height: 340px;
+    resize: vertical;
+    padding: 18px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    outline: none;
+    background: #201e1f;
+    color: #f4f3f4;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.65;
+    opacity: 1;
+    -webkit-text-fill-color: #f4f3f4;
+}
+
+.manifest-editor textarea:focus-visible {
+    border-color: #f4f3f4;
+    box-shadow: 0 0 0 3px rgba(244, 243, 244, 0.18);
+}
+
+.safety-panel {
+    padding: 22px;
+    border: 1px solid rgba(21, 127, 63, 0.18);
+    border-radius: var(--radius-lg);
+    background: var(--success-soft);
+}
+
+.safety-panel__icon {
+    background: rgba(21, 127, 63, 0.11);
+    color: var(--success);
+}
+
+.safety-panel h2 {
+    margin-bottom: 14px;
+    color: #126b36;
+    font-size: 15px;
+}
+
+.safety-panel .plain-check-list {
+    padding-bottom: 18px;
+    border-bottom: 1px solid rgba(21, 127, 63, 0.14);
+}
+
+.safety-panel .plain-check-list li { color: #326f4b; }
+
+.safety-panel > a {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    gap: 6px;
+    color: #126b36;
+    font-size: 11px;
+    font-weight: 650;
+    text-decoration: none;
+}
+
+.safety-panel > a:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.temporary-token-panel {
+    display: grid;
+    gap: 18px;
+    margin: 20px 0;
+    padding: 22px;
+    border: 1px solid rgba(23, 92, 211, 0.2);
+    border-radius: var(--radius-lg);
+    background: var(--info-soft);
+}
+
+.temporary-token-panel__copy,
+.temporary-token-panel__heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.temporary-token-panel__heading {
+    align-items: flex-start;
+    justify-content: flex-start;
+}
+
+.temporary-token-panel__icon {
+    display: grid;
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    place-items: center;
+    border-radius: var(--radius);
+    background: rgba(23, 92, 211, 0.1);
+    color: var(--info);
+}
+
+.temporary-token-panel h2 {
+    margin-bottom: 5px;
+    color: #164a9f;
+    font-size: 15px;
+}
+
+.temporary-token-panel p {
+    max-width: 72ch;
+    margin: 0;
+    color: #3f5e8e;
+    font-size: 11px;
+    line-height: 1.55;
+}
+
+.temporary-token-panel__controls {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+}
+
+.provisioning-errors {
+    display: grid;
+    gap: 4px;
+    margin: 8px 0 0;
+    padding-left: 18px;
+}
+
+.provisioning-errors li {
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+.provisioning-plan {
+    overflow: hidden;
+    margin-top: 20px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+}
+
+.provisioning-plan__counts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.provisioning-plan__counts span {
+    display: inline-flex;
+    min-height: 36px;
+    align-items: center;
+    gap: 5px;
+    padding: 7px 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    color: var(--ink-muted);
+    font-size: 11px;
+}
+
+.provisioning-plan__counts strong {
+    color: var(--ink-strong);
+    font-size: 13px;
+}
+
+.provisioning-apply {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 18px 20px;
+    border-top: 1px solid var(--line);
+    background: var(--surface-subtle);
+}
+
+.provisioning-confirmation {
+    display: flex;
+    max-width: 620px;
+    align-items: flex-start;
+    gap: 11px;
+    cursor: pointer;
+}
+
+.provisioning-confirmation input {
+    width: 17px;
+    height: 17px;
+    flex: 0 0 17px;
+    margin-top: 2px;
+    accent-color: var(--brand);
+}
+
+.provisioning-confirmation span {
+    display: grid;
+    gap: 3px;
+}
+
+.provisioning-confirmation strong {
+    color: var(--ink-strong);
+    font-size: 12px;
+}
+
+.provisioning-confirmation small {
+    color: var(--ink-muted);
+    font-size: 11px;
+    line-height: 1.45;
+}
+
+.provisioning-current {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--success);
+    font-size: 12px;
+    font-weight: 650;
+}
+
+@media (max-width: 767px) {
+    .workflow-steps {
+            grid-template-columns: minmax(0, 1fr);
+            gap: 8px;
+    }
+
+    .workflow-connector {
+            width: 1px;
+            height: 16px;
+            margin: 0 0 0 15px;
+    }
+
+    .provisioning-grid { grid-template-columns: minmax(0, 1fr); }
+
+    .temporary-token-panel__copy {
+            align-items: stretch;
+            flex-direction: column;
+    }
+
+    .temporary-token-panel__controls {
+            align-items: stretch;
+            flex-direction: column;
+    }
+
+    .temporary-token-panel__controls ::deep .sui-btn { width: 100%; }
+
+    .manifest-editor { padding: 12px; }
+
+    .manifest-editor textarea {
+            min-height: 280px;
+            padding: 14px;
+            font-size: 11px;
+    }
+
+    .provisioning-apply ::deep > .sui-btn { width: 100%; }
+
+    .provisioning-plan .data-toolbar,
+    .provisioning-apply {
+            align-items: stretch;
+            flex-direction: column;
+    }
+
+    .provisioning-plan__counts {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .provisioning-plan__counts span { justify-content: center; }
+
+    .provisioning-apply ::deep .button { width: 100%; }
+}

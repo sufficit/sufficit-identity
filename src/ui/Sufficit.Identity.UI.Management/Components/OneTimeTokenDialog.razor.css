@@ -1,0 +1,84 @@
+/* Isolated styles for this component (PLAN-FRONTEND-HARDENING item 2).
+   Children rendered by SUI or Identity components are reached with ::deep. */
+
+.one-time-token-dialog {
+    display: grid;
+    gap: 12px;
+    min-width: 0;
+    justify-items: start;
+}
+
+.one-time-token-dialog__description,
+.one-time-token-dialog__detail {
+    margin: 0;
+    color: var(--ink-muted);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.one-time-token-dialog .one-time-token-dialog__value {
+    width: 100%;
+    margin: 0;
+    box-sizing: border-box;
+}
+
+.one-time-token-dialog .operator-token-clipboard-note {
+    margin: 0;
+    padding: 0;
+}
+
+.one-time-token-dialog__discard {
+    display: grid;
+    gap: 2px;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 12px;
+    border-left: 3px solid var(--warning);
+    border-radius: var(--radius-sm);
+    background: var(--warning-soft);
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.one-time-token-dialog__discard strong { color: var(--ink-strong); }
+
+.one-time-token-dialog__discard span { color: var(--ink-muted); }
+
+.one-time-token-dialog .sui-dialog__actions {
+    width: 100%;
+    margin-top: 4px;
+}
+
+.operator-token-value {
+    display: block;
+    width: calc(100% - 36px);
+    min-height: 112px;
+    resize: vertical;
+    margin: 18px;
+    padding: 12px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius);
+    outline: 0;
+    background: var(--surface-page);
+    color: var(--ink-strong);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1.55;
+    overflow-wrap: anywhere;
+}
+
+.operator-token-value:focus {
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px var(--brand-ring);
+}
+
+.operator-token-clipboard-note {
+    color: var(--ink-muted);
+    font-size: 10px;
+}
+
+.operator-token-clipboard-note {
+    display: block;
+    padding: 0 18px 14px;
+    color: var(--warning);
+}
