@@ -478,8 +478,27 @@ public partial class AuthorizationController : Controller
         // Same subject-lookup pattern already used by ExchangeForUserAsync/
         // ExchangeForTokenExchangeAsync above.
         var subject = User.GetClaim(Claims.Subject);
-        var user = (subject is not null ? await _userManager.FindByIdAsync(subject) : null) ??
-            throw new InvalidOperationException("The user details cannot be retrieved.");
+        var user = subject is not null ? await _userManager.FindByIdAsync(subject) : null;
+        if (user is null)
+        {
+            // A valid token whose subject is not a user: a client_credentials
+            // token (subject = client) or an account removed after issuance.
+            // UserInfo describes users only, so answer invalid_token (RFC 6750
+            // §3.1, as the OpenIddict samples do) instead of throwing a 500, and
+            // name the caller so it can be fixed.
+            _logger.LogWarning(
+                "UserInfo called with a token whose subject is not a user. Client {ClientId}, subject {Subject}.",
+                User.GetClaim(Claims.ClientId) ?? User.GetClaim(Claims.AuthorizedParty) ?? "unknown",
+                subject ?? "none");
+            return Challenge(
+                authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                properties: new AuthenticationProperties(new Dictionary<string, string?>
+                {
+                    [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidToken,
+                    [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] =
+                        "The access token does not belong to a user account.",
+                }));
+        }
 
         var userId = await _userManager.GetUserIdAsync(user);
         var persistedClaims = await _userManager.GetClaimsAsync(user);
