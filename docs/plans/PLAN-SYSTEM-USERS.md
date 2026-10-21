@@ -108,10 +108,12 @@ Blazor). O Management passa a mostrar os dois tipos com nomes distintos.
 
 Para referência; não fazem parte das entregas do identity.
 
-- **Agentes do Genius (orquestrados pelo Fleet).** Decisão do dono em
-  21/10: o agente roda com o usuário de **quem o criou** (credencial delegada,
-  já suportada pelo identity). Para os agentes da própria Sufficit, **um
-  usuário de sistema por agente**, habilitado por código.
+- **Agentes do Fleet.** Decisão do dono em 21/10: cada agente é um usuário de
+  sistema, com o **mesmo id do agente**, pertencente ao contexto (empresa) em
+  que foi criado e com permissões só desse contexto. O crédito é cobrado do
+  contexto pelo consumidor. Igual para todos os clientes. Plano no consumidor:
+  `sufficit-fleet/docs/PLAN-AGENT-IDENTITY.md`. Pede ao identity: criação com
+  id informado e `dpop_jkt` no grant de habilitação.
 - **Futuro: um usuário de sistema por contexto ou cliente.** Admitido pelo
   dono, mas só depois de definir como ficam os **controles de crédito**:
   consumo e atribuição de custo de um usuário que não é pessoa. Sem prazo.
@@ -128,9 +130,9 @@ Para referência; não fazem parte das entregas do identity.
   aplicações: **sim** (decisão do dono, 21/10).
 - Cliente próprio por usuário de sistema: **não**. O cliente identifica o
   software; a credencial pertence ao usuário.
-- Agentes do Genius/Fleet: usuário de **quem cria o agente** (credencial
-  delegada); agentes da própria Sufficit, um usuário de sistema por agente
-  (decisão do dono, 21/10).
+- Agentes do Fleet: um usuário de sistema por agente, id igual ao do agente,
+  pertencente ao contexto (decisão do dono, 21/10). Substitui "usuário de quem
+  criou".
 - Usuário de sistema por contexto ou cliente: possível no futuro, depois de
   definir os controles de crédito.
 
