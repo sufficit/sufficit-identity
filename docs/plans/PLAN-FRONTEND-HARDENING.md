@@ -15,7 +15,7 @@ porque barateiam e protegem todos os outros.
 | 3 | Atualização do SUI e correções upstream | pendente |
 | 4 | Datas no fuso e no idioma de quem vê | feito |
 | 5 | Todo segredo exibido uma vez passa pelo popup | feito |
-| 6 | Mensagens de validação dentro da página | pendente |
+| 6 | Mensagens de validação dentro da página | feito |
 | 7 | Ajustes menores (URL do erro, nginx do apoint, baseline visual) | pendente |
 
 ## 1. Testes de navegador na CI

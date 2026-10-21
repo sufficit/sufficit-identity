@@ -18,10 +18,9 @@ window.sufficitIdentityFormatLocalTime = function (epochMs) {
 /**
  * Constraint validation speaks the browser's UI language, so a page in
  * Portuguese could answer "Please fill out this field." The page renders its
- * own messages (meta sufficit-validation-messages, in the selected culture);
- * this swaps them in when a field is reported invalid. A message set here is
- * a custom error, so it is cleared on the next edit and recomputed from the
- * native validity state each time, never left to block a valid field.
+ * own messages (meta sufficit-validation-messages, in the selected culture)
+ * and this shows them under the invalid field, replacing the bubble. Nothing
+ * here sets a custom validity, so a corrected field is never left blocked.
  */
 (function () {
     var messages = null;
@@ -64,17 +63,76 @@ window.sufficitIdentityFormatLocalTime = function (epochMs) {
         return null;
     }
 
-    function clear(event) {
-        var field = event.target;
-        if (field && field.dataset && field.dataset.sufficitValidity === 'true') {
-            field.setCustomValidity('');
-            delete field.dataset.sufficitValidity;
+    // The message is rendered under the field instead of the browser bubble:
+    // the bubble vanishes on its own, is not tied to the field for screen
+    // readers and ignores the page's look. SUI already styles both pieces
+    // (.sui-field__error, aria-invalid on .sui-field__input).
+    function container(field) {
+        return field.closest('.sui-field') || field.parentElement;
+    }
+
+    function errorIdFor(field) {
+        if (!field.id) field.id = 'sufficit-field-' + Math.random().toString(36).slice(2, 10);
+        return field.id + '-validation';
+    }
+
+    function describedBy(field, id, add) {
+        var ids = (field.getAttribute('aria-describedby') || '').split(/\s+/).filter(function (x) {
+            return x && x !== id;
+        });
+        if (add) ids.push(id);
+        if (ids.length) field.setAttribute('aria-describedby', ids.join(' '));
+        else field.removeAttribute('aria-describedby');
+    }
+
+    function show(field, message) {
+        var id = errorIdFor(field);
+        var node = document.getElementById(id);
+        if (!node) {
+            node = document.createElement('p');
+            node.id = id;
+            node.className = 'sui-field__error sufficit-field-error';
+            container(field).appendChild(node);
         }
+        node.textContent = message;
+        field.setAttribute('aria-invalid', 'true');
+        field.dataset.sufficitInvalid = 'true';
+        describedBy(field, id, true);
+    }
+
+    function hide(field) {
+        if (field.dataset.sufficitInvalid !== 'true') return;
+        var id = field.id + '-validation';
+        var node = document.getElementById(id);
+        if (node) node.remove();
+        field.removeAttribute('aria-invalid');
+        delete field.dataset.sufficitInvalid;
+        describedBy(field, id, false);
+    }
+
+    // Cancelling "invalid" also cancels the browser's move to the first bad
+    // field, so do it once per submission attempt.
+    var focusQueued = [];
+    function focusFirstInvalid(form) {
+        if (!form || focusQueued.indexOf(form) >= 0) return;
+        focusQueued.push(form);
+        window.setTimeout(function () {
+            focusQueued.splice(focusQueued.indexOf(form), 1);
+            var first = form.querySelector('input:invalid, select:invalid, textarea:invalid');
+            if (first && document.activeElement !== first) first.focus();
+        }, 0);
+    }
+
+    function revalidate(event) {
+        var field = event.target;
+        if (!field || !field.dataset || field.dataset.sufficitInvalid !== 'true') return;
+        if (field.validity.valid) hide(field);
+        else show(field, field.validity.customError ? field.validationMessage : (messageFor(field) || field.validationMessage));
     }
 
     document.addEventListener('invalid', function (event) {
         var field = event.target;
-        if (!field || typeof field.setCustomValidity !== 'function') return;
+        if (!field || !field.validity) return;
 
         // SUILoadingButton marks a submit pending on click; when validation
         // stops the submission the spinner would keep turning beside this
@@ -86,22 +144,20 @@ window.sufficitIdentityFormatLocalTime = function (epochMs) {
             }
         }
 
-        // Only replace what this script set: an error a page sets on purpose
-        // through setCustomValidity stays as written.
-        if (field.validity.customError && field.dataset.sufficitValidity !== 'true') return;
+        // An error a page sets on purpose (setCustomValidity) is shown as
+        // written; native states get the page-language message.
+        var message = field.validity.customError
+            ? field.validationMessage
+            : (messageFor(field) || field.validationMessage);
+        if (!message) return;
 
-        field.setCustomValidity('');
-        var message = messageFor(field);
-        if (message) {
-            field.setCustomValidity(message);
-            field.dataset.sufficitValidity = 'true';
-        } else {
-            delete field.dataset.sufficitValidity;
-        }
+        event.preventDefault();
+        show(field, message);
+        focusFirstInvalid(field.form);
     }, true);
 
-    document.addEventListener('input', clear, true);
-    document.addEventListener('change', clear, true);
+    document.addEventListener('input', revalidate, true);
+    document.addEventListener('change', revalidate, true);
 })();
 
 /**
