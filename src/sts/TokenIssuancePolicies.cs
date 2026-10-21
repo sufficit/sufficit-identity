@@ -12,6 +12,12 @@ public interface IApplicationClaimDestinationPolicy
     IEnumerable<string> GetDestinations(
         Claim claim,
         bool includeIdentityToken);
+
+    /// <summary>
+    /// Whether the claim is an entitlement resolved by the server at request
+    /// time (userinfo <c>entitlements=current</c>) and never released in a token.
+    /// </summary>
+    bool IsServerResolved(Claim claim);
 }
 
 internal sealed class ApplicationClaimDestinationPolicy(
@@ -22,11 +28,14 @@ internal sealed class ApplicationClaimDestinationPolicy(
     public IReadOnlyDictionary<string, string> MappedClaimScopes =>
         options.ClaimToScope;
 
+    public bool IsServerResolved(Claim claim) =>
+        ServerResolvedEntitlements.IsServerResolved(claim, options.ServerResolvedEntitlementKeys);
+
     public IEnumerable<string> GetDestinations(
         Claim claim,
         bool includeIdentityToken)
     {
-        if (ServerResolvedEntitlements.IsServerResolved(claim, options.ServerResolvedEntitlementKeys))
+        if (IsServerResolved(claim))
             yield break;
 
         if (options.ClaimToScope.TryGetValue(claim.Type, out var requiredScope))

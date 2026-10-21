@@ -413,7 +413,7 @@ public partial class AuthorizationController : Controller
             scopes: identity.GetScopes());
 
         identity.SetAuthorizationId(await _authorizationManager.GetIdAsync(authorization));
-        identity.SetDestinations(_grants.GetDestinations);
+        _grants.ApplyDestinations(identity);
 
         if (requiresFreshCeremony) AuthorizationAuthenticationReceipt.Clear(HttpContext);
         return SignIn(new ClaimsPrincipal(identity), OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);

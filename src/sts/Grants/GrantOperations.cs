@@ -352,6 +352,27 @@ public sealed class GrantOperations(
     /// access-token-only; custom persisted claims follow the config-driven
     /// <see cref="IApplicationClaimDestinationPolicy"/>.
     /// </summary>
+    /// <summary>
+    /// Sets every claim's destinations. Server-resolved entitlements are
+    /// removed first: they are never released in a token, and OpenIddict keeps
+    /// destinations per claim type, so leaving them destination-less beside
+    /// released claims of the same type ("entitlements") fails the sign-in
+    /// with "Conflicting destinations". The resource server reads them from
+    /// userinfo, which resolves them from the store, not from the principal.
+    /// </summary>
+    public void ApplyDestinations(ClaimsIdentity identity)
+    {
+        ArgumentNullException.ThrowIfNull(identity);
+        foreach (var claim in identity.Claims
+                     .Where(applicationClaimPolicy.IsServerResolved)
+                     .ToArray())
+        {
+            identity.TryRemoveClaim(claim);
+        }
+
+        identity.SetDestinations(GetDestinations);
+    }
+
     public IEnumerable<string> GetDestinations(Claim claim)
     {
         switch (claim.Type)
@@ -482,7 +503,7 @@ public sealed class GrantOperations(
         ArgumentNullException.ThrowIfNull(identity);
         ArgumentNullException.ThrowIfNull(request);
 
-        identity.SetDestinations(GetDestinations);
+        ApplyDestinations(identity);
         adjustDestinations?.Invoke(identity);
 
         Issued.Add(1,

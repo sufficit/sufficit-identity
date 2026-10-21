@@ -70,4 +70,36 @@ public sealed class CurrentEntitlementsFlowTests
         client.DefaultRequestHeaders.Authorization = null;
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/connect/userinfo?entitlements=current")).StatusCode);
     }
+
+    // 21/10/2026: with server-resolved keys configured, a user holding one of
+    // them and an ordinary entitlement failed every sign-in with HTTP 500
+    // ("Conflicting destinations for the claim 'entitlements'"): OpenIddict
+    // keeps destinations per claim type, and with the directives scope granted
+    // the ordinary value went to the access token while the server-resolved
+    // one went nowhere.
+    [Fact]
+    public async Task Mixed_server_resolved_and_ordinary_entitlements_agree_on_destinations()
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(new Dictionary<string, string?>
+        {
+            ["Sufficit:Identity:ClaimScopeMap:ServerResolvedEntitlementKeys:0"] = "example.read",
+        });
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        using var scope = factory.Services.CreateScope();
+        var grants = scope.ServiceProvider.GetRequiredService<Sufficit.Identity.STS.Grants.GrantOperations>();
+
+        var identity = new ClaimsIdentity("test");
+        identity.AddClaim(new Claim(OpenIddict.Abstractions.OpenIddictConstants.Claims.Subject, "user-1"));
+        identity.AddClaim(new Claim("entitlements", "example.read:workspace/alpha"));
+        identity.AddClaim(new Claim("entitlements", "example.other:workspace/alpha"));
+        OpenIddict.Abstractions.OpenIddictExtensions.SetScopes(identity, "openid", "directives");
+
+        grants.ApplyDestinations(identity);
+
+        // The same check OpenIddict runs while generating the token.
+        var destinations = OpenIddict.Abstractions.OpenIddictExtensions.GetDestinations(new ClaimsPrincipal(identity));
+        Assert.Contains(OpenIddict.Abstractions.OpenIddictConstants.Destinations.AccessToken, destinations["entitlements"]);
+        Assert.DoesNotContain(identity.Claims, claim => claim.Value == "example.read:workspace/alpha");
+        Assert.Contains(identity.Claims, claim => claim.Value == "example.other:workspace/alpha");
+    }
 }
