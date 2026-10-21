@@ -32,6 +32,19 @@ public sealed class SystemUsersController(ISystemUserManagementService systemUse
         CancellationToken cancellationToken) =>
         Ok(await systemUsers.ToggleAsync(userId, enabled, RequestContext(), cancellationToken));
 
+    [HttpGet("entitlements")]
+    public async Task<ActionResult<IReadOnlyList<string>>> GetEntitlements(
+        [FromQuery] string userId,
+        CancellationToken cancellationToken) =>
+        Ok(await systemUsers.GetEntitlementsAsync(userId, RequestContext(), cancellationToken));
+
+    [HttpPut("entitlements")]
+    public async Task<ActionResult<IReadOnlyList<string>>> SetEntitlements(
+        [FromQuery] string userId,
+        [FromBody] SetSystemUserEntitlementsCommand command,
+        CancellationToken cancellationToken) =>
+        Ok(await systemUsers.SetEntitlementsAsync(userId, command, RequestContext(), cancellationToken));
+
     [HttpGet("enrollments")]
     public async Task<ActionResult<IReadOnlyList<SystemUserEnrollmentSummary>>> ListEnrollments(
         [FromQuery] string userId,

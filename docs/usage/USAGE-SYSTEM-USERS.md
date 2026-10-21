@@ -44,7 +44,24 @@ usuário). A criação fica auditada com o operador.
 
 Capacidades: listar `identity.users.read`, criar `identity.users.create`,
 desativar `identity.users.disable`, emitir e revogar credencial
-`identity.users.reset`.
+`identity.users.reset`, entitlements `identity.claims.read`/`identity.claims.create`.
+
+**Serviço de provisionamento.** `identity.system-users.manage` cobre todas essas
+operações, **só** sobre usuários de sistema: criar, ativar/desativar, emitir e
+revogar códigos e definir entitlements. Um usuário humano não é alcançado (404
+nas rotas de usuário de sistema; as demais rotas exigem as capacidades gerais).
+Dê a uma conta de serviço (`identity:client:roles`) um papel mapeado só para
+ela em `RoleCapabilities`, por exemplo `"systemusers": ["identity.system-users.manage"]`.
+
+**Entitlements:**
+
+```http
+PUT /api/system-users/entitlements?userId=<id>
+{ "entitlements": ["aiuser:<contexto>"] }
+```
+
+Substitui o conjunto inteiro (o que não estiver na lista sai). Contexto em
+qualquer grafia de UUID é gravado compacto (32 hex). `GET` na mesma rota lista.
 
 ## 3. Emitir o código de habilitação
 

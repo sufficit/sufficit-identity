@@ -27,6 +27,13 @@ public static class ManagementCapabilities
     /// </summary>
     public const string UsersConfirmation =
         "identity.users.confirmation";
+    /// <summary>
+    /// Everything about system users and nothing about anyone else: create,
+    /// enable/disable, issue and revoke enrollment codes, set entitlements.
+    /// Every operation is confined to users marked as system users, so a
+    /// provisioning service holding only this cannot touch a person.
+    /// </summary>
+    public const string SystemUsersManage = "identity.system-users.manage";
     public const string ClaimsRead = "identity.claims.read";
     public const string ClaimsCreate = "identity.claims.create";
     public const string ClaimsUpdate = "identity.claims.update";
@@ -92,6 +99,7 @@ public static class ManagementCapabilities
                 UsersReset,
                 UsersResetMfa,
                 UsersConfirmation,
+                SystemUsersManage,
                 ClaimsRead,
                 ClaimsCreate,
                 ClaimsUpdate,

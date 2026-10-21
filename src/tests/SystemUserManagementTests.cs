@@ -2,8 +2,12 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Sufficit.Identity.Core.Entities;
+using Sufficit.Identity.Management.Authorization;
 using OpenIddict.Abstractions;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Management.SystemUsers;
@@ -146,6 +150,70 @@ public sealed class SystemUserManagementTests
         using var empty = await operatorClient.PostAsJsonAsync(
             "/api/system-users", new { userName = "agent-empty-id", userId = Guid.Empty });
         Assert.Equal(HttpStatusCode.BadRequest, empty.StatusCode);
+    }
+
+    [Fact]
+    public async Task A_provisioner_with_only_the_system_users_capability_never_reaches_a_person()
+    {
+        using var root = new ManagementTestFactory();
+        await ((IAsyncLifetime)root).InitializeAsync();
+        await RegisterAgentClientAsync(root);
+        using var factory = root.WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
+            services.AddSingleton<IManagementAuthorizationEvaluator, OnlySystemUsersEvaluator>()));
+        var provisioner = factory.CreateClient();
+
+        string human;
+        using (var scope = factory.Services.CreateScope())
+        {
+            var person = new ApplicationUser { UserName = "a-person" };
+            Assert.True((await scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>().CreateAsync(person)).Succeeded);
+            human = person.Id;
+        }
+
+        var agent = Guid.CreateVersion7();
+        using var created = await provisioner.PostAsJsonAsync(
+            "/api/system-users", new { userName = "agent-provisioned", userId = agent });
+        Assert.Equal(HttpStatusCode.OK, created.StatusCode);
+
+        // Entitlements: replaced as a set, contexts stored compact.
+        using var entitled = await provisioner.PutAsJsonAsync($"/api/system-users/entitlements?userId={agent}",
+            new { entitlements = new[] { "aiuser:01a05f00-0000-7000-8000-000000000001", "AIUSER:01a05f0000007000800000000000000a" } });
+        Assert.Equal(HttpStatusCode.OK, entitled.StatusCode);
+        Assert.Equal(["aiuser:01a05f00000070008000000000000001", "aiuser:01a05f0000007000800000000000000a"],
+            await entitled.Content.ReadFromJsonAsync<string[]>());
+        using var narrowed = await provisioner.PutAsJsonAsync($"/api/system-users/entitlements?userId={agent}",
+            new { entitlements = new[] { "aiuser:01a05f00000070008000000000000001" } });
+        Assert.Equal(["aiuser:01a05f00000070008000000000000001"], await narrowed.Content.ReadFromJsonAsync<string[]>());
+        using var invalid = await provisioner.PutAsJsonAsync($"/api/system-users/entitlements?userId={agent}",
+            new { entitlements = new[] { "not a key:x" } });
+        Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+
+        using var issued = await provisioner.PostAsJsonAsync(
+            $"/api/system-users/enrollments?userId={agent}", new { clientId = AgentClientId, label = "executor" });
+        Assert.Equal(HttpStatusCode.OK, issued.StatusCode);
+
+        // A person is out of reach: not a system user here, and the general users API refuses.
+        using var onPerson = await provisioner.PutAsJsonAsync($"/api/system-users/entitlements?userId={human}",
+            new { entitlements = new[] { "administrator" } });
+        Assert.Equal(HttpStatusCode.NotFound, onPerson.StatusCode);
+        using var codeForPerson = await provisioner.PostAsJsonAsync(
+            $"/api/system-users/enrollments?userId={human}", new { clientId = AgentClientId, label = "x" });
+        Assert.Equal(HttpStatusCode.NotFound, codeForPerson.StatusCode);
+        using var users = await provisioner.GetAsync("/api/users");
+        Assert.Equal(HttpStatusCode.Forbidden, users.StatusCode);
+        using var adoptPerson = await provisioner.PostAsJsonAsync(
+            "/api/system-users", new { userName = "agent-adopt", userId = Guid.Parse(human) });
+        Assert.Equal(HttpStatusCode.Conflict, adoptPerson.StatusCode);
+    }
+
+    private sealed class OnlySystemUsersEvaluator : IManagementAuthorizationEvaluator
+    {
+        public ValueTask<ManagementAuthorizationDecision> EvaluateAsync(
+            System.Security.Claims.ClaimsPrincipal principal, string capability, ManagementResource resource,
+            CancellationToken cancellationToken = default) =>
+            ValueTask.FromResult(capability == ManagementCapabilities.SystemUsersManage
+                ? ManagementAuthorizationDecision.Allowed()
+                : ManagementAuthorizationDecision.Denied("capability_missing", capability));
     }
 
     private static async Task RegisterAgentClientAsync(ManagementTestFactory factory)

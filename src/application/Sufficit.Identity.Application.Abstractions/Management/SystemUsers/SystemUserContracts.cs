@@ -73,6 +73,12 @@ public sealed record IssueSystemUserEnrollmentCommand(
     string Label,
     int? LifetimeHours = null);
 
+/// <summary>
+/// The complete set of entitlements (for example <c>aiuser:&lt;context&gt;</c>) a
+/// system user holds afterwards; anything not listed is removed.
+/// </summary>
+public sealed record SetSystemUserEntitlementsCommand(IReadOnlyList<string>? Entitlements);
+
 /// <summary>The code is returned here once and never again.</summary>
 public sealed record SystemUserEnrollmentIssueResult(
     SystemUserEnrollmentSummary Enrollment,
@@ -97,6 +103,18 @@ public interface ISystemUserManagementService
     Task<SystemUserSummary> ToggleAsync(
         string userId,
         bool? enabled,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<string>> GetEntitlementsAsync(
+        string userId,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Replaces the system user's entitlements; contexts are stored compact (32 hex).</summary>
+    Task<IReadOnlyList<string>> SetEntitlementsAsync(
+        string userId,
+        SetSystemUserEntitlementsCommand command,
         ManagementRequestContext context,
         CancellationToken cancellationToken = default);
 

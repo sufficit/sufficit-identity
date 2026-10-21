@@ -33,6 +33,7 @@ public static class ManagementCapabilityPresentation
             // confirmation-email action (see UsersConfirmation).
             [ManagementCapabilities.UsersConfirmation] =
                 "Capability.Label.ResendConfirmation",
+            [ManagementCapabilities.SystemUsersManage] = "Capability.Label.Manage",
             [ManagementCapabilities.ClaimsRead] = "Capability.Label.Read",
             [ManagementCapabilities.ClaimsCreate] = "Capability.Label.Create",
             [ManagementCapabilities.ClaimsUpdate] = "Capability.Label.Update",

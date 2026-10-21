@@ -52,6 +52,15 @@ public sealed partial class ManagementUiRoutingTests
             return Task.FromResult(created);
         }
 
+        public Task<IReadOnlyList<string>> GetEntitlementsAsync(
+            string userId, ManagementRequestContext context, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<string>>([]);
+
+        public Task<IReadOnlyList<string>> SetEntitlementsAsync(
+            string userId, SetSystemUserEntitlementsCommand command, ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<string>>([.. command.Entitlements ?? []]);
+
         public Task<SystemUserSummary> ToggleAsync(
             string userId, bool? enabled, ManagementRequestContext context, CancellationToken cancellationToken = default)
         {

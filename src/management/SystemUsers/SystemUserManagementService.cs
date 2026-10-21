@@ -22,9 +22,15 @@ namespace Sufficit.Identity.Management.SystemUsers;
 /// <see cref="ManagementCapabilities.UsersDisable"/>, and issuing or revoking
 /// a credential uses <see cref="ManagementCapabilities.UsersReset"/>, the
 /// capability that already governs a user's credentials. Issuing is marked as
-/// minting a credential.
+/// minting a credential. Entitlements use the claims capabilities.
+/// <para>
+/// <see cref="ManagementCapabilities.SystemUsersManage"/> satisfies all of
+/// them here and nowhere else: every operation either creates a system user or
+/// resolves its target among system users first, so a holder of only that
+/// capability (a provisioning service) never reaches a person.
+/// </para>
 /// </remarks>
-internal sealed class SystemUserManagementService(
+internal sealed partial class SystemUserManagementService(
     AppDbContext database,
     UserManager<ApplicationUser> users,
     IOpenIddictApplicationManager applications,
@@ -38,6 +44,8 @@ internal sealed class SystemUserManagementService(
     internal const int DefaultEnrollmentLifetimeHours = 24;
     internal const int MaximumEnrollmentLifetimeHours = 168;
     private const int DisplayNameMaxLength = 200;
+    private const int MaximumEntitlements = 50;
+    private const string EntitlementClaimType = "entitlements";
 
     private static readonly ManagementResource CollectionResource =
         new(ManagementResourceTypes.UserCollection);
@@ -47,7 +55,7 @@ internal sealed class SystemUserManagementService(
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(context);
-        await guard.DemandAsync(context, ManagementCapabilities.UsersRead, CollectionResource, cancellationToken);
+        await DemandAsync(context, ManagementCapabilities.UsersRead, CollectionResource, cancellationToken);
 
         var records = await database.SystemUsers.AsNoTracking()
             .OrderBy(x => x.CreatedAtUtc)
@@ -68,7 +76,7 @@ internal sealed class SystemUserManagementService(
     {
         ArgumentNullException.ThrowIfNull(command);
         ArgumentNullException.ThrowIfNull(context);
-        var decision = await guard.DemandAsync(
+        var decision = await DemandAsync(
             context, ManagementCapabilities.UsersCreate, CollectionResource, cancellationToken, auditDenial: true);
 
         var userName = command.UserName?.Trim();
@@ -155,7 +163,7 @@ internal sealed class SystemUserManagementService(
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(context);
-        var decision = await guard.DemandAsync(
+        var decision = await DemandAsync(
             context, ManagementCapabilities.UsersDisable, UserResource(userId), cancellationToken, auditDenial: true);
 
         var record = await FindTrackedAsync(userId, cancellationToken);
@@ -208,7 +216,7 @@ internal sealed class SystemUserManagementService(
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(context);
-        await guard.DemandAsync(context, ManagementCapabilities.UsersRead, UserResource(userId), cancellationToken);
+        await DemandAsync(context, ManagementCapabilities.UsersRead, UserResource(userId), cancellationToken);
         _ = await FindTrackedAsync(userId, cancellationToken);
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
@@ -227,7 +235,7 @@ internal sealed class SystemUserManagementService(
     {
         ArgumentNullException.ThrowIfNull(command);
         ArgumentNullException.ThrowIfNull(context);
-        var decision = await guard.DemandAsync(
+        var decision = await DemandAsync(
             context,
             ManagementCapabilities.UsersReset,
             UserResource(userId),
@@ -311,7 +319,7 @@ internal sealed class SystemUserManagementService(
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(context);
-        var decision = await guard.DemandAsync(
+        var decision = await DemandAsync(
             context, ManagementCapabilities.UsersReset, UserResource(userId), cancellationToken, auditDenial: true);
 
         var enrollment = await database.SystemUserEnrollments
@@ -356,6 +364,136 @@ internal sealed class SystemUserManagementService(
         if (await authorizations.FindByIdAsync(enrollment.AuthorizationId, cancellationToken) is { } authorization)
         {
             await authorizations.TryRevokeAsync(authorization, cancellationToken);
+        }
+    }
+
+    public async Task<IReadOnlyList<string>> GetEntitlementsAsync(
+        string userId,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        await DemandAsync(context, ManagementCapabilities.ClaimsRead, UserResource(userId), cancellationToken);
+        _ = await FindTrackedAsync(userId, cancellationToken);
+        return await ReadEntitlementsAsync(userId, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<string>> SetEntitlementsAsync(
+        string userId,
+        SetSystemUserEntitlementsCommand command,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        ArgumentNullException.ThrowIfNull(context);
+        var decision = await DemandAsync(
+            context, ManagementCapabilities.ClaimsCreate, UserResource(userId), cancellationToken, auditDenial: true);
+        _ = await FindTrackedAsync(userId, cancellationToken);
+
+        var wanted = new SortedSet<string>(StringComparer.Ordinal);
+        foreach (var raw in command.Entitlements ?? [])
+        {
+            wanted.Add(NormalizeEntitlement(raw));
+        }
+
+        if (wanted.Count > MaximumEntitlements)
+        {
+            throw new ManagementValidationException(
+                "system_user_entitlements_too_many",
+                $"A system user holds at most {MaximumEntitlements} entitlements.",
+                "entitlements");
+        }
+
+        var current = await database.UserClaims
+            .Where(x => x.UserId == userId && x.ClaimType == EntitlementClaimType)
+            .ToListAsync(cancellationToken);
+        var removed = current.Where(x => x.ClaimValue is null || !wanted.Contains(x.ClaimValue)).ToList();
+        var kept = current.Select(x => x.ClaimValue).OfType<string>().ToHashSet(StringComparer.Ordinal);
+        database.UserClaims.RemoveRange(removed);
+        foreach (var value in wanted.Where(value => !kept.Contains(value)))
+        {
+            database.UserClaims.Add(new IdentityUserClaim<string>
+            {
+                UserId = userId, ClaimType = EntitlementClaimType, ClaimValue = value,
+            });
+        }
+
+        database.ManagementAuditEvents.Add(ManagementAuditEventFactory.Create(
+            context,
+            ManagementCapabilities.ClaimsCreate,
+            UserResource(userId),
+            decision,
+            "succeeded",
+            "system_user_entitlements_set"));
+        await database.SaveChangesAsync(cancellationToken);
+
+        logger.LogInformation(
+            "Entitlements of system user {UserId} set by {Subject}: {Entitlements}; correlation={CorrelationId}.",
+            userId, context.OperatorSubject, string.Join(",", wanted), context.CorrelationId);
+        return [.. wanted];
+    }
+
+    private async Task<IReadOnlyList<string>> ReadEntitlementsAsync(string userId, CancellationToken cancellationToken) =>
+        await database.UserClaims.AsNoTracking()
+            .Where(x => x.UserId == userId && x.ClaimType == EntitlementClaimType && x.ClaimValue != null)
+            .OrderBy(x => x.ClaimValue)
+            .Select(x => x.ClaimValue!)
+            .ToListAsync(cancellationToken);
+
+    /// <summary>
+    /// <c>key</c> or <c>key:context</c>; a context in any UUID spelling is stored
+    /// compact (32 lowercase hex), the form every entitlement uses since 2026-09-02.
+    /// </summary>
+    internal static string NormalizeEntitlement(string? raw)
+    {
+        var value = raw?.Trim().ToLowerInvariant() ?? string.Empty;
+        var separator = value.IndexOf(':');
+        var key = separator < 0 ? value : value[..separator];
+        if (!EntitlementKey().IsMatch(key))
+        {
+            throw new ManagementValidationException(
+                "system_user_entitlement_invalid", $"Invalid entitlement: '{raw}'.", "entitlements");
+        }
+
+        if (separator < 0)
+        {
+            return key;
+        }
+
+        if (!Guid.TryParse(value[(separator + 1)..], out var contextId) || contextId == Guid.Empty)
+        {
+            throw new ManagementValidationException(
+                "system_user_entitlement_invalid", $"Invalid entitlement context: '{raw}'.", "entitlements");
+        }
+
+        return key + ":" + contextId.ToString("N");
+    }
+
+    [System.Text.RegularExpressions.GeneratedRegex("^[a-z][a-z0-9._-]{0,63}$")]
+    private static partial System.Text.RegularExpressions.Regex EntitlementKey();
+
+    /// <summary>
+    /// <see cref="ManagementCapabilities.SystemUsersManage"/> first, then the
+    /// general capability; only the second refusal is reported and audited.
+    /// </summary>
+    private async Task<ManagementAuthorizationDecision> DemandAsync(
+        ManagementRequestContext context,
+        string capability,
+        ManagementResource resource,
+        CancellationToken cancellationToken,
+        bool auditDenial = false,
+        bool mintsCredential = false)
+    {
+        try
+        {
+            return await guard.DemandAsync(
+                context, ManagementCapabilities.SystemUsersManage, resource, cancellationToken,
+                mintsCredential: mintsCredential);
+        }
+        catch (ManagementAccessException)
+        {
+            return await guard.DemandAsync(
+                context, capability, resource, cancellationToken, auditDenial, mintsCredential);
         }
     }
 
