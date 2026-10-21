@@ -108,13 +108,14 @@ Blazor). O Management passa a mostrar os dois tipos com nomes distintos.
 
 Para referência; não fazem parte das entregas do identity.
 
-- **Agentes headless do Genius (orquestrados pelo Fleet).** Cada agente passa
-  a rodar como um usuário de sistema, com a credencial do item 3 no Secret do
-  agente, em vez de `client_credentials`. O Genius já sabe resgatar refresh
-  token DPoP (credencial delegada), então o caminho do agente fica igual ao
-  de uma pessoa. Run, sufficit-ai, permissões e memória deixam de precisar de
-  caso especial. Migração: os 17 agentes atuais (todos com `OwnerUserId`
-  vazio no Fleet), um usuário de sistema por agente.
+- **Agentes do Genius (orquestrados pelo Fleet).** Decisão do dono em
+  21/10: **não** usam usuário de sistema nem um por agente ou por organização.
+  O agente roda sempre com o **usuário logado**, ou seja, a credencial
+  delegada de quem o opera, já suportada pelo identity. O usuário de sistema
+  fica para quando não houver pessoa por trás.
+- **Futuro: um usuário de sistema por contexto ou cliente.** Admitido pelo
+  dono, mas só depois de definir como ficam os **controles de crédito**:
+  consumo e atribuição de custo de um usuário que não é pessoa. Sem prazo.
 - **Clientes sem usuário que chamam o userinfo** (ex.: a ponte
   `sufficit-blazor-ai-bridge`, validada pelo sufficit-ai): continuam como
   conta de sistema de serviço. O consumidor deixa de consultar o userinfo
@@ -128,9 +129,10 @@ Para referência; não fazem parte das entregas do identity.
   aplicações: **sim** (decisão do dono, 21/10).
 - Cliente próprio por usuário de sistema: **não**. O cliente identifica o
   software; a credencial pertence ao usuário.
-- Granularidade nos consumidores (um usuário por agente ou por organização):
-  recomendado **um por agente**, para auditoria e memória separadas.
-  Pendente de confirmação.
+- Agentes do Genius/Fleet: **usuário logado** (credencial delegada), nem
+  usuário de sistema por agente nem por organização (decisão do dono, 21/10).
+- Usuário de sistema por contexto ou cliente: possível no futuro, depois de
+  definir os controles de crédito.
 
 ## Registro de execução
 
