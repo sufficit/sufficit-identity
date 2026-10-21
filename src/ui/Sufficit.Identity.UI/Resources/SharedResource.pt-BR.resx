@@ -72,6 +72,8 @@
   <data name="Login.Error.CreateFailed" xml:space="preserve"><value>Não foi possível criar a conta usando o provedor externo.</value></data>
   <data name="Login.Error.ExternalCallbackUnavailable" xml:space="preserve"><value>A autenticação externa expirou ou foi cancelada.</value></data>
   <data name="Login.Error.ExternalCorrelationFailed" xml:space="preserve"><value>A sessão do login externo expirou ou o navegador bloqueou o cookie de segurança. Inicie o login novamente.</value></data>
+  <data name="Login.Error.Stamp" xml:space="preserve"><value>Tentativa {0} · {1}</value></data>
+  <data name="Login.Error.StampTimeOnly" xml:space="preserve"><value>Em {0}</value></data>
   <data name="Login.Error.InvalidCredentials" xml:space="preserve"><value>Usuário ou senha inválidos.</value></data>
   <data name="Login.Error.RequestExpired" xml:space="preserve"><value>A página de login expirou. Recarregue-a e tente novamente.</value></data>
   <data name="Login.Error.PasskeyFailed" xml:space="preserve"><value>Não foi possível autenticar com a passkey.</value></data>

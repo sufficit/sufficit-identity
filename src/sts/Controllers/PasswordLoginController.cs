@@ -44,8 +44,7 @@ public sealed class PasswordLoginController(
 
         return result.Status switch
         {
-            InteractiveSignInStatus.Succeeded => Redirect(
-                AuthenticationContinuation.Location(returnUrl, HttpContext)),
+            InteractiveSignInStatus.Succeeded => SignedIn(returnUrl),
             InteractiveSignInStatus.RequiresTwoFactor => Redirect(
                 QueryHelpers.AddQueryString(
                     "/account/loginwith2fa",
@@ -69,15 +68,18 @@ public sealed class PasswordLoginController(
         };
     }
 
+    private RedirectResult SignedIn(string returnUrl)
+    {
+        LoginErrorLocation.Reset(HttpContext);
+        return Redirect(AuthenticationContinuation.Location(returnUrl, HttpContext));
+    }
+
     private RedirectResult LoginError(string error, string returnUrl, PasswordLoginRequest? request = null) =>
-        Redirect(QueryHelpers.AddQueryString(
-            "/account/login",
-            new Dictionary<string, string?>
-            {
-                ["error"] = error,
-                ["returnUrl"] = returnUrl,
-                ["login_hint"] = request?.FromRegistration == true ? request.UserName : null,
-            }));
+        Redirect(LoginErrorLocation.Build(
+            HttpContext,
+            error,
+            returnUrl,
+            request?.FromRegistration == true ? request.UserName : null));
 
     public sealed class PasswordLoginRequest
     {

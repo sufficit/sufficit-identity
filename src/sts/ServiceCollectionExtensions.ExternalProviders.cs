@@ -316,13 +316,10 @@ public static partial class ServiceCollectionExtensions
             var error = isCorrelationFailure
                 ? "external_correlation_failed"
                 : "external_callback_unavailable";
-            var location = QueryHelpers.AddQueryString(
-                "/account/login",
-                new Dictionary<string, string?>
-                {
-                    ["error"] = error,
-                    ["returnUrl"] = returnUrl,
-                });
+            var location = Controllers.LoginErrorLocation.Build(
+                context.HttpContext,
+                error,
+                returnUrl);
 
             context.HandleResponse();
             context.Response.Redirect(location);

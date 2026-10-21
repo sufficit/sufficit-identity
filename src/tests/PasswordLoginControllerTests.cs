@@ -49,9 +49,10 @@ public sealed class PasswordLoginControllerTests(
                 "/protected"));
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        Assert.Equal(
-            "/account/login?error=request_expired&returnUrl=%2Fprotected",
-            response.Headers.Location?.OriginalString);
+        var query = LoginErrorQuery(response);
+        Assert.Equal("request_expired", query["error"].ToString());
+        Assert.Equal("/protected", query["returnUrl"].ToString());
+        Assert.Equal("1", query["attempt"].ToString());
         Assert.False(
             response.Headers.TryGetValues("Set-Cookie", out var cookies)
             && cookies.Any(value => value.Contains(
@@ -76,6 +77,53 @@ public sealed class PasswordLoginControllerTests(
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         AssertAuthenticationContinuation(response, "/");
+    }
+
+    [Fact]
+    public async Task Failed_password_logins_are_stamped_with_attempt_and_time()
+    {
+        using var client = CreateClient();
+        var antiforgeryToken =
+            await TestOnlyEndpoints.GetAntiforgeryTokenAsync(client);
+        var before = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+        using var first = await client.PostAsync(
+            "/account/login/password",
+            Form(antiforgeryToken, TestDataSeeder.DefaultUsername, "wrong-1", "/"));
+        var firstQuery = LoginErrorQuery(first);
+        Assert.Equal("invalid_credentials", firstQuery["error"].ToString());
+        Assert.Equal("1", firstQuery["attempt"].ToString());
+        Assert.InRange(
+            long.Parse(firstQuery["at"].ToString()),
+            before,
+            DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+
+        // The client forwards the attempt cookie the first failure set.
+        var attemptCookie = first.Headers.GetValues("Set-Cookie")
+            .Single(value => value.StartsWith(
+                ".Sufficit.Identity.LoginAttempts=",
+                StringComparison.Ordinal))
+            .Split(';')[0];
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post,
+            "/account/login/password")
+        {
+            Content = Form(antiforgeryToken, TestDataSeeder.DefaultUsername, "wrong-2", "/"),
+        };
+        request.Headers.Add("Cookie", attemptCookie);
+        using var second = await client.SendAsync(request);
+        Assert.Equal("2", LoginErrorQuery(second)["attempt"].ToString());
+    }
+
+    private static Dictionary<string, Microsoft.Extensions.Primitives.StringValues> LoginErrorQuery(
+        HttpResponseMessage response)
+    {
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        var location = response.Headers.Location;
+        Assert.NotNull(location);
+        Assert.StartsWith("/account/login?", location.OriginalString, StringComparison.Ordinal);
+        var absolute = new Uri(new Uri("https://identity.tests.local"), location);
+        return Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(absolute.Query);
     }
 
     private HttpClient CreateClient() => factory.CreateClient(

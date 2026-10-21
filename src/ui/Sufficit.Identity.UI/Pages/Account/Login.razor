@@ -1,5 +1,6 @@
 @page "/account/login"
 @rendermode @(RenderMode.InteractiveServer)
+@using System.Globalization
 @using Microsoft.AspNetCore.Http
 @using Microsoft.AspNetCore.WebUtilities
 @inject IInteractiveSignInService SignInService
@@ -41,7 +42,13 @@
         <NotAuthorized>
             @if (_errorMessage is not null)
             {
-                <SUIAlert ToneValue="SUITone.Danger">@_errorMessage</SUIAlert>
+                <SUIAlert ToneValue="SUITone.Danger">
+                    @_errorMessage
+                    @if (_errorStamp is not null)
+                    {
+                        <span class="alert-stamp">@_errorStamp</span>
+                    }
+                </SUIAlert>
             }
 
             @if (_noticeMessage is not null)
@@ -186,6 +193,15 @@
     [SupplyParameterFromQuery(Name = "error")]
     private string? _externalError { get; set; }
 
+    // Stamped by the server on every failed sign-in (LoginErrorLocation): the
+    // error lives in the URL, so a reload or a stale tab replays it, and the
+    // attempt number plus time tell the person which attempt it belongs to.
+    [SupplyParameterFromQuery(Name = "attempt")]
+    private int? _errorAttempt { get; set; }
+
+    [SupplyParameterFromQuery(Name = "at")]
+    private long? _errorAtUnix { get; set; }
+
     [SupplyParameterFromQuery(Name = "login_hint")]
     private string? _loginHint { get; set; }
 
@@ -198,6 +214,8 @@
     private string? _returnUrl;
     private string? _errorMessage;
     private string? _noticeMessage;
+    private string? _errorStamp;
+    private int _passkeyAttempts;
     private IReadOnlyList<InteractiveSignInProvider> _externalProviders = [];
     private AccountRegistrationPolicy _registrationPolicy = new(false, false);
     private ElementReference _passkeyForm;
@@ -276,6 +294,16 @@
                 L["Login.Error.ExternalLinkTicketInvalid"],
             _ => _errorMessage,
         };
+        if (_errorMessage is not null && _errorAtUnix is long at
+            && at > 0 && at < 253402300799)
+        {
+            // Browser-local time arrives after the first render; until then
+            // (and without JS) the stamp shows UTC, labelled as such.
+            var utc = DateTimeOffset.FromUnixTimeSeconds(at);
+            _errorStamp = FormatStamp(
+                _errorAttempt,
+                utc.ToString("dd/MM HH:mm:ss", CultureInfo.InvariantCulture) + " UTC");
+        }
         _noticeMessage = _externalNotice switch
         {
             "external_signin" =>
@@ -298,6 +326,14 @@
             try
             {
                 _passkeySupported = await JS.InvokeAsync<bool>("passkeys.isSupported");
+                if (_errorStamp is not null && _errorAtUnix is long at)
+                {
+                    var local = await JS.InvokeAsync<string?>(
+                        "sufficitIdentityFormatLocalTime",
+                        at * 1000);
+                    if (!string.IsNullOrEmpty(local))
+                        _errorStamp = FormatStamp(_errorAttempt, local);
+                }
                 StateHasChanged();
             }
             catch { /* JS interop is unavailable during prerendering */ }
@@ -307,6 +343,7 @@
     private async Task PasskeySignInAsync()
     {
         _errorMessage = null;
+        _errorStamp = null;
         _passkeyBusy = true;
 
         // The next call opens the platform's passkey dialog and does not come
@@ -369,8 +406,32 @@
         finally
         {
             _passkeyBusy = false;
+            if (_errorMessage is not null)
+                await StampPasskeyErrorAsync();
         }
     }
+
+    private async Task StampPasskeyErrorAsync()
+    {
+        _passkeyAttempts++;
+        string? local = null;
+        try
+        {
+            local = await JS.InvokeAsync<string?>(
+                "sufficitIdentityFormatLocalTime",
+                DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+        }
+        catch (JSException) { }
+        _errorStamp = FormatStamp(
+            _passkeyAttempts,
+            local ?? DateTimeOffset.UtcNow.ToString(
+                "dd/MM HH:mm:ss", CultureInfo.InvariantCulture) + " UTC");
+    }
+
+    private string FormatStamp(int? attempt, string time) =>
+        attempt is > 0
+            ? L["Login.Error.Stamp", attempt.Value, time]
+            : L["Login.Error.StampTimeOnly", time];
 
     // Only the providers whose own brand colour the button wears get a class;
     // everything else keeps the neutral surface. The mark is chosen separately,

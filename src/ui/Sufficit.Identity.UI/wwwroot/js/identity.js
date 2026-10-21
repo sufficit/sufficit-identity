@@ -2,6 +2,19 @@
 // Exposed globally as window.sufficitIdentity* so Blazor components can
 // call them via JS interop (IJSRuntime.InvokeVoidAsync).
 
+// Formats an instant (epoch milliseconds) in the browser's own locale and
+// time zone, for the attempt stamp shown under sign-in errors.
+window.sufficitIdentityFormatLocalTime = function (epochMs) {
+    try {
+        return new Date(epochMs).toLocaleString(undefined, {
+            day: '2-digit', month: '2-digit',
+            hour: '2-digit', minute: '2-digit', second: '2-digit'
+        });
+    } catch (e) {
+        return null;
+    }
+};
+
 // Continue a registration for an existing account through the normal HTTP
 // password endpoint. Credentials stay in the POST body and are read from the
 // current inputs; never copy them into a URL or browser storage.

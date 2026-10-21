@@ -351,6 +351,16 @@
     font-weight: 500;
     line-height: 1.5;
 }
+/* Attempt number and time under a sign-in error: tells a fresh failure from
+   one replayed by a reload or a stale tab. */
+.identity-public .sui-alert .alert-stamp {
+    display: block;
+    margin-top: var(--space-1);
+    font-size: 0.8125rem;
+    font-weight: 400;
+    opacity: 0.75;
+    font-variant-numeric: tabular-nums;
+}
 .identity-public .sui-alert--danger  { --_alert-bg: var(--danger-soft); }
 .identity-public .sui-alert--success { --_alert-bg: var(--success-soft); }
 .identity-public .sui-alert--warning { --_alert-bg: var(--warning-soft); }

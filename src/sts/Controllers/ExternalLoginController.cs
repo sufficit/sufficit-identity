@@ -60,7 +60,7 @@ public sealed class ExternalLoginController(
             cancellationToken: cancellationToken);
         return result.Status switch
         {
-            ExternalSignInStatus.Succeeded => Redirect(safeReturnUrl),
+            ExternalSignInStatus.Succeeded => SignedIn(safeReturnUrl),
             ExternalSignInStatus.Linked => RedirectLinked(
                 safeReturnUrl,
                 result.ProviderDisplayName),
@@ -167,12 +167,12 @@ public sealed class ExternalLoginController(
                 ["returnUrl"] = returnUrl,
             }));
 
+    private RedirectResult SignedIn(string returnUrl)
+    {
+        LoginErrorLocation.Reset(HttpContext);
+        return Redirect(returnUrl);
+    }
+
     private RedirectResult LoginError(string error, string returnUrl) =>
-        Redirect(QueryHelpers.AddQueryString(
-            "/account/login",
-            new Dictionary<string, string?>
-            {
-                ["error"] = error,
-                ["returnUrl"] = returnUrl,
-            }));
+        Redirect(LoginErrorLocation.Build(HttpContext, error, returnUrl));
 }
