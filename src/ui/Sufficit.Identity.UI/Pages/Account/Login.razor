@@ -334,6 +334,15 @@
                     if (!string.IsNullOrEmpty(local))
                         _errorStamp = FormatStamp(_errorAttempt, local);
                 }
+                // The error is on screen now; drop it from the address so a
+                // reload or a shared link does not replay it. history.replaceState
+                // directly: NavigationManager would navigate and clear it.
+                if (_externalError is not null)
+                {
+                    await JS.InvokeVoidAsync(
+                        "sufficitIdentityForgetQueryKeys",
+                        new[] { "error", "attempt", "at" });
+                }
                 StateHasChanged();
             }
             catch { /* JS interop is unavailable during prerendering */ }

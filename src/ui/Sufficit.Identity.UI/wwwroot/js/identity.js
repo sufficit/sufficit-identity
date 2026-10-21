@@ -2,6 +2,24 @@
 // Exposed globally as window.sufficitIdentity* so Blazor components can
 // call them via JS interop (IJSRuntime.InvokeVoidAsync).
 
+// Removes query keys from the address bar without navigating, e.g. a
+// sign-in error already shown, so a reload does not show it again.
+window.sufficitIdentityForgetQueryKeys = function (keys) {
+    try {
+        var url = new URL(window.location.href);
+        var changed = false;
+        for (var i = 0; i < keys.length; i++) {
+            if (url.searchParams.has(keys[i])) {
+                url.searchParams.delete(keys[i]);
+                changed = true;
+            }
+        }
+        if (changed) {
+            window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+        }
+    } catch (e) { /* leave the address as it is */ }
+};
+
 // Formats an instant (epoch milliseconds) in the browser's own locale and
 // time zone, for the attempt stamp shown under sign-in errors.
 window.sufficitIdentityFormatLocalTime = function (epochMs) {
