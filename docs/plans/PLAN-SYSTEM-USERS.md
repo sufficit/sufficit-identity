@@ -1,7 +1,7 @@
 # Plano — usuários de sistema
 
-Aberto em 21/10/2026. Estado: **em implementação** (banco e STS entregues;
-Management em andamento).
+Aberto em 21/10/2026. Estado: **implementado no identity** (21/10/2026; ver
+"Registro de execução"). Consumidores pendentes.
 
 ## Problema
 
@@ -131,3 +131,13 @@ Para referência; não fazem parte das entregas do identity.
 - Granularidade nos consumidores (um usuário por agente ou por organização):
   recomendado **um por agente**, para auditoria e memória separadas.
   Pendente de confirmação.
+
+## Registro de execução
+
+| Entrega | Commit | Verificação |
+|---------|--------|-------------|
+| 1, 2, 3 — banco, recusa de login, grant de habilitação | `2b3f55e` | Testes de integração: troca bearer e DPoP, userinfo vê o usuário, uso único, cliente errado, expirado, revogado, desativado; login por formulário e grant `password` recusados (o teste falha sem a trava). |
+| 4, 5 — API de Management e auditoria | `cfd3ffa` | Teste ponta a ponta: criar, emitir, trocar, desativar (refresh recusado), reativar, revogar, eventos de auditoria. |
+| 4 — tela | `3ed7b9b` | Roteiro Playwright no host de fixtures (criar, cliente recusado, emitir, copiar, revogar, desativar, mobile), no job de CI. |
+| 7 — guia de uso | `docs/usage/USAGE-SYSTEM-USERS.md` | — |
+
