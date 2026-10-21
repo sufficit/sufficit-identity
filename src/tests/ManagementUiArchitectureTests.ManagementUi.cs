@@ -110,7 +110,7 @@ public sealed partial class ManagementUiArchitectureTests
         Assert.Contains("type=\"password\"", editor, StringComparison.Ordinal);
         Assert.Contains("credentialClientIdConfirmation", editor,
             StringComparison.Ordinal);
-        Assert.Contains("navigator.clipboard.writeText", editor,
+        Assert.Contains("OneTimeTokenDialog.ShowAsync(", editor,
             StringComparison.Ordinal);
         Assert.Contains("RotateClientSecretAsync", dataSource,
             StringComparison.Ordinal);
@@ -444,7 +444,8 @@ public sealed partial class ManagementUiArchitectureTests
 
         Assert.Contains("<IdentityTextField T=\"string\"", page, StringComparison.Ordinal);
         Assert.Contains("<SUILoadingButton", page, StringComparison.Ordinal);
-        Assert.Contains("<SUIAlert", page, StringComparison.Ordinal);
+        // The created secret opens in the shared one-time dialog.
+        Assert.Contains("OneTimeTokenDialog.ShowAsync(", page, StringComparison.Ordinal);
         Assert.Contains("data-sui-align-row", page, StringComparison.Ordinal);
 
         // Nenhum botão cru: a tela inteira usa os componentes compartilhados.

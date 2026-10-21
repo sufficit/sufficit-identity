@@ -360,8 +360,6 @@
 .completion-panel { flex-wrap: wrap; padding: 20px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); }
 .completion-panel__icon { display: grid; width: 52px; height: 52px; flex: 0 0 auto; place-items: center; border-radius: 50%; background: var(--success-soft); color: var(--success); }
 .completion-panel h2, .completion-panel p { margin-bottom: 2px; }
-.one-time-secret { display: grid; width: 100%; gap: 12px; padding: 14px; border: 1px solid var(--warning); border-radius: var(--radius); background: var(--warning-soft); }
-.one-time-secret > div { display: grid; gap: 2px; }
 
 .client-credential-editor {
     display: grid;
@@ -398,7 +396,6 @@
 .client-credential-editor__status p,
 .client-credential-editor__summary span,
 .client-credential-confirmation span,
-.client-credential-reveal > div span,
 .client-secret-summary > div span,
 .client-credential-catalog__heading p,
 .client-credential-empty span,
@@ -695,7 +692,6 @@
 
 .client-credential-editor__summary > div,
 .client-credential-confirmation > div,
-.client-credential-reveal > div,
 .client-secret-summary > div {
     display: grid;
     min-width: 0;
@@ -721,27 +717,11 @@
     min-width: 0;
 }
 
-.client-credential-editor__actions,
-.client-credential-reveal__actions {
+.client-credential-editor__actions {
     display: flex;
     flex-wrap: wrap;
     justify-content: flex-end;
     gap: 8px;
-}
-
-.client-credential-reveal {
-    display: grid;
-    min-width: 0;
-    gap: 14px;
-    padding: 18px;
-    border: 1px solid var(--warning);
-    border-radius: var(--radius);
-    background: var(--warning-soft);
-}
-
-.client-credential-reveal input {
-    min-width: 0;
-    background: var(--surface);
 }
 
 @media (min-width: 768px) {
@@ -6054,8 +6034,7 @@ h3 {
     }
 
     .client-credential-editor__summary .button,
-    .client-credential-editor__actions .button,
-    .client-credential-reveal__actions .button {
+    .client-credential-editor__actions .button {
         width: 100%;
     }
 
@@ -6417,34 +6396,6 @@ h3 {
 
 .sa-create__actions > * {
     flex: 0 0 auto;
-}
-
-/* O alerta do segredo é o único bloco da pilha da página sem margem própria —
-   os vizinhos (.sa-create, .inline-notice) já trazem 20px embaixo. Sem isto ele
-   encosta no aviso de sucesso logo abaixo e os dois cartões leem como um só. */
-.service-account-alert {
-    margin-bottom: 20px;
-}
-
-/* O segredo aparece uma única vez: bloco monoespaçado, quebrando em qualquer
-   ponto para caber sem cortar. */
-.service-account-alert__copy {
-    display: grid;
-    gap: 10px;
-    justify-items: start;
-}
-
-.service-account-secret {
-    margin: 0;
-    padding: 10px 12px;
-    border-radius: 8px;
-    background: var(--sui-surface-strong, #0f172a);
-    color: #f8fafc;
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 0.92rem;
-    width: 100%;
-    overflow-wrap: anywhere;
-    white-space: pre-wrap;
 }
 
 .sa-capabilities {

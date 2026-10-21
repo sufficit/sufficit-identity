@@ -4,13 +4,16 @@ namespace Sufficit.Identity.Tests;
 
 public sealed partial class ManagementUiArchitectureTests
 {
-    // A token shown once opens in a dialog instead of a panel further down
+    // A token or secret shown once opens in a dialog instead of a panel further down
     // the page, and every surface goes through the same component so the
     // guard against an accidental close is not reimplemented per page.
     [Theory]
     [InlineData("Pages", "OperatorTokens.razor")]
     [InlineData("Pages", "Provisioning.razor")]
     [InlineData(null, "RegistrationTokenPanel.razor")]
+    [InlineData("Pages", "ClientEdit.razor")]
+    [InlineData("Pages", "ClientDraft.razor")]
+    [InlineData("Pages", "ServiceAccounts.razor")]
     public void One_time_tokens_open_in_the_shared_dialog(string? folder, string file)
     {
         var components = Path.Combine(ResolveManagementUiSource(), "Components");

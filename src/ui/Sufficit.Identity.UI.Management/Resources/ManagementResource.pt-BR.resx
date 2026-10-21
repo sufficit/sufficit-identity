@@ -638,10 +638,7 @@
   <data name="Clients.Edit.CredentialUpdateErrorTitle" xml:space="preserve"><value>Não foi possível atualizar as credenciais</value></data>
   <data name="Clients.Edit.CopyCredentialOnceMessage" xml:space="preserve"><value>Este é o único momento em que o valor completo será exibido. Salve-o no cofre da aplicação.</value></data>
   <data name="Clients.Edit.NewCredentialAriaLabel" xml:space="preserve"><value>Nova credencial da aplicação</value></data>
-  <data name="Clients.Edit.Copied" xml:space="preserve"><value>Copiada</value></data>
   <data name="Clients.Edit.CopyCredentialAction" xml:space="preserve"><value>Copiar credencial</value></data>
-  <data name="Clients.Edit.HideValue" xml:space="preserve"><value>Ocultar valor</value></data>
-  <data name="Clients.Edit.ClipboardUnavailable" xml:space="preserve"><value>A cópia automática não está disponível. Selecione e copie o valor acima.</value></data>
   <data name="Clients.Edit.ManageRotation" xml:space="preserve"><value>Gerenciar rotação</value></data>
   <data name="Clients.Edit.RotationGuidance" xml:space="preserve"><value>Adicione primeiro a nova credencial, atualize a aplicação consumidora e só então revogue a anterior.</value></data>
   <data name="Clients.Edit.AddCredentialAction" xml:space="preserve"><value>Adicionar credencial</value></data>
@@ -990,7 +987,6 @@
   <data name="ServiceAccounts.CreatedSecret.Title" xml:space="preserve"><value>Copie o segredo agora — ele não será exibido de novo</value></data>
   <data name="ServiceAccounts.CreatedSecret.AccountLabel" xml:space="preserve"><value>Conta</value></data>
   <data name="ServiceAccounts.CreatedSecret.HashNote" xml:space="preserve"><value>O segredo é guardado apenas como hash; se perder, só resta rotacionar.</value></data>
-  <data name="ServiceAccounts.CreatedSecret.Acknowledge" xml:space="preserve"><value>Já copiei</value></data>
   <data name="ServiceAccounts.Create.AriaLabel" xml:space="preserve"><value>Nova conta de sistema</value></data>
   <data name="ServiceAccounts.Create.DescriptionPrefix" xml:space="preserve"><value>A conta é criada como cliente confidencial com</value></data>
   <data name="ServiceAccounts.Create.DescriptionSuffix" xml:space="preserve"><value>— sem redirect e sem fluxo interativo, porque não há usuário nessa história. O segredo é gerado pelo servidor e mostrado uma única vez.</value></data>
@@ -2157,10 +2153,11 @@
   <data name="Error.user_external_login_not_found" xml:space="preserve"><value>A conta vinculada não foi encontrada. Ela pode já ter sido removida.</value></data>
   <data name="Error.user_external_login_remove_failed" xml:space="preserve"><value>Não foi possível remover a conta vinculada.</value></data>
   <data name="OneTimeToken.Copy" xml:space="preserve"><value>Copiar token</value></data>
+  <data name="OneTimeToken.CopySecret" xml:space="preserve"><value>Copiar segredo</value></data>
   <data name="OneTimeToken.Copied" xml:space="preserve"><value>Copiado</value></data>
   <data name="OneTimeToken.Done" xml:space="preserve"><value>Concluído</value></data>
   <data name="OneTimeToken.ClipboardBlocked" xml:space="preserve"><value>O navegador bloqueou a área de transferência. Selecione o token e copie manualmente.</value></data>
   <data name="OneTimeToken.Discard" xml:space="preserve"><value>Fechar sem copiar</value></data>
-  <data name="OneTimeToken.DiscardTitle" xml:space="preserve"><value>O token ainda não foi copiado</value></data>
-  <data name="OneTimeToken.DiscardMessage" xml:space="preserve"><value>O token não foi copiado e não poderá ser exibido de novo. Para usá-lo depois, será preciso gerar outro.</value></data>
+  <data name="OneTimeToken.DiscardTitle" xml:space="preserve"><value>O valor ainda não foi copiado</value></data>
+  <data name="OneTimeToken.DiscardMessage" xml:space="preserve"><value>Ele não poderá ser exibido de novo. Para usá-lo depois, será preciso gerar outro.</value></data>
 </root>

@@ -4,6 +4,7 @@
 @implements IAsyncDisposable
 @inject ManagementClientDataSource ClientData
 @inject NavigationManager Navigation
+@inject ISUIDialogService Dialogs
 
 <PageTitle>@L["Clients.Draft.PageTitle"] | Sufficit Identity</PageTitle>
 
@@ -41,21 +42,6 @@ else if (completion is not null)
             <h2 id="completion-heading">@completion.Client.DisplayName</h2>
             <p>Client ID: <code>@completion.Client.ClientId</code></p>
         </div>
-        @if (!string.IsNullOrWhiteSpace(completion.OneTimeSecret))
-        {
-            <div class="one-time-secret" role="alert">
-                <div>
-                    <strong>@L["Clients.Draft.CopyCredentialTitle"]</strong>
-                    <span>@L["Clients.Draft.CopyCredentialMessage"]</span>
-                </div>
-                <input id="generated-client-secret"
-                       name="generated-client-secret"
-                       class="form-control technical-value"
-                       value="@completion.OneTimeSecret"
-                       readonly
-                       aria-label="@L["Clients.Draft.GeneratedCredentialAriaLabel"].Value" />
-            </div>
-        }
         <div class="wizard-actions wizard-actions--complete">
             <a class="button button--primary" href="@ClientHref(completion.Client.Id)">@L["Clients.Draft.OpenApplication"]</a>
             <a class="button button--secondary" href="clients">@L["Clients.Create.Back"]</a>
@@ -591,7 +577,22 @@ else
         if (await SaveAsync(ManagementClientDraftSteps.Review))
         {
             var result = await ClientData.CompleteClientDraftAsync(Id, draft.Version);
-            if (result.IsSuccess) completion = result.Value;
+            if (result.IsSuccess)
+        {
+            completion = result.Value;
+            if (!string.IsNullOrWhiteSpace(completion?.OneTimeSecret))
+            {
+                StateHasChanged();
+                await OneTimeTokenDialog.ShowAsync(
+                    Dialogs,
+                    L["Clients.Draft.CopyCredentialTitle"].Value,
+                    new OneTimeTokenRequest(
+                        completion.OneTimeSecret,
+                        L["Clients.Draft.CopyCredentialMessage"].Value,
+                        L["Clients.Draft.GeneratedCredentialAriaLabel"].Value,
+                        CopyLabel: L["Clients.Edit.CopyCredentialAction"].Value));
+            }
+        }
             else errorMessage = result.ErrorMessage ?? L["Clients.Draft.CreateFailedError"].Value;
         }
         busy = false;

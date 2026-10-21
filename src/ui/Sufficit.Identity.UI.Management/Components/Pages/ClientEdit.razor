@@ -5,6 +5,7 @@
 @inject ManagementClientDataSource ClientData
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
+@inject ISUIDialogService Dialogs
 
 <PageTitle>@PageTitleText</PageTitle>
 
@@ -433,35 +434,7 @@ else
                         </div>
                     }
 
-                    @if (!string.IsNullOrWhiteSpace(rotatedClientSecret))
-                    {
-                        <div class="client-credential-reveal" role="alert">
-                            <div>
-                                <strong>@L["Clients.Draft.CopyCredentialTitle"]</strong>
-                                <span>@L["Clients.Edit.CopyCredentialOnceMessage"]</span>
-                            </div>
-                            <input id="rotated-client-secret"
-                                   name="rotated-client-secret"
-                                   class="form-control technical-value"
-                                   value="@rotatedClientSecret"
-                                   readonly
-                                   aria-label="@L["Clients.Edit.NewCredentialAriaLabel"].Value" />
-                            <div class="client-credential-reveal__actions">
-                                <button class="button button--primary" type="button" @onclick="CopyRotatedSecretAsync">
-                                    <SUIIcon Name="@SUIIcons.Copy" Size="17" />
-                                    @(credentialCopied ? L["Clients.Edit.Copied"] : L["Clients.Edit.CopyCredentialAction"])
-                                </button>
-                                <button class="button button--secondary" type="button" @onclick="HideRotatedSecret">
-                                    @L["Clients.Edit.HideValue"]
-                                </button>
-                            </div>
-                            @if (clipboardUnavailable)
-                            {
-                                <span class="field-error" role="status">@L["Clients.Edit.ClipboardUnavailable"]</span>
-                            }
-                        </div>
-                    }
-                    else if (!configuringCredential)
+                    @if (!configuringCredential)
                     {
                         <div class="client-credential-editor__summary client-credential-editor__summary--actions">
                             <div>
@@ -919,8 +892,6 @@ else
     private bool configuringCredential;
     private bool rotatingCredential;
     private bool revokingCredential;
-    private bool credentialCopied;
-    private bool clipboardUnavailable;
     private Guid? revokingCredentialId;
     private string? revokingCredentialVersion;
     private int activeSection;
@@ -929,7 +900,6 @@ else
     private string? jwksErrorMessage;
     private string? tlsCertificateErrorMessage;
     private string? revokingTlsKeyId;
-    private string? rotatedClientSecret;
     private string credentialOperation = "add";
     private string credentialMode = "generated";
     private string credentialLabel = string.Empty;
@@ -1268,9 +1238,9 @@ else
         }
 
         credentialOverview = result.Value.Overview;
-        rotatedClientSecret = result.Value.OneTimeSecret;
         ResetCredentialForm();
         await RefreshClientAsync();
+        await ShowOneTimeSecretAsync(result.Value.OneTimeSecret);
     }
 
     private async Task RotateCredentialAsync()
@@ -1300,16 +1270,14 @@ else
 
         client = result.Value.Client;
         Populate(client);
-        rotatedClientSecret = result.Value.OneTimeSecret;
         ResetCredentialForm();
         await LoadCredentialsAsync();
+        await ShowOneTimeSecretAsync(result.Value.OneTimeSecret);
     }
 
     private void ResetCredentialForm()
     {
         configuringCredential = false;
-        credentialCopied = false;
-        clipboardUnavailable = false;
         credentialClientIdConfirmation = string.Empty;
         credentialLabel = string.Empty;
         credentialExpirationDate = null;
@@ -1562,32 +1530,22 @@ else
         await LoadCredentialsAsync();
     }
 
-    private async Task CopyRotatedSecretAsync()
+    private async Task ShowOneTimeSecretAsync(string? secret)
     {
-        if (string.IsNullOrWhiteSpace(rotatedClientSecret))
+        if (string.IsNullOrWhiteSpace(secret))
         {
             return;
         }
 
-        try
-        {
-            await JS.InvokeVoidAsync(
-                "navigator.clipboard.writeText",
-                rotatedClientSecret);
-            credentialCopied = true;
-            clipboardUnavailable = false;
-        }
-        catch (JSException)
-        {
-            clipboardUnavailable = true;
-        }
-    }
-
-    private void HideRotatedSecret()
-    {
-        rotatedClientSecret = null;
-        credentialCopied = false;
-        clipboardUnavailable = false;
+        StateHasChanged();
+        await OneTimeTokenDialog.ShowAsync(
+            Dialogs,
+            L["Clients.Draft.CopyCredentialTitle"].Value,
+            new OneTimeTokenRequest(
+                secret,
+                L["Clients.Edit.CopyCredentialOnceMessage"].Value,
+                L["Clients.Edit.NewCredentialAriaLabel"].Value,
+                CopyLabel: L["Clients.Edit.CopyCredentialAction"].Value));
     }
 
     private IReadOnlyList<string> GrantTypes()

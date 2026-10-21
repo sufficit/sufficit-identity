@@ -46,7 +46,7 @@
                        ColorValue="SUIColor.Primary"
                        OnClick="CopyAsync">
                 <SUIIcon Name="@SUIIcons.Copy" Size="17" />
-                @L["OneTimeToken.Copy"]
+                @(Request.CopyLabel ?? L["OneTimeToken.Copy"])
             </SUIButton>
         </footer>
     }
@@ -62,7 +62,7 @@
                        ColorValue="SUIColor.Primary"
                        OnClick="CopyAsync">
                 <SUIIcon Name="@SUIIcons.Copy" Size="17" />
-                @(copied ? L["OneTimeToken.Copied"] : L["OneTimeToken.Copy"])
+                @(copied ? L["OneTimeToken.Copied"] : Request.CopyLabel ?? L["OneTimeToken.Copy"])
             </SUIButton>
         </footer>
     }
