@@ -339,9 +339,11 @@
                 // directly: NavigationManager would navigate and clear it.
                 if (_externalError is not null)
                 {
+                    // Cast: a bare string[] would bind to params object[] and
+                    // reach JS as three arguments instead of one array.
                     await JS.InvokeVoidAsync(
                         "sufficitIdentityForgetQueryKeys",
-                        new[] { "error", "attempt", "at" });
+                        (object)new[] { "error", "attempt", "at" });
                 }
                 StateHasChanged();
             }

@@ -5,6 +5,7 @@
 // Removes query keys from the address bar without navigating, e.g. a
 // sign-in error already shown, so a reload does not show it again.
 window.sufficitIdentityForgetQueryKeys = function (keys) {
+    if (typeof keys === 'string') keys = [keys];
     try {
         var url = new URL(window.location.href);
         var changed = false;
@@ -24,7 +25,8 @@ window.sufficitIdentityForgetQueryKeys = function (keys) {
 // time zone, for the attempt stamp shown under sign-in errors.
 window.sufficitIdentityFormatLocalTime = function (epochMs) {
     try {
-        return new Date(epochMs).toLocaleString(undefined, {
+        // The page language, not the browser's: the stamp sits in page text.
+        return new Date(epochMs).toLocaleString(document.documentElement.lang || undefined, {
             day: '2-digit', month: '2-digit',
             hour: '2-digit', minute: '2-digit', second: '2-digit'
         });
