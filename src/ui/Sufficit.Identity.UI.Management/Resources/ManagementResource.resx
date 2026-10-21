@@ -2152,6 +2152,7 @@
   <data name="Users.ExternalLogins.ForbiddenDescription" xml:space="preserve"><value>Your operator permissions do not include changing this user's sign-in credentials.</value></data>
   <data name="Error.user_external_login_not_found" xml:space="preserve"><value>The linked account was not found. It may have been removed already.</value></data>
   <data name="Error.user_external_login_remove_failed" xml:space="preserve"><value>The linked account could not be removed.</value></data>
+  <data name="Dialog.Close" xml:space="preserve"><value>Close</value></data>
   <data name="OneTimeToken.Copy" xml:space="preserve"><value>Copy token</value></data>
   <data name="OneTimeToken.CopySecret" xml:space="preserve"><value>Copy secret</value></data>
   <data name="OneTimeToken.Copied" xml:space="preserve"><value>Copied</value></data>

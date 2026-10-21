@@ -2152,6 +2152,7 @@
   <data name="Users.ExternalLogins.ForbiddenDescription" xml:space="preserve"><value>Suas permissões de operador não incluem alterar as credenciais de entrada deste usuário.</value></data>
   <data name="Error.user_external_login_not_found" xml:space="preserve"><value>A conta vinculada não foi encontrada. Ela pode já ter sido removida.</value></data>
   <data name="Error.user_external_login_remove_failed" xml:space="preserve"><value>Não foi possível remover a conta vinculada.</value></data>
+  <data name="Dialog.Close" xml:space="preserve"><value>Fechar</value></data>
   <data name="OneTimeToken.Copy" xml:space="preserve"><value>Copiar token</value></data>
   <data name="OneTimeToken.CopySecret" xml:space="preserve"><value>Copiar segredo</value></data>
   <data name="OneTimeToken.Copied" xml:space="preserve"><value>Copiado</value></data>
