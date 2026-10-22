@@ -22,3 +22,11 @@ servidor). Sem valor na aplicação, vale o padrão do servidor.
 O aviso de postura `delegated-credentials-stale-sign-in` continua olhando só o
 padrão do servidor: um valor maior numa aplicação é decisão registrada dela,
 auditada pelo Management.
+
+## Produção (22/10, `1e9a0ba`)
+
+- A única aplicação delegante passou a ter o próprio valor (168 h, decisão do
+  dono de 05/10 mantida) nas configurações do cliente.
+- O padrão do servidor voltou ao recomendado: `MaxAuthAgeHours` 168 → 24 nos
+  três nós (backup `appsettings.Production.json.bak-maxauth-*`, com `cp -a`).
+- A checagem de postura deixou de emitir `delegated-credentials-stale-sign-in`.
