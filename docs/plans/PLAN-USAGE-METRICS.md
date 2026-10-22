@@ -99,3 +99,6 @@ agregado: um ponto por combinação a cada descarga, com a contagem do período 
 a tag `node`. Consultas no VictoriaMetrics passam de contar pontos para somar
 valores (`sum_over_time`). O `Meter` cobre quem preferir OTLP/Prometheus sem
 mudar o identity.
+
+**Produção 22/10 (`10ac64e`):** 210.081 eventos viraram 2.195 linhas `legacy`;
+os nós já gravam suas linhas próprias; tabela por evento removida.
