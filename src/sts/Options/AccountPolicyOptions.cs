@@ -171,6 +171,14 @@ public sealed class TwoFactorOptions
     /// Values outside 1..20 are clamped by the runtime.
     /// </summary>
     public int RecoveryCodeCount { get; init; } = 10;
+
+    /// <summary>
+    /// Whether an authenticator key or recovery codes still stored as plain
+    /// text (written before they were encrypted at rest) are read. Turn it off
+    /// once the migration worker logs zero plain-text values: from then on a
+    /// plain-text value is an error, never "no second factor".
+    /// </summary>
+    public bool AcceptPlaintextSecrets { get; init; } = true;
 }
 /// <summary>
 /// Provider-neutral account passkey settings. The STS adapter maps these

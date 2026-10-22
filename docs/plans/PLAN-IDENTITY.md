@@ -294,19 +294,14 @@ CLI command of `Server.dll` itself.
 
 ### C3 — Authenticator and recovery material at rest
 
-The standard ASP.NET Core Identity token store persists authenticator and
-recovery-code material in `usertokens` with no application encryption adapter.
+Authenticator keys and recovery codes are encrypted through the vault on every
+write, and a worker encrypts the plain-text values left from before
+([`202610221900`](../activities/202610221900-second-factor-at-rest.md)).
 
-- [ ] Introduce an `IUserAuthenticationSecretStore` boundary backed by envelope
-  encryption, with user ID, login provider and token name as AAD
-- [ ] Implement dual-read: decrypt versioned ciphertext, accept legacy
-  plaintext, rewrite legacy values on a successful read or mutation
-- [ ] Add a background migration with checkpoints and redacted progress
-  metrics — do not reset or disable anybody's existing MFA
+- [ ] **(operational)** When every node logs "0 still in plain text", set
+  `Sufficit:Identity:TwoFactor:AcceptPlaintextSecrets=false`
 - [ ] Coordinate secret rotation with security-stamp, session and token
   revocation and recovery-code regeneration
-- [ ] Enable fail-closed encrypted writes first; disable plaintext reads only
-  after migration telemetry reaches zero
 
 ### C4 — Verified transport everywhere
 

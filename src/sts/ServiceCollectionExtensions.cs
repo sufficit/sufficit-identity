@@ -329,6 +329,7 @@ public static partial class ServiceCollectionExtensions
             db.AddInterceptors(connectionTelemetry, commandTelemetry);
         });
         services.AddHostedService<DatabaseHealthWatchdog>();
+        services.AddHostedService<Security.AuthenticationSecretMigrationWorker>();
 
         // ---- Antiforgery (defensive registration — #N1) ----
         // Required so the AuthorizationController's IAntiforgery dependency
@@ -441,6 +442,8 @@ public static partial class ServiceCollectionExtensions
                 identity.SignIn.RequireConfirmedEmail = options.SignIn.RequireConfirmedEmail;
             })
             .AddEntityFrameworkStores<AppDbContext>()
+            // Authenticator keys and recovery codes encrypted at rest (plan C3).
+            .AddUserStore<Security.ProtectedSecretsUserStore>()
             .AddClaimsPrincipalFactory<OidcSessionClaimsPrincipalFactory>()
             .AddDefaultTokenProviders();
 
