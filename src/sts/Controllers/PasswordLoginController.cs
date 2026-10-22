@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 using Sufficit.Identity.Application.Accounts;
+using Sufficit.Identity.Application.Security;
+using Sufficit.Identity.STS.Security;
 
 namespace Sufficit.Identity.STS.Controllers;
 
@@ -14,7 +16,11 @@ namespace Sufficit.Identity.STS.Controllers;
 [ApiController]
 public sealed class PasswordLoginController(
     IInteractiveSignInService signInService,
-    IAntiforgery antiforgery) : ControllerBase
+    IAntiforgery antiforgery,
+    CredentialAbuseGuard abuseGuard,
+    CredentialAbuseOptions abuseOptions,
+    IHumanVerificationService humanVerification,
+    HumanVerificationOptions humanVerificationOptions) : ControllerBase
 {
     [AllowAnonymous]
     [HttpPost("/account/login/password")]
@@ -34,6 +40,35 @@ public sealed class PasswordLoginController(
             return LoginError("request_expired", returnUrl);
         }
 
+        // Shared, per account and per IP (plan D6): decided before the password
+        // is even looked at, so a refused attempt costs the attacker a guess.
+        var account = request.UserName ?? string.Empty;
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var decision = await abuseGuard.EvaluateAsync(account, ip, cancellationToken);
+        _requireVerification = decision.Action == CredentialAbuseAction.RequireVerification
+            && humanVerificationOptions.Protects(HumanVerificationFlow.Login);
+        switch (decision.Action)
+        {
+            case CredentialAbuseAction.Block:
+                return LoginError("too_many_attempts", returnUrl, request);
+            case CredentialAbuseAction.Delay:
+                await Task.Delay(decision.Delay, cancellationToken);
+                break;
+            case CredentialAbuseAction.RequireVerification
+                when humanVerificationOptions.Protects(HumanVerificationFlow.Login):
+                var verification = await humanVerification.VerifyAsync(
+                    HumanVerificationFlow.Login,
+                    Request.HasFormContentType ? Request.Form[HumanVerificationResponseField].ToString() : null,
+                    cancellationToken);
+                if (!verification.Succeeded)
+                    return LoginError("verification_required", returnUrl, request);
+                break;
+            case CredentialAbuseAction.RequireVerification:
+                // No verification provider: the longest delay is the next best brake.
+                await Task.Delay(TimeSpan.FromSeconds(Math.Max(1, abuseOptions.MaxDelaySeconds)), cancellationToken);
+                break;
+        }
+
         var result = await signInService.PasswordSignInAsync(
             new PasswordSignInCommand(
                 request.UserName ?? string.Empty,
@@ -41,6 +76,15 @@ public sealed class PasswordLoginController(
                 request.RememberMe,
                 UseEmail: request.FromRegistration),
             cancellationToken);
+
+        // A right password clears the account's count (LockedOut and NotAllowed
+        // are only reported for one: WithoutEnumerationAsync turns them into
+        // Failed otherwise); a wrong one adds to it.
+        if (result.Status is InteractiveSignInStatus.Failed)
+            await abuseGuard.RecordFailureAsync(account, ip, cancellationToken);
+        else if (result.Status is InteractiveSignInStatus.Succeeded or InteractiveSignInStatus.RequiresTwoFactor
+            or InteractiveSignInStatus.NotAllowed or InteractiveSignInStatus.LockedOut)
+            await abuseGuard.RecordSuccessAsync(account, cancellationToken);
 
         return result.Status switch
         {
@@ -68,18 +112,26 @@ public sealed class PasswordLoginController(
         };
     }
 
+    /// <summary>Form field the human-verification widget writes its token to.</summary>
+    internal const string HumanVerificationResponseField = "human-verification-response";
+
     private RedirectResult SignedIn(string returnUrl)
     {
         LoginErrorLocation.Reset(HttpContext);
         return Redirect(AuthenticationContinuation.Location(returnUrl, HttpContext));
     }
 
+    // Set per request (controllers are transient): every error answer while
+    // verification is required keeps the widget on the page.
+    private bool _requireVerification;
+
     private RedirectResult LoginError(string error, string returnUrl, PasswordLoginRequest? request = null) =>
         Redirect(LoginErrorLocation.Build(
             HttpContext,
             error,
             returnUrl,
-            request?.FromRegistration == true ? request.UserName : null));
+            request?.FromRegistration == true ? request.UserName : null,
+            _requireVerification));
 
     public sealed class PasswordLoginRequest
     {

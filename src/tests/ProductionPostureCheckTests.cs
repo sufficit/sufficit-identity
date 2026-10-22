@@ -543,6 +543,10 @@ public sealed class ProductionPostureCheckTests
             {
                 IncludeUnmappedClaimsInAccessTokens = false,
             },
+            AbuseProtection = new Sufficit.Identity.STS.Security.CredentialAbuseOptions
+            {
+                Mode = Sufficit.Identity.STS.Security.CredentialAbuseMode.Enforce,
+            },
         };
         var vault = new VaultOptions { Enabled = true, KeySource = "certificate" };
         var configuration = new ConfigurationBuilder()

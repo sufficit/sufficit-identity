@@ -124,6 +124,16 @@ public static partial class ServiceCollectionExtensions
             new SufficitIdentityRuntimeCapabilityCatalog(options)));
         services.AddSingleton(options.HumanVerification);
         services.AddSingleton(options.TwoFactor);
+        services.AddSingleton(options.AbuseProtection);
+        services.AddSingleton(_ => Security.CredentialAbuseAccountKey.Create(
+            startupSecretStore.GetSecretAsync(Security.CredentialAbuseAccountKey.SecretName).GetAwaiter().GetResult(),
+            options.Issuer ?? string.Empty));
+        // Shared counters when the deployment has Redis; per process otherwise.
+        services.AddSingleton<Security.ICredentialFailureCounter>(provider =>
+            provider.GetService<StackExchange.Redis.IConnectionMultiplexer>() is { } redis
+                ? new Security.RedisCredentialFailureCounter(redis)
+                : new Security.InMemoryCredentialFailureCounter(TimeProvider.System));
+        services.AddSingleton<Security.CredentialAbuseGuard>();
         services.AddSingleton(options.Branding);
         services.AddSingleton(options.AuthenticationContext);
         services.AddSingleton<IAuthenticationContextClassMapper,

@@ -53,9 +53,16 @@ public sealed class AspNetCoreIdentityInteractiveSignInService(
         var user = command.UseEmail
             ? await accountLookup.FindUniqueByEmailAsync(command.UserName, cancellationToken)
             : await signInManager.UserManager.FindByNameAsync(command.UserName);
-        if (command.UseEmail && user is null)
+        if (user is null)
         {
-            return new InteractiveSignInResult(InteractiveSignInStatus.Failed);
+            // No account means no hash to verify, and an answer that comes back
+            // faster than a wrong password tells who exists (plan D6). Spend the
+            // same work on a throwaway hash.
+            VerifyAgainstDummyHash(command.Password);
+            if (command.UseEmail)
+            {
+                return new InteractiveSignInResult(InteractiveSignInStatus.Failed);
+            }
         }
         if (command.UseEmail && !await signInManager.UserManager.HasPasswordAsync(user!))
         {
@@ -310,6 +317,17 @@ public sealed class AspNetCoreIdentityInteractiveSignInService(
     /// exactly the path where the sign-in manager skipped one, which keeps the
     /// refusals from being distinguishable by how long they take.
     /// </remarks>
+    // Made by the configured hasher, so it costs what a real hash costs.
+    private static string? _dummyHash;
+
+    private void VerifyAgainstDummyHash(string password)
+    {
+        var hasher = signInManager.UserManager.PasswordHasher;
+        var hash = LazyInitializer.EnsureInitialized(ref _dummyHash,
+            () => hasher.HashPassword(new ApplicationUser(), Guid.NewGuid().ToString("N")));
+        hasher.VerifyHashedPassword(new ApplicationUser(), hash, password ?? string.Empty);
+    }
+
     private async Task<InteractiveSignInResult> WithoutEnumerationAsync(
         InteractiveSignInResult mapped,
         ApplicationUser? user,

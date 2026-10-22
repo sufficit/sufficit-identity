@@ -199,6 +199,12 @@ public sealed class SufficitIdentityOptions
     public TwoFactorOptions TwoFactor { get; init; } = new();
 
     /// <summary>
+    /// Password-guessing protection shared by every replica (plan D6).
+    /// See <see cref="Security.CredentialAbuseOptions"/>.
+    /// </summary>
+    public Security.CredentialAbuseOptions AbuseProtection { get; init; } = new();
+
+    /// <summary>
     /// Consolidated production security-posture policy (the fail-closed
     /// go-live check). See <see cref="SecurityPostureOptions"/>.
     /// </summary>

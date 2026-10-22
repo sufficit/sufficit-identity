@@ -174,6 +174,7 @@ public sealed class RemoteHumanVerificationService(
     private static string ToAction(HumanVerificationFlow flow) => flow switch
     {
         HumanVerificationFlow.Registration => "registration",
+        HumanVerificationFlow.Login => "login",
         HumanVerificationFlow.PasswordRecovery => "password_recovery",
         HumanVerificationFlow.EmailConfirmation => "email_confirmation",
         _ => throw new ArgumentOutOfRangeException(nameof(flow), flow, null),

@@ -12,7 +12,8 @@ namespace Sufficit.Identity.STS.Security;
 public sealed class StsProductionPostureContributor(
     SufficitIdentityOptions options,
     IConfiguration configuration,
-    IDistributedCache? distributedCache = null)
+    IDistributedCache? distributedCache = null,
+    CredentialAbuseAccountKey? abuseAccountKey = null)
     : IProductionPostureContributor
 {
     public IEnumerable<ProductionPostureFinding> Evaluate()
@@ -294,6 +295,27 @@ public sealed class StsProductionPostureContributor(
                 "Inventory the claims in production, give each a required scope "
                 + "and destination, then set "
                 + "Sufficit:Identity:ClaimScopeMap:IncludeUnmappedClaimsInAccessTokens=false.",
+                Severity: ProductionPostureSeverity.Advisory);
+        }
+
+        if (options.AbuseProtection.Mode != CredentialAbuseMode.Enforce)
+        {
+            yield return new(
+                "credential-abuse-not-enforced",
+                $"Password-guessing protection is in {options.AbuseProtection.Mode} mode: repeated "
+                + "failures per account and per IP are counted but never slowed, challenged or refused.",
+                "Review the \"Credential abuse (observe)\" decisions for false positives (shared NAT), "
+                + "then set Sufficit:Identity:AbuseProtection:Mode=Enforce.",
+                Severity: ProductionPostureSeverity.Advisory);
+        }
+
+        if (abuseAccountKey is { Derived: true })
+        {
+            yield return new(
+                "credential-abuse-account-key-derived",
+                "The key that hides account names in the shared failure counters is derived from "
+                + "the issuer, so anyone who knows the issuer can match a counter to an account.",
+                "Set SUFFICIT_SECRET_IDENTITY_ABUSE_PROTECTION_ACCOUNT_KEY to the same random value on every replica.",
                 Severity: ProductionPostureSeverity.Advisory);
         }
     }

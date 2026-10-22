@@ -10,6 +10,9 @@ public enum HumanVerificationFlow
     Registration,
     PasswordRecovery,
     EmailConfirmation,
+
+    /// <summary>Password sign-in, asked only after repeated failures (plan D6).</summary>
+    Login,
 }
 
 public enum HumanVerificationProvider
@@ -45,6 +48,7 @@ public sealed class HumanVerificationOptions
         nameof(HumanVerificationFlow.Registration),
         nameof(HumanVerificationFlow.PasswordRecovery),
         nameof(HumanVerificationFlow.EmailConfirmation),
+        nameof(HumanVerificationFlow.Login),
     ];
 
     /// <summary>

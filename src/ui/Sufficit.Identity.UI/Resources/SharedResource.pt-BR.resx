@@ -64,6 +64,8 @@
   <data name="Login.ForgotPassword" xml:space="preserve"><value>Esqueceu a senha?</value></data>
   <data name="Login.CreateAccount" xml:space="preserve"><value>Criar nova conta</value></data>
   <data name="Login.ResendConfirmation" xml:space="preserve"><value>Reenviar confirmação de e-mail</value></data>
+  <data name="Login.Error.VerificationRequired" xml:space="preserve"><value>Muitas tentativas de entrar nesta conta. Confirme que você não é um robô e tente de novo.</value></data>
+  <data name="Login.Error.TooManyAttempts" xml:space="preserve"><value>Muitas tentativas a partir desta rede. Aguarde alguns minutos e tente de novo.</value></data>
   <data name="Login.Error.LockedOut" xml:space="preserve"><value>Conta bloqueada por muitas tentativas. Tente novamente mais tarde.</value></data>
   <data name="Login.Error.NotAllowed" xml:space="preserve"><value>Login não permitido. Confirme seu e-mail ou contate o suporte.</value></data>
   <data name="Login.Error.NoEmailFromProvider" xml:space="preserve"><value>O provedor externo não forneceu um e-mail utilizável.</value></data>

@@ -151,6 +151,11 @@
                          Label="@L["Login.RememberMe"]"
                          @bind-Value="Model.RememberMe" />
 
+            @if (_requireVerification)
+            {
+                <HumanVerification Flow="HumanVerificationFlow.Login" />
+            }
+
             <SUILoadingButton ButtonTypeValue="SUIButtonType.Submit" FullWidth>
                 @L["Login.Submit"]
             </SUILoadingButton>
@@ -192,6 +197,12 @@
 
     [SupplyParameterFromQuery(Name = "error")]
     private string? _externalError { get; set; }
+
+    // Set by the server after repeated failures (plan D6).
+    [SupplyParameterFromQuery(Name = "verify")]
+    private string? _verifyQuery { get; set; }
+
+    private bool _requireVerification => _verifyQuery == "1";
 
     // Stamped by the server on every failed sign-in (LoginErrorLocation): the
     // error lives in the URL, so a reload or a stale tab replays it, and the
@@ -292,6 +303,10 @@
                 L["Login.Error.RegistrationDeniedForProvider"],
             "external_link_ticket_invalid" =>
                 L["Login.Error.ExternalLinkTicketInvalid"],
+            "verification_required" =>
+                L["Login.Error.VerificationRequired"],
+            "too_many_attempts" =>
+                L["Login.Error.TooManyAttempts"],
             _ => _errorMessage,
         };
         if (_errorMessage is not null && _errorAtUnix is long at

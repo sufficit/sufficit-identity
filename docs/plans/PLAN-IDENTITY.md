@@ -368,20 +368,17 @@ out without it; the multi-replica rehearsal is the missing evidence.
 
 ### D6 — Distributed abuse protection
 
-Lockout is 5 failures in 5 minutes. The rate limiter is an in-process
-`PartitionedRateLimiter` — each replica counts on its own — partitioned by path,
-method and IP; there is no account dimension (verified 2026-09-20).
+Shared per-account and per-IP counters, progressive delay, human verification
+and refusal for interactive password sign-in, in `Observe`
+([`202610222030`](../activities/202610222030-credential-abuse-protection.md)).
 
-- [ ] Implement shared partitions by endpoint, client, HMAC-normalized account
-  and IP, with progressive delay and bounded lockout behaviour; use exponential
-  backoff or a window of at least 15 minutes
-- [ ] Add `HumanVerificationFlow.Login` CAPTCHA after N failures per account/IP
-- [ ] Add dummy password work and response/timing normalization wherever user
-  existence can be inferred
-- [ ] Validate the trusted-proxy configuration at startup and integrate
-  edge/WAF signals without treating them as the only control
-- [ ] **(operational)** Tune with production shadow metrics, including NAT
-  false-positive and botnet-spray scenarios
+- [ ] **(operational)** Tune the thresholds with the observe decisions
+  (shared-NAT false positives, spraying), then set
+  `Sufficit:Identity:AbuseProtection:Mode=Enforce`
+- [ ] Apply the same guard to the other credential checks: second factor and
+  recovery codes, password reset and the token endpoint's remaining grants
+- [ ] Timing and response normalization where user existence can still be
+  inferred (password recovery, registration, email confirmation)
 
 ---
 

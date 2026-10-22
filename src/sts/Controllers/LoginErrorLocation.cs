@@ -20,7 +20,8 @@ internal static class LoginErrorLocation
         HttpContext httpContext,
         string error,
         string returnUrl,
-        string? loginHint = null)
+        string? loginHint = null,
+        bool requireVerification = false)
     {
         var attempt = NextAttempt(httpContext);
         return QueryHelpers.AddQueryString(
@@ -33,6 +34,8 @@ internal static class LoginErrorLocation
                     .ToString(CultureInfo.InvariantCulture),
                 ["returnUrl"] = returnUrl,
                 ["login_hint"] = loginHint,
+                // The page shows the human-verification widget (plan D6).
+                ["verify"] = requireVerification ? "1" : null,
             });
     }
 
