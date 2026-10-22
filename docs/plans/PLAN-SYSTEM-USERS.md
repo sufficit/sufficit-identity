@@ -1,7 +1,72 @@
 # Plano — usuários de sistema
 
-Aberto em 21/10/2026. Estado: **implementado no identity** (21/10/2026; ver
-"Registro de execução"). Consumidores pendentes.
+Aberto em 21/10/2026. Estado: **revisão aprovada em 22/10/2026, a implementar**
+(seção "Revisão de 22/10"). A primeira versão está em produção e atende os 11
+agentes do Fleet.
+
+## Revisão de 22/10 — usuário de sistema é usuário comum
+
+Decisão do dono: um usuário de sistema **não é um tipo diferente de usuário**.
+É um usuário comum que **não tem e-mail nem senha**. A primeira versão criou a
+tabela `systemusers` para marcá-lo e guardar quem o criou; a revisão a remove.
+
+### Por que a tabela existia e por que sai
+
+`systemusers` guardava a marca "sistema", quem criou, quando, a correlação e o
+estado desativado. Quem criou já é gravado em `managementauditevents`, mas a
+auditoria apaga tudo com mais de 15 dias (`AuditRetentionDays`, uma regra única
+por idade), e a criação de um usuário que nunca entra pela tela precisa ficar
+para sempre. A revisão resolve isso na auditoria, não com uma tabela paralela.
+
+### Modelo revisado
+
+1. **Reconhecimento.** Usuário de sistema = usuário sem e-mail, sem senha, sem
+   login externo e sem passkey. Sem nada disso não há caminho de entrada pela
+   tela; a trava do `SufficitSignInManager` fica como defesa extra, pelo mesmo
+   critério. Em 22/10 os únicos 11 usuários sem e-mail e sem senha (de 2.593)
+   eram os de sistema; toda pessoa tem e-mail.
+2. **Desativar** usa o mecanismo de qualquer usuário (lockout e revogação de
+   tokens e autorizações). Sem estado próprio.
+3. **Emissão de token.** Sem e-mail não há o que confirmar: a regra de e-mail
+   confirmado (`RequireConfirmedEmail`) não se aplica a quem não tem e-mail.
+4. **Origem.** "Quem criou e quando" é o evento de auditoria
+   `system_user_created`, que não expira.
+5. **Capacidade estreita** (`identity.system-users.manage`, usada pelo Fleet):
+   continua alcançando só usuários reconhecidos como de sistema pelo item 1.
+6. **Códigos de habilitação** (`systemuserenrollments`) ficam: nenhuma tabela
+   existente guarda código de uso único com hash, validade e revogação.
+
+### Auditoria com expiração por evento
+
+- `managementauditevents` ganha `expiresatutc` (nulo = nunca expira).
+- Ao gravar, o padrão é `occurredatutc + AuditRetentionDays` (15 dias); quem
+  grava o evento pode definir outro prazo ou nenhum.
+- O job de retenção apaga por `expiresatutc <= agora`, não mais por idade.
+- Migração: linhas existentes recebem `occurredatutc + AuditRetentionDays`. Os
+  11 usuários de sistema atuais recebem um evento `system_user_created` sem
+  expiração, com o operador e o instante gravados em `systemusers`, antes de a
+  tabela ser removida.
+
+### As duas tabelas com "events" no nome
+
+| Tabela | O que é | Retenção |
+|--------|---------|----------|
+| `managementauditevents` | **Auditoria**: quem fez o quê no Management (operador, capacidade, recurso, decisão, resultado, antes/depois). | 15 dias por padrão; com a revisão, por evento. |
+| `identityapplicationusageevents` | **Métrica de uso**, não auditoria: qual cliente foi usado, em que endpoint e grant, com que resultado; o usuário só como hash. Alimenta a tela de métricas. Gravada em segundo plano, sem atrasar o login. | Própria, por idade, no `IdentityUsageMetricsWorker`. |
+
+São finalidades diferentes: a auditoria responde por ações de operadores e
+precisa de identificação; a métrica conta uso de aplicações e é anonimizada.
+Juntar as duas misturaria dado pessoal de operador com contagem anônima e as
+duas regras de retenção.
+
+### Entregas da revisão
+
+| # | Entrega |
+|---|---------|
+| R1 | `expiresatutc` em `managementauditevents` (EF + SQL canônico e aditivo), gravação com prazo padrão ou explícito, retenção por vencimento. |
+| R2 | Reconhecimento de usuário de sistema pelo critério do item 1; desativar pelo lockout padrão; `RequireConfirmedEmail` ignorado sem e-mail. |
+| R3 | Migração: eventos permanentes de criação para os 11 atuais; remoção de `systemusers` (EF + SQL). |
+| R4 | Management (API e tela) sobre o critério novo; testes da capacidade estreita (pessoa continua fora de alcance). |
 
 ## Problema
 
