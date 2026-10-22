@@ -82,6 +82,25 @@ internal static partial class HostBootstrap
         Console.WriteLine($"metrics_export_secret_repaired key_version={key.Version}");
     }
 
+    internal static async Task<int> VerifyVaultAsync(WebApplication app)
+    {
+        using var scope = app.Services.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var keyVault = scope.ServiceProvider.GetRequiredService<IKeyVault>();
+        var results = new[]
+        {
+            await VaultRestoreVerification.VerifyNamedSecretsAsync(database, keyVault),
+            await Sufficit.Identity.STS.Security.SecondFactorSecretVerification.VerifyAsync(database, keyVault),
+        };
+        foreach (var result in results)
+        {
+            Console.WriteLine($"vault_verify kind={result.Kind} decrypted={result.Decrypted} failed={result.Failed.Count}");
+            foreach (var id in result.Failed)
+                Console.WriteLine($"vault_verify_failed kind={result.Kind} id={id}");
+        }
+        return results.Any(result => result.Failed.Count > 0) ? 1 : 0;
+    }
+
     internal static async Task ApplyMigrationsWithAdvisoryLockAsync(
         AppDbContext database)
     {

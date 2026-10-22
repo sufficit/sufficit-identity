@@ -35,6 +35,7 @@ var reconcileClientTokenLifetimes = args.Contains(
     "--reconcile-client-token-lifetimes", StringComparer.Ordinal);
 var repairMetricsExportSecret = args.Contains(
     "--repair-metrics-export-secret", StringComparer.Ordinal);
+var verifyVault = args.Contains("--verify-vault", StringComparer.Ordinal);
 
 // Resolve configuration-time secrets through the same ISecretStore boundary
 // used by STS consumers. The store reads SUFFICIT_SECRET_* only.
@@ -280,6 +281,15 @@ app.Logger.LogInformation(
 if (repairMetricsExportSecret)
 {
     await HostBootstrap.RepairMetricsExportSecretAsync(app);
+    return;
+}
+
+// Restore proof (plan C1): point the connection at a restored copy and every
+// vault-protected value is decrypted with this host's key authority. Counts and
+// failing ids only; never a value. Exit code 1 when anything fails.
+if (verifyVault)
+{
+    Environment.ExitCode = await HostBootstrap.VerifyVaultAsync(app);
     return;
 }
 

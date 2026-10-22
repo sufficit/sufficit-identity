@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Core.Entities;
 using Sufficit.Identity.Vault;
@@ -47,6 +48,39 @@ internal static class AuthenticationSecretProtection
     public static Task<string> EncryptAsync(IKeyVault vault, string userId, string loginProvider, string name,
         string value, CancellationToken cancellationToken) =>
         vault.EncryptAsync(KeyName, value, Aad(userId, loginProvider, name), cancellationToken);
+}
+
+/// <summary>Restore proof for the second-factor secrets (plan C1/C3).</summary>
+public static class SecondFactorSecretVerification
+{
+    /// <summary>Decrypts every stored authenticator key and recovery-code set; plain text counts as a failure.</summary>
+    public static async Task<VaultVerificationResult> VerifyAsync(
+        AppDbContext database, IKeyVault vault, CancellationToken cancellationToken = default)
+    {
+        var decrypted = 0;
+        var failed = new List<string>();
+        var tokens = await database.UserTokens.AsNoTracking()
+            .Where(token => token.LoginProvider == AuthenticationSecretProtection.Provider
+                && (token.Name == AuthenticationSecretProtection.AuthenticatorKey
+                    || token.Name == AuthenticationSecretProtection.RecoveryCodes))
+            .ToListAsync(cancellationToken);
+        foreach (var token in tokens)
+        {
+            try
+            {
+                if (token.Value is null || !AuthenticationSecretProtection.IsCiphertext(token.Value))
+                    throw new InvalidOperationException("plain text");
+                await vault.DecryptAsync(token.Value,
+                    AuthenticationSecretProtection.Aad(token.UserId, token.LoginProvider, token.Name), cancellationToken);
+                decrypted++;
+            }
+            catch (Exception) when (!cancellationToken.IsCancellationRequested)
+            {
+                failed.Add($"{token.UserId}/{token.Name}");
+            }
+        }
+        return new("second-factor", decrypted, failed);
+    }
 }
 
 /// <summary>

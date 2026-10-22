@@ -564,7 +564,7 @@ public sealed class VaultBackedSecretStore(
             ["context_id"] = contextId,
         };
 
-    private static IReadOnlyDictionary<string, string> ReadAad(VaultSecret secret) =>
+    internal static IReadOnlyDictionary<string, string> ReadAad(VaultSecret secret) =>
         ReadAad(new VaultSecretSnapshotEntry(
             secret.Name,
             secret.Namespace,

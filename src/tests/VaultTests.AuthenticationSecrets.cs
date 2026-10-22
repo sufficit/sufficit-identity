@@ -113,6 +113,29 @@ public sealed partial class VaultTests
         Assert.Equal(2, await store.CountCodesAsync(tracked!, default));
     }
 
+    [Fact]
+    public async Task A_restored_copy_proves_it_decrypts_and_names_what_does_not()
+    {
+        var (vault, factory) = CreateRealVault();
+        var store = new VaultBackedSecretStore(factory, vault, new VaultOptions { Enabled = true });
+        await store.PutAsync("providers/google/client-secret", "s3cret", "test");
+        var user = await NewUserAsync(factory);
+        await SeedTokenAsync(factory, user.Id, AuthenticationSecretProtection.AuthenticatorKey,
+            await AuthenticationSecretProtection.EncryptAsync(vault, user.Id, AuthenticationSecretProtection.Provider,
+                AuthenticationSecretProtection.AuthenticatorKey, LegacyKey, default));
+        await SeedTokenAsync(factory, user.Id, AuthenticationSecretProtection.RecoveryCodes, "AAAAA-11111");
+
+        await using var database = await factory.CreateDbContextAsync();
+        var secrets = await VaultRestoreVerification.VerifyNamedSecretsAsync(database, vault);
+        var secondFactor = await SecondFactorSecretVerification.VerifyAsync(database, vault);
+
+        Assert.Equal((1, 0), (secrets.Decrypted, secrets.Failed.Count));
+        Assert.Equal(1, secondFactor.Decrypted);
+        // Plain text is a failure here: the restore proof is also the at-rest proof.
+        Assert.Equal([$"{user.Id}/{AuthenticationSecretProtection.RecoveryCodes}"], secondFactor.Failed);
+        Assert.DoesNotContain("s3cret", string.Join(",", secrets.Failed.Concat(secondFactor.Failed)));
+    }
+
     private static ProtectedSecretsUserStore Store(AppDbContext database, IKeyVault vault, TwoFactorOptions? twoFactor = null) =>
         new(database, vault, twoFactor ?? new TwoFactorOptions());
 
