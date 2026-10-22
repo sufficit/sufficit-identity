@@ -19,6 +19,27 @@ namespace Sufficit.Identity.Tests;
 public sealed class ScimProvisioningTests
 {
     [Fact]
+    public void A_disabled_SCIM_module_contributes_no_controller()
+    {
+        // As the host sees it: SCIM is a referenced assembly, so MVC finds it.
+        var parts = new Microsoft.AspNetCore.Mvc.ApplicationParts.ApplicationPartManager();
+        parts.ApplicationParts.Add(new Microsoft.AspNetCore.Mvc.ApplicationParts.AssemblyPart(typeof(ScimUsersController).Assembly));
+        parts.FeatureProviders.Add(new Microsoft.AspNetCore.Mvc.Controllers.ControllerFeatureProvider());
+        Assert.NotEmpty(Controllers(parts));
+
+        ScimIdentityModule.ExcludeControllers(parts);
+
+        Assert.Empty(Controllers(parts));
+
+        static IList<System.Reflection.TypeInfo> Controllers(Microsoft.AspNetCore.Mvc.ApplicationParts.ApplicationPartManager parts)
+        {
+            var feature = new Microsoft.AspNetCore.Mvc.Controllers.ControllerFeature();
+            parts.PopulateFeature(feature);
+            return feature.Controllers;
+        }
+    }
+
+    [Fact]
     public async Task Discovery_exposes_supported_SCIM_contract()
     {
         using var parent = new ManagementTestFactory();

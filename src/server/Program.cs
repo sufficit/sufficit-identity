@@ -208,7 +208,10 @@ if (mgmtEnabled && scimEnabled)
 }
 
 // ---- MVC (for the /connect/* passthrough controllers) ----
-builder.Services.AddControllers();
+builder.Services.AddControllers().ConfigureApplicationPartManager(parts =>
+{
+    if (!scimEnabled) ScimIdentityModule.ExcludeControllers(parts);
+});
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
