@@ -15,7 +15,8 @@ banco ou um backup gerava o segundo fator de qualquer conta.
   `Sufficit:Identity:TwoFactor:AcceptPlaintextSecrets` for `true` (padrão).
   Desligado, texto claro é erro, nunca "sem autenticador", para ninguém
   recadastrar um fator sem MFA.
-- `AuthenticationSecretMigrationWorker` roda em todo nó: 1 min após subir e
+- `AuthenticationSecretMigrationWorker` roda em todo nó: 10 min após subir (mais que um deploy em sequência, já que
+  um nó com build anterior leria o cifrado como chave) e
   depois de hora em hora, cifra os valores em lotes de 100 com update
   condicional ao valor lido (dois nós ou o usuário mudando ao mesmo tempo não
   perdem escrita) e registra "N encrypted in this pass, M still in plain

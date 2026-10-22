@@ -23,7 +23,9 @@ internal sealed class AuthenticationSecretMigrationWorker(
     ILogger<AuthenticationSecretMigrationWorker> logger) : BackgroundService
 {
     internal const int BatchSize = 100;
-    private static readonly TimeSpan StartDelay = TimeSpan.FromMinutes(1);
+    // Longer than a rolling deploy: a node still on a build without this store
+    // would read an encrypted value as if it were the plain key.
+    private static readonly TimeSpan StartDelay = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan Interval = TimeSpan.FromHours(1);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
