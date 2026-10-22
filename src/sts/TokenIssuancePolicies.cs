@@ -75,9 +75,10 @@ internal sealed class ApplicationClaimDestinationPolicy(
             yield break;
         }
 
-        // Protocol claims: OpenIddict owns them (sub always travels; oi_* are its
-        // private claims). Not application data, nothing to inventory.
-        if (claim.Type == Claims.Subject || claim.Type.StartsWith("oi_", StringComparison.Ordinal))
+        // Protocol claims: OpenIddict owns them (sub always travels, the JWT
+        // registered claims are rewritten on issue, oi_* are its private claims).
+        // Not application data, nothing to inventory.
+        if (ProtocolClaimTypes.Contains(claim.Type) || claim.Type.StartsWith("oi_", StringComparison.Ordinal))
         {
             yield return Destinations.AccessToken;
             yield break;
@@ -135,6 +136,12 @@ internal sealed class ApplicationClaimDestinationPolicy(
             // Persisted free-text addresses, kept under a private name; still an address.
             [Grants.GrantOperations.LegacyAddressClaimType] = Scopes.Address,
         };
+
+    internal static readonly IReadOnlySet<string> ProtocolClaimTypes = new HashSet<string>(StringComparer.Ordinal)
+    {
+        Claims.Subject, Claims.Issuer, Claims.Audience, Claims.ExpiresAt, Claims.IssuedAt,
+        Claims.NotBefore, Claims.JwtId,
+    };
 
     internal static readonly IReadOnlySet<string> AccessTokenOnlyClaimTypes = new HashSet<string>(StringComparer.Ordinal)
     {
