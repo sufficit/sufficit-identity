@@ -440,39 +440,45 @@ public sealed class AuthorizationCodeFlowTests
             Assert.True(result.Succeeded);
         }
 
-        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-        await TestOnlyEndpoints.SignInAsync(client, username);
+        // An address is released only with the address scope (plan B2).
+        var withoutScope = await IntrospectAfterSignInAsync($"openid profile {TestDataSeeder.ScopeName}");
+        Assert.False(withoutScope.TryGetProperty(LegacyAddressClaimType, out _));
 
-        var (verifier, challenge) = Pkce.CreatePair();
-        var code = await AuthorizeAsync(client, challenge, scope: $"openid profile {TestDataSeeder.ScopeName}");
-
-        var (tokenStatus, tokenBody) = await client.PostFormAsync("/connect/token", new Dictionary<string, string>
-        {
-            ["grant_type"] = "authorization_code",
-            ["code"] = code,
-            ["redirect_uri"] = TestDataSeeder.AuthorizationCodeRedirectUri,
-            ["client_id"] = TestDataSeeder.AuthorizationCodeClientId,
-            ["code_verifier"] = verifier,
-        });
-
-        Assert.Equal(HttpStatusCode.OK, tokenStatus);
-
-        var accessToken = tokenBody.GetProperty("access_token").GetString();
-        Assert.False(string.IsNullOrWhiteSpace(accessToken));
-
-        client.DefaultRequestHeaders.Authorization = IntrospectionTests.BasicAuthFor(
-            TestDataSeeder.IntrospectionClientId,
-            TestDataSeeder.IntrospectionClientSecret);
-
-        var (introspectionStatus, introspectionBody) = await client.PostFormAsync(
-            "/connect/introspect",
-            new Dictionary<string, string> { ["token"] = accessToken! });
-
-        Assert.Equal(HttpStatusCode.OK, introspectionStatus);
-        Assert.True(introspectionBody.GetProperty("active").GetBoolean());
+        var withScope = await IntrospectAfterSignInAsync($"openid profile address {TestDataSeeder.ScopeName}");
         Assert.Equal(
             "Legacy address stored as plain text",
-            introspectionBody.GetProperty(LegacyAddressClaimType).GetString());
+            withScope.GetProperty(LegacyAddressClaimType).GetString());
+
+        async Task<JsonElement> IntrospectAfterSignInAsync(string requestedScope)
+        {
+            var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+            await TestOnlyEndpoints.SignInAsync(client, username);
+
+            var (verifier, challenge) = Pkce.CreatePair();
+            var code = await AuthorizeAsync(client, challenge, scope: requestedScope);
+
+            var (tokenStatus, tokenBody) = await client.PostFormAsync("/connect/token", new Dictionary<string, string>
+            {
+                ["grant_type"] = "authorization_code",
+                ["code"] = code,
+                ["redirect_uri"] = TestDataSeeder.AuthorizationCodeRedirectUri,
+                ["client_id"] = TestDataSeeder.AuthorizationCodeClientId,
+                ["code_verifier"] = verifier,
+            });
+            Assert.Equal(HttpStatusCode.OK, tokenStatus);
+            var accessToken = tokenBody.GetProperty("access_token").GetString();
+            Assert.False(string.IsNullOrWhiteSpace(accessToken));
+
+            client.DefaultRequestHeaders.Authorization = IntrospectionTests.BasicAuthFor(
+                TestDataSeeder.IntrospectionClientId,
+                TestDataSeeder.IntrospectionClientSecret);
+            var (introspectionStatus, introspectionBody) = await client.PostFormAsync(
+                "/connect/introspect",
+                new Dictionary<string, string> { ["token"] = accessToken! });
+            Assert.Equal(HttpStatusCode.OK, introspectionStatus);
+            Assert.True(introspectionBody.GetProperty("active").GetBoolean());
+            return introspectionBody;
+        }
     }
 
     [Fact]

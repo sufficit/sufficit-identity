@@ -75,6 +75,14 @@ internal sealed class ApplicationClaimDestinationPolicy(
             yield break;
         }
 
+        // Protocol claims: OpenIddict owns them (sub always travels; oi_* are its
+        // private claims). Not application data, nothing to inventory.
+        if (claim.Type == Claims.Subject || claim.Type.StartsWith("oi_", StringComparison.Ordinal))
+        {
+            yield return Destinations.AccessToken;
+            yield break;
+        }
+
         if (options.DeniedUnmappedClaimTypes.Contains(claim.Type))
         {
             telemetry?.Record(
@@ -124,6 +132,8 @@ internal sealed class ApplicationClaimDestinationPolicy(
             [Claims.PhoneNumber] = Scopes.Phone,
             [Claims.PhoneNumberVerified] = Scopes.Phone,
             [Claims.Address] = Scopes.Address,
+            // Persisted free-text addresses, kept under a private name; still an address.
+            [Grants.GrantOperations.LegacyAddressClaimType] = Scopes.Address,
         };
 
     internal static readonly IReadOnlySet<string> AccessTokenOnlyClaimTypes = new HashSet<string>(StringComparer.Ordinal)

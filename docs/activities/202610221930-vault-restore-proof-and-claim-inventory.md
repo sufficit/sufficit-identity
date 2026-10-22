@@ -39,7 +39,7 @@ Tipos persistidos em produção (`userclaims`; `roleclaims` vazio):
 | `entitlements` | 1231 | `directives` (ou `entitlements`, `fleet.api`) | AT + id_token | alta (autorização) | consumidores por contexto; já mapeada |
 | `directive` | 17 | `directives` | AT + id_token | alta | legado de `entitlements`; já mapeada |
 | `name` | 71 | `profile` | AT + id_token | baixa | regra própria |
-| `address` | 42 | `address` | AT + id_token | média (PII) | userinfo |
+| `address` | 42 | `address` | AT + id_token | média (PII) | userinfo; no token vai como `urn:identity:claim:address` (texto livre legado), também sob `address` |
 | `picture` | 36 | `profile` | AT + id_token | baixa | userinfo (Run lê dali) |
 | `website` | 15 | `profile` | AT + id_token | baixa | — |
 | `profile` | 2 | `profile` | AT + id_token | baixa | — |
@@ -64,3 +64,10 @@ filtrava por escopo). Clientes interativos sem `profile`: ferramentas
 O que ainda cair no ramo sem mapeamento é registrado uma vez por tipo e
 processo ("Claim inventory: unmapped claim type …"). Sem nenhum registro, pode
 desligar `IncludeUnmappedClaimsInAccessTokens`.
+
+Primeira hora em produção (`37eefbc`): o log apontou `sub`, `oi_scp`,
+`oi_rsrc` (protocolo, do OpenIddict — agora explícitos, fora do inventário) e
+`urn:identity:claim:address`: o endereço remapeado escapava do escopo e ia
+para qualquer access token. Passou a exigir `address`; o teste que esperava o
+endereço num token pedido só com `profile` foi corrigido para provar os dois
+lados.
