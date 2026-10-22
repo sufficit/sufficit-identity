@@ -141,16 +141,15 @@ endpoint rather than in each relying party.
 
 ### A5 — Service accounts without a user
 
-- [ ] Review the remaining service accounts (OAuth clients that act with no
-  user, `client_credentials`): decide per client whether it stays a pure
-  service, becomes a system user (an ordinary user without e-mail or
-  password, [`202610211700`](../activities/202610211700-system-users.md)), or
-  goes. Includes `sufficit-blazor-ai-bridge`, the only client still calling
-  `/connect/userinfo` without a user (answered 401 since `46dec5e`).
-- [ ] A consumer that validates a client token must not ask userinfo for it.
+- [ ] Remove the idle `client_credentials` accounts listed in
+  [`202610221830`](../activities/202610221830-service-accounts-review.md)
+  (owner's call; none used in the last 7 days).
 
-Noted by the owner 2026-10-21. The Fleet agents already moved to system
-users (sufficit-fleet `docs/activities/202610221500-agent-identity.md`).
+Reviewed 2026-10-22: every active service account is server-to-server
+infrastructure and stays a pure service; the consumer asking userinfo for a
+client token was sufficit-ai, fixed there (`5aad7df4`). The Fleet agents
+moved to system users (sufficit-fleet
+`docs/activities/202610221500-agent-identity.md`).
 
 ## B. Token issuance and claim release
 
