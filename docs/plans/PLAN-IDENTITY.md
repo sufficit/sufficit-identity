@@ -298,8 +298,6 @@ Authenticator keys and recovery codes are encrypted through the vault on every
 write, and a worker encrypts the plain-text values left from before
 ([`202610221900`](../activities/202610221900-second-factor-at-rest.md)).
 
-- [ ] **(operational)** When every node logs "0 still in plain text", set
-  `Sufficit:Identity:TwoFactor:AcceptPlaintextSecrets=false`
 - [ ] Coordinate secret rotation with security-stamp, session and token
   revocation and recovery-code regeneration
 
