@@ -17,7 +17,7 @@ namespace Sufficit.Identity.STS.Metrics;
 /// </remarks>
 internal sealed class IdentityUsageCounters : IIdentityUsageMetricSink
 {
-    internal const int MaximumKeys = 10_000;
+    internal const int MaximumKeys = 50_000;
     private static readonly Meter Meter = new("Sufficit.Identity.Metrics", "1.0.0");
     private static readonly Counter<long> UsageCounter = Meter.CreateCounter<long>(
         "identity.application.usage", description: "Uses of OAuth/OIDC applications by client, endpoint, grant and outcome.");
@@ -76,7 +76,8 @@ internal sealed class IdentityUsageCounters : IIdentityUsageMetricSink
 }
 
 internal readonly record struct IdentityUsageKey(
-    DateTime Day, string ClientId, string EventType, string EndpointType, string GrantType, string Outcome)
+    DateTime Day, string ClientId, string EventType, string EndpointType, string GrantType, string Outcome,
+    string UserId = "")
 {
     public static IdentityUsageKey From(IdentityUsageMetric metric) => new(
         metric.OccurredAtUtc.Date,
@@ -84,7 +85,13 @@ internal readonly record struct IdentityUsageKey(
         metric.EventType,
         metric.EndpointType,
         metric.GrantType ?? string.Empty,
-        metric.Outcome);
+        metric.Outcome,
+        // An id that does not fit is counted without a user, never cut into another user's.
+        metric.UserId is { Length: > 0 and <= Sufficit.Identity.Core.Data.IdentityDatabaseSchema.MetricsUserIdLength } user
+            ? user : string.Empty);
+
+    /// <summary>The same use without the user: what leaves the identity (export, Meter).</summary>
+    public IdentityUsageKey WithoutUser() => this with { UserId = string.Empty };
 }
 
 internal sealed class IdentityUsageTally

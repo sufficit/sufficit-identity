@@ -17,9 +17,10 @@ public sealed class MetricsController(IMetricsManagementService metrics) : Contr
         [FromQuery] DateTime? fromUtc,
         [FromQuery] DateTime? toUtc,
         [FromQuery, StringLength(255)] string? clientId,
+        [FromQuery, StringLength(64)] string? userId,
         CancellationToken cancellationToken) =>
         Ok(await metrics.GetOverviewAsync(fromUtc, toUtc, clientId,
-            RequestContext(), cancellationToken));
+            RequestContext(), cancellationToken, userId));
 
     [HttpGet("configuration")]
     public async Task<ActionResult<ManagementMetricsConfiguration>> GetConfiguration(

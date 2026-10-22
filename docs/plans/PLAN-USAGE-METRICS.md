@@ -102,3 +102,27 @@ mudar o identity.
 
 **Produção 22/10 (`10ac64e`):** 210.081 eventos viraram 2.195 linhas `legacy`;
 os nós já gravam suas linhas próprias; tabela por evento removida.
+
+## Métricas por usuário (22/10)
+
+Decisão do dono: **uma tabela só** para métricas de uso. O usuário virou mais
+uma dimensão de `identityapplicationusagedaily` (`userid`, vazio quando não há
+usuário: client credentials e falhas). Total por aplicação = soma das linhas;
+por usuário = agrupar por `userid`.
+
+- Coleta: o usuário é o `sub` do token quando ele é um usuário; um token de
+  client credentials nomeia o próprio cliente e não conta como usuário. Id
+  maior que a coluna (64) conta sem usuário, nunca truncado no de outro.
+- Volume: dezenas de usuários ativos por dia (41 em 24 h, 84 em 30 dias em
+  22/10); limite de combinações em memória subiu para 50 mil.
+- **O usuário não sai do identity:** a exportação ao VictoriaMetrics soma por
+  cima do usuário (rótulo de usuário em TSDB é o que Prometheus/OpenTelemetry
+  desaconselham), e o `Meter` não leva usuário.
+- `GET api/metrics/overview` ganha `activeUsers` e `users` (os 20 mais ativos,
+  com aplicações e último uso) e aceita `userId=`. O que nomeia usuário exige
+  também `identity.users.read`; sem ela, só a contagem de ativos.
+- Tela: cartão "Usuários ativos", lista "Usuários mais ativos" com filtro por
+  usuário (`/metrics?user=`), e atalho "Uso" na página do usuário.
+- LGPD: dado pessoal com finalidade de segurança e suporte; mesma retenção das
+  métricas (90 dias por padrão); acesso restrito como acima.
+- SQL `105` (antes do deploy, seguro com os binários anteriores).

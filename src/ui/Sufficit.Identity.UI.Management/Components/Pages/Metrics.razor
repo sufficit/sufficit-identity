@@ -79,6 +79,7 @@ else
     <div class="metrics-summary" aria-label="@L["Metrics.Summary.Aria"].Value">
         <div><span>@L["Metrics.Summary.EventsInPeriod"]</span><strong>@FormatNumber(overview.TotalEvents)</strong></div>
         <div><span>@L["Metrics.Summary.ActiveApplications"]</span><strong>@FormatNumber(overview.ActiveApplications)</strong></div>
+        <div><span>@L["Metrics.Summary.ActiveUsers"]</span><strong>@FormatNumber(overview.ActiveUsers)</strong></div>
         <div><span>@L["Metrics.Summary.Success"]</span><strong>@SuccessRate(overview)</strong></div>
         <div><span>@L["Metrics.Summary.DroppedInQueue"]</span><strong>@FormatNumber(overview.Collector.Dropped)</strong></div>
     </div>
@@ -119,6 +120,14 @@ else
         </div>
     </div>
 
+    @if (!string.IsNullOrWhiteSpace(selectedUser))
+    {
+        <div class="metrics-user-filter" role="status">
+            <span>@L["Metrics.UserFilter.Active", SelectedUserName]</span>
+            <SUIButton VariantValue="SUIVariant.Text" OnClick="ClearUser">@L["Metrics.UserFilter.Clear"]</SUIButton>
+        </div>
+    }
+
     <div class="table-panel" aria-labelledby="top-applications-heading">
         <div class="data-toolbar">
             <div><h2 id="top-applications-heading">@L["Metrics.TopApplications.Heading"]</h2><p>@L["Metrics.TopApplications.Description"]</p></div>
@@ -140,6 +149,34 @@ else
             </div>
         }
     </div>
+
+    @if (overview.Users is { } users && string.IsNullOrWhiteSpace(selectedUser))
+    {
+        <div class="table-panel" aria-labelledby="top-users-heading">
+            <div class="data-toolbar">
+                <div><h2 id="top-users-heading">@L["Metrics.TopUsers.Heading"]</h2><p>@L["Metrics.TopUsers.Description"]</p></div>
+            </div>
+            @if (users.Count is 0)
+            {
+                <div class="metrics-empty">@L["Metrics.TopUsers.NoMatch"]</div>
+            }
+            else
+            {
+                <div class="metrics-application-list">
+                    @foreach (var user in users)
+                    {
+                        <div class="metrics-application-row">
+                            <div>
+                                <a href="@UserFilterUri(user.UserId)"><strong>@user.UserName</strong></a>
+                                <span>@L["Metrics.TopUsers.Applications", user.Applications]</span>
+                            </div>
+                            <div><strong>@FormatNumber(user.Count)</strong><span>@L["Metrics.TopApplications.LastUsed", Time.Format(user.LastUsedAtUtc, TimeStyle.DayMonthTime)]</span></div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
 }
 
 <div class="form-section metrics-settings" aria-labelledby="metrics-settings-heading">
@@ -259,8 +296,12 @@ else
 
     [SupplyParameterFromQuery(Name = "days")] public int? Days { get; set; }
     [SupplyParameterFromQuery(Name = "client")] public string? ClientId { get; set; }
+    [SupplyParameterFromQuery(Name = "user")] public string? UserId { get; set; }
     private int selectedDays = 30;
     private string? selectedClient;
+    private string? selectedUser;
+    private string? selectedUserName;
+    private string SelectedUserName => selectedUserName ?? selectedUser ?? string.Empty;
     private bool loading = true, configurationLoading = true, savingConfiguration;
     private ManagementDataResult<ManagementMetricsOverview>? overviewResult;
     private MetricsConfigurationModel? configuration;
@@ -276,6 +317,8 @@ else
     {
         selectedDays = Days is 7 or 30 or 90 or 365 ? Days.Value : 30;
         selectedClient = ClientId;
+        if (selectedUser != UserId) selectedUserName = null;
+        selectedUser = string.IsNullOrWhiteSpace(UserId) ? null : UserId.Trim();
         await LoadAsync();
         if (configuration is null) await LoadConfigurationAsync();
     }
@@ -284,7 +327,7 @@ else
     {
         loading = true;
         var to = DateTime.UtcNow;
-        overviewResult = await MetricsData.GetOverviewAsync(to.AddDays(-selectedDays), to, selectedClient);
+        overviewResult = await MetricsData.GetOverviewAsync(to.AddDays(-selectedDays), to, selectedClient, userId: selectedUser);
         loading = false;
     }
 
@@ -320,12 +363,22 @@ else
         return Task.CompletedTask;
     }
 
+    private string UserFilterUri(string userId) => Navigation.GetUriWithQueryParameters(new Dictionary<string, object?>
+    {
+        ["days"] = selectedDays,
+        ["client"] = string.IsNullOrWhiteSpace(selectedClient) ? null : selectedClient.Trim(),
+        ["user"] = userId,
+    });
+
+    private void ClearUser() => Navigation.NavigateTo(Navigation.GetUriWithQueryParameter("user", (string?)null));
+
     private void ApplyFilters()
     {
         var uri = Navigation.GetUriWithQueryParameters(new Dictionary<string, object?>
         {
             ["days"] = selectedDays,
-            ["client"] = string.IsNullOrWhiteSpace(selectedClient) ? null : selectedClient.Trim()
+            ["client"] = string.IsNullOrWhiteSpace(selectedClient) ? null : selectedClient.Trim(),
+            ["user"] = selectedUser,
         });
         Navigation.NavigateTo(uri);
     }

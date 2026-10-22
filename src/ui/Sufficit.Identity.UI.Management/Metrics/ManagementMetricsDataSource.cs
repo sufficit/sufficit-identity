@@ -22,8 +22,8 @@ public sealed class ManagementMetricsDataSource(
 {
     public Task<ManagementDataResult<ManagementMetricsOverview>> GetOverviewAsync(
         DateTime? fromUtc, DateTime? toUtc, string? clientId,
-        CancellationToken cancellationToken = default) => ExecuteAsync(
-        (service, context) => service.GetOverviewAsync(fromUtc, toUtc, clientId, context, cancellationToken),
+        CancellationToken cancellationToken = default, string? userId = null) => ExecuteAsync(
+        (service, context) => service.GetOverviewAsync(fromUtc, toUtc, clientId, context, cancellationToken, userId),
         "Metrics overview", cancellationToken);
 
     public Task<ManagementDataResult<ManagementMetricsConfiguration>> GetConfigurationAsync(

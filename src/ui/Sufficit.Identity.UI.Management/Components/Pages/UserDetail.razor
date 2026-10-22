@@ -29,6 +29,14 @@
                 </a>
             </Authorized>
         </AuthorizeView>
+        <AuthorizeView Policy="@ManagementUiPolicies.ManageMetrics">
+            <Authorized>
+                <a class="button button--secondary" href="@UsageHref">
+                    <SUIIcon Name="chart" Size="17" />
+                    @L["Users.Detail.UsageLink"]
+                </a>
+            </Authorized>
+        </AuthorizeView>
         <AuthorizeView Policy="@ManagementUiPolicies.ManageAuthorizations">
             <Authorized>
                 <a class="button button--secondary" href="@AuthorizationsHref">
@@ -266,6 +274,9 @@ else
 
     private string ClaimsHref =>
         $"claims?user={Uri.EscapeDataString(Id)}";
+
+    private string UsageHref =>
+        $"metrics?user={Uri.EscapeDataString(Id)}";
 
     private string SessionsHref =>
         $"sessions?user={Uri.EscapeDataString(Id)}";

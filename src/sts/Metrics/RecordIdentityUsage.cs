@@ -32,8 +32,21 @@ internal sealed class RecordIdentityUsage(IIdentityUsageMetricSink sink)
             context.EndpointType.ToString().ToLowerInvariant() + "_issued",
             context.EndpointType.ToString().ToLowerInvariant(),
             context.Request?.GrantType,
-            "succeeded"));
+            "succeeded",
+            UserOf(context, clientId)));
         return ValueTask.CompletedTask;
     }
 
+    /// <summary>
+    /// The subject when it is a user. A client-credentials token names the
+    /// client itself, which is not a user.
+    /// </summary>
+    private static string? UserOf(ProcessSignInContext context, string clientId)
+    {
+        if (context.Request?.IsClientCredentialsGrantType() is true) return null;
+        var subject = context.Principal?.GetClaim(Claims.Subject);
+        return string.IsNullOrWhiteSpace(subject) || string.Equals(subject, clientId, StringComparison.Ordinal)
+            ? null
+            : subject;
+    }
 }

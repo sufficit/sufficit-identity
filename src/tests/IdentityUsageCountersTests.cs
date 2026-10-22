@@ -150,3 +150,73 @@ public sealed class IdentityUsageMetricsWorkerTests
             }).Build(),
             Microsoft.Extensions.Logging.Abstractions.NullLogger<IdentityUsageMetricsWorker>.Instance);
 }
+
+/// <summary>Who a use was for: a user when the token names one, nobody for a client acting as itself.</summary>
+public sealed class IdentityUsageUserDimensionTests
+{
+    [Fact]
+    public async Task Password_grant_counts_for_the_user_and_client_credentials_for_nobody()
+    {
+        var factory = Sufficit.Identity.Tests.Infrastructure.SufficitIdentityTestFactory.CreateIsolated(
+            new Dictionary<string, string?>());
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        try
+        {
+            var client = factory.CreateClient();
+            var counters = factory.Services.GetRequiredService<IdentityUsageCounters>();
+            counters.Drain();
+
+            using (var cc = await client.PostAsync("/connect/token", new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["grant_type"] = "client_credentials",
+                ["client_id"] = Sufficit.Identity.Tests.Infrastructure.TestDataSeeder.ClientCredentialsClientId,
+                ["client_secret"] = Sufficit.Identity.Tests.Infrastructure.TestDataSeeder.ClientCredentialsClientSecret,
+                ["scope"] = Sufficit.Identity.Tests.Infrastructure.TestDataSeeder.ScopeName,
+            })))
+                Assert.True(cc.IsSuccessStatusCode, await cc.Content.ReadAsStringAsync());
+            using (var ropc = await client.PostAsync("/connect/token", new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["grant_type"] = "password",
+                ["username"] = Sufficit.Identity.Tests.Infrastructure.TestDataSeeder.DefaultUsername,
+                ["password"] = Sufficit.Identity.Tests.Infrastructure.TestDataSeeder.DefaultPassword,
+                ["client_id"] = Sufficit.Identity.Tests.Infrastructure.TestDataSeeder.PasswordClientId,
+                ["client_secret"] = Sufficit.Identity.Tests.Infrastructure.TestDataSeeder.PasswordClientSecret,
+                ["scope"] = Sufficit.Identity.Tests.Infrastructure.TestDataSeeder.ScopeName,
+            })))
+                Assert.True(ropc.IsSuccessStatusCode, await ropc.Content.ReadAsStringAsync());
+
+            await using var scope = factory.Services.CreateAsyncScope();
+            var alice = await scope.ServiceProvider
+                .GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<Sufficit.Identity.Core.Entities.ApplicationUser>>()
+                .FindByNameAsync(Sufficit.Identity.Tests.Infrastructure.TestDataSeeder.DefaultUsername);
+            var drained = counters.Drain();
+            Assert.Contains(drained, item => item.Key.ClientId == Sufficit.Identity.Tests.Infrastructure.TestDataSeeder.ClientCredentialsClientId
+                && item.Key.UserId == string.Empty);
+            Assert.Contains(drained, item => item.Key.ClientId == Sufficit.Identity.Tests.Infrastructure.TestDataSeeder.PasswordClientId
+                && item.Key.UserId == alice!.Id);
+        }
+        finally
+        {
+            factory.Dispose();
+        }
+    }
+
+    [Fact]
+    public void The_export_never_carries_a_user()
+    {
+        var day = new DateTime(2026, 10, 22, 0, 0, 0, DateTimeKind.Utc);
+        var key = new IdentityUsageKey(day, "app", "token_issued", "token", "password", "succeeded", "user-1");
+        Assert.Equal(string.Empty, key.WithoutUser().UserId);
+        var line = IdentityUsageMetricsWorker.BuildLineProtocol([(key.WithoutUser(), 3, day)], "node-a");
+        Assert.DoesNotContain("user-1", line);
+        Assert.Contains("value=3i", line);
+    }
+
+    [Fact]
+    public void An_id_too_long_for_the_column_is_counted_without_a_user()
+    {
+        var metric = new IdentityUsageMetric(DateTime.UtcNow, "app", "token_issued", "token", null, "succeeded",
+            new string('x', Sufficit.Identity.Core.Data.IdentityDatabaseSchema.MetricsUserIdLength + 1));
+        Assert.Equal(string.Empty, IdentityUsageKey.From(metric).UserId);
+    }
+}

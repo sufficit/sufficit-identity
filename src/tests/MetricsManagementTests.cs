@@ -79,6 +79,46 @@ public sealed class MetricsManagementTests
             });
     }
 
+    [Fact]
+    public async Task Overview_counts_and_filters_users()
+    {
+        using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var database = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var day = new DateTime(2026, 8, 10);
+            database.IdentityApplicationUsageDaily.AddRange(
+                Usage(day, "node-a", 5, "user-1"),
+                Usage(day, "node-b", 2, "user-1"),
+                Usage(day, "node-a", 1, "user-2"),
+                Usage(day, "node-a", 9, ""));
+            await database.SaveChangesAsync();
+        }
+
+        var client = factory.CreateClient();
+        var all = await client.GetFromJsonAsync<ManagementMetricsOverview>(
+            "/api/metrics/overview?fromUtc=2026-08-10T00:00:00Z&toUtc=2026-08-11T00:00:00Z");
+        Assert.NotNull(all);
+        Assert.Equal(17, all.TotalEvents);
+        Assert.Equal(2, all.ActiveUsers);
+        var top = Assert.IsAssignableFrom<IReadOnlyList<ManagementMetricsUser>>(all.Users);
+        Assert.Equal(("user-1", 7L), (top[0].UserId, top[0].Count));
+
+        var one = await client.GetFromJsonAsync<ManagementMetricsOverview>(
+            "/api/metrics/overview?fromUtc=2026-08-10T00:00:00Z&toUtc=2026-08-11T00:00:00Z&userId=user-1");
+        Assert.Equal(7, one!.TotalEvents);
+    }
+
+    private static IdentityApplicationUsageDaily Usage(DateTime day, string node, long count, string userId) =>
+        Usage(day, node, count) is var row ? Tag(row, userId) : row;
+
+    private static IdentityApplicationUsageDaily Tag(IdentityApplicationUsageDaily row, string userId)
+    {
+        row.UserId = userId;
+        return row;
+    }
+
     private static IdentityApplicationUsageDaily Usage(DateTime day, string node, long count) => new()
     {
         Day = day,

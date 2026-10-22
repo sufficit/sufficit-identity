@@ -1,9 +1,10 @@
 namespace Sufficit.Identity.Core.Entities;
 
 /// <summary>
-/// Daily count of application uses per node and dimension. Each node only
-/// ever writes its own rows, so the cluster never contends on a counter; the
-/// Management overview sums the nodes. No user is recorded.
+/// Daily count of application uses per node and dimension, the user being one
+/// of the dimensions. Each node only ever writes its own rows, so the cluster
+/// never contends on a counter; the Management overview sums nodes and users.
+/// The single source for usage metrics, per application and per user.
 /// </summary>
 public sealed class IdentityApplicationUsageDaily
 {
@@ -23,6 +24,12 @@ public sealed class IdentityApplicationUsageDaily
     public string GrantType { get; set; } = string.Empty;
 
     public string Outcome { get; set; } = "succeeded";
+
+    /// <summary>
+    /// The user the use was for; empty when there is none (client credentials,
+    /// failed requests). Personal data: read with the users capability.
+    /// </summary>
+    public string UserId { get; set; } = string.Empty;
     public long Count { get; set; }
     public DateTime LastOccurredAtUtc { get; set; }
 }

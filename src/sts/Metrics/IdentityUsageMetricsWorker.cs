@@ -14,8 +14,8 @@ namespace Sufficit.Identity.STS.Metrics;
 
 /// <summary>
 /// Drains the in-memory usage counters once a minute (and on shutdown) into
-/// this node's rows of the daily aggregate, and optionally exports the same
-/// counts. Authentication never waits for any of it.
+/// this node's rows of the daily aggregate, and optionally exports the counts
+/// per application (never per user). Authentication never waits for any of it.
 /// </summary>
 /// <remarks>
 /// The node is part of the aggregate's key: in a multi-master cluster, nodes
@@ -112,7 +112,7 @@ internal sealed class IdentityUsageMetricsWorker(
             .Where(row => row.Node == Node && days.Contains(row.Day))
             .ToListAsync(cancellationToken);
         var byKey = existing.ToDictionary(row => new IdentityUsageKey(
-            row.Day, row.ClientId, row.EventType, row.EndpointType, row.GrantType, row.Outcome));
+            row.Day, row.ClientId, row.EventType, row.EndpointType, row.GrantType, row.Outcome, row.UserId));
 
         foreach (var (key, count, last) in drained)
         {
@@ -133,6 +133,7 @@ internal sealed class IdentityUsageMetricsWorker(
                 EndpointType = normalized.EndpointType,
                 GrantType = normalized.GrantType,
                 Outcome = normalized.Outcome,
+                UserId = normalized.UserId,
                 Count = count,
                 LastOccurredAtUtc = last,
             };
@@ -161,7 +162,12 @@ internal sealed class IdentityUsageMetricsWorker(
         try
         {
             using var request = new HttpRequestMessage(HttpMethod.Post, BuildWriteUri(configuration));
-            request.Content = new StringContent(BuildLineProtocol(drained, Node), Encoding.UTF8, "application/x-line-protocol");
+            // Users never leave the identity: the export is per application only.
+            var perApplication = drained
+                .GroupBy(item => item.Key.WithoutUser())
+                .Select(group => (group.Key, group.Sum(item => item.Count), group.Max(item => item.LastOccurredAtUtc)))
+                .ToArray();
+            request.Content = new StringContent(BuildLineProtocol(perApplication, Node), Encoding.UTF8, "application/x-line-protocol");
             await ApplyAuthorizationAsync(request, configuration, cancellationToken);
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             timeout.CancelAfter(TimeSpan.FromSeconds(configuration.TimeoutSeconds));

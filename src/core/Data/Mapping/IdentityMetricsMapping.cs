@@ -75,13 +75,19 @@ internal static class IdentityMetricsMapping
                 b.Property(x => x.Outcome)
                     .HasMaxLength(IdentityDatabaseSchema.MetricsOutcomeLength)
                     .IsRequired();
+                b.Property(x => x.UserId)
+                    .HasMaxLength(IdentityDatabaseSchema.MetricsUserIdLength)
+                    .HasDefaultValue(string.Empty)
+                    .IsRequired();
                 b.Property(x => x.LastOccurredAtUtc).HasColumnType("datetime(6)").IsRequired();
                 // One row per day, node and dimension; each node writes only its own.
-                b.HasIndex(x => new { x.Day, x.Node, x.ClientId, x.EventType, x.EndpointType, x.GrantType, x.Outcome })
+                b.HasIndex(x => new { x.Day, x.Node, x.ClientId, x.EventType, x.EndpointType, x.GrantType, x.Outcome, x.UserId })
                     .IsUnique()
                     .HasDatabaseName("IX_identityusagedaily_key");
                 b.HasIndex(x => new { x.ClientId, x.Day })
                     .HasDatabaseName("IX_identityusagedaily_clientid_day");
+                b.HasIndex(x => new { x.UserId, x.Day })
+                    .HasDatabaseName("IX_identityusagedaily_userid_day");
                 MappingHelpers.SnakeCaseColumns(b, [
                     ("Id", "id"),
                     ("Day", "day"),
@@ -91,6 +97,7 @@ internal static class IdentityMetricsMapping
                     ("EndpointType", "endpointtype"),
                     ("GrantType", "granttype"),
                     ("Outcome", "outcome"),
+                    ("UserId", "userid"),
                     ("Count", "count"),
                     ("LastOccurredAtUtc", "lastoccurredatutc"),
                 ]);

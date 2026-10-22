@@ -221,6 +221,7 @@ public sealed class DatabaseSchemaContractTests
             IdentityDatabaseSchema.SystemUsersMigrationId,
             IdentityDatabaseSchema.SystemUsersAsOrdinaryUsersMigrationId,
             IdentityDatabaseSchema.AggregateUsageMetricsMigrationId,
+            IdentityDatabaseSchema.AddUserToUsageMetricsMigrationId,
         ], context.Database.GetMigrations());
 
         var history = context.GetService<IHistoryRepository>().GetCreateScript();

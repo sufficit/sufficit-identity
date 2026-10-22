@@ -178,6 +178,10 @@ new build runs on every node, so no node still writes per-event rows.
 Production order for this release: 101 and 103, deploy every node, then 102
 and 104.
 
+`105-add-user-to-usage-metrics.sql` adds `userid` to the same aggregate (empty
+when a use has no user), so usage per application and per user come from one
+table. Safe with the previous build; apply before deploying.
+
 That same evaluation made `Sufficit:Identity:DeploymentTopology` a **required
 configuration key** outside Development: the production posture check refuses to
 start with `deployment-topology-undeclared` until the deployment states its

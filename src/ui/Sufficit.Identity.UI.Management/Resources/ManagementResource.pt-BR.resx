@@ -815,6 +815,7 @@
   <data name="Users.Detail.HeaderDescription" xml:space="preserve"><value>Perfil, credenciais e estado de autenticação mantidos pelo provedor.</value></data>
   <data name="Users.Detail.BackToUsers" xml:space="preserve"><value>Voltar para usuários</value></data>
   <data name="Users.Detail.ClaimsLink" xml:space="preserve"><value>Claims da conta</value></data>
+  <data name="Users.Detail.UsageLink" xml:space="preserve"><value>Uso</value></data>
   <data name="Users.Detail.SessionsLink" xml:space="preserve"><value>Sessões</value></data>
   <data name="Users.Detail.AuthorizationsLink" xml:space="preserve"><value>Autorizações</value></data>
   <data name="Users.Detail.EditProfileLink" xml:space="preserve"><value>Editar perfil</value></data>
@@ -1483,6 +1484,13 @@
   <data name="Metrics.Summary.EventsInPeriod" xml:space="preserve"><value>Eventos no período</value></data>
   <data name="Metrics.Summary.ActiveApplications" xml:space="preserve"><value>Aplicações ativas</value></data>
   <data name="Metrics.Summary.Success" xml:space="preserve"><value>Sucesso</value></data>
+  <data name="Metrics.Summary.ActiveUsers" xml:space="preserve"><value>Usuários ativos</value></data>
+  <data name="Metrics.UserFilter.Active" xml:space="preserve"><value>Mostrando só o uso de {0}.</value></data>
+  <data name="Metrics.UserFilter.Clear" xml:space="preserve"><value>Mostrar todos</value></data>
+  <data name="Metrics.TopUsers.Heading" xml:space="preserve"><value>Usuários mais ativos</value></data>
+  <data name="Metrics.TopUsers.Description" xml:space="preserve"><value>Usuários com mais usos de aplicações no período. Dado pessoal: visível só para quem pode ler usuários.</value></data>
+  <data name="Metrics.TopUsers.NoMatch" xml:space="preserve"><value>Nenhum usuário usou aplicações neste período.</value></data>
+  <data name="Metrics.TopUsers.Applications" xml:space="preserve"><value>{0} aplicação(ões)</value></data>
   <data name="Metrics.Summary.DroppedInQueue" xml:space="preserve"><value>Descartados na fila</value></data>
   <data name="Metrics.Chart.Heading" xml:space="preserve"><value>Cadência diária</value></data>
   <data name="Metrics.Chart.Description" xml:space="preserve"><value>Emissões OAuth/OIDC concluídas por dia.</value></data>

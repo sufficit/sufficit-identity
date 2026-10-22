@@ -4,12 +4,18 @@ namespace Sufficit.Identity.Management.Metrics;
 
 public interface IMetricsManagementService
 {
+    /// <summary>
+    /// Usage over a period, optionally narrowed to one application and/or one
+    /// user. Anything that names a user (the <paramref name="userId"/> filter,
+    /// the most active users) also requires the users read capability.
+    /// </summary>
     Task<ManagementMetricsOverview> GetOverviewAsync(
         DateTime? fromUtc,
         DateTime? toUtc,
         string? clientId,
         ManagementRequestContext context,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        string? userId = null);
 
     Task<ManagementMetricsConfiguration> GetConfigurationAsync(
         ManagementRequestContext context,
@@ -31,7 +37,17 @@ public sealed record ManagementMetricsOverview(
     IReadOnlyList<ManagementMetricsDailyPoint> Daily,
     IReadOnlyList<ManagementMetricsApplication> Applications,
     IReadOnlyList<ManagementMetricsDimension> GrantTypes,
-    ManagementMetricsCollectorStatus Collector);
+    ManagementMetricsCollectorStatus Collector,
+    int ActiveUsers = 0,
+    IReadOnlyList<ManagementMetricsUser>? Users = null);
+
+/// <summary>A user's usage in the period. Present only for callers that may read users.</summary>
+public sealed record ManagementMetricsUser(
+    string UserId,
+    string UserName,
+    long Count,
+    int Applications,
+    DateTime LastUsedAtUtc);
 
 public sealed record ManagementMetricsDailyPoint(DateTime DateUtc, long Count);
 

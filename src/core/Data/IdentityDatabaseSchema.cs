@@ -17,6 +17,9 @@ public static class IdentityDatabaseSchema
     public const int MetricsGrantTypeLength = 100;
     public const int MetricsOutcomeLength = 32;
     public const int MetricsNodeLength = 64;
+
+    /// <summary>User ids are GUIDs (36); longer ones are counted without a user, never truncated into another's.</summary>
+    public const int MetricsUserIdLength = 64;
     public const string TrustedProxyConfigurationMigrationId = "20260910131719_AddTrustedProxyConfiguration";
     public const string InitialMigrationId = "20260726213918_Initial";
     public const string BrandingThemesMigrationId = "20260729025623_AddBrandingThemes";
@@ -63,6 +66,9 @@ public static class IdentityDatabaseSchema
     /// </summary>
     /// <summary>Usage metrics as a daily aggregate per node; the per-event table goes.</summary>
     public const string AggregateUsageMetricsMigrationId = "20261022141619_AggregateUsageMetrics";
+
+    /// <summary>The user becomes a dimension of the usage aggregate (single table for applications and users).</summary>
+    public const string AddUserToUsageMetricsMigrationId = "20261022144056_AddUserToUsageMetrics";
 
     public const string SystemUsersAsOrdinaryUsersMigrationId = "20261022140929_SystemUsersAsOrdinaryUsers";
 

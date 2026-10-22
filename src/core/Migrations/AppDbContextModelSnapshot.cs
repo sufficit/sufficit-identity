@@ -905,12 +905,23 @@ namespace Sufficit.Identity.Core.Migrations
                         .HasColumnType("varchar(32)")
                         .HasColumnName("outcome");
 
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)")
+                        .HasDefaultValue("")
+                        .HasColumnName("userid");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ClientId", "Day")
                         .HasDatabaseName("IX_identityusagedaily_clientid_day");
 
-                    b.HasIndex("Day", "Node", "ClientId", "EventType", "EndpointType", "GrantType", "Outcome")
+                    b.HasIndex("UserId", "Day")
+                        .HasDatabaseName("IX_identityusagedaily_userid_day");
+
+                    b.HasIndex("Day", "Node", "ClientId", "EventType", "EndpointType", "GrantType", "Outcome", "UserId")
                         .IsUnique()
                         .HasDatabaseName("IX_identityusagedaily_key");
 
