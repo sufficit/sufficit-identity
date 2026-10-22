@@ -42,3 +42,32 @@ errada, porque nenhum hash era calculado.
 Observar os registros "Credential abuse (observe)" por alguns dias (atenção a
 redes com NAT compartilhado, que somam falhas de muitos usuários num IP),
 ajustar os limites e então `Mode=Enforce`.
+
+## Proxies confiáveis corrigidos (22/10/2026)
+
+Avaliado se um "IP compartilhado" no contador poderia ser configuração de proxy:
+
+- **Hoje correto:** o DNS aponta só para o eveo-proxy; o HAProxy sobrescreve
+  `X-Forwarded-For` com a origem; o identity resolveu o IP real pelo HAProxy e
+  ignorou um `X-Forwarded-For` forjado no acesso direto à :26501.
+- **Faltavam dois proxies:** apoint-proxy e castrum-proxy também têm backend
+  do identity e, ao cair o servidor local deles, encaminham pela internet a
+  partir de 143.208.225.158 e 45.233.44.251, que nenhum nó conhecia (hoje só
+  passam health checks, ~29 mil `HEAD /health` cada). Num failover, todos os
+  usuários vindos deles virariam um IP só: limitador de 30/min e contador de
+  abuso barrariam todo mundo.
+- **Largo demais:** `172.16.0.0/16` confiava na rede local inteira (qualquer
+  CT/VM/pod forjaria o IP); `15.177.0.0/16` (health checks AWS) e
+  `177.104.185.114` (IP antigo dos servidores na eveo) não são proxies.
+- **IPv6 por /128:** um assinante gira endereços no próprio /64 e nunca chega
+  a limite nenhum.
+
+Feito: lista no banco de configurações (`trustedproxyconfiguration`, revisão
+`7fe87722…`, evento de auditoria `trusted_proxies_updated`) só com os três
+HAProxies — locais 172.16.1.0, 172.16.2.0, 172.16.3.0; públicos
+177.104.185.117, 143.208.225.158, 45.233.44.251; IPv6 2804:1740:f:1700::2000,
+2804:2b20:8000::1000, 2804:4b40:8001:a::3000 — e `appsettings` reduzido a
+`127.0.0.1/32` nos três nós (backup `.bak-trustedproxies-20261022`); 10 redes
+efetivas. Limitador e contadores agrupam IPv6 por /64 (`2969577`). Conferido
+depois: IP real pelo HAProxy e direto (IPv4), e `2804:3b0:950e:bc00::/64`
+direto por IPv6.
