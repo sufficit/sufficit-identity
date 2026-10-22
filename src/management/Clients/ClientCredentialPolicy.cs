@@ -213,24 +213,6 @@ internal static class ClientCredentialPolicy
         return reason;
     }
 
-    /// <summary>
-    /// Builds the short marker shown next to a credential in management UIs.
-    /// It is derived from the STORED HASH, never from the plaintext secret:
-    /// a suffix of the secret would put real credential material at rest, and
-    /// hashing the secret directly with a fast digest would hand an attacker a
-    /// cheaper guessing oracle than the PBKDF2 hash it sits beside. Feeding the
-    /// (salted, 210k-iteration) hash into SHA-256 keeps the marker stable and
-    /// unique per credential while staying non-reversible.
-    /// </summary>
-    internal static string CreateSecretFingerprint(string secretHash)
-    {
-        const int fingerprintCharacters = 8;
-        var digest = System.Security.Cryptography.SHA256.HashData(
-            System.Text.Encoding.UTF8.GetBytes(secretHash));
-        return Microsoft.AspNetCore.WebUtilities.WebEncoders
-            .Base64UrlEncode(digest)[..fingerprintCharacters];
-    }
-
     internal static void ValidateClientId(string clientId)
     {
         if (string.IsNullOrWhiteSpace(clientId))

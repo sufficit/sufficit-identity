@@ -3,9 +3,8 @@ namespace Sufficit.Identity.Core.Entities;
 /// <summary>
 /// Provider-neutral credential registered for an OAuth client. Plaintext
 /// credential material is never persisted: <see cref="SecretHash"/> contains
-/// only a one-way password hash and <see cref="SecretHint"/> is a short
-/// non-reversible fingerprint derived from that hash, used to tell credentials
-/// apart in management UIs.
+/// only a one-way password hash, and nothing derived from the secret is shown:
+/// credentials are told apart by label and dates.
 /// </summary>
 public sealed class OAuthClientCredential
 {
@@ -21,8 +20,6 @@ public sealed class OAuthClientCredential
     public string Label { get; set; } = string.Empty;
 
     public string SecretHash { get; set; } = string.Empty;
-
-    public string SecretHint { get; set; } = string.Empty;
 
     public DateTime CreatedAtUtc { get; set; }
 

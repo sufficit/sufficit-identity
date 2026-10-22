@@ -630,7 +630,7 @@
   <data name="Clients.Edit.ActiveCountSuffix" xml:space="preserve"><value>{0} active</value></data>
   <data name="Clients.Edit.NoSharedSecretTitle" xml:space="preserve"><value>No shared secret</value></data>
   <data name="Clients.Edit.NoSharedSecretHint" xml:space="preserve"><value>Add the first credential or configure private_key_jwt below.</value></data>
-  <data name="Clients.Edit.FingerprintTitle" xml:space="preserve"><value>Credential fingerprint</value></data>
+  <data name="Clients.Edit.CreatedOnFormat" xml:space="preserve"><value>Created on {0}</value></data>
   <data name="Clients.Edit.ProtectedValue" xml:space="preserve"><value>Protected value</value></data>
   <data name="Clients.Edit.ExpiresOnFormat" xml:space="preserve"><value>Expires on {0}</value></data>
   <data name="Clients.Edit.RevokeAction" xml:space="preserve"><value>Revoke</value></data>

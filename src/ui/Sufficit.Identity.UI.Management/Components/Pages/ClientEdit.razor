@@ -402,15 +402,11 @@ else
                                             <div class="client-credential-list__identity">
                                                 <strong>@credential.Label</strong>
                                                 <span>
-                                                    @if (!string.IsNullOrWhiteSpace(credential.SecretHint))
+                                                    @* Nothing derived from the secret is shown: label and dates tell credentials apart. *@
+                                                    <span>@L["Clients.Edit.ProtectedValue"]</span>
+                                                    @if (credential.CreatedAtUtc is not null)
                                                     {
-                                                        @* Fingerprint of the stored hash, not a piece of
-                                                           the secret — do not render it as a suffix. *@
-                                                        <code title="@L["Clients.Edit.FingerprintTitle"].Value">#@credential.SecretHint</code>
-                                                    }
-                                                    else
-                                                    {
-                                                        <span>@L["Clients.Edit.ProtectedValue"]</span>
+                                                        <span>@L["Clients.Edit.CreatedOnFormat", FormatCredentialDate(credential.CreatedAtUtc)]</span>
                                                     }
                                                     @if (credential.ExpiresAtUtc is not null)
                                                     {

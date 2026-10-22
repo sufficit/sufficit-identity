@@ -271,7 +271,6 @@ public sealed record ManagementClientCredentialSummary(
     Guid? Id,
     string Label,
     string Kind,
-    string SecretHint,
     string Status,
     bool IsPrimary,
     DateTimeOffset? CreatedAtUtc = null,

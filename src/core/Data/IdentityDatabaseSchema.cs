@@ -69,6 +69,8 @@ public static class IdentityDatabaseSchema
 
     /// <summary>The user becomes a dimension of the usage aggregate (single table for applications and users).</summary>
     public const string AddUserToUsageMetricsMigrationId = "20261022144056_AddUserToUsageMetrics";
+    /// <summary>Client credentials stop carrying a fingerprint derived from the secret (plan E2).</summary>
+    public const string DropClientCredentialSecretHintMigrationId = "20261022170606_DropClientCredentialSecretHint";
 
     public const string SystemUsersAsOrdinaryUsersMigrationId = "20261022140929_SystemUsersAsOrdinaryUsers";
 
@@ -115,7 +117,6 @@ public static class IdentityDatabaseSchema
     public const int OAuthClientCredentialKindLength = 32;
     public const int OAuthClientCredentialLabelLength = 100;
     public const int OAuthClientCredentialHashLength = 1024;
-    public const int OAuthClientCredentialHintLength = 12;
     public const int OAuthClientCredentialReasonLength = 256;
     public const int OAuthClientCredentialConcurrencyLength = 32;
 

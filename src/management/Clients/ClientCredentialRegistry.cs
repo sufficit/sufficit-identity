@@ -195,7 +195,6 @@ internal sealed class ClientCredentialRegistry(
                     Kind = OAuthClientCredentialKinds.SharedSecret,
                     Label = label,
                     SecretHash = secretHash,
-                    SecretHint = ClientCredentialPolicy.CreateSecretFingerprint(secretHash),
                     CreatedAtUtc = now,
                     NotBeforeUtc = notBeforeUtc,
                     ExpiresAtUtc = expiresAtUtc,
@@ -602,7 +601,6 @@ internal sealed class ClientCredentialRegistry(
                 Id: null,
                 Label: "Primary credential (compatibility)",
                 Kind: OAuthClientCredentialKinds.SharedSecret,
-                SecretHint: string.Empty,
                 Status: "active",
                 IsPrimary: true));
         }
@@ -612,7 +610,6 @@ internal sealed class ClientCredentialRegistry(
                 credential.Id,
                 credential.Label,
                 credential.Kind,
-                credential.SecretHint,
                 ClientCredentialPolicy.GetCredentialStatus(credential, now),
                 IsPrimary: false,
                 ClientCredentialPolicy.ToDateTimeOffset(credential.CreatedAtUtc),

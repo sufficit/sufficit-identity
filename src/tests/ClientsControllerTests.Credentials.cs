@@ -230,13 +230,11 @@ public sealed partial class ClientsControllerTests
         var additional = Assert.Single(
             overview.Credentials,
             credential => !credential.IsPrimary);
-        // The hint is a non-reversible fingerprint of the stored hash, so it
-        // must NOT carry any slice of the plaintext secret (eval 2026-08-23,
-        // S-3). It still has to be present so operators can tell credentials
-        // apart in the management UI.
-        Assert.NotEmpty(additional.SecretHint);
-        Assert.DoesNotContain(additional.SecretHint, addition.OneTimeSecret,
-            StringComparison.Ordinal);
+        // Nothing derived from the secret leaves the server (plan E2): the
+        // summary carries label and dates only.
+        Assert.NotNull(additional.CreatedAtUtc);
+        Assert.DoesNotContain("secretHint", System.Text.Json.JsonSerializer.Serialize(overview),
+            StringComparison.OrdinalIgnoreCase);
 
         var primaryToken = await RequestClientCredentialsTokenAsync(
             client,

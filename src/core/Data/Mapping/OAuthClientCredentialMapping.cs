@@ -32,9 +32,6 @@ internal static class OAuthClientCredentialMapping
                 b.Property(x => x.SecretHash)
                     .HasMaxLength(IdentityDatabaseSchema.OAuthClientCredentialHashLength)
                     .IsRequired();
-                b.Property(x => x.SecretHint)
-                    .HasMaxLength(IdentityDatabaseSchema.OAuthClientCredentialHintLength)
-                    .IsRequired();
                 b.Property(x => x.RevocationReason)
                     .HasMaxLength(IdentityDatabaseSchema.OAuthClientCredentialReasonLength);
                 b.Property(x => x.ConcurrencyToken)
@@ -55,7 +52,6 @@ internal static class OAuthClientCredentialMapping
                     ("Kind", "kind"),
                     ("Label", "label"),
                     ("SecretHash", "secrethash"),
-                    ("SecretHint", "secrethint"),
                     ("CreatedAtUtc", "createdatutc"),
                     ("NotBeforeUtc", "notbeforeutc"),
                     ("ExpiresAtUtc", "expiresatutc"),

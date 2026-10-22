@@ -1225,12 +1225,6 @@ namespace Sufficit.Identity.Core.Migrations
                         .HasColumnType("varchar(1024)")
                         .HasColumnName("secrethash");
 
-                    b.Property<string>("SecretHint")
-                        .IsRequired()
-                        .HasMaxLength(12)
-                        .HasColumnType("varchar(12)")
-                        .HasColumnName("secrethint");
-
                     b.HasKey("Id");
 
                     b.HasIndex("ExpiresAtUtc")
