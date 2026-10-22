@@ -1,4 +1,4 @@
-/* Isolated styles for this component (PLAN-FRONTEND-HARDENING item 2).
+/* Isolated styles for this component (docs/activities/202610211600-frontend-hardening.md, item 2).
    Children rendered by SUI or Identity components are reached with ::deep. */
 
 .operator-token-fields {

@@ -12,7 +12,7 @@ integrações) sem uma pessoa por trás. Para software que não age como usuári
 continua existindo a conta de sistema de serviço (`/management/service-accounts`),
 que é só um cliente OAuth.
 
-Plano e decisões: [`docs/plans/PLAN-SYSTEM-USERS.md`](../plans/PLAN-SYSTEM-USERS.md).
+Decisões e registro: [`docs/activities/202610211700-system-users.md`](../activities/202610211700-system-users.md).
 
 ## 1. Preparar o cliente (uma vez por software)
 

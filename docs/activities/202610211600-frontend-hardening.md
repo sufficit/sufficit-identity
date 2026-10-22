@@ -1,4 +1,6 @@
-# Plano — endurecimento do front-end (UI pública e Management)
+# Endurecimento do front-end (UI pública e Management)
+
+**21/10/2026.** Os 7 itens foram entregues; antes era `docs/plans/PLAN-FRONTEND-HARDENING.md`.
 
 Aberto em 21/10/2026, depois de uma sequência de entregas no mesmo dia:
 carimbo de tentativa no login, validação nativa localizada e popup de token.

@@ -1,6 +1,7 @@
-# Plano — métricas de uso agregadas
+# Métricas de uso agregadas (por aplicação e por usuário)
 
-Aberto em 22/10/2026. Estado: **implementado** (registro ao final).
+**22/10/2026.** Entregue em produção, inclusive as métricas por usuário. Antes
+era `docs/plans/PLAN-USAGE-METRICS.md`.
 
 ## Situação atual
 
@@ -68,7 +69,7 @@ por aplicação). A tela atual não exibe isso; se um dia for preciso, o caminho
 | Métrica é contador pré-agregado no processo, exportado ou coletado; evento individual é log/trace. | Modelo de dados do OpenTelemetry e da instrumentação Prometheus. O ASP.NET Core e o próprio identity já usam `Meter` (`identity.metrics.accepted`, cofre, decisões de segurança). | Segue. |
 | Cardinalidade baixa nas tags; nunca id de usuário como rótulo. | Recomendação explícita do Prometheus e do OpenTelemetry. | Segue (65 combinações; usuário fora). |
 | Instâncias exportam séries próprias; agregação entre instâncias na consulta. | Padrão em Prometheus/OTel (rótulo de instância, `sum by`). | Segue, inclusive no agregado do banco (nó na chave). |
-| Servidores de identidade expõem métricas via padrão aberto e guardam eventos de usuário à parte, com expiração. | Keycloak: métricas em endpoint Prometheus e "event store" opcional no banco com expiração configurável. Duende IdentityServer: métricas via OpenTelemetry e eventos para sinks de log. | Métricas: OTel/Prometheus + agregado. Eventos que precisam de pessoa ficam na auditoria (`managementauditevents`), com expiração por evento (PLAN-SYSTEM-USERS, revisão de 22/10). |
+| Servidores de identidade expõem métricas via padrão aberto e guardam eventos de usuário à parte, com expiração. | Keycloak: métricas em endpoint Prometheus e "event store" opcional no banco com expiração configurável. Duende IdentityServer: métricas via OpenTelemetry e eventos para sinks de log. | Métricas: OTel/Prometheus + agregado. Eventos que precisam de pessoa ficam na auditoria (`managementauditevents`), com expiração por evento ([`202610211700-system-users.md`](202610211700-system-users.md), revisão de 22/10). |
 | Painel embutido sem TSDB obrigatório. | Comum em produtos autocontidos; aceitável com agregado pequeno e escrita periódica. | Segue: uma escrita por minuto por nó, ~65 linhas atualizadas. |
 | Minimização de dado pessoal (LGPD art. 6º, III). | Não guardar dado pessoal sem finalidade. | Remove o hash de usuário por evento. |
 
