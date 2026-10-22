@@ -37,7 +37,6 @@ Tipos persistidos em produção (`userclaims`; `roleclaims` vazio):
 | Claim | Usuários | Escopo exigido | Destino | Sensibilidade | Dono/consumidor |
 |-------|---------:|----------------|---------|---------------|-----------------|
 | `entitlements` | 1231 | `directives` (ou `entitlements`, `fleet.api`) | AT + id_token | alta (autorização) | consumidores por contexto; já mapeada |
-| `directive` | 17 | `directives` | AT + id_token | alta | legado de `entitlements`; já mapeada |
 | `name` | 71 | `profile` | AT + id_token | baixa | regra própria |
 | `address` | 42 | `address` | AT + id_token | média (PII) | userinfo; no token vai como `urn:identity:claim:address` (texto livre legado), também sob `address` |
 | `picture` | 36 | `profile` | AT + id_token | baixa | userinfo (Run lê dali) |
@@ -71,3 +70,17 @@ Primeira hora em produção (`37eefbc`): o log apontou `sub`, `oi_scp`,
 para qualquer access token. Passou a exigir `address`; o teste que esperava o
 endereço num token pedido só com `profile` foi corrigido para provar os dois
 lados.
+
+## `directive` persistida: eliminada
+
+As 17 claims `directive` restantes eram duplicatas exatas de uma
+`entitlements` (`aiuser:000…`) do mesmo usuário; 11 delas de agentes do Fleet
+criados hoje. Causa: o escopo `sufficit_ai_openai_bridge` em produção ainda
+declarava a concessão com o tipo `directive` (o manifesto do sufficit-ai já
+dizia `entitlements`, o registro do banco não); quem pede `ai.bridge` e ele
+ganhava a mesma concessão com os dois nomes. Corrigido o registro do escopo,
+apagadas as 17 duplicatas (0 restantes), e o provisionador de concessões
+passa a gravar `directive` como `entitlements`, nunca uma segunda linha. Os
+tokens continuam levando os dois nomes por compatibilidade com consumidores.
+Removido também do sufficit-provisioning o script que ainda criava a claim
+`directive` nas tabelas do Duende.

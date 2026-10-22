@@ -504,8 +504,10 @@ public sealed class DeviceFlowTests
         var refreshToken = pollBody.GetProperty("refresh_token").GetString();
         Assert.False(string.IsNullOrWhiteSpace(refreshToken));
 
+        // Stored under the grant's current name even though the scope declares
+        // the legacy "directive".
         var personalDirective = new Claim(
-            "directive",
+            "entitlements",
             "aiuser:00000000-0000-0000-0000-000000000000");
         using (var verificationScope = _factory.Services.CreateScope())
         {

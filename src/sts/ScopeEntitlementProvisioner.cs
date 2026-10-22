@@ -80,6 +80,11 @@ public sealed class ScopeEntitlementProvisioner(
         var additions = entitlements
             // Add() returning false covers both a claim the user already holds
             // and the same entitlement declared in two places.
+            // "directive" is the grant's former name: it is stored as
+            // "entitlements" (tokens still carry both), never as a second row.
+            .Select(claim => claim.Type == ClientEntitlements.LegacyClaimType
+                ? claim with { Type = ClientEntitlements.ClaimType }
+                : claim)
             .Where(claim => existing.Add((claim.Type, claim.Value)))
             .Select(claim => new Claim(claim.Type, claim.Value))
             .ToList();
