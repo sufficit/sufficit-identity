@@ -23,6 +23,45 @@ public sealed class TokenIssuancePolicyTests
         Assert.Empty(policy.GetDestinations(claim, includeIdentityToken: true));
     }
 
+    [Theory]
+    [InlineData("picture", "profile")]
+    [InlineData("website", "profile")]
+    [InlineData("profile", "profile")]
+    [InlineData("locale", "profile")]
+    [InlineData("address", "address")]
+    [InlineData("phone_number", "phone")]
+    public void Standard_claims_reach_tokens_only_with_their_standard_scope(string type, string scope)
+    {
+        // Even with the compatibility bridge on: these used to reach every access token.
+        var policy = new ApplicationClaimDestinationPolicy(new ClaimScopeMapOptions { IncludeUnmappedClaimsInAccessTokens = true });
+
+        var without = new ClaimsIdentity();
+        without.AddClaim(new Claim(type, "value"));
+        without.SetScopes(Scopes.OpenId);
+        var with = new ClaimsIdentity();
+        with.AddClaim(new Claim(type, "value"));
+        with.SetScopes(Scopes.OpenId, scope);
+
+        Assert.Empty(policy.GetDestinations(without.FindFirst(type)!, includeIdentityToken: true));
+        Assert.Equal([Destinations.AccessToken, Destinations.IdentityToken],
+            policy.GetDestinations(with.FindFirst(type)!, includeIdentityToken: true).ToArray());
+    }
+
+    [Theory]
+    [InlineData("aal")]
+    [InlineData("identity:mfa_remembered")]
+    public void Authentication_evidence_stays_in_the_access_token_even_without_the_bridge(string type)
+    {
+        // The Identity's own APIs read it from a bearer: dropping it would make a
+        // remembered second factor look fresh.
+        var policy = new ApplicationClaimDestinationPolicy(new ClaimScopeMapOptions { IncludeUnmappedClaimsInAccessTokens = false });
+        var identity = new ClaimsIdentity();
+        identity.AddClaim(new Claim(type, "true"));
+
+        Assert.Equal([Destinations.AccessToken],
+            policy.GetDestinations(identity.FindFirst(type)!, includeIdentityToken: true).ToArray());
+    }
+
     [Fact]
     public void Claim_destination_matrix_keeps_scope_and_token_destinations_separate()
     {
@@ -49,9 +88,9 @@ public sealed class TokenIssuancePolicyTests
             includeIdentityToken: true);
 
         var unmappedIdentity = new ClaimsIdentity();
-        unmappedIdentity.AddClaim(new Claim("locale", "pt-BR"));
+        unmappedIdentity.AddClaim(new Claim("cost_center", "42"));
         var unmapped = policy.GetDestinations(
-            unmappedIdentity.FindFirst("locale")!,
+            unmappedIdentity.FindFirst("cost_center")!,
             includeIdentityToken: true);
 
         Assert.Equal(

@@ -53,6 +53,28 @@ internal sealed class ApplicationClaimDestinationPolicy(
             yield break;
         }
 
+        // Standard OIDC claims (Core 5.4) belong to their standard scope. Without
+        // this they fell to the unmapped branch and reached every client's
+        // access token whatever it asked for (plan B2).
+        if (StandardClaimScopes.TryGetValue(claim.Type, out var standardScope))
+        {
+            if (!claim.Subject!.HasScope(standardScope))
+                yield break;
+            yield return Destinations.AccessToken;
+            if (includeIdentityToken)
+                yield return Destinations.IdentityToken;
+            yield break;
+        }
+
+        // Authentication evidence the Identity's own APIs read from a bearer
+        // (fresh-versus-remembered second factor, assurance level). Never in the
+        // id_token: the client has no use for it.
+        if (AccessTokenOnlyClaimTypes.Contains(claim.Type))
+        {
+            yield return Destinations.AccessToken;
+            yield break;
+        }
+
         if (options.DeniedUnmappedClaimTypes.Contains(claim.Type))
         {
             telemetry?.Record(
@@ -68,8 +90,47 @@ internal sealed class ApplicationClaimDestinationPolicy(
         }
 
         if (options.IncludeUnmappedClaimsInAccessTokens)
+        {
+            // Inventory for the strict allow-list: each type is named once per
+            // process, never its value.
+            if (ReportedUnmappedClaimTypes.Count < 256 && ReportedUnmappedClaimTypes.TryAdd(claim.Type, 0))
+                logger?.LogInformation(
+                    "Claim inventory: unmapped claim type {ClaimType} released to an access token; map it before "
+                    + "IncludeUnmappedClaimsInAccessTokens is turned off or it stops reaching tokens.",
+                    claim.Type);
             yield return Destinations.AccessToken;
+        }
     }
+
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> ReportedUnmappedClaimTypes =
+        new(StringComparer.Ordinal);
+
+    internal static readonly IReadOnlyDictionary<string, string> StandardClaimScopes =
+        new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            [Claims.GivenName] = Scopes.Profile,
+            [Claims.FamilyName] = Scopes.Profile,
+            [Claims.MiddleName] = Scopes.Profile,
+            [Claims.Nickname] = Scopes.Profile,
+            [Claims.Profile] = Scopes.Profile,
+            [Claims.Picture] = Scopes.Profile,
+            [Claims.Website] = Scopes.Profile,
+            [Claims.Gender] = Scopes.Profile,
+            [Claims.Birthdate] = Scopes.Profile,
+            [Claims.Zoneinfo] = Scopes.Profile,
+            [Claims.Locale] = Scopes.Profile,
+            [Claims.UpdatedAt] = Scopes.Profile,
+            [Claims.EmailVerified] = Scopes.Email,
+            [Claims.PhoneNumber] = Scopes.Phone,
+            [Claims.PhoneNumberVerified] = Scopes.Phone,
+            [Claims.Address] = Scopes.Address,
+        };
+
+    internal static readonly IReadOnlySet<string> AccessTokenOnlyClaimTypes = new HashSet<string>(StringComparer.Ordinal)
+    {
+        OidcSessionClaimsPrincipalFactory.AssuranceLevelClaimType,
+        Sufficit.Identity.Application.Security.MfaEvidencePolicy.RememberedSecondFactorClaimType,
+    };
 }
 
 public interface ITokenIssuancePolicyKernel

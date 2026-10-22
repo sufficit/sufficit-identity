@@ -162,16 +162,13 @@ writing.
 
 ### B2 — Claim release fails closed
 
+Inventory done and standard claims gated by their scope
+([`202610221930`](../activities/202610221930-vault-restore-proof-and-claim-inventory.md)).
+
+- [ ] **(operational)** When no node logs "Claim inventory: unmapped claim
+  type" any more, set `IncludeUnmappedClaimsInAccessTokens=false`
 - [ ] Add `IClaimReleasePolicy` considering client, grant, scopes, resources
   and destination
-- [ ] **(operational)** Inventory every custom claim emitted in production and
-  assign each a required scope, token destination, sensitivity and owning
-  component
-- [ ] Migrate the remaining claim mappings, then set
-  `IncludeUnmappedClaimsInAccessTokens=false` with a strict allow-list
-
-Sensitive unmapped-claim suppression already emits PII-free decision telemetry;
-the inventory and the default flip are what remain.
 
 ### B3 — Token exchange provenance and delegation
 
@@ -252,10 +249,11 @@ The accepted warning and skips (`FAPIEnsureServerConfigurationDoesNotSupport`
 
 ### C1 — Vault production enablement and rotation
 
-- [ ] **(operational)** Prove a restorable vault backup and a rollback that
-  records no sensitive material, then declare
-  `Sufficit:Vault:SecretMigrationComplete=true` (the vault is on in production
-  with encryption required and zero `pt1.` values — [`202610221630`](../activities/202610221630-plan-reconciliation.md))
+- [ ] **(operational)** Escrow the KEK (`vault-kek.pfx` and its password)
+  somewhere other than the operator workstation: the app CTs have no vzdump,
+  so a lost workstation plus three lost nodes leaves the database backups
+  undecryptable (restore proof and `SecretMigrationComplete`:
+  [`202610221930`](../activities/202610221930-vault-restore-proof-and-claim-inventory.md))
 - [ ] Add an authorized rotation orchestrator with a distributed lock, progress
   journal, rewrap/re-encrypt strategy, rollback window and audit events
 - [ ] **(operational)** Separate database-reader authority from KEK authority
