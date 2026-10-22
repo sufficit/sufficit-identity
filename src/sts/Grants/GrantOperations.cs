@@ -209,7 +209,6 @@ public sealed class GrantOperations(
             await ApplicationManager.GetPropertiesAsync(application)))
         {
             identity.AddClaim(ClientEntitlements.ClaimType, entitlement);
-            identity.AddClaim(ClientEntitlements.LegacyClaimType, entitlement);
         }
 
         return identity;

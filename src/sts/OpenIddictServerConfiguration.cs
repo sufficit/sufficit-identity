@@ -252,7 +252,7 @@ public static partial class ServiceCollectionExtensions
         // one, so it must hold for every deployment and every flow. Gating it
         // behind an option would mean the storage rename is safe on some hosts
         // and silently breaking on others.
-        server.AddEventHandler(ProjectEntitlementClaimUnderBothNames.Descriptor);
+        server.AddEventHandler(NormalizeEntitlementClaimName.Descriptor);
 
         // -------------------------------------------------------------------
         // Token lifetimes (Sufficit:Identity:Tokens). Refresh rotation is

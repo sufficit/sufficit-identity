@@ -84,3 +84,18 @@ passa a gravar `directive` como `entitlements`, nunca uma segunda linha. Os
 tokens continuam levando os dois nomes por compatibilidade com consumidores.
 Removido também do sufficit-provisioning o script que ainda criava a claim
 `directive` nas tabelas do Duende.
+
+## O nome `directive` sai da emissão
+
+Verificados todos os consumidores antes: os 18 clientes com o escopo
+`directives`/`entitlements`/`fleet.api` são da Sufficit, e cada serviço em
+produção lê `entitlements` (pacote `Sufficit.Identity.Core` ≥ 1.26.0902, ou
+código próprio que lê os dois nomes). Dois precisaram de ação: o
+`sufficit-ami-events` rodava código de 17/08 (main publicada, ver a atividade
+no repositório dele) e o sufficit-ai (login OIDC do web e hidratação por
+userinfo, `9ee4fcfa`).
+
+Agora tokens, introspecção e userinfo levam a concessão só como
+`entitlements`; um valor ainda guardado como `directive` é renomeado na saída
+(`NormalizeEntitlementClaimName`), e contas de serviço deixam de receber a
+cópia. O mapeamento `directive` → `directives` continua para esse caso.

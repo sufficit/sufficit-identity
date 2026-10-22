@@ -32,6 +32,8 @@ public sealed class ClaimScopeMapTests
 {
     private const string DirectiveScopeName = "directives";
     private const string SuccessorScopeName = "entitlements";
+    /// <summary>The only name the grant leaves the server under, whatever it is stored as.</summary>
+    private const string EmittedClaimType = "entitlements";
     private const string MappedClientId = "test-directive-client";
     private const string MappedClientSecret = "test-directive-client-secret";
 
@@ -81,7 +83,7 @@ public sealed class ClaimScopeMapTests
         // Critical assertion: the mapped claim was DROPPED because the token's
         // scope set does not include the mapped scope.
         Assert.False(
-            introspectBody.TryGetProperty(TestDataSeeder.DirectiveClaimType, out _),
+            introspectBody.TryGetProperty(EmittedClaimType, out _),
             "directive claim leaked into a token whose scope set lacks the mapped 'directives' scope.");
     }
 
@@ -128,7 +130,7 @@ public sealed class ClaimScopeMapTests
 
         Assert.True(introspectBody.GetProperty("active").GetBoolean());
         Assert.Equal(directiveValue,
-            introspectBody.GetProperty(TestDataSeeder.DirectiveClaimType).GetString());
+            introspectBody.GetProperty(EmittedClaimType).GetString());
     }
 
     [Fact]
@@ -176,7 +178,7 @@ public sealed class ClaimScopeMapTests
 
         Assert.True(introspectBody.GetProperty("active").GetBoolean());
         Assert.Equal(directiveValue,
-            introspectBody.GetProperty(TestDataSeeder.DirectiveClaimType).GetString());
+            introspectBody.GetProperty(EmittedClaimType).GetString());
     }
 
     [Fact]
@@ -213,7 +215,7 @@ public sealed class ClaimScopeMapTests
             new AuthenticationHeaderValue("Bearer", accessToken);
         var userinfo = await client.GetFromJsonAsync<JsonElement>("/connect/userinfo");
         Assert.Equal(directiveValue,
-            userinfo.GetProperty(TestDataSeeder.DirectiveClaimType).GetString());
+            userinfo.GetProperty(EmittedClaimType).GetString());
     }
 
     [Fact]
@@ -256,7 +258,7 @@ public sealed class ClaimScopeMapTests
         Assert.False(string.IsNullOrWhiteSpace(idToken));
         var jwt = new JsonWebTokenHandler().ReadJsonWebToken(idToken);
         Assert.Contains(jwt.Claims, claim =>
-            claim.Type == TestDataSeeder.DirectiveClaimType
+            claim.Type == EmittedClaimType
             && claim.Value == directiveValue);
     }
 
@@ -384,7 +386,7 @@ public sealed class ClaimScopeMapTests
             ["token"] = accessToken,
         });
         Assert.True(body.GetProperty("active").GetBoolean());
-        return body.TryGetProperty(TestDataSeeder.DirectiveClaimType, out var v) ? v.GetString() : null;
+        return body.TryGetProperty(EmittedClaimType, out var v) ? v.GetString() : null;
     }
 
     /// <summary>
@@ -497,7 +499,7 @@ public sealed class ClaimScopeMapTests
     [Theory]
     [InlineData("directive")]
     [InlineData("entitlements")]
-    public async Task Both_names_reach_the_token_whichever_one_the_grant_is_stored_under(
+    public async Task Only_the_standard_name_reaches_the_token_whichever_one_the_grant_is_stored_under(
         string storedClaimType)
     {
         using var factory = SufficitIdentityTestFactory.CreateIsolated(MapConfiguration());
@@ -519,13 +521,10 @@ public sealed class ClaimScopeMapTests
             $"{TestDataSeeder.ScopeName} {DirectiveScopeName}");
 
         Assert.True(body.GetProperty("active").GetBoolean());
-        foreach (var emitted in new[] { "directive", "entitlements" })
-        {
-            Assert.True(
-                body.TryGetProperty(emitted, out var claim),
-                $"stored as '{storedClaimType}', but '{emitted}' is missing from the token");
-            Assert.Contains(value, Values(claim));
-        }
+        Assert.True(body.TryGetProperty(EmittedClaimType, out var claim),
+            $"stored as '{storedClaimType}', but '{EmittedClaimType}' is missing from the token");
+        Assert.Contains(value, Values(claim));
+        Assert.False(body.TryGetProperty("directive", out _), "the legacy name left the server");
     }
 
     /// <summary>
@@ -612,7 +611,7 @@ public sealed class ClaimScopeMapTests
     [InlineData("directive", "entitlements")]
     [InlineData("entitlements", "directives")]
     [InlineData("entitlements", "entitlements")]
-    public async Task Userinfo_returns_both_names_whichever_one_the_grant_is_stored_under(
+    public async Task Userinfo_returns_only_the_standard_name_whichever_one_the_grant_is_stored_under(
         string storedClaimType, string requestedScope)
     {
         using var factory = SufficitIdentityTestFactory.CreateIsolated(MapConfigurationWithSuccessor());
@@ -634,13 +633,10 @@ public sealed class ClaimScopeMapTests
         var userinfo = await UserinfoAsync(factory, username, password,
             $"openid {requestedScope}");
 
-        foreach (var emitted in new[] { "directive", "entitlements" })
-        {
-            Assert.True(
-                userinfo.TryGetProperty(emitted, out var claim),
-                $"stored as '{storedClaimType}', but '{emitted}' is missing from userinfo");
-            Assert.Contains(value, Values(claim));
-        }
+        Assert.True(userinfo.TryGetProperty(EmittedClaimType, out var claim),
+            $"stored as '{storedClaimType}', but '{EmittedClaimType}' is missing from userinfo");
+        Assert.Contains(value, Values(claim));
+        Assert.False(userinfo.TryGetProperty("directive", out _), "the legacy name left the server");
     }
 
     /// <summary>
@@ -705,11 +701,9 @@ public sealed class ClaimScopeMapTests
         var userinfo = await UserinfoAsync(factory, username, password,
             $"openid {DirectiveScopeName}");
 
-        foreach (var emitted in new[] { "directive", "entitlements" })
-        {
-            Assert.True(userinfo.TryGetProperty(emitted, out var claim));
-            Assert.Equal([value], Values(claim).ToArray());
-        }
+        Assert.True(userinfo.TryGetProperty(EmittedClaimType, out var claim));
+        Assert.Equal([value], Values(claim).ToArray());
+        Assert.False(userinfo.TryGetProperty("directive", out _));
     }
 
     private static async Task<JsonElement> UserinfoAsync(

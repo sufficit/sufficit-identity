@@ -7,41 +7,30 @@ using static OpenIddict.Server.OpenIddictServerHandlers;
 namespace Sufficit.Identity.STS;
 
 /// <summary>
-///     Emits the authorization grant under both claim names, whichever one it is
-///     stored as.
+///     Emits the authorization grant only as <c>entitlements</c>, whichever
+///     name it is stored or derived under.
 /// </summary>
 /// <remarks>
 ///     <para>
-///         The persisted claim type travels straight into the token: there is no
-///         translation layer between storage and wire. That coupling made
-///         renaming the stored type a breaking change for every consumer at
-///         once — the data migration was the dangerous operation, and it had to
-///         be scheduled against the slowest application to adopt the new name.
-///     </para>
-///     <para>
-///         This handler breaks that coupling. Whatever the grant is stored as,
-///         both <c>directive</c> and <c>entitlements</c> reach the token, so a
-///         consumer may read either one and the storage rename becomes an
-///         internal detail nobody observes.
+///         The grant used to travel under both <c>directive</c> and
+///         <c>entitlements</c> while consumers moved to the standard name
+///         (RFC 9068 §2.2.3.1). Every consumer reads <c>entitlements</c> since
+///         2026-10-22, so a value still found under the old name is renamed, not
+///         copied: the old name no longer leaves this server.
 ///     </para>
 ///     <para>
 ///         <b>Why here, and not where destinations are assigned.</b> By this
 ///         point OpenIddict has already built the per-token principals, so a
-///         claim is present only if it survived the claim-to-scope gate. Copying
-///         it inside those principals therefore inherits that decision exactly:
-///         a grant withheld for want of the mapped scope has nothing to copy,
-///         and cannot leak under the second name. Adding the twin earlier, next
-///         to the source claim, would require re-deriving the gate — and a
-///         second implementation of a security decision is a second thing to get
-///         wrong.
+///         claim is present only if it survived the claim-to-scope gate; the
+///         rename inherits that decision instead of re-deriving it.
 ///     </para>
 /// </remarks>
-internal sealed class ProjectEntitlementClaimUnderBothNames
+internal sealed class NormalizeEntitlementClaimName
     : IOpenIddictServerHandler<ProcessSignInContext>
 {
     public static OpenIddictServerHandlerDescriptor Descriptor { get; } =
         OpenIddictServerHandlerDescriptor.CreateBuilder<ProcessSignInContext>()
-            .UseSingletonHandler<ProjectEntitlementClaimUnderBothNames>()
+            .UseSingletonHandler<NormalizeEntitlementClaimName>()
             .SetOrder(PrepareUserCodePrincipal.Descriptor.Order + 550)
             .SetType(OpenIddictServerHandlerType.Custom)
             .Build();
@@ -72,7 +61,10 @@ internal sealed class ProjectEntitlementClaimUnderBothNames
         }
 
         Copy(identity, from: ClientEntitlements.LegacyClaimType, to: ClientEntitlements.ClaimType);
-        Copy(identity, from: ClientEntitlements.ClaimType, to: ClientEntitlements.LegacyClaimType);
+        foreach (var legacy in identity.FindAll(ClientEntitlements.LegacyClaimType).ToArray())
+        {
+            identity.RemoveClaim(legacy);
+        }
     }
 
     /// <summary>
@@ -80,10 +72,7 @@ internal sealed class ProjectEntitlementClaimUnderBothNames
     ///     <paramref name="to"/>, skipping values the target already carries.
     /// </summary>
     /// <remarks>
-    ///     The de-duplication matters because the client-credentials path
-    ///     already stamps both names itself. Without it, a machine token would
-    ///     carry each grant twice and every consumer counting values would be
-    ///     wrong.
+    ///     De-duplicated: a value stored under both names must not appear twice.
     /// </remarks>
     private static void Copy(ClaimsIdentity identity, string from, string to)
     {

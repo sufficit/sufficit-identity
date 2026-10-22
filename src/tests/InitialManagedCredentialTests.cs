@@ -93,7 +93,7 @@ public sealed class InitialManagedCredentialTests
         Assert.Equal(clientId, principal.FindFirst("sub")?.Value);
         Assert.NotEqual(humanId, principal.FindFirst("sub")?.Value);
         Assert.True(principal.HasClaim(ClientEntitlements.ClaimType, allowed));
-        Assert.True(principal.HasClaim(ClientEntitlements.LegacyClaimType, allowed));
+        Assert.False(principal.HasClaim(claim => claim.Type == ClientEntitlements.LegacyClaimType));
         Assert.DoesNotContain(principal.Claims, c => c.Value == humanOnly);
         Assert.DoesNotContain(principal.Claims, c => c.Type is "role" or "permission");
         // expires_in is remaining lifetime when serialized, so a clock tick

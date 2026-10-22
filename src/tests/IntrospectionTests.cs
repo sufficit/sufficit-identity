@@ -61,7 +61,9 @@ public sealed class IntrospectionTests
 
         Assert.Equal(HttpStatusCode.OK, introspectStatus);
         Assert.True(introspectBody.GetProperty("active").GetBoolean());
-        Assert.Equal(directiveValue, introspectBody.GetProperty(TestDataSeeder.DirectiveClaimType).GetString());
+        // Stored under the legacy name, released only under the standard one.
+        Assert.Equal(directiveValue, introspectBody.GetProperty("entitlements").GetString());
+        Assert.False(introspectBody.TryGetProperty(TestDataSeeder.DirectiveClaimType, out _));
     }
 
     internal static AuthenticationHeaderValue BasicAuthFor(string clientId, string clientSecret) =>

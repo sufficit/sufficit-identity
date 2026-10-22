@@ -617,7 +617,7 @@ public partial class AuthorizationController : Controller
             }
         }
 
-        ProjectEntitlementUnderBothNames(claims);
+        NormalizeEntitlementName(claims);
 
         // Explicit current authorization query; identity always comes from the
         // validated access-token subject, never a caller-supplied user/context.
@@ -654,7 +654,7 @@ public partial class AuthorizationController : Controller
 
     /// <summary>
     ///     Emits the authorization grant under both claim names here too, the way
-    ///     <see cref="ProjectEntitlementClaimUnderBothNames"/> already does for the
+    ///     <see cref="NormalizeEntitlementClaimName"/> already does for the
     ///     access and identity tokens.
     /// </summary>
     /// <remarks>
@@ -676,10 +676,11 @@ public partial class AuthorizationController : Controller
     ///         through the back door.
     ///     </para>
     /// </remarks>
-    private void ProjectEntitlementUnderBothNames(IDictionary<string, object?> claims)
+    private void NormalizeEntitlementName(IDictionary<string, object?> claims)
     {
+        // Only the standard name leaves the server (see NormalizeEntitlementClaimName).
         Mirror(ClientEntitlements.LegacyClaimType, ClientEntitlements.ClaimType);
-        Mirror(ClientEntitlements.ClaimType, ClientEntitlements.LegacyClaimType);
+        claims.Remove(ClientEntitlements.LegacyClaimType);
 
         void Mirror(string from, string to)
         {

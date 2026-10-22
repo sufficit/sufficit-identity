@@ -42,10 +42,8 @@ public sealed class ClientEntitlementsIssuanceTests
         var claims = await IssueAndReadClaimsAsync(factory, clientId, secret);
 
         Assert.Equal(Granted, Single(claims, ClientEntitlements.ClaimType));
-        // O nome curto continua sendo emitido enquanto os consumidores da casa
-        // (clientes de API e provisionamento) não migram para o container da
-        // RFC 9068 §2.2.3.1.
-        Assert.Equal(Granted, Single(claims, ClientEntitlements.LegacyClaimType));
+        // Só o container da RFC 9068 §2.2.3.1: o nome curto saiu da emissão.
+        Assert.False(claims.TryGetProperty(ClientEntitlements.LegacyClaimType, out _));
     }
 
     [Fact]
