@@ -121,10 +121,11 @@ without being separately permitted to, with evidence appropriate to its type.
 
 ### A4 — Step-up enforcement and one MFA evidence policy
 
-- [ ] **(operational)** Change credential-mutation step-up from `Audit` to
-  `Enforce` after current sessions and UI flows pass canary checks
-- [ ] Finish the single evidence policy: the readers are unified
-  (`MfaEvidencePolicy`), the six places that *set* `amr` are not
+- [ ] Finish the single evidence policy. Neither side is unified yet: SCIM
+  keeps its own reader (`ScimServiceCollectionExtensions.cs`, own method set
+  and `HasMfaEvidence`) beside `MfaEvidencePolicy`, and `amr` is still set in
+  several places (interactive sign-in, identity-assertion grants, provisioning
+  and operator tokens, development endpoints)
 - [ ] End-to-end tests proving a real MFA login satisfies Management and SCIM
   policies, and that a stale session cannot mutate credentials
 
@@ -187,8 +188,6 @@ the inventory and the default flip are what remain.
 
 ### B3 — Token exchange provenance and delegation
 
-- [ ] **(operational)** Characterize legacy tokens in Observe mode and migrate
-  issuers and claims before enforcement
 - [ ] Tests for a subject token from a foreign issuer, a personal token, a CIBA
   token, and sender binding carried across the exchange
 
@@ -211,8 +210,6 @@ Missing and ambiguous `azp` are tested.
 
 ### B5 — CIBA trust boundary completion
 
-- [ ] **(operational)** Inventory current CIBA callers in Observe mode,
-  provision the missing entitlements, then enforce per client
 - [ ] Run CIBA interoperability/conformance and approval-fatigue abuse tests
   before enabling additional clients
 
@@ -234,8 +231,8 @@ metadata to interactive consent at runtime; the data cleanup is what is left.
 
 ### B8 — Per-client OAuth resource validation
 
-- [ ] **(operational)** Run the resource policy in Observe mode and provision
-  explicit resource permissions for the existing MCP clients before enforcing
+Delivered: there is no Observe mode, per-client resource permissions are always
+enforced — [`202610221630`](../activities/202610221630-plan-reconciliation.md).
 
 ### B9 — FAPI 2.0: the one accepted conformance failure **(deferred by decision)**
 
@@ -268,9 +265,10 @@ The accepted warning and skips (`FAPIEnsureServerConfigurationDoesNotSupport`
 
 ### C1 — Vault production enablement and rotation
 
-- [ ] **(operational)** Enable the vault in production and prove zero `pt1.`
-  values and zero `pt1.` reads, a restorable backup, and a rollback that
-  records no sensitive material
+- [ ] **(operational)** Prove a restorable vault backup and a rollback that
+  records no sensitive material, then declare
+  `Sufficit:Vault:SecretMigrationComplete=true` (the vault is on in production
+  with encryption required and zero `pt1.` values — [`202610221630`](../activities/202610221630-plan-reconciliation.md))
 - [ ] Add an authorized rotation orchestrator with a distributed lock, progress
   journal, rewrap/re-encrypt strategy, rollback window and audit events
 - [ ] **(operational)** Separate database-reader authority from KEK authority
@@ -325,14 +323,12 @@ recovery-code material in `usertokens` with no application encryption adapter.
 
 ### C4 — Verified transport everywhere
 
-- [ ] **(operational)** Turn on verified TLS for RabbitMQ (`UseTls`, then
-  `RequireTls`) and SMTP (`RequireTls`) in production. The gates, the TLS
-  server name and certificate-revocation checking are already in the code
-  (`RabbitMqEmailOptions`, `DefaultEmailSenders`), and plaintext logs a
-  warning at startup
+- [ ] **(operational)** SMTP `RequireTls` in production, if SMTP is used at
+  all (RabbitMQ already runs `UseTls` + `RequireTls` — [`202610221630`](../activities/202610221630-plan-reconciliation.md))
 - [ ] **(operational)** Select `RequireVerifiedTls` — or the audited
   `PrivateSocket` exception — in each production deployment, after the CA or
-  socket is provisioned
+  socket is provisioned. Today the connection string declares no `SslMode`
+  and goes through the local proxy (`eveo-proxy-local`)
 
 An explicit transport policy already validates VerifyCA/VerifyFull or a
 UnixSocket exception; production still has to choose the mode.
@@ -349,16 +345,14 @@ UnixSocket exception; production still has to choose the mode.
 
 ### D1 — CSP from telemetry to enforcement
 
-- [ ] **(operational)** Inventory the actual image, style and script origins
-  against the rendered UI
 - [ ] Extract the inline `style="…"` attributes from the management pages.
   A per-request nonce for `<style>` elements already exists (`Csp:UseNonce`,
   opt-in), but a nonce cannot authorize an attribute, and Firefox has no
-  `style-src-attr` — so the nonce stays off until the attributes are gone
-- [ ] Exercise every public and management flow in report-only mode, triage the
-  violations, then enforce by deployment cohort — `ReportOnly=false`
-- [ ] Keep a bounded report-only rollback switch and record no sensitive URL or
-  query data in the reports
+  `style-src-attr`. Production enforces CSP (`ReportOnly=false`, nonce on)
+  with `style-src 'unsafe-inline'` because of them; 9 attributes remain in
+  Branding, Audit, Users, Metrics and Database
+- [ ] Make the report-only rollback switch bounded: `AcknowledgeReportOnly` has
+  no expiry (reports already strip query and userinfo)
 
 Procedure: [`RUNBOOK-CSP-CALIBRATION.md`](../runbooks/RUNBOOK-CSP-CALIBRATION.md).
 The placeholder external image host and the websocket wildcards were already
@@ -366,22 +360,20 @@ removed from the three servers.
 
 ### D2 — Public origin enforcement
 
-- [ ] **(operational)** Inventory the proxy paths and public hosts, eliminate
-  request-derived security URLs, and switch `PublicOrigin.Mode` to `Enforce`
+Delivered: `PublicOrigin.Mode` defaults to `Enforce` and production does not
+override it — [`202610221630`](../activities/202610221630-plan-reconciliation.md).
 
 ### D3 — Explicit deployment topology
 
-- [ ] **(operational)** Inventory the current production topology, configure it
-  explicitly, then make `FailOnUntrustedProxy`/`RequireShared` derived
-  fail-closed requirements
 - [ ] Add a two-replica DPoP/CIBA/passkey smoke test
 
 ### D4 — Enforcement-mode inventory per environment **(operational)**
 
-- [ ] For each environment, inventory SCIM, token exchange, personal tokens,
-  CIBA, credential mutations, public origin and Management; remove every
-  `Observe`/`Audit`/authorization-off setting, or register a valid temporary
-  exception with owner and expiry
+- [ ] For each environment **other than production**, inventory SCIM, token
+  exchange, personal tokens, CIBA, credential mutations, public origin and
+  Management; remove every `Observe`/`Audit`/authorization-off setting, or
+  register a valid temporary exception with owner and expiry. Production passes
+  the posture check with no unresolved permissive setting — [`202610221630`](../activities/202610221630-plan-reconciliation.md)
 
 The posture check already reports `ciba-client-policy-observe`,
 `personal-tokens-observe`, `token-exchange-provenance-observe` and
@@ -389,9 +381,9 @@ The posture check already reports `ciba-client-policy-observe`,
 
 ### D5 — Real shared cache
 
-- [ ] **(operational)** Configure the real Redis `IDistributedCache` in every
-  environment and pass the issuance/consumption/replay rehearsal across
-  multiple replicas
+- [ ] **(operational)** Pass the issuance/consumption/replay rehearsal across
+  multiple replicas (production already runs the shared Redis cache with
+  `RequireShared=true` on three nodes)
 
 `AddStackExchangeRedisCache` is wired and `HostStartupGuards` refuses to scale
 out without it; the multi-replica rehearsal is the missing evidence.
@@ -717,14 +709,6 @@ central metadata validation and public-client PKCE are already covered.
   reach the real budget while each reports a third of it. Automatic rotation is
   disabled on purpose until the aggregated metric exists
 
-### F13 — Split operational and security contexts
-
-- [ ] Split the operational/security `DbContext`s and their migrations — only
-  after transactional boundaries and outbox behaviour are defined. Splitting the
-  current `DbContext` was evaluated and **withdrawn**: `OnModelCreating` is 17
-  cohesive methods, none over 137 lines, and the cost lands on hand-sequenced
-  production SQL across a multimaster cluster
-
 ### F14 — Security-critical protocol annotations
 
 - [ ] Remove comments claiming a guard is unconditional where composition makes
@@ -771,33 +755,28 @@ green nightly since 2026-09-18 —
 ### G4 — Legacy cutover operational gates **(operational)**
 
 Database and provider gates are complete
-([`202608011820-legacy-cutover-db-provider.md`](../activities/202608011820-legacy-cutover-db-provider.md)).
+([`202608011820-legacy-cutover-db-provider.md`](../activities/202608011820-legacy-cutover-db-provider.md)),
+and so are legacy grants, PKCE, key distribution, management parity and the
+secret scan ([`202610221630`](../activities/202610221630-plan-reconciliation.md)).
 Everything below needs a human against real infrastructure and clients.
 
 **Clients**
 
 - [ ] Every active client has an assigned owner and a documented final state
-- [ ] Implicit/hybrid/password consumers migrated to authorization_code + PKCE,
-  or retired
 - [ ] Confidential clients have newly issued, post-migration credentials
-- [ ] PKCE S256 enforced on every authorization-code client
 - [ ] Redirect, logout and CORS allow-lists verified per client
 - [ ] Token format validated by every resource server (reference vs JWT)
 
 **Keys and infrastructure**
 
-- [ ] Signing/encryption key distribution tested end to end (PFX on every
-  replica)
 - [ ] JWKS overlap and rotation tested — old and new keys visible during the
   transition
 - [ ] Proxy and forwarded headers verified end to end
   (`X-Forwarded-Proto`/`Host`, TrustedProxies)
-- [ ] Management parity verified, or temporary legacy administration approved
 
 **Rehearsals**
 
 - [ ] Backup, cutover and rollback rehearsals complete and recorded
-- [ ] No migration step depends on a secret in source control (gitleaks clean)
 
 ### G5 — Confirmed-email rollout **(operational)**
 
