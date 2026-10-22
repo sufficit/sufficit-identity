@@ -58,6 +58,8 @@ São finalidades diferentes: a auditoria responde por ações de operadores e
 precisa de identificação; a métrica conta uso de aplicações e é anonimizada.
 Juntar as duas misturaria dado pessoal de operador com contagem anônima e as
 duas regras de retenção.
+A métrica deixa de ser uma linha por evento: ver
+[`PLAN-USAGE-METRICS.md`](PLAN-USAGE-METRICS.md).
 
 ### Entregas da revisão
 
