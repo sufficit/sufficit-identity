@@ -49,6 +49,8 @@ public sealed class DelegatedCredentialOptions
     /// <summary>
     /// How old the user's sign-in (<c>auth_time</c> of the subject token) may
     /// be. A subject token without <c>auth_time</c> is refused. Default 12.
+    /// A delegating application may set its own value in its client settings
+    /// (<see cref="Sufficit.Identity.Application.Security.DelegationSignInAge"/>).
     /// </summary>
     public int MaxAuthAgeHours { get; init; } = 12;
 
@@ -72,7 +74,7 @@ public sealed class DelegatedCredentialOptions
     /// </summary>
     public bool NotifyOnIssue { get; init; } = true;
 
-    internal const int MaxAuthAgeHoursCeiling = 24 * 7;
+    internal const int MaxAuthAgeHoursCeiling = Sufficit.Identity.Application.Security.DelegationSignInAge.MaximumHours;
     internal const int CredentialLifetimeDaysCeiling = 365;
     internal const int MaxActivePerUserCeiling = 1000;
 

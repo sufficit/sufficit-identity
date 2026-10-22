@@ -69,6 +69,7 @@ internal sealed partial class ClientManagementService
                 command.AccessTokenLifetimeMinutes,
                 command.IdentityTokenLifetimeMinutes,
                 command.RefreshTokenLifetimeDays);
+            ClientTokenLifetimePolicy.ValidateDelegationSignInAge(command.DelegationMaxAuthAgeHours);
 
             if (command.FrontchannelLogoutSessionRequired &&
                 frontchannelLogoutUri is null)
@@ -236,6 +237,8 @@ internal sealed partial class ClientManagementService
                 command.AccessTokenLifetimeMinutes,
                 command.IdentityTokenLifetimeMinutes,
                 command.RefreshTokenLifetimeDays);
+            ClientTokenLifetimePolicy.ApplyDelegationSignInAge(
+                descriptor, command.DelegationMaxAuthAgeHours);
 
             if (clientDefinitionValidator.RequiresProofKeyForCodeExchange(
                     grantTypes))
@@ -414,6 +417,7 @@ internal sealed partial class ClientManagementService
                 command.AccessTokenLifetimeMinutes,
                 command.IdentityTokenLifetimeMinutes,
                 command.RefreshTokenLifetimeDays);
+            ClientTokenLifetimePolicy.ValidateDelegationSignInAge(command.DelegationMaxAuthAgeHours);
 
             ClientUriPolicy.ValidateLogoutConfiguration(
                 redirectUris,
@@ -556,6 +560,8 @@ internal sealed partial class ClientManagementService
                 command.ClearAccessTokenLifetime,
                 command.ClearIdentityTokenLifetime,
                 command.ClearRefreshTokenLifetime);
+            ClientTokenLifetimePolicy.ApplyDelegationSignInAge(
+                descriptor, command.DelegationMaxAuthAgeHours, command.ClearDelegationMaxAuthAge);
 
             if (clientDefinitionValidator.RequiresProofKeyForCodeExchange(
                     grantTypes))

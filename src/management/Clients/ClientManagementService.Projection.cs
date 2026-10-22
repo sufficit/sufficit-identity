@@ -126,6 +126,9 @@ internal sealed partial class ClientManagementService
                 "Sufficit:Identity:Tokens:IdentityTokenLifetimeMinutes") ?? 20,
             GlobalRefreshTokenLifetimeDays: configuration.GetValue<double?>(
                 "Sufficit:Identity:Tokens:RefreshTokenLifetimeDays") ?? 14,
+            DelegationMaxAuthAgeHours: DelegationSignInAge.Read(settings),
+            GlobalDelegationMaxAuthAgeHours: configuration.GetValue<int?>(
+                "Sufficit:Identity:TokenExchange:DelegatedCredentials:MaxAuthAgeHours") ?? 12,
             Origin: descriptor.Properties.ContainsKey(
                     OpenIddictManifestProvisioner.SchemaVersionProperty)
                 ? "manifest"

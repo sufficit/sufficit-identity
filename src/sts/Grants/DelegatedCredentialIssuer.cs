@@ -127,7 +127,16 @@ public sealed class DelegatedCredentialIssuer(
                 "The subject_token does not record when the user signed in.", "missing_auth_time");
         }
 
-        if (!IsRecent(authenticatedAt.Value, now, options.MaxAuthAgeHours))
+        // The delegating application may set its own limit; the deployment's is the default.
+        var maxAuthAgeHours = options.MaxAuthAgeHours;
+        if (await ops.ApplicationManager.FindByClientIdAsync(caller, ct) is { } delegatorApplication
+            && Sufficit.Identity.Application.Security.DelegationSignInAge.Read(
+                await ops.ApplicationManager.GetSettingsAsync(delegatorApplication, ct)) is { } own)
+        {
+            maxAuthAgeHours = own;
+        }
+
+        if (!IsRecent(authenticatedAt.Value, now, maxAuthAgeHours))
         {
             return await RefuseAsync(Errors.InvalidGrant,
                 "The user's sign-in is too old to delegate a credential. Sign in again and retry.", "stale_authentication");

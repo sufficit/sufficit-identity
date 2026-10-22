@@ -187,6 +187,56 @@ public sealed class DelegatedCredentialTests
     }
 
     [Fact]
+    public async Task Each_application_may_set_its_own_sign_in_age()
+    {
+        // The server's clock runs three hours ahead of the user's sign-in.
+        var clock = new ShiftedClock(TimeSpan.FromHours(3));
+        await using var env = await DelegationEnvironment.CreateAsync(new()
+        {
+            ["Sufficit:Identity:TokenExchange:DelegatedCredentials:MaxAuthAgeHours"] = "1",
+        }, clock);
+        var user = await env.CreateUserAsync();
+
+        Task<(HttpStatusCode Status, JsonElement Body)> DelegateAsync(string subjectToken) =>
+            env.Client.PostFormAsync("/connect/token", new Dictionary<string, string>
+            {
+                ["grant_type"] = TokenExchangeGrant,
+                ["client_id"] = DelegatorClientId,
+                ["client_secret"] = DelegatorClientSecret,
+                ["subject_token"] = subjectToken,
+                ["subject_token_type"] = AccessTokenType,
+                ["requested_token_type"] = RefreshTokenType,
+                ["audience"] = DelegateClientId,
+                ["dpop_jkt"] = Thumbprint(NewKey()),
+                ["executor_id"] = Guid.NewGuid().ToString(),
+            });
+
+        // The deployment default (1 h) finds a three-hour-old sign-in stale.
+        var (stale, staleBody) = await DelegateAsync(await env.SubjectTokenAsync(user.UserName!));
+        Assert.True(stale == HttpStatusCode.BadRequest, staleBody.ToString());
+        Assert.Equal(Errors.InvalidGrant, staleBody.GetProperty("error").GetString());
+
+        // The delegating application sets its own limit in its client settings.
+        await using (var scope = env.Host.Services.CreateAsyncScope())
+        {
+            var applications = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
+            var application = (await applications.FindByClientIdAsync(DelegatorClientId))!;
+            var descriptor = new OpenIddictApplicationDescriptor();
+            await applications.PopulateAsync(descriptor, application);
+            descriptor.Settings[Sufficit.Identity.Application.Security.DelegationSignInAge.ClientSetting] = "168";
+            await applications.UpdateAsync(application, descriptor);
+        }
+
+        var (fresh, freshBody) = await DelegateAsync(await env.SubjectTokenAsync(user.UserName!));
+        Assert.True(fresh == HttpStatusCode.OK, freshBody.ToString());
+    }
+
+    private sealed class ShiftedClock(TimeSpan ahead) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => System.GetUtcNow() + ahead;
+    }
+
+    [Fact]
     public async Task Each_rule_refuses_with_a_specific_error()
     {
         await using var env = await DelegationEnvironment.CreateAsync();
@@ -474,7 +524,8 @@ public sealed class DelegatedCredentialTests
         public RecordingEmailSender Email { get; }
 
         public static async Task<DelegationEnvironment> CreateAsync(
-            Dictionary<string, string?>? overrides = null)
+            Dictionary<string, string?>? overrides = null,
+            TimeProvider? clock = null)
         {
             var configuration = new Dictionary<string, string?>
             {
@@ -502,7 +553,10 @@ public sealed class DelegatedCredentialTests
 
             var email = new RecordingEmailSender();
             var host = factory.WithWebHostBuilder(builder => builder.ConfigureServices(services =>
-                services.Replace(ServiceDescriptor.Singleton<IEmailSender>(email))));
+            {
+                services.Replace(ServiceDescriptor.Singleton<IEmailSender>(email));
+                if (clock is not null) services.Replace(ServiceDescriptor.Singleton(clock));
+            }));
             await using (var scope = host.Services.CreateAsyncScope())
             {
                 await SeedAsync(scope.ServiceProvider);

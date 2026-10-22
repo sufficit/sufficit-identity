@@ -78,7 +78,8 @@ public sealed class ClientsController(IClientManagementService clients)
                 request.RefreshTokenLifetimeDays,
                 request.JwksJson,
                 request.NativeReturnUris,
-                request.DeviceCloseFallbackUrl),
+                request.DeviceCloseFallbackUrl,
+                request.DelegationMaxAuthAgeHours),
             RequestContext(),
             cancellationToken);
 
@@ -119,7 +120,9 @@ public sealed class ClientsController(IClientManagementService clients)
                 request.ClearRefreshTokenLifetime,
                 request.JwksJson,
                 request.NativeReturnUris,
-                request.DeviceCloseFallbackUrl),
+                request.DeviceCloseFallbackUrl,
+                request.DelegationMaxAuthAgeHours,
+                request.ClearDelegationMaxAuthAge),
             RequestContext(),
             cancellationToken);
 
@@ -335,6 +338,13 @@ public sealed class CreateClientRequest
     /// (<c>device_close_fallback_url</c> extension metadata).
     /// </summary>
     public string? DeviceCloseFallbackUrl { get; set; }
+
+    /// <summary>
+    /// This application's own limit (1–168 hours) on how old a user's sign-in
+    /// may be when it delegates a credential; null follows the deployment
+    /// default.
+    /// </summary>
+    public int? DelegationMaxAuthAgeHours { get; set; }
 }
 
 public sealed class UpdateClientRequest
@@ -371,6 +381,16 @@ public sealed class UpdateClientRequest
     /// string clears it (<c>device_close_fallback_url</c> extension metadata).
     /// </summary>
     public string? DeviceCloseFallbackUrl { get; set; }
+
+    /// <summary>
+    /// This application's own limit (1–168 hours) on how old a user's sign-in
+    /// may be when it delegates a credential; null follows the deployment
+    /// default.
+    /// </summary>
+    public int? DelegationMaxAuthAgeHours { get; set; }
+
+    /// <summary>Removes the application's own limit; it follows the deployment default again.</summary>
+    public bool ClearDelegationMaxAuthAge { get; set; }
 }
 
 public sealed class RotateClientSecretRequest

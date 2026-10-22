@@ -97,6 +97,41 @@ public sealed partial class ClientsControllerTests
     }
 
     [Fact]
+    public async Task Each_application_may_set_and_clear_its_own_delegation_sign_in_age()
+    {
+        using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        var client = factory.CreateClient();
+        var clientId = $"delegator-{Guid.NewGuid():N}";
+
+        using (var tooLong = await client.PostAsJsonAsync("/api/clients", new CreateClientRequest
+        {
+            ClientId = clientId, ClientSecret = "delegator-secret",
+            GrantTypes = [Permissions.GrantTypes.ClientCredentials], DelegationMaxAuthAgeHours = 169,
+        }))
+            Assert.Equal(HttpStatusCode.BadRequest, tooLong.StatusCode);
+
+        using var created = await client.PostAsJsonAsync("/api/clients", new CreateClientRequest
+        {
+            ClientId = clientId, ClientSecret = "delegator-secret",
+            GrantTypes = [Permissions.GrantTypes.ClientCredentials], DelegationMaxAuthAgeHours = 168,
+        });
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var body = (await created.Content.ReadFromJsonAsync<ManagementClientDetail>())!;
+        Assert.Equal(168, body.DelegationMaxAuthAgeHours);
+        Assert.Equal(12, body.GlobalDelegationMaxAuthAgeHours);
+
+        using var cleared = await client.PutAsJsonAsync($"/api/clients/{clientId}", new UpdateClientRequest
+        {
+            DisplayName = body.DisplayName, ConsentType = body.ConsentType,
+            GrantTypes = [Permissions.GrantTypes.ClientCredentials],
+            ExpectedVersion = body.Version, ClearDelegationMaxAuthAge = true,
+        });
+        Assert.Equal(HttpStatusCode.OK, cleared.StatusCode);
+        Assert.Null((await cleared.Content.ReadFromJsonAsync<ManagementClientDetail>())!.DelegationMaxAuthAgeHours);
+    }
+
+    [Fact]
     public async Task Detail_exposes_the_effective_global_token_lifetimes()
     {
         using var factory = new ManagementTestFactory(extraConfiguration:

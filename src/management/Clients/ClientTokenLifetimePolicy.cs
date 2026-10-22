@@ -128,4 +128,34 @@ internal static class ClientTokenLifetimePolicy
             MidpointRounding.AwayFromZero);
         return days > 0 ? days : null;
     }
+
+    /// <summary>
+    /// The application's own limit on the sign-in age for delegated
+    /// credentials. Like a lifetime override, it widens a window an attacker
+    /// with a stolen session could use, so it shares the same bounds checks.
+    /// </summary>
+    internal static void ValidateDelegationSignInAge(int? hours)
+    {
+        if (hours is not null && (hours < DelegationSignInAge.MinimumHours || hours > DelegationSignInAge.MaximumHours))
+        {
+            throw new ManagementValidationException(
+                "delegation_max_auth_age_invalid",
+                "The sign-in age for delegation must be between 1 and 168 hours.",
+                "delegationMaxAuthAgeHours");
+        }
+    }
+
+    internal static void ApplyDelegationSignInAge(
+        OpenIddictApplicationDescriptor descriptor, int? hours, bool clear = false)
+    {
+        if (clear)
+        {
+            descriptor.Settings.Remove(DelegationSignInAge.ClientSetting);
+        }
+        else if (hours is { } value)
+        {
+            descriptor.Settings[DelegationSignInAge.ClientSetting] =
+                value.ToString(CultureInfo.InvariantCulture);
+        }
+    }
 }

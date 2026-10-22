@@ -254,6 +254,43 @@ else
                             </span>
                         </label>
                     </div>
+
+                    <div class="lifetime-policy-row">
+                        <div class="lifetime-policy-row__copy">
+                            <div class="lifetime-policy-row__title">
+                                <strong>@L["Clients.Edit.DelegationSignInAge"]</strong>
+                                <span class="token-help">
+                                    <button type="button"
+                                            class="token-help__trigger"
+                                            aria-label="@L["Clients.Edit.MoreInfoAboutAriaLabel", L["Clients.Edit.DelegationSignInAge"].Value].Value"
+                                            aria-describedby="delegation-sign-in-age-help">
+                                        <SUIIcon Name="info" Size="16" />
+                                    </button>
+                                    <span id="delegation-sign-in-age-help" class="token-help__content" role="tooltip">
+                                        @L["Clients.Edit.DelegationSignInAgeHelp"]
+                                    </span>
+                                </span>
+                            </div>
+                            <span>@L["Clients.Edit.DelegationSignInAgeShortDesc"]</span>
+                        </div>
+                        <label class="lifetime-inherit-control">
+                            <input type="checkbox" @bind="inheritDelegationSignInAge" />
+                            <span>@L["Clients.Edit.UseGlobalDefault"] <small>@L["Clients.Edit.HoursValue", client.GlobalDelegationMaxAuthAgeHours]</small></span>
+                        </label>
+                        <label class="lifetime-value-control" for="edit-delegation-sign-in-age">
+                            <span>@L["Clients.Edit.CustomValueLabel"]</span>
+                            <span class="number-with-unit">
+                                <input id="edit-delegation-sign-in-age"
+                                       name="delegationMaxAuthAgeHours"
+                                       type="number"
+                                       min="1"
+                                       max="168"
+                                       disabled="@inheritDelegationSignInAge"
+                                       @bind="delegationMaxAuthAgeHours" />
+                                <span>@L["Clients.Edit.HoursUnit"]</span>
+                            </span>
+                        </label>
+                    </div>
                 </div>
                 <p class="field-hint lifetime-policy-editor__hint">
                     @L["Clients.Edit.GlobalDefaultFootnote"]
@@ -925,6 +962,8 @@ else
     private int accessTokenLifetimeMinutes = 60;
     private int identityTokenLifetimeMinutes = 20;
     private int refreshTokenLifetimeDays = 14;
+    private bool inheritDelegationSignInAge = true;
+    private int delegationMaxAuthAgeHours = 12;
     private string scopesText = string.Empty;
     private string redirectUrisText = string.Empty;
     private string postLogoutRedirectUrisText = string.Empty;
@@ -1039,6 +1078,8 @@ else
         inheritAccessTokenLifetime = value.AccessTokenLifetimeMinutes is null;
         inheritIdentityTokenLifetime = value.IdentityTokenLifetimeMinutes is null;
         inheritRefreshTokenLifetime = value.RefreshTokenLifetimeDays is null;
+        inheritDelegationSignInAge = value.DelegationMaxAuthAgeHours is null;
+        delegationMaxAuthAgeHours = value.DelegationMaxAuthAgeHours ?? value.GlobalDelegationMaxAuthAgeHours;
         accessTokenLifetimeMinutes = value.AccessTokenLifetimeMinutes
             ?? value.GlobalAccessTokenLifetimeMinutes;
         identityTokenLifetimeMinutes = value.IdentityTokenLifetimeMinutes
@@ -1115,7 +1156,11 @@ else
             inheritIdentityTokenLifetime,
             inheritRefreshTokenLifetime,
             jwksJson,
-            Lines(nativeReturnUrisText));
+            Lines(nativeReturnUrisText))
+        {
+            DelegationMaxAuthAgeHours = inheritDelegationSignInAge ? null : delegationMaxAuthAgeHours,
+            ClearDelegationMaxAuthAge = inheritDelegationSignInAge,
+        };
     }
 
     private bool CustomCredentialsMatch =>

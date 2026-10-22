@@ -595,6 +595,11 @@
   <data name="Clients.Edit.MoreInfoAboutAriaLabel" xml:space="preserve"><value>More information about {0}</value></data>
   <data name="Clients.Edit.AccessTokenHelp" xml:space="preserve"><value>Authorizes API calls on behalf of the user or the application. It is sent to the API server and must not be used as proof of identity.</value></data>
   <data name="Clients.Edit.AccessTokenShortDesc" xml:space="preserve"><value>Access to the application's APIs.</value></data>
+  <data name="Clients.Edit.DelegationSignInAge" xml:space="preserve"><value>Sign-in age for delegation</value></data>
+  <data name="Clients.Edit.DelegationSignInAgeShortDesc" xml:space="preserve"><value>How recent a user's sign-in must be for this application to delegate a credential.</value></data>
+  <data name="Clients.Edit.DelegationSignInAgeHelp" xml:space="preserve"><value>Only for applications allowed to delegate credentials (token exchange into a delegated credential). A longer window lets a stolen session keep minting credentials for longer; a shorter one asks people to sign in again more often. Between 1 and 168 hours.</value></data>
+  <data name="Clients.Edit.HoursUnit" xml:space="preserve"><value>hours</value></data>
+  <data name="Clients.Edit.HoursValue" xml:space="preserve"><value>{0} h</value></data>
   <data name="Clients.Edit.UseGlobalDefault" xml:space="preserve"><value>Use global default</value></data>
   <data name="Clients.Edit.CustomValueLabel" xml:space="preserve"><value>Custom value</value></data>
   <data name="Clients.Edit.MinutesUnit" xml:space="preserve"><value>min</value></data>

@@ -595,6 +595,11 @@
   <data name="Clients.Edit.MoreInfoAboutAriaLabel" xml:space="preserve"><value>Mais informações sobre {0}</value></data>
   <data name="Clients.Edit.AccessTokenHelp" xml:space="preserve"><value>Autoriza chamadas às APIs em nome do usuário ou da aplicação. É enviado ao servidor da API e não deve ser usado como comprovante de identidade.</value></data>
   <data name="Clients.Edit.AccessTokenShortDesc" xml:space="preserve"><value>Acesso às APIs da aplicação.</value></data>
+  <data name="Clients.Edit.DelegationSignInAge" xml:space="preserve"><value>Login para delegação</value></data>
+  <data name="Clients.Edit.DelegationSignInAgeShortDesc" xml:space="preserve"><value>Quão recente o login do usuário precisa ser para esta aplicação delegar uma credencial.</value></data>
+  <data name="Clients.Edit.DelegationSignInAgeHelp" xml:space="preserve"><value>Só vale para aplicações autorizadas a delegar credenciais (troca de token por credencial delegada). Uma janela maior deixa uma sessão roubada gerar credenciais por mais tempo; uma menor pede novo login com mais frequência. Entre 1 e 168 horas.</value></data>
+  <data name="Clients.Edit.HoursUnit" xml:space="preserve"><value>horas</value></data>
+  <data name="Clients.Edit.HoursValue" xml:space="preserve"><value>{0} h</value></data>
   <data name="Clients.Edit.UseGlobalDefault" xml:space="preserve"><value>Usar padrão global</value></data>
   <data name="Clients.Edit.CustomValueLabel" xml:space="preserve"><value>Valor personalizado</value></data>
   <data name="Clients.Edit.MinutesUnit" xml:space="preserve"><value>min</value></data>

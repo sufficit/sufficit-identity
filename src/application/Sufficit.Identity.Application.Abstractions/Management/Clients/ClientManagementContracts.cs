@@ -200,7 +200,11 @@ public sealed record ManagementClientDetail(
     /// <c>device_close_fallback_url</c> extension metadata — where the
     /// browser tab that approved this client's device flow goes when script
     /// cannot close it.</summary>
-    string? DeviceCloseFallbackUrl = null);
+    string? DeviceCloseFallbackUrl = null,
+    /// <summary>This application's own limit on the age of a user's sign-in
+    /// when it delegates a credential; null follows the deployment default.</summary>
+    int? DelegationMaxAuthAgeHours = null,
+    int GlobalDelegationMaxAuthAgeHours = 12);
 
 public sealed record CreateManagementClientCommand(
     string ClientId,
@@ -222,7 +226,8 @@ public sealed record CreateManagementClientCommand(
     int? RefreshTokenLifetimeDays = null,
     string? JwksJson = null,
     IReadOnlyList<string>? NativeReturnUris = null,
-    string? DeviceCloseFallbackUrl = null);
+    string? DeviceCloseFallbackUrl = null,
+    int? DelegationMaxAuthAgeHours = null);
 
 public sealed record UpdateManagementClientCommand(
     string ClientId,
@@ -247,7 +252,9 @@ public sealed record UpdateManagementClientCommand(
     bool ClearRefreshTokenLifetime = false,
     string? JwksJson = null,
     IReadOnlyList<string>? NativeReturnUris = null,
-    string? DeviceCloseFallbackUrl = null);
+    string? DeviceCloseFallbackUrl = null,
+    int? DelegationMaxAuthAgeHours = null,
+    bool ClearDelegationMaxAuthAge = false);
 
 public sealed record RotateManagementClientSecretCommand(
     string ClientId,
