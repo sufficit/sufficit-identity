@@ -15,14 +15,14 @@ namespace Sufficit.Identity.STS;
 /// and keeps system users out of every interactive sign-in.
 /// </summary>
 /// <remarks>
-/// A system user (<see cref="SystemUserStore"/>) is an ordinary user to every
-/// application but can never sign in interactively: password, external
-/// provider, passkey and two-factor sign-ins all pass through
-/// <see cref="PreSignInCheck"/>, and every session cookie is written by
-/// <see cref="SignInWithClaimsAsync"/>. Token issuance asks
-/// <see cref="CanSignInAsync"/>, which for a system user only means "not
-/// disabled": not being able to sign in is not the same as not being able to
-/// hold a token.
+/// A system user (<see cref="SystemUserStore.WhereSystemUser"/>) is an
+/// ordinary user without e-mail, password, external login or passkey: it has
+/// nothing to sign in with. As defense in depth every interactive sign-in
+/// still passes through <see cref="PreSignInCheck"/> and every session cookie
+/// through <see cref="SignInWithClaimsAsync"/>, both refusing it. Token
+/// issuance asks <see cref="CanSignInAsync"/>: without an e-mail there is
+/// nothing to confirm, so a system user may hold tokens while not locked out
+/// (disabling is the ordinary lockout).
 /// </remarks>
 public sealed class SufficitSignInManager(
     UserManager<ApplicationUser> userManager,
@@ -83,14 +83,14 @@ public sealed class SufficitSignInManager(
     }
 
     /// <summary>
-    /// For a system user: allowed while not disabled. Confirmation
-    /// requirements (e-mail, phone) are for people and do not apply.
+    /// For a system user: allowed while not locked out. Confirmation
+    /// requirements (e-mail, phone) have nothing to confirm without them.
     /// </summary>
     public override async Task<bool> CanSignInAsync(ApplicationUser user)
     {
-        if (await systemUsers.FindAsync(user.Id) is { } system)
+        if (await systemUsers.IsSystemUserAsync(user.Id))
         {
-            return system.DisabledAtUtc is null;
+            return !await UserManager.IsLockedOutAsync(user);
         }
 
         return await base.CanSignInAsync(user);

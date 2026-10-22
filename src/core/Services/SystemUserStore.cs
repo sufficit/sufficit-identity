@@ -8,9 +8,9 @@ using Sufficit.Identity.Core.Entities;
 namespace Sufficit.Identity.Core.Services;
 
 /// <summary>
-/// System users and their one-time enrollment codes. The sign-in manager asks
-/// whether a user is a system user; the management service creates, disables
-/// and issues codes; the token endpoint redeems codes.
+/// Recognizes system users and keeps their one-time enrollment codes. The
+/// sign-in manager asks whether a user is a system user; the management
+/// service issues codes; the token endpoint redeems them.
 /// </summary>
 public sealed class SystemUserStore(
     IDbContextFactory<AppDbContext> databaseFactory,
@@ -23,57 +23,30 @@ public sealed class SystemUserStore(
 
     public DateTime UtcNow => _timeProvider.GetUtcNow().UtcDateTime;
 
-    public async Task<SystemUser?> FindAsync(
+    /// <summary>
+    /// A system user is an ordinary user with nothing to sign in with: no
+    /// e-mail, no password, no external login and no passkey. There is no
+    /// separate marker; giving the account any of those makes it an ordinary
+    /// user again.
+    /// </summary>
+    public static IQueryable<ApplicationUser> WhereSystemUser(AppDbContext database) =>
+        database.Users.Where(user =>
+            (user.Email == null || user.Email == "")
+            && user.PasswordHash == null
+            && !database.UserLogins.Any(login => login.UserId == user.Id)
+            && !database.UserPasskeys.Any(passkey => passkey.UserId == user.Id));
+
+    public async Task<bool> IsSystemUserAsync(
         string userId,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(userId))
         {
-            return null;
+            return false;
         }
 
         await using var database = await databaseFactory.CreateDbContextAsync(cancellationToken);
-        return await database.SystemUsers
-            .AsNoTracking()
-            .SingleOrDefaultAsync(x => x.UserId == userId, cancellationToken);
-    }
-
-    public async Task<bool> IsSystemUserAsync(
-        string userId,
-        CancellationToken cancellationToken = default) =>
-        await FindAsync(userId, cancellationToken) is not null;
-
-    public async Task<IReadOnlyList<SystemUser>> ListAsync(CancellationToken cancellationToken = default)
-    {
-        await using var database = await databaseFactory.CreateDbContextAsync(cancellationToken);
-        return await database.SystemUsers
-            .AsNoTracking()
-            .OrderBy(x => x.CreatedAtUtc)
-            .ToListAsync(cancellationToken);
-    }
-
-    public async Task AddAsync(SystemUser record, CancellationToken cancellationToken = default)
-    {
-        await using var database = await databaseFactory.CreateDbContextAsync(cancellationToken);
-        database.SystemUsers.Add(record);
-        await database.SaveChangesAsync(cancellationToken);
-    }
-
-    /// <summary>Disables or re-enables; returns false when the user is not a system user.</summary>
-    public async Task<bool> SetDisabledAsync(
-        string userId,
-        string? disabledBy,
-        CancellationToken cancellationToken = default)
-    {
-        var now = UtcNow;
-        await using var database = await databaseFactory.CreateDbContextAsync(cancellationToken);
-        var affected = await database.SystemUsers
-            .Where(x => x.UserId == userId)
-            .ExecuteUpdateAsync(setters => setters
-                .SetProperty(x => x.DisabledAtUtc, disabledBy is null ? null : now)
-                .SetProperty(x => x.DisabledBy, disabledBy),
-                cancellationToken);
-        return affected == 1;
+        return await WhereSystemUser(database).AnyAsync(user => user.Id == userId, cancellationToken);
     }
 
     /// <summary>

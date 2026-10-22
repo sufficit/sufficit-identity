@@ -71,9 +71,9 @@ public sealed class SystemUserEnrollmentGrantHandler(
             return TokenGrantDispatcher.ForbidError(Errors.InvalidGrant, InvalidCode);
         }
 
-        var system = await systemUsers.FindAsync(enrollment.UserId, ct);
         var user = await ops.UserManager.FindByIdAsync(enrollment.UserId);
-        if (system is null || system.DisabledAtUtc is not null || user is null)
+        if (user is null || !await systemUsers.IsSystemUserAsync(user.Id, ct)
+            || await ops.UserManager.IsLockedOutAsync(user))
         {
             return TokenGrantDispatcher.ForbidError(Errors.InvalidGrant, InvalidCode);
         }

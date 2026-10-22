@@ -1,10 +1,11 @@
 # Usuários de sistema
 
-Um usuário de sistema é um usuário comum para todas as aplicações: tem `sub`,
-claims, entitlements, papéis e responde no `/connect/userinfo`. A diferença é
-que **ele nunca entra pela tela**. Senha, login externo, passkey, recuperação
-e o grant `password` são recusados, com a mesma resposta de credencial
-inválida.
+Um usuário de sistema é um **usuário comum sem e-mail, sem senha, sem login
+externo e sem passkey**. Para todas as aplicações é um usuário como outro
+qualquer: tem `sub`, claims, entitlements, papéis e responde no
+`/connect/userinfo`. Como não tem com o que entrar, **nunca entra pela tela**;
+as rotas de login ainda o recusam como defesa extra. Não há marcação separada:
+dar e-mail, senha, login externo ou passkey a ele o torna um usuário comum.
 
 Use para software que precisa agir como um usuário (agentes, executores,
 integrações) sem uma pessoa por trás. Para software que não age como usuário,
@@ -38,6 +39,9 @@ POST /api/system-users
 `userId` (UUID) é opcional: permite reaproveitar um id que o chamador já usa
 (por exemplo, o id do agente). Se já existir usuário com esse id, a resposta é
 409; o identity nunca adota uma conta existente.
+
+Quem criou fica no evento de auditoria `system_user_created`, que **não
+expira** (os demais eventos seguem a retenção padrão de 15 dias).
 
 Entitlements, papéis e claims são dados como para qualquer usuário (página do
 usuário). A criação fica auditada com o operador.
@@ -110,13 +114,14 @@ padrão 365) que o refresh não estende; perto do fim, emita um novo código.
   `DELETE /api/system-users/enrollments?userId=<id>&id=<enrollmentId>`.
 - **Desativar** o usuário: *Desativar*, ou
   `PATCH /api/system-users/toggle?userId=<id>&enabled=false` (`enabled` vazio
-  inverte o estado). Desativar revoga todas as credenciais e impede novas. Ao
-  reativar, emita um novo código.
+  inverte o estado). Desativar é o **lockout comum** de qualquer usuário;
+  revoga todas as credenciais e impede novas. Ao reativar, emita um novo código.
 
 Tudo é auditado com o operador e a correlação.
 
 ## Implantação
 
-Aplicar `docs/migration/sql/100-add-system-users.sql` antes dos binários que
-contêm esta funcionalidade. Todo login consulta a marcação de usuário de
-sistema, então a tabela precisa existir.
+Base nova: `001`. Base que tem `100-add-system-users.sql`: aplicar
+`101-add-audit-event-expiry.sql`, publicar os binários em todos os nós e só
+então aplicar `102-system-users-as-ordinary-users.sql` (os binários anteriores
+leem `systemusers` em todo login).

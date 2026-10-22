@@ -46,6 +46,10 @@ internal sealed partial class SystemUserManagementService(
     private const int DisplayNameMaxLength = 200;
     private const int MaximumEntitlements = 50;
     private const string EntitlementClaimType = "entitlements";
+    private const string CreatedReason = "system_user_created";
+
+    /// <summary>Lockout end for "disabled"; MaxValue rounds past datetime(6) in MariaDB.</summary>
+    private static readonly DateTimeOffset DisabledUntil = new(9999, 12, 31, 0, 0, 0, TimeSpan.Zero);
 
     private static readonly ManagementResource CollectionResource =
         new(ManagementResourceTypes.UserCollection);
@@ -57,7 +61,7 @@ internal sealed partial class SystemUserManagementService(
         ArgumentNullException.ThrowIfNull(context);
         await DemandAsync(context, ManagementCapabilities.UsersRead, CollectionResource, cancellationToken);
 
-        var records = await database.SystemUsers.AsNoTracking()
+        var records = await SystemUserStore.WhereSystemUser(database).AsNoTracking()
             .OrderBy(x => x.CreatedAtUtc)
             .ToListAsync(cancellationToken);
         var summaries = new List<SystemUserSummary>(records.Count);
@@ -108,7 +112,7 @@ internal sealed partial class SystemUserManagementService(
         }
 
         // No password, no e-mail, no external login: nothing a sign-in could use.
-        var user = new ApplicationUser { UserName = userName };
+        var user = new ApplicationUser { UserName = userName, CreatedAtUtc = timeProvider.GetUtcNow().UtcDateTime };
         if (command.UserId is { } requestedId)
         {
             // Never adopt an existing account: a caller-chosen ID must be new.
@@ -133,27 +137,22 @@ internal sealed partial class SystemUserManagementService(
             await users.AddClaimAsync(user, new Claim(OpenIddictConstants.Claims.Name, displayName));
         }
 
-        var record = new SystemUser
-        {
-            UserId = user.Id,
-            CreatedBy = Truncate(context.OperatorSubject),
-            CreatedAtUtc = timeProvider.GetUtcNow().UtcDateTime,
-            CorrelationId = Truncate(context.CorrelationId, IdentityDatabaseSchema.SystemUserCorrelationLength),
-        };
-        database.SystemUsers.Add(record);
+        // Who created a user that never signs in must outlive the default
+        // audit retention: this event is the only record of its origin.
         database.ManagementAuditEvents.Add(ManagementAuditEventFactory.Create(
             context,
             ManagementCapabilities.UsersCreate,
             UserResource(user.Id),
             decision,
             "succeeded",
-            "system_user_created"));
+            CreatedReason,
+            ManagementAuditRetention.Never));
         await database.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation(
             "System user {UserId} ({UserName}) created by {Subject}; correlation={CorrelationId}.",
             user.Id, userName, context.OperatorSubject, context.CorrelationId);
-        return await SummarizeAsync(record, cancellationToken);
+        return await SummarizeAsync(user, cancellationToken);
     }
 
     public async Task<SystemUserSummary> ToggleAsync(
@@ -166,24 +165,21 @@ internal sealed partial class SystemUserManagementService(
         var decision = await DemandAsync(
             context, ManagementCapabilities.UsersDisable, UserResource(userId), cancellationToken, auditDenial: true);
 
-        var record = await FindTrackedAsync(userId, cancellationToken);
-        var enable = enabled ?? record.DisabledAtUtc is not null;
-        if (enable == (record.DisabledAtUtc is null))
+        var record = await FindSystemUserAsync(userId, cancellationToken);
+        var disabled = await users.IsLockedOutAsync(record);
+        var enable = enabled ?? disabled;
+        if (enable != disabled)
         {
             return await SummarizeAsync(record, cancellationToken);
         }
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
         var revoked = 0;
-        if (enable)
+        // Disabling is the ordinary lockout, as for any user.
+        await users.SetLockoutEnabledAsync(record, true);
+        await users.SetLockoutEndDateAsync(record, enable ? null : DisabledUntil);
+        if (!enable)
         {
-            record.DisabledAtUtc = null;
-            record.DisabledBy = null;
-        }
-        else
-        {
-            record.DisabledAtUtc = now;
-            record.DisabledBy = Truncate(context.OperatorSubject);
             // Disabling ends every credential: re-enabling needs a new enrollment.
             var active = await database.SystemUserEnrollments
                 .Where(x => x.UserId == userId && x.RevokedAtUtc == null)
@@ -217,7 +213,7 @@ internal sealed partial class SystemUserManagementService(
     {
         ArgumentNullException.ThrowIfNull(context);
         await DemandAsync(context, ManagementCapabilities.UsersRead, UserResource(userId), cancellationToken);
-        _ = await FindTrackedAsync(userId, cancellationToken);
+        _ = await FindSystemUserAsync(userId, cancellationToken);
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
         var records = await database.SystemUserEnrollments.AsNoTracking()
@@ -243,8 +239,8 @@ internal sealed partial class SystemUserManagementService(
             auditDenial: true,
             mintsCredential: true);
 
-        var record = await FindTrackedAsync(userId, cancellationToken);
-        if (record.DisabledAtUtc is not null)
+        var record = await FindSystemUserAsync(userId, cancellationToken);
+        if (await users.IsLockedOutAsync(record))
         {
             throw new ManagementConflictException(
                 "system_user_disabled", "Enable the system user before issuing a credential.");
@@ -374,7 +370,7 @@ internal sealed partial class SystemUserManagementService(
     {
         ArgumentNullException.ThrowIfNull(context);
         await DemandAsync(context, ManagementCapabilities.ClaimsRead, UserResource(userId), cancellationToken);
-        _ = await FindTrackedAsync(userId, cancellationToken);
+        _ = await FindSystemUserAsync(userId, cancellationToken);
         return await ReadEntitlementsAsync(userId, cancellationToken);
     }
 
@@ -388,7 +384,7 @@ internal sealed partial class SystemUserManagementService(
         ArgumentNullException.ThrowIfNull(context);
         var decision = await DemandAsync(
             context, ManagementCapabilities.ClaimsCreate, UserResource(userId), cancellationToken, auditDenial: true);
-        _ = await FindTrackedAsync(userId, cancellationToken);
+        _ = await FindSystemUserAsync(userId, cancellationToken);
 
         var wanted = new SortedSet<string>(StringComparer.Ordinal);
         foreach (var raw in command.Entitlements ?? [])
@@ -497,31 +493,32 @@ internal sealed partial class SystemUserManagementService(
         }
     }
 
-    private async Task<SystemUser> FindTrackedAsync(string userId, CancellationToken cancellationToken) =>
-        await database.SystemUsers.SingleOrDefaultAsync(x => x.UserId == userId, cancellationToken)
+    /// <summary>Only users recognized as system users; a person is "not found" here.</summary>
+    private async Task<ApplicationUser> FindSystemUserAsync(string userId, CancellationToken cancellationToken) =>
+        await SystemUserStore.WhereSystemUser(database).SingleOrDefaultAsync(x => x.Id == userId, cancellationToken)
         ?? throw new ManagementNotFoundException("system_user_not_found", "The system user was not found.");
 
-    private async Task<SystemUserSummary> SummarizeAsync(SystemUser record, CancellationToken cancellationToken)
+    private async Task<SystemUserSummary> SummarizeAsync(ApplicationUser user, CancellationToken cancellationToken)
     {
-        var user = await database.Users.AsNoTracking()
-            .Where(x => x.Id == record.UserId)
-            .Select(x => new { x.UserName })
-            .SingleOrDefaultAsync(cancellationToken);
         var displayName = await database.UserClaims.AsNoTracking()
-            .Where(x => x.UserId == record.UserId && x.ClaimType == OpenIddictConstants.Claims.Name)
+            .Where(x => x.UserId == user.Id && x.ClaimType == OpenIddictConstants.Claims.Name)
             .Select(x => x.ClaimValue)
             .FirstOrDefaultAsync(cancellationToken);
+        var createdBy = await database.ManagementAuditEvents.AsNoTracking()
+            .Where(x => x.ResourceId == user.Id && x.ReasonCode == CreatedReason)
+            .OrderBy(x => x.OccurredAtUtc)
+            .Select(x => x.OperatorSubject)
+            .FirstOrDefaultAsync(cancellationToken);
         var activeCredentials = await database.SystemUserEnrollments.AsNoTracking()
-            .CountAsync(x => x.UserId == record.UserId && x.RedeemedAtUtc != null && x.RevokedAtUtc == null,
+            .CountAsync(x => x.UserId == user.Id && x.RedeemedAtUtc != null && x.RevokedAtUtc == null,
                 cancellationToken);
         return new SystemUserSummary(
-            record.UserId,
-            user?.UserName ?? record.UserId,
+            user.Id,
+            user.UserName ?? user.Id,
             displayName,
-            record.CreatedBy,
-            record.CreatedAtUtc,
-            record.DisabledAtUtc is not null,
-            record.DisabledAtUtc,
+            createdBy ?? "unknown",
+            user.CreatedAtUtc,
+            user.LockoutEnd is { } end && end > timeProvider.GetUtcNow(),
             activeCredentials);
     }
 

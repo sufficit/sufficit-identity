@@ -156,6 +156,16 @@ obtain that user's credential). It is additive; apply it before deploying the
 build that creates system users. Without it the build fails at runtime on any
 sign-in or token request, because every sign-in checks the marker.
 
+`101-add-audit-event-expiry.sql` and `102-system-users-as-ordinary-users.sql`
+are the two phases of migration `SystemUsersAsOrdinaryUsers`. 101 adds
+`managementauditevents.expiresatutc` (null = default retention, `9999-12-31` =
+never) and is safe with the previous build: apply it **before** deploying.
+102 turns system users into ordinary users without e-mail or password: their
+origin becomes a permanent `system_user_created` audit event, a disabled one
+becomes an ordinary lockout, the enrollment codes point at `users`, and
+`systemusers` is dropped. Apply it **after** the new build runs on every node,
+because the previous build reads `systemusers` on every sign-in.
+
 That same evaluation made `Sufficit:Identity:DeploymentTopology` a **required
 configuration key** outside Development: the production posture check refuses to
 start with `deployment-topology-undeclared` until the deployment states its

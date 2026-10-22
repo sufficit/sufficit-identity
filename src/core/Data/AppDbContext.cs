@@ -132,7 +132,6 @@ public sealed class AppDbContext
     public DbSet<Entities.DcrInitialAccessToken> DcrInitialAccessTokens =>
         Set<Entities.DcrInitialAccessToken>();
 
-    public DbSet<Entities.SystemUser> SystemUsers => Set<Entities.SystemUser>();
 
     public DbSet<Entities.SystemUserEnrollment> SystemUserEnrollments =>
         Set<Entities.SystemUserEnrollment>();

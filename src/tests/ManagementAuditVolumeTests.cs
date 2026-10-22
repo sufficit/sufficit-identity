@@ -112,6 +112,29 @@ public sealed class ManagementAuditVolumeTests
     }
 
     [Fact]
+    public async Task An_event_with_its_own_expiry_follows_it_not_the_default()
+    {
+        using var harness = Harness.Create();
+        // Older than the default window but kept for good (e.g. who created a system user).
+        await harness.SeedAuditAsync(ageDays: 400, count: 2, expiresAtUtc: ManagementAuditRetention.Never);
+        // Recent but already past its own, shorter expiry.
+        await harness.SeedAuditAsync(ageDays: 1, count: 3, expiresAtUtc: DateTime.UtcNow.AddMinutes(-1));
+        // Recent, with a longer expiry still ahead.
+        await harness.SeedAuditAsync(ageDays: 30, count: 1, expiresAtUtc: DateTime.UtcNow.AddDays(60));
+        // Default retention: one too old, one recent.
+        await harness.SeedAuditAsync(ageDays: 30, count: 1);
+        await harness.SeedAuditAsync(ageDays: 1, count: 1);
+
+        await harness.RunRetentionAsync(retentionDays: 15);
+        Assert.Equal(2 + 1 + 1, await harness.CountAuditAsync());
+
+        // With the default disabled, explicit expiries still apply.
+        await harness.SeedAuditAsync(ageDays: 0, count: 2, expiresAtUtc: DateTime.UtcNow.AddMinutes(-1));
+        await harness.RunRetentionAsync(retentionDays: 0);
+        Assert.Equal(4, await harness.CountAuditAsync());
+    }
+
+    [Fact]
     public async Task Retention_disabled_keeps_everything()
     {
         using var harness = Harness.Create();
@@ -256,7 +279,7 @@ public sealed class ManagementAuditVolumeTests
                 _provider.GetRequiredService<IMemoryCache>(),
                 NullLogger<ManagementOperationGuard>.Instance);
 
-        public async Task SeedAuditAsync(int ageDays, int count)
+        public async Task SeedAuditAsync(int ageDays, int count, DateTime? expiresAtUtc = null)
         {
             await using var database = await _provider
                 .GetRequiredService<IDbContextFactory<AppDbContext>>()
@@ -272,6 +295,7 @@ public sealed class ManagementAuditVolumeTests
                     AuthorizationOutcome = "allowed",
                     OperationOutcome = "succeeded",
                     CorrelationId = Guid.NewGuid().ToString("N"),
+                    ExpiresAtUtc = expiresAtUtc,
                 });
             }
 

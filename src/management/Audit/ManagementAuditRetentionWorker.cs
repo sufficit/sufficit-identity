@@ -7,7 +7,8 @@ using Sufficit.Identity.Core.Data;
 namespace Sufficit.Identity.Management.Audit;
 
 /// <summary>
-/// Prunes management audit history past
+/// Prunes management audit history: events with their own
+/// <c>ExpiresAtUtc</c> once it passes, the others past
 /// <see cref="ManagementOptions.AuditRetentionDays"/>.
 /// </summary>
 /// <remarks>
@@ -82,14 +83,13 @@ internal sealed class ManagementAuditRetentionWorker(
     /// </summary>
     internal async Task PruneAsync(CancellationToken cancellationToken)
     {
+        // An event with its own expiry goes when it expires; one without
+        // follows the default retention, counted from when it happened. A
+        // deployment that disables the default (0) still honors explicit
+        // expiries.
         var retentionDays = optionsAccessor.Value.AuditRetentionDays;
-        if (retentionDays <= 0)
-        {
-            // Explicitly disabled: the deployment keeps everything on purpose.
-            return;
-        }
-
-        var cutoff = DateTime.UtcNow.AddDays(-retentionDays);
+        var now = DateTime.UtcNow;
+        var cutoff = retentionDays > 0 ? now.AddDays(-retentionDays) : DateTime.MinValue;
         var removed = 0;
 
         for (var batch = 0; batch < MaximumBatchesPerPass; batch++)
@@ -105,7 +105,9 @@ internal sealed class ManagementAuditRetentionWorker(
             // translates the same expression differently, so the test suite
             // never saw it — only production did.
             var batchIds = await database.ManagementAuditEvents
-                .Where(item => item.OccurredAtUtc < cutoff)
+                .Where(item => item.ExpiresAtUtc == null
+                    ? item.OccurredAtUtc < cutoff
+                    : item.ExpiresAtUtc <= now)
                 .OrderBy(item => item.Id)
                 .Take(BatchSize)
                 .Select(item => item.Id)
@@ -132,7 +134,7 @@ internal sealed class ManagementAuditRetentionWorker(
         if (removed > 0)
         {
             logger.LogInformation(
-                "Pruned {Removed} management audit entries older than {RetentionDays} days.",
+                "Pruned {Removed} expired management audit entries (default retention {RetentionDays} days).",
                 removed,
                 retentionDays);
         }

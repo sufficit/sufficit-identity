@@ -46,7 +46,7 @@ public sealed partial class ManagementUiRoutingTests
             if (_users.Any(user => user.UserName == command.UserName))
                 throw new ManagementConflictException("system_user_name_taken", "A user with this name already exists.");
             var created = new SystemUserSummary(Guid.NewGuid().ToString(), command.UserName, command.DisplayName,
-                "operator-subject", DateTime.UtcNow, false, null, 0);
+                "operator-subject", DateTime.UtcNow, false, 0);
             _users.Add(created);
             _enrollments[created.UserId] = [];
             return Task.FromResult(created);
@@ -68,7 +68,7 @@ public sealed partial class ManagementUiRoutingTests
             var disable = !(enabled ?? _users[index].Disabled);
             _users[index] = _users[index] with
             {
-                Disabled = disable, DisabledAtUtc = disable ? DateTime.UtcNow : null, ActiveCredentials = disable ? 0 : _users[index].ActiveCredentials,
+                Disabled = disable, ActiveCredentials = disable ? 0 : _users[index].ActiveCredentials,
             };
             return Task.FromResult(_users[index]);
         }

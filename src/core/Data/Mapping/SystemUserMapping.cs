@@ -6,36 +6,6 @@ internal static class SystemUserMapping
 {
     internal static void Apply(ModelBuilder builder)
     {
-        builder.Entity<Entities.SystemUser>(b =>
-        {
-            b.ToTable("systemusers");
-            b.HasKey(x => x.UserId);
-            b.Property(x => x.UserId)
-                .HasMaxLength(IdentityDatabaseSchema.SystemUserSubjectLength)
-                .IsRequired();
-            b.Property(x => x.CreatedBy)
-                .HasMaxLength(IdentityDatabaseSchema.SystemUserSubjectLength)
-                .IsRequired();
-            b.Property(x => x.CorrelationId)
-                .HasMaxLength(IdentityDatabaseSchema.SystemUserCorrelationLength);
-            b.Property(x => x.DisabledBy)
-                .HasMaxLength(IdentityDatabaseSchema.SystemUserSubjectLength);
-            b.Property(x => x.CreatedAtUtc).HasColumnType("datetime(6)").IsRequired();
-            b.Property(x => x.DisabledAtUtc).HasColumnType("datetime(6)");
-            b.HasOne<Entities.ApplicationUser>()
-                .WithOne()
-                .HasForeignKey<Entities.SystemUser>(x => x.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
-            MappingHelpers.SnakeCaseColumns(b, [
-                ("UserId", "userid"),
-                ("CreatedBy", "createdby"),
-                ("CreatedAtUtc", "createdatutc"),
-                ("CorrelationId", "correlationid"),
-                ("DisabledAtUtc", "disabledatutc"),
-                ("DisabledBy", "disabledby"),
-            ]);
-        });
-
         builder.Entity<Entities.SystemUserEnrollment>(b =>
         {
             b.ToTable("systemuserenrollments");
@@ -71,7 +41,7 @@ internal static class SystemUserMapping
                 .HasDatabaseName("IX_systemuserenrollments_codehash");
             b.HasIndex(x => x.UserId)
                 .HasDatabaseName("IX_systemuserenrollments_userid");
-            b.HasOne<Entities.SystemUser>()
+            b.HasOne<Entities.ApplicationUser>()
                 .WithMany()
                 .HasForeignKey(x => x.UserId)
                 .OnDelete(DeleteBehavior.Cascade);

@@ -124,8 +124,11 @@ public sealed class SystemUserManagementTests
         Assert.Contains("system_user_disabled", reasons);
         Assert.Contains("system_user_enabled", reasons);
         Assert.Contains("system_user_enrollment_revoked", reasons);
-        var marker = await database.SystemUsers.AsNoTracking().SingleAsync(x => x.UserId == userId);
-        Assert.False(string.IsNullOrEmpty(marker.CreatedBy));
+        // Its origin outlives the default audit retention.
+        var origin = await database.ManagementAuditEvents.AsNoTracking()
+            .SingleAsync(audit => audit.ResourceId == userId && audit.ReasonCode == "system_user_created");
+        Assert.Equal(Sufficit.Identity.Core.Entities.ManagementAuditRetention.Never, origin.ExpiresAtUtc);
+        Assert.Equal(origin.OperatorSubject, users.EnumerateArray().Single().GetProperty("createdBy").GetString());
     }
 
     [Fact]
@@ -165,7 +168,7 @@ public sealed class SystemUserManagementTests
         string human;
         using (var scope = factory.Services.CreateScope())
         {
-            var person = new ApplicationUser { UserName = "a-person" };
+            var person = new ApplicationUser { UserName = "a-person", Email = "a-person@example.test" };
             Assert.True((await scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>().CreateAsync(person)).Succeeded);
             human = person.Id;
         }

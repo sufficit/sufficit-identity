@@ -58,9 +58,12 @@ internal static class ManagementAuditEventFactory
         ManagementResource resource,
         ManagementAuthorizationDecision authorization,
         string operationOutcome,
-        string? reasonCode = null) =>
+        string? reasonCode = null,
+        DateTime? expiresAtUtc = null) =>
         new()
         {
+            // Null follows the deployment's default retention.
+            ExpiresAtUtc = expiresAtUtc,
             OccurredAtUtc = DateTime.UtcNow,
             OperatorSubject = TruncateRequired(context.OperatorSubject, 255),
             OperatorDisplayName = Truncate(context.OperatorDisplayName, 255),

@@ -1019,6 +1019,10 @@ namespace Sufficit.Identity.Core.Migrations
                         .HasColumnType("varchar(100)")
                         .HasColumnName("correlationid");
 
+                    b.Property<DateTime?>("ExpiresAtUtc")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("expiresatutc");
+
                     b.Property<DateTime>("OccurredAtUtc")
                         .HasColumnType("datetime(6)")
                         .HasColumnName("occurredatutc");
@@ -1057,6 +1061,9 @@ namespace Sufficit.Identity.Core.Migrations
                         .HasColumnName("resourcetype");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ExpiresAtUtc")
+                        .HasDatabaseName("IX_managementauditevents_expiresatutc");
 
                     b.HasIndex("OccurredAtUtc")
                         .HasDatabaseName("IX_managementauditevents_occurredatutc");
@@ -1643,42 +1650,6 @@ namespace Sufficit.Identity.Core.Migrations
                     b.ToTable("ssfstreams", (string)null);
                 });
 
-            modelBuilder.Entity("Sufficit.Identity.Core.Entities.SystemUser", b =>
-                {
-                    b.Property<string>("UserId")
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)")
-                        .HasColumnName("userid");
-
-                    b.Property<string>("CorrelationId")
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)")
-                        .HasColumnName("correlationid");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("createdatutc");
-
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)")
-                        .HasColumnName("createdby");
-
-                    b.Property<DateTime?>("DisabledAtUtc")
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("disabledatutc");
-
-                    b.Property<string>("DisabledBy")
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)")
-                        .HasColumnName("disabledby");
-
-                    b.HasKey("UserId");
-
-                    b.ToTable("systemusers", (string)null);
-                });
-
             modelBuilder.Entity("Sufficit.Identity.Core.Entities.SystemUserEnrollment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2198,18 +2169,9 @@ namespace Sufficit.Identity.Core.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Sufficit.Identity.Core.Entities.SystemUser", b =>
-                {
-                    b.HasOne("Sufficit.Identity.Core.Entities.ApplicationUser", null)
-                        .WithOne()
-                        .HasForeignKey("Sufficit.Identity.Core.Entities.SystemUser", "UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("Sufficit.Identity.Core.Entities.SystemUserEnrollment", b =>
                 {
-                    b.HasOne("Sufficit.Identity.Core.Entities.SystemUser", null)
+                    b.HasOne("Sufficit.Identity.Core.Entities.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)

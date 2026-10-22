@@ -77,7 +77,7 @@ public sealed class SystemUserTests
         Assert.True(refreshed == HttpStatusCode.OK, refreshedBody.ToString());
         var rotated = refreshedBody.GetProperty("refresh_token").GetString()!;
 
-        await env.Store.SetDisabledAsync(user.Id, "operator-1");
+        await env.DisableAsync(user.Id);
         var (disabled, disabledBody) = await env.RefreshAsync(rotated, AgentClientId, key);
         Assert.Equal(HttpStatusCode.BadRequest, disabled);
         Assert.Equal("invalid_grant", disabledBody.GetProperty("error").GetString());
@@ -143,45 +143,32 @@ public sealed class SystemUserTests
     }
 
     [Fact]
-    public async Task A_system_user_never_signs_in_even_with_a_password()
+    public async Task Recognition_is_having_nothing_to_sign_in_with()
     {
-        await using var env = await Environment.CreateAsync();
-        var user = await env.CreateSystemUserAsync(withPassword: true);
-
-        // Resource-owner password grant: the same answer as a wrong password.
-        var (grant, grantBody) = await env.Client.PostFormAsync("/connect/token", new Dictionary<string, string>
-        {
-            ["grant_type"] = "password",
-            ["username"] = user.UserName!,
-            ["password"] = Password,
-            ["client_id"] = TestDataSeeder.PasswordClientId,
-            ["client_secret"] = TestDataSeeder.PasswordClientSecret,
-            ["scope"] = TestDataSeeder.ScopeName,
-        });
-        Assert.Equal(HttpStatusCode.BadRequest, grant);
-        Assert.Equal("invalid_grant", grantBody.GetProperty("error").GetString());
-
-        // Interactive form: redirected back with the wrong-credential error.
-        var browser = env.Host.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-        var antiforgery = await TestOnlyEndpoints.GetAntiforgeryTokenAsync(browser);
-        using var login = await browser.PostAsync("/account/login/password", new FormUrlEncodedContent(
-            new Dictionary<string, string>
-            {
-                ["__RequestVerificationToken"] = antiforgery,
-                ["UserName"] = user.UserName!,
-                ["Password"] = Password,
-                ["ReturnUrl"] = "/",
-            }));
-        Assert.Equal(HttpStatusCode.Redirect, login.StatusCode);
-        Assert.Contains("error=invalid_credentials", login.Headers.Location!.OriginalString, StringComparison.Ordinal);
-        Assert.False(login.Headers.TryGetValues("Set-Cookie", out var cookies)
-            && cookies.Any(value => value.Contains(".AspNetCore.Identity.Application=", StringComparison.Ordinal)));
-
-        // Not signing in is not the same as not holding tokens: while enabled,
-        // token issuance still accepts the user.
+        await using var env = await Environment.CreateAsync(requireConfirmedEmail: true);
+        var system = await env.CreateSystemUserAsync();
         await using var scope = env.Host.Services.CreateAsyncScope();
         var signIn = scope.ServiceProvider.GetRequiredService<SignInManager<ApplicationUser>>();
-        Assert.True(await signIn.CanSignInAsync(user));
+        var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+
+        // No e-mail: nothing to confirm, so it may hold tokens while not locked out.
+        Assert.True(await env.Store.IsSystemUserAsync(system.Id));
+        Assert.True(await signIn.CanSignInAsync((await users.FindByIdAsync(system.Id))!));
+        await env.DisableAsync(system.Id);
+        await using (var after = env.Host.Services.CreateAsyncScope())
+        {
+            var afterUsers = after.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            Assert.False(await after.ServiceProvider.GetRequiredService<SignInManager<ApplicationUser>>()
+                .CanSignInAsync((await afterUsers.FindByIdAsync(system.Id))!));
+        }
+
+        // A user with a password is an ordinary user: a code issued for it is useless.
+        var person = await TestDataSeeder.CreateUserAsync(users, $"person-{Guid.NewGuid():N}", Password);
+        Assert.False(await env.Store.IsSystemUserAsync(person.Id));
+        var code = await env.IssueCodeAsync(person.Id, AgentClientId);
+        var (status, body) = await env.RedeemAsync(code, AgentClientId, key: null);
+        Assert.Equal(HttpStatusCode.BadRequest, status);
+        Assert.Equal("invalid_grant", body.GetProperty("error").GetString());
     }
 
     private static ECDsaSecurityKey NewKey() => new(ECDsa.Create(ECCurve.NamedCurves.nistP256));
@@ -236,11 +223,12 @@ public sealed class SystemUserTests
 
         public SystemUserStore Store { get; }
 
-        public static async Task<Environment> CreateAsync()
+        public static async Task<Environment> CreateAsync(bool requireConfirmedEmail = false)
         {
             var factory = SufficitIdentityTestFactory.CreateIsolated(new Dictionary<string, string?>
             {
                 ["Sufficit:Identity:Dpop:Enabled"] = "true",
+                ["Sufficit:Identity:SignIn:RequireConfirmedEmail"] = requireConfirmedEmail ? "true" : "false",
             });
             await ((IAsyncLifetime)factory).InitializeAsync();
             await using (var scope = factory.Services.CreateAsyncScope())
@@ -267,32 +255,25 @@ public sealed class SystemUserTests
             return new Environment(factory);
         }
 
-        public async Task<ApplicationUser> CreateSystemUserAsync(bool withPassword = false)
+        /// <summary>A system user: no e-mail, no password, no external login, no passkey.</summary>
+        public async Task<ApplicationUser> CreateSystemUserAsync()
         {
             await using var scope = Host.Services.CreateAsyncScope();
             var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-            var user = withPassword
-                ? await TestDataSeeder.CreateUserAsync(users, $"system-{Guid.NewGuid():N}", Password)
-                : await CreateWithoutPasswordAsync(users);
-            await Store.AddAsync(new SystemUser
-            {
-                UserId = user.Id,
-                CreatedBy = "operator-1",
-                CreatedAtUtc = DateTime.UtcNow,
-            });
-            return user;
-        }
-
-        private static async Task<ApplicationUser> CreateWithoutPasswordAsync(UserManager<ApplicationUser> users)
-        {
-            var user = new ApplicationUser
-            {
-                UserName = $"system-{Guid.NewGuid():N}",
-                Email = $"{Guid.NewGuid():N}@system.invalid",
-            };
+            var user = new ApplicationUser { UserName = $"system-{Guid.NewGuid():N}" };
             var result = await users.CreateAsync(user);
             Assert.True(result.Succeeded, string.Join("; ", result.Errors.Select(e => e.Description)));
             return user;
+        }
+
+        /// <summary>Disabling is the ordinary lockout.</summary>
+        public async Task DisableAsync(string userId)
+        {
+            await using var scope = Host.Services.CreateAsyncScope();
+            var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var user = (await users.FindByIdAsync(userId))!;
+            await users.SetLockoutEnabledAsync(user, true);
+            await users.SetLockoutEndDateAsync(user, new DateTimeOffset(9999, 12, 31, 0, 0, 0, TimeSpan.Zero));
         }
 
         public async Task<string> IssueCodeAsync(string userId, string clientId, TimeSpan? lifetime = null)

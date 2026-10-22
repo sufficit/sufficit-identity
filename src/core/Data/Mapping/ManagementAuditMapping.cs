@@ -52,8 +52,11 @@ internal static class ManagementAuditMapping
                     .HasMaxLength(IdentityDatabaseSchema.AuditAuthenticationMethodsLength);
                 b.Property(x => x.BeforeJson).HasColumnName("beforejson").HasColumnType("longtext");
                 b.Property(x => x.AfterJson).HasColumnName("afterjson").HasColumnType("longtext");
+                b.Property(x => x.ExpiresAtUtc).HasColumnName("expiresatutc").HasColumnType("datetime(6)");
                 b.HasIndex(x => x.OccurredAtUtc)
                     .HasDatabaseName("IX_managementauditevents_occurredatutc");
+                b.HasIndex(x => x.ExpiresAtUtc)
+                    .HasDatabaseName("IX_managementauditevents_expiresatutc");
                 b.HasIndex(x => new { x.ResourceType, x.ResourceId })
                     .HasDatabaseName("IX_managementauditevents_resource");
                 MappingHelpers.SnakeCaseColumns(b, [

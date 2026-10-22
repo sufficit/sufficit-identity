@@ -16,8 +16,11 @@ public static class SystemUserEnrollmentProtocol
 }
 
 /// <summary>
-/// A system user: an ordinary user to every application that never signs in
-/// interactively. Its credentials come from one-time enrollment codes.
+/// A system user: an ordinary user without e-mail, password, external login
+/// or passkey, so it never signs in interactively. Its credentials come from
+/// one-time enrollment codes. <paramref name="CreatedBy"/> comes from the
+/// permanent audit event of its creation; <paramref name="Disabled"/> is the
+/// ordinary lockout.
 /// </summary>
 public sealed record SystemUserSummary(
     string UserId,
@@ -26,7 +29,6 @@ public sealed record SystemUserSummary(
     string CreatedBy,
     DateTime CreatedAtUtc,
     bool Disabled,
-    DateTime? DisabledAtUtc,
     int ActiveCredentials);
 
 /// <summary>

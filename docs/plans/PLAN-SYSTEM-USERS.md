@@ -1,8 +1,7 @@
 # Plano — usuários de sistema
 
-Aberto em 21/10/2026. Estado: **revisão aprovada em 22/10/2026, a implementar**
-(seção "Revisão de 22/10"). A primeira versão está em produção e atende os 11
-agentes do Fleet.
+Aberto em 21/10/2026. Estado: **revisão de 22/10 implementada** (seção
+"Revisão de 22/10"; registro ao final).
 
 ## Revisão de 22/10 — usuário de sistema é usuário comum
 
@@ -42,10 +41,12 @@ para sempre. A revisão resolve isso na auditoria, não com uma tabela paralela.
 - Ao gravar, o padrão é `occurredatutc + AuditRetentionDays` (15 dias); quem
   grava o evento pode definir outro prazo ou nenhum.
 - O job de retenção apaga por `expiresatutc <= agora`, não mais por idade.
-- Migração: linhas existentes recebem `occurredatutc + AuditRetentionDays`. Os
-  11 usuários de sistema atuais recebem um evento `system_user_created` sem
-  expiração, com o operador e o instante gravados em `systemusers`, antes de a
-  tabela ser removida.
+- Vazio segue a retenção padrão contada de `occurredatutc` (sem backfill:
+  linhas antigas continuam vazias); `9999-12-31` = nunca expira
+  (`ManagementAuditRetention.Never`). Com o padrão desligado (0), os prazos
+  explícitos continuam valendo.
+- Migração: eventos `system_user_created` existentes passam a não expirar; os
+  que faltarem são criados a partir de `systemusers` antes de a tabela sair.
 
 ### As duas tabelas com "events" no nome
 
@@ -212,3 +213,4 @@ Para referência; não fazem parte das entregas do identity.
 | 4 — tela | `3ed7b9b` | Roteiro Playwright no host de fixtures (criar, cliente recusado, emitir, copiar, revogar, desativar, mobile), no job de CI. |
 | 7 — guia de uso | `docs/usage/USAGE-SYSTEM-USERS.md` | — |
 
+| R1–R4 — revisão de 22/10 | este ciclo | Retenção por vencimento testada (permanente, vencido, padrão, padrão desligado); usuário reconhecido pelo critério (conta com senha não recebe credencial; sem e-mail emite token com `RequireConfirmedEmail`; lockout corta); provisionador com capacidade estreita não alcança pessoa (pessoa sem e-mail no teste virou usuário de sistema até receber e-mail — o critério importa); SQL 101+102 aplicado em MariaDB 10.4 sobre o esquema anterior com dados. 1.734 testes. |

@@ -36,4 +36,19 @@ public sealed class ManagementAuditEvent
     public string? AfterJson { get; set; }
 
     public string? AuthenticationMethods { get; set; }
+
+    /// <summary>
+    /// When the event may be pruned. Null follows the deployment's default
+    /// retention (<c>AuditRetentionDays</c>, counted from
+    /// <see cref="OccurredAtUtc"/>); <see cref="ManagementAuditRetention.Never"/>
+    /// keeps it for good.
+    /// </summary>
+    public DateTime? ExpiresAtUtc { get; set; }
+}
+
+/// <summary>Explicit expiry values for <see cref="ManagementAuditEvent.ExpiresAtUtc"/>.</summary>
+public static class ManagementAuditRetention
+{
+    /// <summary>Kept for good: facts that must outlive the default retention, such as who created a system user.</summary>
+    public static readonly DateTime Never = new(9999, 12, 31, 0, 0, 0, DateTimeKind.Utc);
 }

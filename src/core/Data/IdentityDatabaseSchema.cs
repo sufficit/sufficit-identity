@@ -57,6 +57,13 @@ public static class IdentityDatabaseSchema
     public const string SystemUsersMigrationId = "20261021163537_AddSystemUsers";
 
     /// <summary>
+    /// System users become ordinary users without e-mail or password (marker
+    /// table dropped, origin kept as a permanent audit event) and audit events
+    /// gain their own expiry.
+    /// </summary>
+    public const string SystemUsersAsOrdinaryUsersMigrationId = "20261022140929_SystemUsersAsOrdinaryUsers";
+
+    /// <summary>
     /// Durable primary for DPoP nonces, front-channel logout context and
     /// passkey ceremony tickets (eval 2026-08-30, F-4).
     /// </summary>

@@ -219,6 +219,7 @@ public sealed class DatabaseSchemaContractTests
             IdentityDatabaseSchema.DcrInitialAccessTokensMigrationId,
             IdentityDatabaseSchema.DcrInitialAccessTokenPolicyMigrationId,
             IdentityDatabaseSchema.SystemUsersMigrationId,
+            IdentityDatabaseSchema.SystemUsersAsOrdinaryUsersMigrationId,
         ], context.Database.GetMigrations());
 
         var history = context.GetService<IHistoryRepository>().GetCreateScript();
