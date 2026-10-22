@@ -85,7 +85,7 @@ internal static class RateLimiterServiceCollectionExtensions
                         ?? httpContext.User.FindFirst("azp")?.Value;
                     var partition = !string.IsNullOrWhiteSpace(clientId)
                         ? "device-client:" + clientId
-                        : "device-ip:" + (httpContext.Connection.RemoteIpAddress?.ToString()
+                        : "device-ip:" + (Sufficit.Identity.STS.Security.ClientAddressPartition.Of(httpContext.Connection.RemoteIpAddress)
                             ?? "unknown");
                     return RateLimitPartition.GetFixedWindowLimiter(
                         partition,
@@ -107,7 +107,7 @@ internal static class RateLimiterServiceCollectionExtensions
                     managementRoutePrefix))
                 {
                     var administrativeIp =
-                        httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+                        Sufficit.Identity.STS.Security.ClientAddressPartition.Of(httpContext.Connection.RemoteIpAddress) ?? "unknown";
                     var isBulk = IdentityRateLimitPolicy.IsBulkEndpoint(
                         httpContext.Request.Path,
                         managementRoutePrefix);
@@ -136,7 +136,7 @@ internal static class RateLimiterServiceCollectionExtensions
                     return RateLimitPartition.GetNoLimiter("unrestricted");
                 }
 
-                var clientIp = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+                var clientIp = Sufficit.Identity.STS.Security.ClientAddressPartition.Of(httpContext.Connection.RemoteIpAddress) ?? "unknown";
 
                 var limits = IdentityRateLimitPolicy.GetCredentialLimits(
                     httpContext.Request.Path, httpContext.Request.Method, rateLimit);
@@ -161,7 +161,7 @@ internal static class RateLimiterServiceCollectionExtensions
                     ?? httpContext.User.FindFirst("azp")?.Value;
                 var partition = !string.IsNullOrWhiteSpace(clientId)
                     ? "client:" + clientId
-                    : "ip:" + (httpContext.Connection.RemoteIpAddress?.ToString()
+                    : "ip:" + (Sufficit.Identity.STS.Security.ClientAddressPartition.Of(httpContext.Connection.RemoteIpAddress)
                         ?? "unknown");
                 return RateLimitPartition.GetFixedWindowLimiter(
                     partition,

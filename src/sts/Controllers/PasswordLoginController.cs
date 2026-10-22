@@ -43,7 +43,7 @@ public sealed class PasswordLoginController(
         // Shared, per account and per IP (plan D6): decided before the password
         // is even looked at, so a refused attempt costs the attacker a guess.
         var account = request.UserName ?? string.Empty;
-        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var ip = ClientAddressPartition.Of(HttpContext.Connection.RemoteIpAddress);
         var decision = await abuseGuard.EvaluateAsync(account, ip, cancellationToken);
         _requireVerification = decision.Action == CredentialAbuseAction.RequireVerification
             && humanVerificationOptions.Protects(HumanVerificationFlow.Login);

@@ -113,6 +113,16 @@ public sealed class CredentialAbuseGuardTests
         Assert.Equal(1, await counter.IncrementAsync("k", TimeSpan.FromMinutes(15), default));
     }
 
+    [Theory]
+    [InlineData("203.0.113.9", "203.0.113.9")]
+    [InlineData("::ffff:203.0.113.9", "203.0.113.9")]
+    [InlineData("2804:3b0:950e:bc00:80ca:3435:c484:cc45", "2804:3b0:950e:bc00::/64")]
+    [InlineData("2804:3b0:950e:bc00::1", "2804:3b0:950e:bc00::/64")]
+    public void An_IPv6_client_is_counted_by_its_64(string address, string partition)
+    {
+        Assert.Equal(partition, ClientAddressPartition.Of(System.Net.IPAddress.Parse(address)));
+    }
+
     private sealed class ManualTime(DateTimeOffset now) : TimeProvider
     {
         private DateTimeOffset _now = now;
