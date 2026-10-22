@@ -848,7 +848,7 @@ namespace Sufficit.Identity.Core.Migrations
                     b.ToTable("dpopreplayentries", (string)null);
                 });
 
-            modelBuilder.Entity("Sufficit.Identity.Core.Entities.IdentityApplicationUsageEvent", b =>
+            modelBuilder.Entity("Sufficit.Identity.Core.Entities.IdentityApplicationUsageDaily", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
@@ -863,6 +863,14 @@ namespace Sufficit.Identity.Core.Migrations
                         .HasColumnType("varchar(255)")
                         .HasColumnName("clientid");
 
+                    b.Property<long>("Count")
+                        .HasColumnType("bigint")
+                        .HasColumnName("count");
+
+                    b.Property<DateTime>("Day")
+                        .HasColumnType("date")
+                        .HasColumnName("day");
+
                     b.Property<string>("EndpointType")
                         .IsRequired()
                         .HasMaxLength(64)
@@ -876,13 +884,20 @@ namespace Sufficit.Identity.Core.Migrations
                         .HasColumnName("eventtype");
 
                     b.Property<string>("GrantType")
+                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)")
                         .HasColumnName("granttype");
 
-                    b.Property<DateTime>("OccurredAtUtc")
+                    b.Property<DateTime>("LastOccurredAtUtc")
                         .HasColumnType("datetime(6)")
-                        .HasColumnName("occurredatutc");
+                        .HasColumnName("lastoccurredatutc");
+
+                    b.Property<string>("Node")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)")
+                        .HasColumnName("node");
 
                     b.Property<string>("Outcome")
                         .IsRequired()
@@ -890,23 +905,16 @@ namespace Sufficit.Identity.Core.Migrations
                         .HasColumnType("varchar(32)")
                         .HasColumnName("outcome");
 
-                    b.Property<string>("SubjectHash")
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)")
-                        .HasColumnName("subjecthash");
-
                     b.HasKey("Id");
 
-                    b.HasIndex("OccurredAtUtc")
-                        .HasDatabaseName("IX_identityusage_occurredatutc");
+                    b.HasIndex("ClientId", "Day")
+                        .HasDatabaseName("IX_identityusagedaily_clientid_day");
 
-                    b.HasIndex("ClientId", "OccurredAtUtc")
-                        .HasDatabaseName("IX_identityusage_clientid_occurredatutc");
+                    b.HasIndex("Day", "Node", "ClientId", "EventType", "EndpointType", "GrantType", "Outcome")
+                        .IsUnique()
+                        .HasDatabaseName("IX_identityusagedaily_key");
 
-                    b.HasIndex("EventType", "OccurredAtUtc")
-                        .HasDatabaseName("IX_identityusage_eventtype_occurredatutc");
-
-                    b.ToTable("identityapplicationusageevents", (string)null);
+                    b.ToTable("identityapplicationusagedaily", (string)null);
                 });
 
             modelBuilder.Entity("Sufficit.Identity.Core.Entities.IdentityMetricsConfiguration", b =>

@@ -1490,8 +1490,8 @@
   <data name="Metrics.Chart.Aria" xml:space="preserve"><value>Gráfico de uso diário</value></data>
   <data name="Metrics.Collector.Heading" xml:space="preserve"><value>Saúde da coleta</value></data>
   <data name="Metrics.Collector.Description" xml:space="preserve"><value>Pressão e entregas desde o início do processo.</value></data>
-  <data name="Metrics.Collector.Queued" xml:space="preserve"><value>Na fila</value></data>
-  <data name="Metrics.Collector.Persisted" xml:space="preserve"><value>Persistidos</value></data>
+  <data name="Metrics.Collector.Queued" xml:space="preserve"><value>Contadas em memória</value></data>
+  <data name="Metrics.Collector.Persisted" xml:space="preserve"><value>Persistidas</value></data>
   <data name="Metrics.Collector.Exported" xml:space="preserve"><value>Exportados</value></data>
   <data name="Metrics.Collector.IsolatedFailures" xml:space="preserve"><value>Falhas isoladas</value></data>
   <data name="Metrics.TopApplications.Heading" xml:space="preserve"><value>Aplicações mais utilizadas</value></data>

@@ -219,13 +219,6 @@ else
                               @bind-Value="configuration.Secret"
                               autocomplete="new-password" />
                 <IdentityNumericField T="int"
-                                 id="metrics-batch"
-                                 aria-label="@L["Metrics.Field.BatchSize.Label"].Value"
-                                 Label="@L["Metrics.Field.BatchSize.Label"].Value"
-                                 Min="@(1)"
-                                 Max="@(2000)"
-                                 @bind-Value="configuration.BatchSize" />
-                <IdentityNumericField T="int"
                                  id="metrics-timeout"
                                  aria-label="@L["Metrics.Field.Timeout.Label"].Value"
                                  Label="@L["Metrics.Field.Timeout.Label"].Value"

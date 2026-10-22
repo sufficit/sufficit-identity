@@ -16,7 +16,7 @@ public static class IdentityDatabaseSchema
     public const int MetricsEndpointTypeLength = 64;
     public const int MetricsGrantTypeLength = 100;
     public const int MetricsOutcomeLength = 32;
-    public const int MetricsSubjectHashLength = 64;
+    public const int MetricsNodeLength = 64;
     public const string TrustedProxyConfigurationMigrationId = "20260910131719_AddTrustedProxyConfiguration";
     public const string InitialMigrationId = "20260726213918_Initial";
     public const string BrandingThemesMigrationId = "20260729025623_AddBrandingThemes";
@@ -61,6 +61,9 @@ public static class IdentityDatabaseSchema
     /// table dropped, origin kept as a permanent audit event) and audit events
     /// gain their own expiry.
     /// </summary>
+    /// <summary>Usage metrics as a daily aggregate per node; the per-event table goes.</summary>
+    public const string AggregateUsageMetricsMigrationId = "20261022141619_AggregateUsageMetrics";
+
     public const string SystemUsersAsOrdinaryUsersMigrationId = "20261022140929_SystemUsersAsOrdinaryUsers";
 
     /// <summary>

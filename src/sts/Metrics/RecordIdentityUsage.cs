@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using OpenIddict.Abstractions;
 using OpenIddict.Server;
 using static OpenIddict.Abstractions.OpenIddictConstants;
@@ -28,21 +26,14 @@ internal sealed class RecordIdentityUsage(IIdentityUsageMetricSink sink)
         var clientId = context.Request?.ClientId;
         if (string.IsNullOrWhiteSpace(clientId)) return ValueTask.CompletedTask;
 
-        var subject = context.Principal?.GetClaim(Claims.Subject);
         sink.TryRecord(new IdentityUsageMetric(
             DateTime.UtcNow,
             clientId,
             context.EndpointType.ToString().ToLowerInvariant() + "_issued",
             context.EndpointType.ToString().ToLowerInvariant(),
             context.Request?.GrantType,
-            "succeeded",
-            HashSubject(subject)));
+            "succeeded"));
         return ValueTask.CompletedTask;
     }
 
-    private static string? HashSubject(string? subject) =>
-        string.IsNullOrWhiteSpace(subject)
-            ? null
-            : Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(subject)))
-                .ToLowerInvariant();
 }

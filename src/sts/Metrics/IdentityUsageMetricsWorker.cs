@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Net.Http.Headers;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Sufficit.Identity.Core.Data;
@@ -11,50 +12,76 @@ using Sufficit.Identity.Vault;
 
 namespace Sufficit.Identity.STS.Metrics;
 
+/// <summary>
+/// Drains the in-memory usage counters once a minute (and on shutdown) into
+/// this node's rows of the daily aggregate, and optionally exports the same
+/// counts. Authentication never waits for any of it.
+/// </summary>
+/// <remarks>
+/// The node is part of the aggregate's key: in a multi-master cluster, nodes
+/// incrementing the same row would collide on certification; each node owning
+/// its rows means no contention at all, and readers sum the nodes.
+/// </remarks>
 internal sealed class IdentityUsageMetricsWorker(
-    IdentityUsageMetricChannel channel,
+    IdentityUsageCounters counters,
     IDbContextFactory<AppDbContext> databaseFactory,
     IHttpClientFactory httpClientFactory,
     IKeyVault keyVault,
     IdentityMetricsRuntimeState runtime,
+    IConfiguration configuration,
     ILogger<IdentityUsageMetricsWorker> logger) : BackgroundService
 {
+    internal static readonly TimeSpan FlushInterval = TimeSpan.FromMinutes(1);
     private int _consecutiveExportFailures;
-    private DateTime _exportCircuitOpenUntilUtc;
+    private DateTime _exportCircuitOpenUtc;
     private DateTime _nextRetentionUtc = DateTime.MinValue;
+
+    /// <summary>Stable name of this node in the aggregate (configurable; the machine name otherwise).</summary>
+    internal string Node { get; } = Truncate(
+        configuration["Sufficit:Identity:Metrics:NodeName"] is { Length: > 0 } name ? name : Environment.MachineName,
+        IdentityDatabaseSchema.MetricsNodeLength);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        while (await channel.Channel.Reader.WaitToReadAsync(stoppingToken))
+        using var timer = new PeriodicTimer(FlushInterval);
+        try
         {
-            // Short debounce closes the originating request/transaction before
-            // touching persistence and coalesces bursts into one bounded write.
-            await Task.Delay(TimeSpan.FromMilliseconds(250), stoppingToken);
-            var configuration = await LoadConfigurationAsync(stoppingToken);
-            var batch = new List<IdentityUsageMetric>(configuration.BatchSize);
-            while (batch.Count < configuration.BatchSize && channel.Channel.Reader.TryRead(out var metric))
-                batch.Add(metric);
-            runtime.SetQueueDepth(channel.Channel.Reader.Count);
-            if (batch.Count == 0 || !configuration.Enabled) continue;
-
-            try
-            {
-                await PersistAsync(batch, stoppingToken);
-                runtime.PersistedMany(batch.Count);
-            }
-            catch (Exception exception) when (!stoppingToken.IsCancellationRequested)
-            {
-                runtime.FailedOne();
-                logger.LogError(exception, "Identity usage metric persistence failed; authentication remained available.");
-                continue;
-            }
-
-            if (configuration.ExportEnabled && configuration.Provider == "victoria_metrics")
-                await TryExportAsync(configuration, batch, stoppingToken);
-
-            if (DateTime.UtcNow >= _nextRetentionUtc)
-                await TryApplyRetentionAsync(configuration.RetentionDays, stoppingToken);
+            while (await timer.WaitForNextTickAsync(stoppingToken))
+                await FlushAsync(stoppingToken);
         }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+        }
+
+        // Counted since the last tick: keep it across a deploy.
+        using var shutdown = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        await FlushAsync(shutdown.Token);
+    }
+
+    internal async Task FlushAsync(CancellationToken cancellationToken)
+    {
+        var configuration = await LoadConfigurationAsync(cancellationToken);
+        var drained = counters.Drain();
+        if (drained.Count == 0 || !configuration.Enabled) return;
+
+        try
+        {
+            await PersistAsync(drained, cancellationToken);
+            runtime.PersistedMany(drained.Count);
+        }
+        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            counters.Restore(drained);
+            runtime.FailedOne();
+            logger.LogError(exception, "Identity usage counters could not be persisted; kept in memory for the next flush.");
+            return;
+        }
+
+        if (configuration.ExportEnabled && configuration.Provider == "victoria_metrics")
+            await TryExportAsync(configuration, drained, cancellationToken);
+
+        if (DateTime.UtcNow >= _nextRetentionUtc)
+            await TryApplyRetentionAsync(configuration.RetentionDays, cancellationToken);
     }
 
     private async Task<IdentityMetricsConfiguration> LoadConfigurationAsync(CancellationToken cancellationToken)
@@ -74,46 +101,84 @@ internal sealed class IdentityUsageMetricsWorker(
         }
     }
 
-    private async Task PersistAsync(IReadOnlyCollection<IdentityUsageMetric> batch, CancellationToken cancellationToken)
+    /// <summary>Adds the drained counts to this node's rows; only this node ever writes them.</summary>
+    private async Task PersistAsync(
+        IReadOnlyList<(IdentityUsageKey Key, long Count, DateTime LastOccurredAtUtc)> drained,
+        CancellationToken cancellationToken)
     {
         await using var database = await databaseFactory.CreateDbContextAsync(cancellationToken);
-        database.IdentityApplicationUsageEvents.AddRange(batch.Select(item => new IdentityApplicationUsageEvent
+        var days = drained.Select(item => item.Key.Day).Distinct().ToArray();
+        var existing = await database.IdentityApplicationUsageDaily
+            .Where(row => row.Node == Node && days.Contains(row.Day))
+            .ToListAsync(cancellationToken);
+        var byKey = existing.ToDictionary(row => new IdentityUsageKey(
+            row.Day, row.ClientId, row.EventType, row.EndpointType, row.GrantType, row.Outcome));
+
+        foreach (var (key, count, last) in drained)
         {
-            OccurredAtUtc = item.OccurredAtUtc,
-            ClientId = Truncate(item.ClientId, 255),
-            EventType = Truncate(item.EventType, 64),
-            EndpointType = Truncate(item.EndpointType, 64),
-            GrantType = TruncateNullable(item.GrantType, 100),
-            Outcome = Truncate(item.Outcome, 32),
-            SubjectHash = TruncateNullable(item.SubjectHash, 64)
-        }));
+            var normalized = Normalize(key);
+            if (byKey.TryGetValue(normalized, out var row))
+            {
+                row.Count += count;
+                if (last > row.LastOccurredAtUtc) row.LastOccurredAtUtc = last;
+                continue;
+            }
+
+            row = new IdentityApplicationUsageDaily
+            {
+                Day = normalized.Day,
+                Node = Node,
+                ClientId = normalized.ClientId,
+                EventType = normalized.EventType,
+                EndpointType = normalized.EndpointType,
+                GrantType = normalized.GrantType,
+                Outcome = normalized.Outcome,
+                Count = count,
+                LastOccurredAtUtc = last,
+            };
+            database.IdentityApplicationUsageDaily.Add(row);
+            byKey[normalized] = row;
+        }
+
         await database.SaveChangesAsync(cancellationToken);
     }
 
-    private async Task TryExportAsync(IdentityMetricsConfiguration configuration, IReadOnlyCollection<IdentityUsageMetric> batch, CancellationToken cancellationToken)
+    private static IdentityUsageKey Normalize(IdentityUsageKey key) => key with
     {
-        if (DateTime.UtcNow < _exportCircuitOpenUntilUtc || string.IsNullOrWhiteSpace(configuration.Endpoint)) return;
+        ClientId = Truncate(key.ClientId, IdentityDatabaseSchema.MetricsClientIdLength),
+        EventType = Truncate(key.EventType, IdentityDatabaseSchema.MetricsEventTypeLength),
+        EndpointType = Truncate(key.EndpointType, IdentityDatabaseSchema.MetricsEndpointTypeLength),
+        GrantType = Truncate(key.GrantType, IdentityDatabaseSchema.MetricsGrantTypeLength),
+        Outcome = Truncate(key.Outcome, IdentityDatabaseSchema.MetricsOutcomeLength),
+    };
+
+    private async Task TryExportAsync(
+        IdentityMetricsConfiguration configuration,
+        IReadOnlyList<(IdentityUsageKey Key, long Count, DateTime LastOccurredAtUtc)> drained,
+        CancellationToken cancellationToken)
+    {
+        if (DateTime.UtcNow < _exportCircuitOpenUtc || string.IsNullOrWhiteSpace(configuration.Endpoint)) return;
         try
         {
             using var request = new HttpRequestMessage(HttpMethod.Post, BuildWriteUri(configuration));
-            request.Content = new StringContent(BuildLineProtocol(batch), Encoding.UTF8, "application/x-line-protocol");
+            request.Content = new StringContent(BuildLineProtocol(drained, Node), Encoding.UTF8, "application/x-line-protocol");
             await ApplyAuthorizationAsync(request, configuration, cancellationToken);
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             timeout.CancelAfter(TimeSpan.FromSeconds(configuration.TimeoutSeconds));
             using var response = await httpClientFactory.CreateClient("identity-metrics-export").SendAsync(request, timeout.Token);
             response.EnsureSuccessStatusCode();
             _consecutiveExportFailures = 0;
-            runtime.ExportedMany(batch.Count);
+            runtime.ExportedMany(drained.Count);
         }
         catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
         {
             runtime.FailedOne();
             if (++_consecutiveExportFailures >= 3)
             {
-                _exportCircuitOpenUntilUtc = DateTime.UtcNow.AddMinutes(5);
+                _exportCircuitOpenUtc = DateTime.UtcNow.AddMinutes(5);
                 _consecutiveExportFailures = 0;
             }
-            logger.LogWarning(exception, "Identity metrics export failed; local collection and authentication remain available.");
+            logger.LogWarning(exception, "Identity metrics export failed; local aggregation and authentication remain available.");
         }
     }
 
@@ -138,8 +203,8 @@ internal sealed class IdentityUsageMetricsWorker(
         try
         {
             await using var database = await databaseFactory.CreateDbContextAsync(cancellationToken);
-            var cutoff = DateTime.UtcNow.AddDays(-retentionDays);
-            await database.IdentityApplicationUsageEvents.Where(item => item.OccurredAtUtc < cutoff)
+            var cutoff = DateTime.UtcNow.Date.AddDays(-retentionDays);
+            await database.IdentityApplicationUsageDaily.Where(row => row.Day < cutoff)
                 .ExecuteDeleteAsync(cancellationToken);
         }
         catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
@@ -156,10 +221,16 @@ internal sealed class IdentityUsageMetricsWorker(
         return new Uri($"{endpoint}/write?db={database}&precision=millisecond", UriKind.Absolute);
     }
 
-    private static string BuildLineProtocol(IEnumerable<IdentityUsageMetric> batch) => string.Join('\n', batch.Select(item =>
-        $"sufficit_identity_application_usage,client_id={EscapeTag(item.ClientId)},event_type={EscapeTag(item.EventType)},endpoint_type={EscapeTag(item.EndpointType)},grant_type={EscapeTag(item.GrantType ?? "unknown")},outcome={EscapeTag(item.Outcome)} value=1i {new DateTimeOffset(item.OccurredAtUtc).ToUnixTimeMilliseconds().ToString(CultureInfo.InvariantCulture)}"));
+    /// <summary>
+    /// One point per counted combination, carrying how many uses it saw since
+    /// the previous flush (summing the points over time gives the total), and
+    /// the node, so series of different nodes never overwrite each other.
+    /// </summary>
+    internal static string BuildLineProtocol(
+        IEnumerable<(IdentityUsageKey Key, long Count, DateTime LastOccurredAtUtc)> drained, string node) =>
+        string.Join('\n', drained.Select(item =>
+            $"sufficit_identity_application_usage,client_id={EscapeTag(item.Key.ClientId)},event_type={EscapeTag(item.Key.EventType)},endpoint_type={EscapeTag(item.Key.EndpointType)},grant_type={EscapeTag(item.Key.GrantType is { Length: > 0 } grant ? grant : "unknown")},outcome={EscapeTag(item.Key.Outcome)},node={EscapeTag(node)} value={item.Count.ToString(CultureInfo.InvariantCulture)}i {new DateTimeOffset(item.LastOccurredAtUtc).ToUnixTimeMilliseconds().ToString(CultureInfo.InvariantCulture)}"));
 
     private static string EscapeTag(string value) => value.Replace("\\", "\\\\").Replace(" ", "\\ ").Replace(",", "\\,").Replace("=", "\\=");
     private static string Truncate(string value, int length) => value.Length <= length ? value : value[..length];
-    private static string? TruncateNullable(string? value, int length) => value is null ? null : Truncate(value, length);
 }

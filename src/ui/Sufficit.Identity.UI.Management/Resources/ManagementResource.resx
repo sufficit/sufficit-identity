@@ -1490,7 +1490,7 @@
   <data name="Metrics.Chart.Aria" xml:space="preserve"><value>Daily usage chart</value></data>
   <data name="Metrics.Collector.Heading" xml:space="preserve"><value>Collection health</value></data>
   <data name="Metrics.Collector.Description" xml:space="preserve"><value>Pressure and deliveries since the process started.</value></data>
-  <data name="Metrics.Collector.Queued" xml:space="preserve"><value>Queued</value></data>
+  <data name="Metrics.Collector.Queued" xml:space="preserve"><value>Counted in memory</value></data>
   <data name="Metrics.Collector.Persisted" xml:space="preserve"><value>Persisted</value></data>
   <data name="Metrics.Collector.Exported" xml:space="preserve"><value>Exported</value></data>
   <data name="Metrics.Collector.IsolatedFailures" xml:space="preserve"><value>Isolated failures</value></data>

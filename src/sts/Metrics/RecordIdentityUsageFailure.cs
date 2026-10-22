@@ -19,7 +19,7 @@ internal sealed class RecordAuthorizationUsageFailure(IIdentityUsageMetricSink s
             !string.IsNullOrWhiteSpace(context.Request?.ClientId))
             sink.TryRecord(new(DateTime.UtcNow, context.Request.ClientId,
                 "authorization_failed", "authorization", null,
-                "failed", null));
+                "failed"));
         return ValueTask.CompletedTask;
     }
 }
@@ -40,7 +40,7 @@ internal sealed class RecordTokenUsageFailure(IIdentityUsageMetricSink sink)
             !string.IsNullOrWhiteSpace(context.Request?.ClientId))
             sink.TryRecord(new(DateTime.UtcNow, context.Request.ClientId,
                 "token_failed", "token", context.Request.GrantType,
-                "failed", null));
+                "failed"));
         return ValueTask.CompletedTask;
     }
 }

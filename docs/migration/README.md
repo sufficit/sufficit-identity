@@ -166,6 +166,18 @@ becomes an ordinary lockout, the enrollment codes point at `users`, and
 `systemusers` is dropped. Apply it **after** the new build runs on every node,
 because the previous build reads `systemusers` on every sign-in.
 
+`103-add-usage-metrics-daily.sql` and `104-drop-usage-metric-events.sql` are
+the two phases of migration `AggregateUsageMetrics`. 103 creates
+`identityapplicationusagedaily` (one row per UTC day, node and dimension; each
+node writes only its own rows, so the cluster never contends on a counter) and
+is safe with the previous build: apply it **before** deploying. 104 moves the
+per-event history into the aggregate as node `legacy` and drops
+`identityapplicationusageevents` with its user hashes; apply it **after** the
+new build runs on every node, so no node still writes per-event rows.
+
+Production order for this release: 101 and 103, deploy every node, then 102
+and 104.
+
 That same evaluation made `Sufficit:Identity:DeploymentTopology` a **required
 configuration key** outside Development: the production posture check refuses to
 start with `deployment-topology-undeclared` until the deployment states its

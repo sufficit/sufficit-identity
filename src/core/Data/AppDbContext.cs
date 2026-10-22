@@ -103,8 +103,8 @@ public sealed class AppDbContext
     public DbSet<Entities.IdentityMetricsConfiguration> IdentityMetricsConfigurations =>
         Set<Entities.IdentityMetricsConfiguration>();
 
-    public DbSet<Entities.IdentityApplicationUsageEvent> IdentityApplicationUsageEvents =>
-        Set<Entities.IdentityApplicationUsageEvent>();
+    public DbSet<Entities.IdentityApplicationUsageDaily> IdentityApplicationUsageDaily =>
+        Set<Entities.IdentityApplicationUsageDaily>();
 
     public DbSet<Entities.DpopReplayEntry> DpopReplayEntries =>
         Set<Entities.DpopReplayEntry>();

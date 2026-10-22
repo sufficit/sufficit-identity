@@ -51,12 +51,15 @@ internal static class IdentityMetricsMapping
                 ]);
             });
 
-            builder.Entity<Entities.IdentityApplicationUsageEvent>(b =>
+            builder.Entity<Entities.IdentityApplicationUsageDaily>(b =>
             {
-                b.ToTable("identityapplicationusageevents");
+                b.ToTable("identityapplicationusagedaily");
                 b.HasKey(x => x.Id);
                 b.Property(x => x.Id).ValueGeneratedOnAdd();
-                b.Property(x => x.OccurredAtUtc).HasColumnType("datetime(6)").IsRequired();
+                b.Property(x => x.Day).HasColumnType("date").IsRequired();
+                b.Property(x => x.Node)
+                    .HasMaxLength(IdentityDatabaseSchema.MetricsNodeLength)
+                    .IsRequired();
                 b.Property(x => x.ClientId)
                     .HasMaxLength(IdentityDatabaseSchema.MetricsClientIdLength)
                     .IsRequired();
@@ -67,27 +70,29 @@ internal static class IdentityMetricsMapping
                     .HasMaxLength(IdentityDatabaseSchema.MetricsEndpointTypeLength)
                     .IsRequired();
                 b.Property(x => x.GrantType)
-                    .HasMaxLength(IdentityDatabaseSchema.MetricsGrantTypeLength);
+                    .HasMaxLength(IdentityDatabaseSchema.MetricsGrantTypeLength)
+                    .IsRequired();
                 b.Property(x => x.Outcome)
                     .HasMaxLength(IdentityDatabaseSchema.MetricsOutcomeLength)
                     .IsRequired();
-                b.Property(x => x.SubjectHash)
-                    .HasMaxLength(IdentityDatabaseSchema.MetricsSubjectHashLength);
-                b.HasIndex(x => x.OccurredAtUtc)
-                    .HasDatabaseName("IX_identityusage_occurredatutc");
-                b.HasIndex(x => new { x.ClientId, x.OccurredAtUtc })
-                    .HasDatabaseName("IX_identityusage_clientid_occurredatutc");
-                b.HasIndex(x => new { x.EventType, x.OccurredAtUtc })
-                    .HasDatabaseName("IX_identityusage_eventtype_occurredatutc");
+                b.Property(x => x.LastOccurredAtUtc).HasColumnType("datetime(6)").IsRequired();
+                // One row per day, node and dimension; each node writes only its own.
+                b.HasIndex(x => new { x.Day, x.Node, x.ClientId, x.EventType, x.EndpointType, x.GrantType, x.Outcome })
+                    .IsUnique()
+                    .HasDatabaseName("IX_identityusagedaily_key");
+                b.HasIndex(x => new { x.ClientId, x.Day })
+                    .HasDatabaseName("IX_identityusagedaily_clientid_day");
                 MappingHelpers.SnakeCaseColumns(b, [
                     ("Id", "id"),
-                    ("OccurredAtUtc", "occurredatutc"),
+                    ("Day", "day"),
+                    ("Node", "node"),
                     ("ClientId", "clientid"),
                     ("EventType", "eventtype"),
                     ("EndpointType", "endpointtype"),
                     ("GrantType", "granttype"),
                     ("Outcome", "outcome"),
-                    ("SubjectHash", "subjecthash"),
+                    ("Count", "count"),
+                    ("LastOccurredAtUtc", "lastoccurredatutc"),
                 ]);
             });
         }

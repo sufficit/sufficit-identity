@@ -112,7 +112,7 @@ public sealed class TestSynchronizationContractTests
     /// uma operação e exigir que tenha levado menos de X.
     /// </summary>
     /// <remarks>
-    /// <c>IdentityUsageMetricChannelTests</c> media uma escrita e exigia menos
+    /// <c>IdentityUsageMetricChannelTests</c> (hoje <c>IdentityUsageCountersTests</c>) media uma escrita e exigia menos
     /// de 50ms para provar que o caminho de autenticação não bloqueia. Sob CPU
     /// saturada a thread é despreempada por mais que isso sem o código ter
     /// esperado nada — e o teste passava a acusar o coletor de bloquear a

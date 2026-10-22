@@ -86,6 +86,7 @@ public sealed class MariaDbMigrationIntegrationTests
             IdentityDatabaseSchema.DcrInitialAccessTokenPolicyMigrationId,
             IdentityDatabaseSchema.SystemUsersMigrationId,
             IdentityDatabaseSchema.SystemUsersAsOrdinaryUsersMigrationId,
+            IdentityDatabaseSchema.AggregateUsageMetricsMigrationId,
         };
         var appliedMigrations = await context.Database
             .GetAppliedMigrationsAsync();

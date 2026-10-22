@@ -1,6 +1,6 @@
 # Plano — métricas de uso agregadas
 
-Aberto em 22/10/2026. Estado: **proposta, aguardando aprovação**.
+Aberto em 22/10/2026. Estado: **implementado** (registro ao final).
 
 ## Situação atual
 
@@ -84,3 +84,18 @@ painel sem TSDB, e só é seguro no Galera com o nó na chave.
 | M2 | Tabela `identityapplicationusagedaily` (EF + SQL canônico e aditivo) e descarga por minuto com nó na chave. |
 | M3 | Tela de métricas lendo o agregado (mesma API e resposta). |
 | M4 | Migração do histórico para o agregado e remoção de `identityapplicationusageevents`. |
+
+## Registro de execução
+
+| Entrega | Verificação |
+|---------|-------------|
+| M1 — `IdentityUsageCounters`: contador por dia e dimensão em memória, limite de 10 mil combinações (o client id de uma falha vem de quem chama), `Counter<long>` `identity.application.usage` no `Meter` `Sufficit.Identity.Metrics` para quem coleta via OpenTelemetry. | Testes: mil usos viram um contador; limite descarta sem bloquear e combinação conhecida segue contando; restauração após falha; o código de gravação não espera nem faz I/O. |
+| M2 — `identityapplicationusagedaily` com o nó na chave única; worker descarrega a cada minuto e no desligamento; retenção por dia. | Teste no banco: dois nós no mesmo dia em linhas próprias, descargas do mesmo nó somam, falha de gravação devolve as contagens à memória. |
+| M3 — tela e API leem o agregado e somam os nós (mesmo contrato). Campo "eventos por lote" saiu da tela (coluna mantida, sem uso). | Teste: visão diária soma `node-a`, `node-b` e `legacy`; consultas traduzem para MariaDB com `SUM`. |
+| M4 — SQL 103 (antes do deploy) e 104 (depois): histórico vira nó `legacy`, tabela por evento e hashes de usuário saem. | Aplicado em MariaDB 10.4 sobre o esquema de produção com eventos de exemplo. |
+
+**Exportação:** mantido o line protocol já configurado no VictoriaMetrics, agora
+agregado: um ponto por combinação a cada descarga, com a contagem do período e
+a tag `node`. Consultas no VictoriaMetrics passam de contar pontos para somar
+valores (`sum_over_time`). O `Meter` cobre quem preferir OTLP/Prometheus sem
+mudar o identity.

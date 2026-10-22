@@ -34,8 +34,10 @@ internal sealed class MetricsManagementService(
         if (from >= to || to - from > TimeSpan.FromDays(366))
             throw new ManagementValidationException("invalid_metrics_range", "The period must be between 1 minute and 366 days.", "fromUtc");
 
-        var query = database.IdentityApplicationUsageEvents.AsNoTracking()
-            .Where(item => item.OccurredAtUtc >= from && item.OccurredAtUtc < to);
+        // Daily aggregate: a day counts when it overlaps the period. Nodes are summed.
+        var firstDay = from.Date;
+        var query = database.IdentityApplicationUsageDaily.AsNoTracking()
+            .Where(item => item.Day >= firstDay && item.Day < to);
         if (!string.IsNullOrWhiteSpace(clientId))
         {
             var normalized = clientId.Trim();
@@ -44,9 +46,9 @@ internal sealed class MetricsManagementService(
 
         var summary = await query.GroupBy(_ => 1).Select(group => new
         {
-            Total = group.LongCount(),
-            Success = group.LongCount(item => item.Outcome == "succeeded"),
-            Failed = group.LongCount(item => item.Outcome != "succeeded"),
+            Total = group.Sum(item => item.Count),
+            Success = group.Where(item => item.Outcome == "succeeded").Sum(item => item.Count),
+            Failed = group.Where(item => item.Outcome != "succeeded").Sum(item => item.Count),
             Applications = group.Select(item => item.ClientId).Distinct().Count()
         }).SingleOrDefaultAsync(cancellationToken);
 
@@ -60,7 +62,7 @@ internal sealed class MetricsManagementService(
 
         var top = await query
             .GroupBy(item => item.ClientId)
-            .Select(group => new { ClientId = group.Key, Count = group.LongCount(), LastUsed = group.Max(item => item.OccurredAtUtc) })
+            .Select(group => new { ClientId = group.Key, Count = group.Sum(item => item.Count), LastUsed = group.Max(item => item.LastOccurredAtUtc) })
             .OrderByDescending(item => item.Count)
             .ThenBy(item => item.ClientId)
             .Take(20)
@@ -183,33 +185,33 @@ internal sealed class MetricsManagementService(
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     internal static IQueryable<MetricsDailyAggregate> BuildDailyAggregationQuery(
-        IQueryable<IdentityApplicationUsageEvent> query) =>
+        IQueryable<IdentityApplicationUsageDaily> query) =>
         query
             .GroupBy(item => new
             {
-                item.OccurredAtUtc.Year,
-                item.OccurredAtUtc.Month,
-                item.OccurredAtUtc.Day,
+                item.Day.Year,
+                item.Day.Month,
+                item.Day.Day,
             })
             .Select(group => new MetricsDailyAggregate
             {
                 Year = group.Key.Year,
                 Month = group.Key.Month,
                 Day = group.Key.Day,
-                Count = group.LongCount(),
+                Count = group.Sum(item => item.Count),
             })
             .OrderBy(item => item.Year)
             .ThenBy(item => item.Month)
             .ThenBy(item => item.Day);
 
     internal static IQueryable<MetricsDimensionAggregate> BuildGrantAggregationQuery(
-        IQueryable<IdentityApplicationUsageEvent> query) =>
+        IQueryable<IdentityApplicationUsageDaily> query) =>
         query
-            .GroupBy(item => item.GrantType ?? "not informed")
+            .GroupBy(item => item.GrantType == "" ? "not informed" : item.GrantType)
             .Select(group => new MetricsDimensionAggregate
             {
                 Name = group.Key,
-                Count = group.LongCount(),
+                Count = group.Sum(item => item.Count),
             })
             .OrderByDescending(item => item.Count)
             .Take(12);

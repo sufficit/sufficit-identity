@@ -175,9 +175,9 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<Mtls.IMtlsClientCertificatePolicy,
             Mtls.MtlsClientCertificatePolicy>();
         services.AddSingleton<IdentityMetricsRuntimeState>();
-        services.AddSingleton<IdentityUsageMetricChannel>();
+        services.AddSingleton<IdentityUsageCounters>();
         services.AddSingleton<IIdentityUsageMetricSink>(provider =>
-            provider.GetRequiredService<IdentityUsageMetricChannel>());
+            provider.GetRequiredService<IdentityUsageCounters>());
         services.AddSafeHttpClient(
             "identity-metrics-export", options.OutboundHttp);
         services.AddSafeHttpClient(

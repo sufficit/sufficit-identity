@@ -21,9 +21,9 @@ public sealed class MetricsManagementTests
                 new MariaDbServerVersion(new Version(10, 4, 34)))
             .Options;
         using var database = new AppDbContext(options);
-        var source = database.IdentityApplicationUsageEvents.AsNoTracking()
-            .Where(item => item.OccurredAtUtc >= new DateTime(2026, 7, 1)
-                && item.OccurredAtUtc < new DateTime(2026, 8, 1));
+        var source = database.IdentityApplicationUsageDaily.AsNoTracking()
+            .Where(item => item.Day >= new DateTime(2026, 7, 1)
+                && item.Day < new DateTime(2026, 8, 1));
 
         var dailySql = MetricsManagementService
             .BuildDailyAggregationQuery(source)
@@ -38,20 +38,22 @@ public sealed class MetricsManagementTests
         Assert.Contains("day", dailySql, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("GROUP BY", grantsSql, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("granttype", grantsSql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("SUM(", dailySql, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public async Task Overview_groups_events_by_utc_day()
+    public async Task Overview_sums_nodes_by_utc_day()
     {
         using var factory = new ManagementTestFactory();
         await ((IAsyncLifetime)factory).InitializeAsync();
         await using (var scope = factory.Services.CreateAsyncScope())
         {
             var database = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            database.IdentityApplicationUsageEvents.AddRange(
-                UsageEvent(new DateTime(2026, 8, 10, 1, 15, 0, DateTimeKind.Utc)),
-                UsageEvent(new DateTime(2026, 8, 10, 22, 45, 0, DateTimeKind.Utc)),
-                UsageEvent(new DateTime(2026, 8, 11, 3, 30, 0, DateTimeKind.Utc)));
+            // Two nodes counted the same day; the overview sums them.
+            database.IdentityApplicationUsageDaily.AddRange(
+                Usage(new DateTime(2026, 8, 10), "node-a", 1),
+                Usage(new DateTime(2026, 8, 10), "node-b", 1),
+                Usage(new DateTime(2026, 8, 11), "legacy", 1));
             await database.SaveChangesAsync();
         }
 
@@ -77,13 +79,16 @@ public sealed class MetricsManagementTests
             });
     }
 
-    private static IdentityApplicationUsageEvent UsageEvent(DateTime occurredAtUtc) => new()
+    private static IdentityApplicationUsageDaily Usage(DateTime day, string node, long count) => new()
     {
-        OccurredAtUtc = occurredAtUtc,
+        Day = day,
+        Node = node,
         ClientId = "metrics-test-client",
         EventType = "token_issued",
         EndpointType = "token",
         GrantType = "client_credentials",
         Outcome = "succeeded",
+        Count = count,
+        LastOccurredAtUtc = day.AddHours(12),
     };
 }
