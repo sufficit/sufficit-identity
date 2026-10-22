@@ -139,18 +139,6 @@ endpoint rather than in each relying party.
 [`202609201100`](../activities/202609201100-authorize-step-up.md),
 [`202609201300`](../activities/202609201300-acr-values.md).
 
-### A5 — Service accounts without a user
-
-- [ ] Remove the idle `client_credentials` accounts listed in
-  [`202610221830`](../activities/202610221830-service-accounts-review.md)
-  (owner's call; none used in the last 7 days).
-
-Reviewed 2026-10-22: every active service account is server-to-server
-infrastructure and stays a pure service; the consumer asking userinfo for a
-client token was sufficit-ai, fixed there (`5aad7df4`). The Fleet agents
-moved to system users (sufficit-fleet
-`docs/activities/202610221500-agent-identity.md`).
-
 ## B. Token issuance and claim release
 
 ### B1 — One issuance kernel

@@ -45,3 +45,7 @@ precisa de identidade própria, como os agentes do Fleet.
 | `sufficit-endpoints-vault`, `-v2` (substituídas pela v3) | 04/09 |
 | `sufficit_cloud_mobile_api` | 09/09 |
 | `sufficit-hermes-n8n` | 13/10 |
+
+**Removidas em 22/10/2026** por decisão do dono: as nove contas acima, com
+seus 349 tokens (todos de `sufficit-hermes-n8n`) e credenciais. Restam sete
+contas `client_credentials`, todas em uso. O A5 saiu do plano.
