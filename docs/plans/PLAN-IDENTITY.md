@@ -109,7 +109,7 @@ same product decision as A1 — partitioning it would be the row-level tenant
 boundary that decision rejected. What SCIM lacks is a decision per
 *operation*: today a client that may provision may also delete.
 
-- [ ] **(operational)** Inventory the provisioning clients, grant
+- [ ] **(operational, gated: SCIM is off in production)** Inventory the provisioning clients, grant
   `scim.destructive` to the ones that legitimately delete or reset passwords,
   bind their tokens, then set `Scim:OperationPolicyMode=Enforce`
 
@@ -263,16 +263,17 @@ The vault module itself (phases 1–3: envelope crypto, named secrets, signing
 keys) is delivered; `KeySource=certificate` with a dedicated KEK is deployed on
 the three nodes. Procedure lives in `../runbooks/RUNBOOK-VAULT.md`.
 
-### C2 — Signing and encryption key separation **(blocked)**
+### C2 — Signing and encryption key separation
 
 The three servers still use the same `certificate.pfx` for signing and
-encryption. The runtime rejects every replacement PFX generated so far —
-neither OpenSSL nor the .NET SDK produces one .NET 10.0.10 on those hosts will
-load. Investigation:
-[`202608161930-pfx-encryption-cert-investigation.md`](../activities/202608161930-pfx-encryption-cert-investigation.md).
-`certificate-encryption.pfx` (RSA-3072, 10 years) is already staged on all
-three. Recommended path: generate the certificate **on the server**, through a
-CLI command of `Server.dll` itself.
+encryption. **No longer blocked** (2026-10-23): the August failure
+([`202608161930`](../activities/202608161930-pfx-encryption-cert-investigation.md))
+was not the runtime — every file of one purpose (primary plus overlap list) is
+opened with that purpose's single password, so a new certificate with a new
+password made the old overlap files fail with "password may be incorrect". A
+certificate generated on eveo with the server's own .NET runtime and the
+current encryption password loads together with `certificate.pfx` and
+`certificate-old.pfx`; it waits at `/root/certificate-encryption.pfx`.
 
 - [ ] Generate the dedicated encryption certificate on the server, swap
   `EncryptionPath` in a window with token rotation, set
@@ -290,8 +291,6 @@ CLI command of `Server.dll` itself.
 
 ### C4 — Verified transport everywhere
 
-- [ ] **(operational)** SMTP `RequireTls` in production, if SMTP is used at
-  all (RabbitMQ already runs `UseTls` + `RequireTls` — [`202610221630`](../activities/202610221630-plan-reconciliation.md))
 - [ ] **(operational)** Select `RequireVerifiedTls` — or the audited
   `PrivateSocket` exception — in each production deployment, after the CA or
   socket is provisioned. Today the connection string declares no `SslMode`
@@ -467,7 +466,6 @@ versions at startup.
 ### E8 — Accessibility and localization
 
 - [ ] WCAG 2.2 AA accessibility audit of both embedded UIs
-- [ ] Extract the runtime copy — it is currently hardcoded pt-BR
 
 ---
 
@@ -489,8 +487,8 @@ hook from the original proposal is missing.
 
 ### F2 — One management operation executor
 
-- [ ] Replace the `DemandAsync`/`TryWriteAuditAsync` pair repeated across six
-  services with a `ManagementOperationExecutor`
+- [ ] Replace the `DemandAsync`/`TryWriteAuditAsync` pair repeated across about
+  thirty management files with a `ManagementOperationExecutor`
 - [ ] Remove the duplicated `ManagementOptions` (STS × Abstractions)
 
 `ManagementOperationGuard` already unified the authorize-and-audit decision and
@@ -577,14 +575,15 @@ matches, and `EmailIndex` is unique since 108
 
 - [ ] Implement protected read, update, delete, secret rotation and the audit
   lifecycle
-- [ ] Apply one canonical metadata validator, including strict URI schemes and
-  loopback redirect rules
 - [ ] Retain caller-supplied secrets only behind a deprecated audited adapter
   during migration, with an entropy floor and a deadline
 - [ ] Align the operator-managed application lifecycle and secret references
   with E2
-- [ ] Keep DCR disabled until the lifecycle, abuse controls and interoperability
-  tests are complete
+- [ ] **(decision)** DCR is **on** in production for anonymous public clients
+  (`Dcr:Enabled=true`, `RequireInitialAccessToken=false`, chosen in
+  [`202609132250`](../activities/202609132250-deploy-evaluation-remediation.md)).
+  Either require an initial access token until the lifecycle, abuse controls
+  and interoperability tests are complete, or record the accepted risk
 
 Server-generated IDs and secrets, expiring single-use initial access tokens,
 central metadata validation and public-client PKCE are already covered.
@@ -676,12 +675,16 @@ Everything below needs a human against real infrastructure and clients.
 
 **Rehearsals**
 
-- [ ] Backup, cutover and rollback rehearsals complete and recorded
+- [ ] **(decision)** Drop the retired `identity_legacy` database (40 tables,
+  referenced only by script 091; cutover rehearsals were done in August)
 
 ### G5 — Confirmed-email rollout **(operational)**
 
-- [ ] Execute [`RUNBOOK-CONFIRMED-EMAIL.md`](../runbooks/RUNBOOK-CONFIRMED-EMAIL.md)
-  — rollout and migration of the legacy users
+- [ ] Decide what happens to the 369 accounts with an unconfirmed email —
+  `RequireConfirmedEmail` is already on (code default, production does not
+  override it) — and fix step 2 of
+  [`RUNBOOK-CONFIRMED-EMAIL.md`](../runbooks/RUNBOOK-CONFIRMED-EMAIL.md), which
+  queries a `lastlogin_at` column that does not exist
 
 ### G6 — Forward-looking protocol work
 
@@ -702,10 +705,9 @@ Deliberately after everything above; none of it is required for production.
 
 ## Execution order
 
-1. **C1, then C2** — the vault's production enablement, then the key
-   separation. C2 is blocked on the PFX problem and needs the
-   generate-on-server approach first; declaring
-   `Sufficit:Vault:SecretMigrationComplete=true` per environment is part of D4
+1. **C2, then C1** — the key separation (unblocked: the certificate is
+   generated on the server) clears the last posture advisory; then the KEK
+   escrow and the vault rotation orchestrator
 2. **A1** — operator entitlements
 3. **B1** — answer the unified-service question before B2, B3 and B5's kernel
    item, which were written assuming it
