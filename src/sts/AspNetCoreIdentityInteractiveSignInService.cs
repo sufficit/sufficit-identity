@@ -18,7 +18,8 @@ public sealed class AspNetCoreIdentityInteractiveSignInService(
     IAuthenticationContextAccessor authenticationContextAccessor,
     IAuthenticationContextClassMapper authenticationContextClasses,
     TimeProvider timeProvider,
-    ILogger<AspNetCoreIdentityInteractiveSignInService> logger)
+    ILogger<AspNetCoreIdentityInteractiveSignInService> logger,
+    Security.CredentialAbuseGuard? abuseGuard = null)
     : IInteractiveSignInService
 {
     public async Task<IReadOnlyList<InteractiveSignInProvider>>
@@ -185,6 +186,8 @@ public sealed class AspNetCoreIdentityInteractiveSignInService(
                 InteractiveSignInStatus.Failed);
         }
 
+        if (await GuardSecondFactorAsync(pendingUser.Id, cancellationToken) is { } refused)
+            return refused;
         var code = NormalizeAuthenticatorCode(command.Code);
         SetAuthenticationContext(
             ["pwd", "otp", "mfa"],
@@ -199,6 +202,7 @@ public sealed class AspNetCoreIdentityInteractiveSignInService(
             isPersistent,
             command.RememberClient);
         cancellationToken.ThrowIfCancellationRequested();
+        await RecordSecondFactorAsync(pendingUser.Id, result, cancellationToken);
         if (result.Succeeded)
         {
             // Identity has just accepted the OTP and issued the application
@@ -263,12 +267,15 @@ public sealed class AspNetCoreIdentityInteractiveSignInService(
                 InteractiveSignInStatus.Failed);
         }
 
+        if (await GuardSecondFactorAsync(pendingUser.Id, cancellationToken) is { } refused)
+            return refused;
         SetAuthenticationContext(
             ["pwd", "rc", "mfa"],
             authenticationContextClasses.Map(CaepAssuranceLevel.Loa2));
         var result = await signInManager.TwoFactorRecoveryCodeSignInAsync(
             NormalizeRecoveryCode(code));
         cancellationToken.ThrowIfCancellationRequested();
+        await RecordSecondFactorAsync(pendingUser.Id, result, cancellationToken);
         if (result.Succeeded)
         {
             await signInManager.SignInWithClaimsAsync(
@@ -317,6 +324,35 @@ public sealed class AspNetCoreIdentityInteractiveSignInService(
     /// exactly the path where the sign-in manager skipped one, which keeps the
     /// refusals from being distinguishable by how long they take.
     /// </remarks>
+    /// <summary>
+    /// Code guessing per account (plan D6): the user is already known from
+    /// the password, so the account is the only dimension a Blazor circuit can
+    /// count reliably. Past the delays, attempts are refused as locked out.
+    /// </summary>
+    private async Task<InteractiveSignInResult?> GuardSecondFactorAsync(string userId, CancellationToken cancellationToken)
+    {
+        if (abuseGuard is null) return null;
+        var decision = await abuseGuard.EvaluateAsync(userId, null, cancellationToken,
+            Security.CredentialAbusePurpose.SecondFactor);
+        switch (decision.Action)
+        {
+            case Security.CredentialAbuseAction.Delay:
+                await Task.Delay(decision.Delay, cancellationToken);
+                return null;
+            case Security.CredentialAbuseAction.RequireVerification or Security.CredentialAbuseAction.Block:
+                return new InteractiveSignInResult(InteractiveSignInStatus.LockedOut);
+            default:
+                return null;
+        }
+    }
+
+    private Task RecordSecondFactorAsync(string userId, SignInResult result, CancellationToken cancellationToken) =>
+        abuseGuard is null
+            ? Task.CompletedTask
+            : result.Succeeded
+                ? abuseGuard.RecordSuccessAsync(userId, cancellationToken, Security.CredentialAbusePurpose.SecondFactor)
+                : abuseGuard.RecordFailureAsync(userId, null, cancellationToken, Security.CredentialAbusePurpose.SecondFactor);
+
     // Made by the configured hasher, so it costs what a real hash costs.
     private static string? _dummyHash;
 

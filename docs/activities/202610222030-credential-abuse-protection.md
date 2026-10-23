@@ -71,3 +71,19 @@ HAProxies — locais 172.16.1.0, 172.16.2.0, 172.16.3.0; públicos
 efetivas. Limitador e contadores agrupam IPv6 por /64 (`2969577`). Conferido
 depois: IP real pelo HAProxy e direto (IPv4), e `2804:3b0:950e:bc00::/64`
 direto por IPv6.
+
+## Segundo fator, e-mails e tempo de resposta (22/10/2026)
+
+- **Propósitos com contadores próprios** (`CredentialAbusePurpose`): senha
+  (conta + IP, chaves de antes), segundo fator e e-mail de conta. Errar
+  códigos não mexe na contagem de senha, e vice-versa.
+- **Código do autenticador e de recuperação:** por conta (o usuário que a senha
+  já identificou; num circuito Blazor não há IP confiável). Atraso progressivo
+  a partir de 3 erros; a partir de 5, recusado como bloqueado até a janela
+  passar. Antes, só o bloqueio do Identity (5 em 5 min, renovável).
+- **E-mails de recuperação e de confirmação:** no máximo 3 por conta em 15 min
+  (`AccountEmailsPerWindow`); acima disso não envia — e a resposta é a mesma.
+- **Tempo mínimo de 1,5 s** nas duas solicitações públicas por e-mail: conta
+  inexistente respondia na hora, existente esperava token + SMTP.
+- **Cadastro:** continua dizendo que o e-mail já tem conta (manda para o login
+  com o e-mail preenchido). Decisão de UX, atrás do reCAPTCHA; mantida.

@@ -123,6 +123,35 @@ public sealed class CredentialAbuseGuardTests
         Assert.Equal(partition, ClientAddressPartition.Of(System.Net.IPAddress.Parse(address)));
     }
 
+    [Fact]
+    public async Task Each_purpose_keeps_its_own_count()
+    {
+        var guard = Guard(CredentialAbuseMode.Enforce);
+        for (var i = 0; i < 5; i++)
+            await guard.RecordFailureAsync("user-1", null, default, CredentialAbusePurpose.SecondFactor);
+
+        Assert.Equal(CredentialAbuseAction.RequireVerification,
+            (await guard.EvaluateAsync("user-1", null, default, CredentialAbusePurpose.SecondFactor)).Action);
+        // The password count of the same account is untouched by code guessing.
+        Assert.Equal(CredentialAbuseAction.Allow, (await guard.EvaluateAsync("user-1", null, default)).Action);
+
+        await guard.RecordSuccessAsync("user-1", default, CredentialAbusePurpose.SecondFactor);
+        Assert.Equal(CredentialAbuseAction.Allow,
+            (await guard.EvaluateAsync("user-1", null, default, CredentialAbusePurpose.SecondFactor)).Action);
+    }
+
+    [Theory]
+    [InlineData(CredentialAbuseMode.Enforce, false)]
+    [InlineData(CredentialAbuseMode.Observe, true)]
+    public async Task Account_emails_stop_past_the_window_limit_only_when_enforced(CredentialAbuseMode mode, bool fourthAllowed)
+    {
+        var guard = Guard(mode);
+        for (var i = 0; i < 3; i++)
+            Assert.True(await guard.AllowAccountEmailAsync("user-2", default));
+
+        Assert.Equal(fourthAllowed, await guard.AllowAccountEmailAsync("user-2", default));
+    }
+
     private sealed class ManualTime(DateTimeOffset now) : TimeProvider
     {
         private DateTimeOffset _now = now;

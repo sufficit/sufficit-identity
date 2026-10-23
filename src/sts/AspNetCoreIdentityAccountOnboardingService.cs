@@ -30,9 +30,17 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
     IIdentityUserSessionRevoker sessionRevoker,
     ISecurityEventTrigger securityEvents,
     IStringLocalizer<AccountMessages> messages,
-    ILogger<AspNetCoreIdentityAccountOnboardingService> logger)
+    ILogger<AspNetCoreIdentityAccountOnboardingService> logger,
+    Security.CredentialAbuseGuard? abuseGuard = null)
     : IAccountOnboardingService
 {
+    /// <summary>
+    /// Minimum time a public email request takes (plan D6). Without it an
+    /// existing account answers slower than a missing one (token generation
+    /// and SMTP), which tells who has an account here.
+    /// </summary>
+    internal static readonly TimeSpan PublicEmailRequestFloor = TimeSpan.FromSeconds(1.5);
+
     private const int PasswordResetRevocationAttempts = 3;
     private static readonly Meter SecurityMeter = new(
         "Sufficit.Identity.Security",
@@ -129,9 +137,11 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
             CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        var started = System.Diagnostics.Stopwatch.GetTimestamp();
         var user = await accountLookup.FindUniqueByEmailAsync(email, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
-        if (user is not null && !user.EmailConfirmed)
+        if (user is not null && !user.EmailConfirmed
+            && await AllowAccountEmailAsync(user, cancellationToken))
         {
             await SendConfirmationMessageAsync(
                 user,
@@ -140,8 +150,23 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
                 cancellationToken);
         }
 
+        await PadToFloorAsync(started, cancellationToken);
         return new AccountEmailRequestResult(true);
     }
+
+    private Task<bool> AllowAccountEmailAsync(ApplicationUser user, CancellationToken cancellationToken) =>
+        abuseGuard?.AllowAccountEmailAsync(user.Id, cancellationToken) ?? Task.FromResult(true);
+
+    private static async Task PadToFloorAsync(long started, CancellationToken cancellationToken)
+    {
+        var remaining = RemainingToFloor(System.Diagnostics.Stopwatch.GetElapsedTime(started));
+        if (remaining > TimeSpan.Zero)
+            await Task.Delay(remaining, cancellationToken);
+    }
+
+    /// <summary>What is left to wait so the request takes at least the floor; nothing once past it.</summary>
+    internal static TimeSpan RemainingToFloor(TimeSpan elapsed) =>
+        elapsed >= PublicEmailRequestFloor ? TimeSpan.Zero : PublicEmailRequestFloor - elapsed;
 
     public async Task<AccountEmailConfirmationDispatch>
         SendEmailConfirmationAsync(
@@ -221,15 +246,18 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        var started = System.Diagnostics.Stopwatch.GetTimestamp();
         var user = await accountLookup.FindUniqueByEmailAsync(email, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
-        if (user is null || !await userManager.IsEmailConfirmedAsync(user))
+        if (user is not null && await userManager.IsEmailConfirmedAsync(user)
+            && await AllowAccountEmailAsync(user, cancellationToken))
         {
-            return new AccountEmailRequestResult(true);
+            await DispatchPasswordResetAsync(user, cancellationToken);
         }
 
-        await DispatchPasswordResetAsync(user, cancellationToken);
-        // Public recovery must not reveal existence or delivery outcome.
+        // Public recovery must not reveal existence, delivery outcome or the
+        // email limit: same answer, same minimum time.
+        await PadToFloorAsync(started, cancellationToken);
         return new AccountEmailRequestResult(true);
     }
 

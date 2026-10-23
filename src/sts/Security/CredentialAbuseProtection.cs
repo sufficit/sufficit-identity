@@ -46,7 +46,23 @@ public sealed class CredentialAbuseOptions
     /// <summary>Failures from one IP after which its attempts are refused outright until the window passes.</summary>
     public int IpBlockAfter { get; init; } = 200;
 
+    /// <summary>Password-reset or confirmation emails one account receives per window; past it nothing is sent, and the answer does not change.</summary>
+    public int AccountEmailsPerWindow { get; init; } = 3;
+
     public TimeSpan Window => TimeSpan.FromMinutes(Math.Max(15, WindowMinutes));
+}
+
+/// <summary>What is being guessed or abused; each keeps its own counters.</summary>
+public enum CredentialAbusePurpose
+{
+    /// <summary>Password sign-in, per account and per IP.</summary>
+    Password,
+
+    /// <summary>Authenticator or recovery code, per account (the user the password already identified).</summary>
+    SecondFactor,
+
+    /// <summary>Password-reset and confirmation emails sent to one account (mailbox flooding).</summary>
+    AccountEmail,
 }
 
 public enum CredentialAbuseAction
@@ -156,7 +172,8 @@ public sealed class CredentialAbuseGuard
 
     public CredentialAbuseMode Mode => _options.Mode;
 
-    public async Task<CredentialAbuseDecision> EvaluateAsync(string account, string? ip, CancellationToken cancellationToken)
+    public async Task<CredentialAbuseDecision> EvaluateAsync(string account, string? ip, CancellationToken cancellationToken,
+        CredentialAbusePurpose purpose = CredentialAbusePurpose.Password)
     {
         if (_options.Mode == CredentialAbuseMode.Off)
             return CredentialAbuseDecision.Allowed;
@@ -164,8 +181,8 @@ public sealed class CredentialAbuseGuard
         long accountFailures, ipFailures;
         try
         {
-            accountFailures = await _counter.GetAsync(AccountKey(account), cancellationToken);
-            ipFailures = string.IsNullOrEmpty(ip) ? 0 : await _counter.GetAsync(IpKey(ip), cancellationToken);
+            accountFailures = await _counter.GetAsync(AccountKey(account, purpose), cancellationToken);
+            ipFailures = string.IsNullOrEmpty(ip) ? 0 : await _counter.GetAsync(IpKey(ip, purpose), cancellationToken);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
@@ -181,8 +198,8 @@ public sealed class CredentialAbuseGuard
             _telemetry?.Record("credential_abuse", Describe(), wouldReject: true, rejected: enforced,
                 [decision.Action.ToString().ToLowerInvariant()]);
             _logger.LogInformation(
-                "Credential abuse ({Mode}): {Action} for account {AccountRef} from {Ip}; failures account={AccountFailures} ip={IpFailures}.",
-                Describe(), decision.Action, AccountReference(account), ip, accountFailures, ipFailures);
+                "Credential abuse ({Mode}): {Action} {Purpose} for account {AccountRef} from {Ip}; failures account={AccountFailures} ip={IpFailures}.",
+                Describe(), decision.Action, purpose, AccountReference(account), ip, accountFailures, ipFailures);
         }
 
         return _options.Mode == CredentialAbuseMode.Enforce ? decision : decision with { Action = CredentialAbuseAction.Allow };
@@ -203,17 +220,47 @@ public sealed class CredentialAbuseGuard
         return new(CredentialAbuseAction.Allow, TimeSpan.Zero, accountFailures, ipFailures);
     }
 
-    public Task RecordFailureAsync(string account, string? ip, CancellationToken cancellationToken) =>
+    public Task RecordFailureAsync(string account, string? ip, CancellationToken cancellationToken,
+        CredentialAbusePurpose purpose = CredentialAbusePurpose.Password) =>
         SafelyAsync(async () =>
         {
-            await _counter.IncrementAsync(AccountKey(account), _options.Window, cancellationToken);
+            await _counter.IncrementAsync(AccountKey(account, purpose), _options.Window, cancellationToken);
             if (!string.IsNullOrEmpty(ip))
-                await _counter.IncrementAsync(IpKey(ip), _options.Window, cancellationToken);
+                await _counter.IncrementAsync(IpKey(ip, purpose), _options.Window, cancellationToken);
         });
 
-    /// <summary>A successful password clears the account's count; the IP's stays (one success does not excuse a spray).</summary>
-    public Task RecordSuccessAsync(string account, CancellationToken cancellationToken) =>
-        SafelyAsync(() => _counter.ResetAsync(AccountKey(account), cancellationToken));
+    /// <summary>A success clears the account's count; the IP's stays (one success does not excuse a spray).</summary>
+    public Task RecordSuccessAsync(string account, CancellationToken cancellationToken,
+        CredentialAbusePurpose purpose = CredentialAbusePurpose.Password) =>
+        SafelyAsync(() => _counter.ResetAsync(AccountKey(account, purpose), cancellationToken));
+
+    /// <summary>
+    /// Counts one more email to <paramref name="account"/> and says whether it
+    /// may go. Past <see cref="CredentialAbuseOptions.AccountEmailsPerWindow"/>
+    /// it may not (in Enforce); the caller answers exactly as if it had sent,
+    /// so the limit reveals nothing about the account.
+    /// </summary>
+    public async Task<bool> AllowAccountEmailAsync(string account, CancellationToken cancellationToken)
+    {
+        if (_options.Mode == CredentialAbuseMode.Off) return true;
+        long sent;
+        try
+        {
+            sent = await _counter.IncrementAsync(AccountKey(account, CredentialAbusePurpose.AccountEmail),
+                _options.Window, cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            _logger.LogWarning(exception, "Credential abuse counters unavailable; the email goes unlimited.");
+            return true;
+        }
+        if (sent <= _options.AccountEmailsPerWindow) return true;
+        var enforced = _options.Mode == CredentialAbuseMode.Enforce;
+        _telemetry?.Record("credential_abuse", Describe(), wouldReject: true, rejected: enforced, ["account_email"]);
+        _logger.LogInformation("Credential abuse ({Mode}): email {Count} in the window for account {AccountRef}{Outcome}.",
+            Describe(), sent, AccountReference(account), enforced ? "; not sent" : string.Empty);
+        return !enforced;
+    }
 
     private async Task SafelyAsync(Func<Task> action)
     {
@@ -230,9 +277,18 @@ public sealed class CredentialAbuseGuard
 
     private string Describe() => _options.Mode.ToString().ToLowerInvariant();
 
-    private string AccountKey(string account) => KeyPrefix + "account:" + AccountHash(account);
+    // Password keys keep their original shape; the other purposes get their own space.
+    private static string Segment(CredentialAbusePurpose purpose) => purpose switch
+    {
+        CredentialAbusePurpose.Password => string.Empty,
+        CredentialAbusePurpose.SecondFactor => "second-factor:",
+        _ => "account-email:",
+    };
 
-    private static string IpKey(string ip) => KeyPrefix + "ip:" + ip;
+    private string AccountKey(string account, CredentialAbusePurpose purpose) =>
+        KeyPrefix + Segment(purpose) + "account:" + AccountHash(account);
+
+    private static string IpKey(string ip, CredentialAbusePurpose purpose) => KeyPrefix + Segment(purpose) + "ip:" + ip;
 
     /// <summary>HMAC of the normalized account name: the counter store never holds the name.</summary>
     internal string AccountHash(string account) =>

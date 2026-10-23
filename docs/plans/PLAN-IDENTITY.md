@@ -369,21 +369,14 @@ out without it; the multi-replica rehearsal is the missing evidence.
 ### D6 — Distributed abuse protection
 
 Shared per-account and per-IP counters, progressive delay, human verification
-and refusal for interactive password sign-in, in `Observe`
+and refusal for interactive password sign-in, second factor and recovery codes;
+per-account email limit and a minimum answer time on password recovery and
+email confirmation — all in `Observe`
 ([`202610222030`](../activities/202610222030-credential-abuse-protection.md)).
 
 - [ ] **(operational)** Tune the thresholds with the observe decisions
   (shared-NAT false positives, spraying), then set
   `Sufficit:Identity:AbuseProtection:Mode=Enforce`
-- [ ] Apply the same guard to the other credential checks: second factor and
-  recovery codes, password reset and the token endpoint's remaining grants
-- [ ] Timing and response normalization where user existence can still be
-  inferred (password recovery, registration, email confirmation)
-
----
-
-## E. Administration console and UI
-
 ### Domain limits that bind every item in this section
 
 - A user claim is a **generic** attribute of the provider. Sufficit's roles,
