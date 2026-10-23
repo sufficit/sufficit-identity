@@ -389,14 +389,6 @@ email confirmation — all in `Observe`
 - No secret, token, authorization or manifest property is ever copied into a
   list, a URL, a draft, a log or an audit record.
 
-### E1 — Client operational state (enable/disable)
-
-Delivered: a client can be disabled and re-enabled without deletion, refused at
-once on every node
-([`202610222230`](../activities/202610222230-client-operational-state.md)).
-
-- [ ] Show the state on the DCR registrations list as well
-
 ### E2 — Application lifecycle: credentials and cloning
 
 - [ ] Integrate `SecretReference` and the vault into the console's credential
