@@ -303,13 +303,6 @@ UnixSocket exception; production still has to choose the mode.
 
 ### D1 — CSP from telemetry to enforcement
 
-- [ ] Set `Csp:StyleAttributes=Block` (`style-src-attr 'none'`) once the
-  report-only header production carries since 2026-10-23
-  (`StyleAttributes=Report`) stays quiet. Two known reporters first: the
-  `SUIFormGrid` fix (sufficit-blazor-ui `2f3016a`) needs a SUI release, held
-  by that repository's failing CSS-budget gate, and the reCAPTCHA widget shown
-  by D6 may set style attributes of its own —
-  [`202610231700`](../activities/202610231700-csp-inline-styles.md)
 - [ ] Make the report-only rollback switch bounded: `AcknowledgeReportOnly` has
   no expiry (reports already strip query and userinfo)
 

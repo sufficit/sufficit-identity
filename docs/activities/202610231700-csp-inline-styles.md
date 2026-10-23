@@ -42,6 +42,18 @@ enforce e nonce ligado, estilos **bloqueados** de verdade:
 Falta para `Block`: SUI publicado com o `SUIFormGrid` novo, e conferir nos
 relatórios se o widget do reCAPTCHA (D6) usa atributos `style`.
 
+## D1 — `style-src-attr 'none'` em produção
+
+- Login e login com reCAPTCHA (`verify=1`) abertos num Chromium headless com
+  o Report-Only ligado: nenhuma violação no documento (o widget roda em iframe
+  do Google, sob a CSP dele). Controle: um `setAttribute('style')` injetado
+  gera o relatório, então o detector funciona.
+- Zero relatórios de produção desde o deploy.
+- SUI `2.26.1023.2034` publicado com o `SUIFormGrid` sem `style`. O orçamento
+  de CSS do Chromium subiu para 126 KiB pela regra de +3% já usada
+  (124.777 B medidos).
+- Identity com o SUI novo e `Csp:StyleAttributes=Block` nos três nós.
+
 ## B7
 
 Um cliente sem `consent_type` (`sufficit-endpoints-vault-v3`, só
