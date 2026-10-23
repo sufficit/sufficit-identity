@@ -143,6 +143,13 @@ jobs:
                 < "${script}"
             done
           done
+          # 082 predates AggregateUsageMetrics and recreates the per-event
+          # usage table that the canonical schema already dropped. On a real
+          # upgrade, 103/104 aggregate and drop it; 104 records its migration
+          # row and is not idempotent, so finish that phase here instead.
+          docker exec -i "${mariadb_containers[0]}" \
+            mysql --user=root identity_contract \
+            --execute 'DROP TABLE IF EXISTS `identityapplicationusageevents`;'
 
       - name: Test
         working-directory: sufficit-identity

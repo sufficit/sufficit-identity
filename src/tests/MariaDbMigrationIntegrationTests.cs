@@ -104,11 +104,14 @@ public sealed class MariaDbMigrationIntegrationTests
         await using var connection = context.Database.GetDbConnection();
         await connection.OpenAsync();
 
-        // 36 base tables remain, including trustedproxyconfiguration and
-        // dcrinitialaccesstokens: the canonical script creates the migrations
-        // history table plus the model tables, and a migration drops
-        // vaultpersonalsecrets (user-typed secrets live in vaultsecrets).
-        Assert.Equal(36, await ScalarIntAsync(connection, """
+        // 37 base tables remain, including trustedproxyconfiguration,
+        // dcrinitialaccesstokens, systemuserenrollments and
+        // identityapplicationusagedaily: the canonical script creates the
+        // migrations history table plus the model tables, and migrations drop
+        // vaultpersonalsecrets (user-typed secrets live in vaultsecrets),
+        // systemusers (system users are ordinary users) and
+        // identityapplicationusageevents (replaced by the daily aggregate).
+        Assert.Equal(37, await ScalarIntAsync(connection, """
             SELECT COUNT(*)
             FROM information_schema.tables
             WHERE table_schema = DATABASE()
