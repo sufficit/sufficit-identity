@@ -387,7 +387,6 @@ out without it; the multi-replica rehearsal is the missing evidence.
 
 ### E3 — Application operation and scale
 
-- [ ] Disable/enable action wired to E1's enforcement
 - [ ] Per-application metrics connected to the existing metrics module
 - [ ] Audit timeline filtered by client ID
 - [ ] Session and authorization revocation actions in the application's context
