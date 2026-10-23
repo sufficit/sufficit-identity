@@ -265,19 +265,13 @@ the three nodes. Procedure lives in `../runbooks/RUNBOOK-VAULT.md`.
 
 ### C2 — Signing and encryption key separation
 
-The three servers still use the same `certificate.pfx` for signing and
-encryption. **No longer blocked** (2026-10-23): the August failure
-([`202608161930`](../activities/202608161930-pfx-encryption-cert-investigation.md))
-was not the runtime — every file of one purpose (primary plus overlap list) is
-opened with that purpose's single password, so a new certificate with a new
-password made the old overlap files fail with "password may be incorrect". A
-certificate generated on eveo with the server's own .NET runtime and the
-current encryption password loads together with `certificate.pfx` and
-`certificate-old.pfx`; it waits at `/root/certificate-encryption.pfx`.
+Signing and encryption use separate certificates on the three servers since
+2026-10-23 (`RequirePurposeSeparation=true`,
+[`202610231600`](../activities/202610231600-encryption-certificate-separation.md)).
 
-- [ ] Generate the dedicated encryption certificate on the server, swap
-  `EncryptionPath` in a window with token rotation, set
-  `RequirePurposeSeparation=true`
+- [ ] **(operational, from 2026-11-20)** Drop `certificate.pfx` and
+  `certificate-old.pfx` from `EncryptionPaths`: the last valid token encrypted
+  with them expires 2026-11-19 17:39 UTC
 - [ ] Introduce purpose-separated protocol signing/encryption keys with
   active/retiring overlap, stable `kid`, JWKS rotation and a KMS/HSM-backed
   production provider
@@ -701,18 +695,15 @@ Deliberately after everything above; none of it is required for production.
 
 ## Execution order
 
-1. **C2, then C1** — the key separation (unblocked: the certificate is
-   generated on the server) clears the last posture advisory; then the KEK
-   escrow and the vault rotation orchestrator
+1. **C1** — the KEK escrow and the vault rotation orchestrator
 2. **A1** — operator entitlements
 3. **B1** — answer the unified-service question before B2, B3 and B5's kernel
    item, which were written assuming it
 4. **B7, B8** — independent of the kernel, both operational
 5. **D4, D2, D3, D5** — the enforcement and topology inventories, together,
    per environment. They are what turns Observe into Enforce, and what clears
-   the advisories the posture check reports at every startup:
-   `access-token-unmapped-claims` is B2's, `certificate-purpose-not-separated`
-   is C2's, and `token-exchange-enabled-by-default` clears when D4 declares
+   the last advisory the posture check reports at every startup:
+   `token-exchange-enabled-by-default` clears when D4 declares
    the switch
 6. **E1** — enforcement first, UI last. E3's disable action waits on it
 7. **E5, E6** — console consistency and the mobile pass; independent of the
