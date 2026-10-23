@@ -1,3 +1,6 @@
+@using Microsoft.AspNetCore.Http
+@using Sufficit.Identity.Application.Security
+@using Sufficit.Identity.UI.Components
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -11,8 +14,11 @@
     <HeadOutlet @rendermode="InteractiveServer" />
 </head>
 <body>
-    <SUIThemeProvider>
+    <SUIThemeProvider Nonce="@CspNonce.From(HttpContext?.Items)">
         <Routes @rendermode="InteractiveServer" />
+        <ReconnectModal Reconnecting="@L["Vault.App.Reconnecting"].Value"
+                        Failed="@L["Vault.App.ConnectionLost"].Value"
+                        Reload="@L["Vault.App.Reload"].Value" />
         <div id="blazor-error-ui" role="alert">
             <span>@L["Vault.App.ConnectionLost"]</span>
             <a class="vault-link" href="">@L["Vault.App.Reload"]</a>
@@ -21,3 +27,8 @@
     <script src="/_framework/blazor.web.js"></script>
 </body>
 </html>
+
+@code {
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+}

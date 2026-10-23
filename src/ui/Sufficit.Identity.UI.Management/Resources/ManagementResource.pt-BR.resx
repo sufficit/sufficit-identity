@@ -2269,4 +2269,5 @@
   <data name="Error.system_user_disabled" xml:space="preserve"><value>Reative o usuário de sistema antes de emitir um código.</value></data>
   <data name="Error.system_user_enrollment_client_not_allowed" xml:space="preserve"><value>O cliente precisa existir e permitir o grant de habilitação de usuário de sistema e refresh tokens.</value></data>
   <data name="Error.system_user_enrollment_label_required" xml:space="preserve"><value>Informe onde a credencial vai morar.</value></data>
+  <data name="Layout.Reconnecting" xml:space="preserve"><value>Reconectando ao painel…</value></data>
 </root>

@@ -72,14 +72,12 @@ public sealed class CspOptions
     /// <b>Opt-in (default <c>false</c>) because of one browser gap.</b> A CSP
     /// nonce authorizes <c>&lt;style&gt;</c> ELEMENTS only — it can never
     /// authorize a <c>style="…"</c> ATTRIBUTE. Those are covered by emitting
-    /// <c>style-src-attr 'unsafe-inline'</c> alongside the nonce, which Chrome
-    /// and Safari honor; Firefox does not implement <c>style-src-attr</c> and
-    /// falls back to <c>style-src</c>, where the nonce causes
-    /// <c>'unsafe-inline'</c> to be ignored per CSP Level 2. The practical
-    /// effect on Firefox in enforce mode is that the few inline
-    /// <c>style</c> attributes in the management pages lose their styling —
-    /// cosmetic, admin-only, and invisible while
-    /// <see cref="ReportOnly"/> is true.
+    /// <c>style-src-attr 'unsafe-inline'</c> alongside the nonce (Chrome,
+    /// Safari, Firefox 108+); <see cref="StyleAttributes"/> takes that
+    /// relaxation away once nothing renders a style attribute. A host page that
+    /// renders a <c>&lt;style&gt;</c> must carry the nonce, and one reached by
+    /// enhanced navigation cannot: the merged head brings another response's
+    /// nonce. The public pages therefore serve the theme as a stylesheet.
     /// <para>Enable after confirming the browser matrix. Scripts do not need
     /// this: every script the UI loads is external, so <c>script-src</c> is
     /// already <c>'self'</c> plus the single hash for OpenIddict's form-post
@@ -130,6 +128,26 @@ public sealed class CspOptions
     /// directive emitted.
     /// </summary>
     public string? ReportUri { get; init; }
+
+    /// <summary>
+    /// What the policy says about inline <c>style</c> attributes (plan D1).
+    /// <see cref="CspStyleAttributes.Allow"/> (default) keeps
+    /// <c>style-src-attr 'unsafe-inline'</c> next to the nonce;
+    /// <see cref="CspStyleAttributes.Report"/> keeps it and adds a separate
+    /// report-only header holding nothing but <c>style-src-attr 'none'</c>, so
+    /// <see cref="ReportUri"/> collects every attribute a real browser would
+    /// lose; <see cref="CspStyleAttributes.Block"/> enforces
+    /// <c>style-src-attr 'none'</c>. Ignored when the policy states its own
+    /// <c>style-src-attr</c>.
+    /// </summary>
+    public CspStyleAttributes StyleAttributes { get; init; } = CspStyleAttributes.Allow;
+}
+
+public enum CspStyleAttributes
+{
+    Allow,
+    Report,
+    Block,
 }
 /// <summary>
 /// Publication policy for the OpenAPI document and Swagger UI.

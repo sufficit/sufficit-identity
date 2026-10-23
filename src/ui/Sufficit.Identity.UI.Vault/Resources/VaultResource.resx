@@ -167,4 +167,5 @@
   <data name="Vault.Entry.Pasted" xml:space="preserve"><value>Clipboard text pasted. Save to finish.</value></data>
   <data name="Vault.Entry.PasteHint" xml:space="preserve"><value>If automatic paste is unavailable, tap Paste or paste directly in the field.</value></data>
   <data name="Vault.Entry.Paste" xml:space="preserve"><value>Paste</value></data>
+  <data name="Vault.App.Reconnecting" xml:space="preserve"><value>Reconnecting to the Vault…</value></data>
 </root>

@@ -448,6 +448,39 @@ public sealed class CspHeaderTests
         Assert.NotEqual(firstNonce, secondNonce);
     }
 
+    [Fact]
+    public void Blocking_style_attributes_replaces_the_relaxation()
+    {
+        var options = new SufficitIdentityOptions
+        {
+            Csp = new CspOptions { Enabled = true, UseNonce = true, StyleAttributes = CspStyleAttributes.Block },
+        };
+
+        var policy = SecurityHeadersMiddlewareExtensions.BuildContentSecurityPolicy(options, "TESTNONCEVALUE");
+
+        Assert.Contains("style-src-attr 'none'", policy, StringComparison.Ordinal);
+        Assert.DoesNotContain("'unsafe-inline'", policy, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Reporting_style_attributes_adds_a_report_only_header_that_restricts_nothing_else()
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(
+            new Dictionary<string, string?>
+            {
+                ["Sufficit:Identity:Csp:ReportOnly"] = "false",
+                ["Sufficit:Identity:Csp:UseNonce"] = "true",
+                ["Sufficit:Identity:Csp:ReportUri"] = "/security/csp-report",
+                ["Sufficit:Identity:Csp:StyleAttributes"] = "Report",
+            });
+        var response = await factory.CreateClient().GetAsync("/.well-known/openid-configuration");
+
+        Assert.Contains("style-src-attr 'unsafe-inline'",
+            Assert.Single(response.Headers.GetValues("Content-Security-Policy")), StringComparison.Ordinal);
+        Assert.Equal("style-src-attr 'none'; report-uri /security/csp-report",
+            Assert.Single(response.Headers.GetValues("Content-Security-Policy-Report-Only")));
+    }
+
     private static string? ExtractStyleNonce(HttpResponseMessage response)
     {
         var header = response.Headers

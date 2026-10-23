@@ -51,25 +51,22 @@ public sealed partial class ManagementUiRoutingTests
         Assert.Contains("alice@tests.local", html, StringComparison.Ordinal);
         Assert.Contains("Diretório global", html, StringComparison.Ordinal);
         Assert.Contains(
-            "--registration-height: 66.667%",
+            "registration-bar__column pct-67\"",
             html,
             StringComparison.Ordinal);
         Assert.Contains(
-            "--registration-height: 77.778%",
+            "registration-bar__column pct-78\"",
             html,
             StringComparison.Ordinal);
         Assert.Contains(
-            "--registration-height: 100%",
+            "registration-bar__column pct-100\"",
             html,
             StringComparison.Ordinal);
         Assert.Contains(
-            "--registration-height: 72.222%",
+            "registration-bar__column pct-72\"",
             html,
             StringComparison.Ordinal);
-        Assert.DoesNotContain(
-            "--registration-height: 66,667%",
-            html,
-            StringComparison.Ordinal);
+        Assert.DoesNotContain("--registration-height", html, StringComparison.Ordinal);
         Assert.DoesNotContain("Manager", html, StringComparison.Ordinal);
         Assert.DoesNotContain("Contexto", html, StringComparison.Ordinal);
         Assert.Contains(

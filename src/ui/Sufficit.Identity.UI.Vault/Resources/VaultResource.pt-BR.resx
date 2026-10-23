@@ -167,4 +167,5 @@
   <data name="Vault.Entry.Pasted" xml:space="preserve"><value>Texto da área de transferência colado. Salve para concluir.</value></data>
   <data name="Vault.Entry.PasteHint" xml:space="preserve"><value>Se a colagem automática não funcionar, toque em Colar ou cole diretamente no campo.</value></data>
   <data name="Vault.Entry.Paste" xml:space="preserve"><value>Colar</value></data>
+  <data name="Vault.App.Reconnecting" xml:space="preserve"><value>Reconectando ao Vault…</value></data>
 </root>

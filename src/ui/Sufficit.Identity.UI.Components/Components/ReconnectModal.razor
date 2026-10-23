@@ -1,0 +1,29 @@
+@namespace Sufficit.Identity.UI.Components
+@*
+    Replaces Blazor's default reconnect overlay. The default one injects a
+    <style> without the CSP nonce, which an enforced policy blocks (production
+    reports, 2026-10). With an element of this id, blazor.web.js only toggles
+    the components-reconnect-* classes on it; the look lives in the scoped CSS
+    and the reload button in reconnect-modal.js, both same-origin.
+*@
+<div id="components-reconnect-modal" class="reconnect-modal" role="alert" aria-live="assertive">
+    <div class="reconnect-modal__panel">
+        <p class="reconnect-modal__reconnecting">@Reconnecting</p>
+        <p class="reconnect-modal__failed">@Failed</p>
+        <button type="button" class="reconnect-modal__reload sui-btn sui-btn--filled sui-btn--color-primary" data-reconnect-reload>@Reload</button>
+    </div>
+</div>
+<script type="module" src="/_content/Sufficit.Identity.UI.Components/reconnect-modal.js"></script>
+
+@code {
+    /// <summary>Shown while the connection is being retried.</summary>
+    [Parameter, EditorRequired]
+    public string Reconnecting { get; set; } = string.Empty;
+
+    /// <summary>Shown when retrying gave up or the server no longer knows the session.</summary>
+    [Parameter, EditorRequired]
+    public string Failed { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string Reload { get; set; } = string.Empty;
+}

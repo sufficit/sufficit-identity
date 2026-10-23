@@ -1,7 +1,10 @@
 @page "/branding"
 @using System.Text.RegularExpressions
+@using Microsoft.JSInterop
 @attribute [Authorize(Policy = ManagementUiPolicies.ManageBranding)]
 @inject ManagementBrandingDataSource BrandingData
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 
 <PageTitle>Branding | Sufficit Identity</PageTitle>
 
@@ -125,9 +128,7 @@
                             type="button"
                             aria-pressed="@(Selected?.Id == theme.Id)"
                             @onclick="() => Select(theme)">
-                        <span class="theme-row__mark"
-                              style="@ThemeMarkStyle(theme)"
-                              aria-hidden="true"></span>
+                        <span class="theme-row__mark" aria-hidden="true">@ColorFill(theme.BrandColor)</span>
                         <span class="theme-row__copy">
                             <strong>@theme.Name</strong>
                             <small>@ThemeIdentity(theme)</small>
@@ -164,7 +165,7 @@
                 </SUIStatusBadge>
             </div>
 
-            <div class="identity-preview" style="@PreviewStyle">
+            <div class="identity-preview" @ref="previewElement">
                 <div class="identity-preview__top">
                     <img @key="PreviewHeaderIcon"
                          src="@PreviewHeaderIcon"
@@ -198,16 +199,14 @@
                 <div>
                     <dt>@L["Branding.Field.Brand"]</dt>
                     <dd>
-                        <span class="color-swatch"
-                              style="@SwatchStyle(theme.BrandColor)"></span>
+                        <span class="color-swatch" aria-hidden="true">@ColorFill(theme.BrandColor)</span>
                         <code>@DisplayColor(theme.BrandColor)</code>
                     </dd>
                 </div>
                 <div>
                     <dt>@L["Branding.Field.SoftHighlight"]</dt>
                     <dd>
-                        <span class="color-swatch"
-                              style="@SwatchStyle(theme.BrandSoftColor)"></span>
+                        <span class="color-swatch" aria-hidden="true">@ColorFill(theme.BrandSoftColor)</span>
                         <code>@DisplayColor(theme.BrandSoftColor)</code>
                     </dd>
                 </div>
@@ -522,11 +521,55 @@
             : (editing ? model.LogoUrl : Selected?.LogoUrl) ?? FallbackIcon;
     private string? PreviewBackgroundUrl =>
         SafePreviewImageUrl(editing ? model.BackgroundImageUrl : Selected?.BackgroundImageUrl);
-    private string PreviewStyle =>
-        BuildPreviewStyle(
+    private ElementReference previewElement;
+    private IJSObjectReference? previewModule;
+    private (string? Element, string Variables)? appliedPreview;
+
+    // The preview's colors and background change as the operator types, and
+    // the CSP allows no inline style attribute. They are set through CSSOM
+    // (element.style.setProperty), which the policy does not govern.
+    private Dictionary<string, string> PreviewVariables =>
+        BuildPreviewVariables(
             editing ? model.BrandColor : Selected?.BrandColor,
             editing ? model.BrandSoftColor : Selected?.BrandSoftColor,
             PreviewBackgroundUrl);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Selected is null || previewElement.Id is null)
+        {
+            return;
+        }
+
+        var variables = PreviewVariables;
+        var applied = (previewElement.Id, string.Join(';', variables.Select(pair => $"{pair.Key}:{pair.Value}")));
+        if (appliedPreview == applied)
+        {
+            return;
+        }
+
+        try
+        {
+            previewModule ??= await JS.InvokeAsync<IJSObjectReference>(
+                "import",
+                "./_content/Sufficit.Identity.UI.Management/Components/Pages/Branding.razor.js");
+            await previewModule.InvokeVoidAsync("setVariables", previewElement, variables);
+            appliedPreview = applied;
+        }
+        catch (JSDisconnectedException) { }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (previewModule is not null)
+        {
+            try
+            {
+                await previewModule.DisposeAsync();
+            }
+            catch (JSDisconnectedException) { }
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -701,13 +744,16 @@
             : value;
     }
 
-    private static string BuildPreviewStyle(
+    private static Dictionary<string, string> BuildPreviewVariables(
         string? brandColor,
         string? brandSoftColor,
         string? backgroundImageUrl) =>
-        $"--preview-brand:{brandColor ?? "#cc0000"};"
-        + $"--preview-brand-soft:{brandSoftColor ?? "#fbe9e9"};"
-        + $"--preview-background-image:{(backgroundImageUrl is null ? "none" : $"url(\"{backgroundImageUrl}\")")};";
+        new()
+        {
+            ["--preview-brand"] = brandColor ?? "#cc0000",
+            ["--preview-brand-soft"] = brandSoftColor ?? "#fbe9e9",
+            ["--preview-background-image"] = backgroundImageUrl is null ? "none" : $"url(\"{backgroundImageUrl}\")",
+        };
 
     private static string? SafePreviewImageUrl(string? value)
     {
@@ -731,11 +777,21 @@
             : null;
     }
 
-    private static string ThemeMarkStyle(ManagementBrandingTheme theme) =>
-        $"background:{theme.BrandColor ?? "#cc0000"}";
-
-    private static string SwatchStyle(string? color) =>
-        $"background:{color ?? "#cc0000"}";
+    // A color sample as an SVG fill: a presentation attribute, which the CSP
+    // does not govern, where an inline background would need style-src-attr.
+    private static RenderFragment ColorFill(string? color) => builder =>
+    {
+        builder.OpenElement(0, "svg");
+        builder.AddAttribute(1, "viewBox", "0 0 1 1");
+        builder.AddAttribute(2, "preserveAspectRatio", "none");
+        builder.AddAttribute(3, "focusable", "false");
+        builder.OpenElement(4, "rect");
+        builder.AddAttribute(5, "width", "1");
+        builder.AddAttribute(6, "height", "1");
+        builder.AddAttribute(7, "fill", color ?? "#cc0000");
+        builder.CloseElement();
+        builder.CloseElement();
+    };
 
     private string DisplayColor(string? color) =>
         color ?? L["Branding.HostDefault"].Value;

@@ -2269,4 +2269,5 @@
   <data name="Error.system_user_disabled" xml:space="preserve"><value>Enable the system user before issuing a code.</value></data>
   <data name="Error.system_user_enrollment_client_not_allowed" xml:space="preserve"><value>The client must exist and allow the system-user enrollment grant and refresh tokens.</value></data>
   <data name="Error.system_user_enrollment_label_required" xml:space="preserve"><value>Say where the credential will live.</value></data>
+  <data name="Layout.Reconnecting" xml:space="preserve"><value>Reconnecting to the dashboard…</value></data>
 </root>

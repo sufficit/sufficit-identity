@@ -1,0 +1,54 @@
+.reconnect-modal {
+    display: none;
+}
+
+.reconnect-modal.components-reconnect-show,
+.reconnect-modal.components-reconnect-retrying,
+.reconnect-modal.components-reconnect-paused,
+.reconnect-modal.components-reconnect-failed,
+.reconnect-modal.components-reconnect-resume-failed,
+.reconnect-modal.components-reconnect-rejected {
+    display: grid;
+    place-items: center;
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    background: rgb(0 0 0 / 0.35);
+}
+
+.reconnect-modal__panel {
+    max-inline-size: min(26rem, calc(100vw - 2rem));
+    padding: 1.25rem 1.5rem;
+    border-radius: var(--sui-radius-lg);
+    background: var(--sui-surface);
+    color: var(--sui-text-primary);
+    box-shadow: var(--sui-shadow-3);
+    text-align: center;
+}
+
+.reconnect-modal__panel p {
+    margin: 0 0 0.75rem;
+}
+
+.reconnect-modal__failed,
+.reconnect-modal__reload {
+    display: none;
+}
+
+.reconnect-modal.components-reconnect-failed .reconnect-modal__reconnecting,
+.reconnect-modal.components-reconnect-resume-failed .reconnect-modal__reconnecting,
+.reconnect-modal.components-reconnect-rejected .reconnect-modal__reconnecting {
+    display: none;
+}
+
+.reconnect-modal.components-reconnect-failed .reconnect-modal__failed,
+.reconnect-modal.components-reconnect-resume-failed .reconnect-modal__failed,
+.reconnect-modal.components-reconnect-rejected .reconnect-modal__failed {
+    display: block;
+}
+
+.reconnect-modal.components-reconnect-failed .reconnect-modal__reload,
+.reconnect-modal.components-reconnect-resume-failed .reconnect-modal__reload,
+.reconnect-modal.components-reconnect-rejected .reconnect-modal__reload {
+    display: inline-flex;
+}

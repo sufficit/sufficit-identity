@@ -95,7 +95,7 @@ else
                                         aria-pressed="@(SelectedDay == day.Date)"
                                         @onclick="() => SelectDay(day.Date)">
                                     <span class="registration-bar__value">@(day.Count > 0 ? day.Count : null)</span>
-                                    <span class="registration-bar__column" style="--registration-height: @BarHeight(day.Count)%"></span>
+                                    <span class="registration-bar__column pct-@BarHeight(day.Count)"></span>
                                     <span class="registration-bar__date">@BrowserTime.FormatDay(day.Date, TimeStyle.DayMonth)</span>
                                 </button>
                             }
@@ -418,9 +418,11 @@ else
     private static T ParseEnum<T>(string? value, T fallback) where T : struct, Enum => Enum.TryParse<T>(value, true, out var parsed) && Enum.IsDefined(parsed) ? parsed : fallback;
     private static string? NullIfEmpty(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     private static int NormalizeRange(int value) => value is 14 or 30 or 60 or 90 ? value : 30;
-    private string BarHeight(int count) => Math
-        .Max(count > 0 ? 8m : 2m, count * 100m / ChartMax)
-        .ToString("0.###", CultureInfo.InvariantCulture);
+    // A whole percent: the height travels as one of the pct-N utility classes
+    // (app.css), never as an inline style the CSP would have to allow.
+    private int BarHeight(int count) => (int)Math.Round(
+        Math.Max(count > 0 ? 8m : 2m, count * 100m / ChartMax),
+        MidpointRounding.AwayFromZero);
     private static string UserHref(string id) => $"users/{Uri.EscapeDataString(id)}";
     private static string DisplayUserName(ManagementUserSummary user) => string.IsNullOrWhiteSpace(user.UserName) ? user.Email ?? user.Id : user.UserName;
     private string DisplayEmail(ManagementUserSummary user) => string.IsNullOrWhiteSpace(user.Email) ? L["Users.Table.EmailUnset"] : user.Email;

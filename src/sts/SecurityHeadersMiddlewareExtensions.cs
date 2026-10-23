@@ -128,6 +128,18 @@ public static class SecurityHeadersMiddlewareExtensions
                 policy = await AddLogoutFormActionAsync(context, policy);
                 policy = await AddConsentFormActionAsync(context, policy);
                 context.Response.Headers[header] = policy;
+
+                // Telemetry for removing style-src-attr 'unsafe-inline': a
+                // policy that restricts nothing else, so its reports name only
+                // the inline style attributes the enforced one still allows.
+                if (!options.Csp.ReportOnly
+                    && options.Csp.StyleAttributes == CspStyleAttributes.Report
+                    && !HasStyleAttributeDirective(options.Csp.Policy)
+                    && !string.IsNullOrWhiteSpace(options.Csp.ReportUri))
+                {
+                    context.Response.Headers["Content-Security-Policy-Report-Only"] =
+                        $"style-src-attr 'none'; report-uri {options.Csp.ReportUri}";
+                }
             }
 
             await next();
@@ -223,6 +235,11 @@ public static class SecurityHeadersMiddlewareExtensions
             value = ApplyStyleNonce(value, nonce);
         }
 
+        if (options.Csp.StyleAttributes == CspStyleAttributes.Block)
+        {
+            value = BlockStyleAttributes(value);
+        }
+
         if (!string.IsNullOrWhiteSpace(options.Csp.ReportUri))
         {
             value += $"; report-uri {options.Csp.ReportUri}";
@@ -238,6 +255,27 @@ public static class SecurityHeadersMiddlewareExtensions
     /// says a directive carrying a nonce or hash ignores <c>'unsafe-inline'</c>
     /// entirely — so it is removed rather than left as decoration.
     /// </summary>
+    /// <summary>
+    /// Enforces <c>style-src-attr 'none'</c>: replaces the relaxation
+    /// <see cref="ApplyStyleNonce"/> adds, or adds the directive. A policy that
+    /// states its own <c>style-src-attr</c> keeps it.
+    /// </summary>
+    private static string BlockStyleAttributes(string policy)
+    {
+        const string Relaxed = "style-src-attr 'unsafe-inline'";
+        if (policy.Contains(Relaxed, StringComparison.Ordinal))
+        {
+            return policy.Replace(Relaxed, "style-src-attr 'none'", StringComparison.Ordinal);
+        }
+
+        return HasStyleAttributeDirective(policy) ? policy : policy + "; style-src-attr 'none'";
+    }
+
+    private static bool HasStyleAttributeDirective(string policy) =>
+        policy.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Any(value => value.Equals("style-src-attr", StringComparison.OrdinalIgnoreCase)
+                || value.StartsWith("style-src-attr ", StringComparison.OrdinalIgnoreCase));
+
     private static string ApplyStyleNonce(string policy, string nonce)
     {
         var directives = policy

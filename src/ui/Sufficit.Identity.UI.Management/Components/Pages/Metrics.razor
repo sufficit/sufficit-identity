@@ -101,7 +101,7 @@ else
                     {
                         <div class="usage-chart__column" title="@BrowserTime.FormatDay(point.DateUtc): @point.Count">
                             <span class="usage-chart__value">@FormatCompact(point.Count)</span>
-                            <span class="usage-chart__bar" style="height: @BarHeight(point.Count, overview.Daily)%"></span>
+                            <span class="usage-chart__bar pct-@BarHeight(point.Count, overview.Daily)"></span>
                             <span class="usage-chart__date">@BrowserTime.FormatDay(point.DateUtc, TimeStyle.DayMonth)</span>
                         </div>
                     }
@@ -401,7 +401,7 @@ else
             ? $"{value / 1_000d:0.#} {L["Metrics.Compact.Thousand"].Value}"
             : value.ToString();
     private static string SuccessRate(ManagementMetricsOverview value) => value.TotalEvents == 0 ? "—" : $"{value.SuccessfulEvents * 100d / value.TotalEvents:0.#}%";
-    private static int BarHeight(long count, IReadOnlyList<ManagementMetricsDailyPoint> points) => Math.Max(4, (int)Math.Round(count * 100d / Math.Max(1, points.Max(item => item.Count))));
+    private static int BarHeight(long count, IReadOnlyList<ManagementMetricsDailyPoint> points) => Math.Clamp((int)Math.Round(count * 100d / Math.Max(1, points.Max(item => item.Count))), 4, 100);
 
     private sealed class MetricsConfigurationModel
     {

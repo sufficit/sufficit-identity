@@ -572,4 +572,7 @@
   <data name="PasswordError.Unknown" xml:space="preserve"><value>Não foi possível salvar a senha. Confira os campos e tente novamente.</value></data>
   <data name="Validation.CurrentPasswordRequired" xml:space="preserve"><value>Digite sua senha atual.</value></data>
   <data name="ManageTwoFactor.ReenrollmentRequired" xml:space="preserve"><value>Seu autenticador foi redefinido por um gestor. Configure o novo aparelho e confirme um código para liberar novamente o acesso aos aplicativos. Guarde os novos códigos de recuperação.</value></data>
+  <data name="App.Reconnecting" xml:space="preserve"><value>Reconectando…</value></data>
+  <data name="App.ConnectionLost" xml:space="preserve"><value>A conexão com esta página caiu.</value></data>
+  <data name="App.Reload" xml:space="preserve"><value>Recarregar</value></data>
 </root>

@@ -1818,3 +1818,11 @@ img.profile-avatar { background: var(--surface-sunken); }
         color: HighlightText;
     }
 }
+
+/* Menu size as variables, not SUISelect's MenuWidth parameters: those render
+   an inline style attribute, which the CSP does not allow. */
+.culture-selector__select .sui-select__menu {
+    --sui-select-menu-width: 10rem;
+    --sui-select-menu-max-width: calc(100vw - 1.5rem);
+}
+

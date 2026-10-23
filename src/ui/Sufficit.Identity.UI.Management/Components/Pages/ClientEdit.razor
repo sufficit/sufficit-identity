@@ -107,7 +107,7 @@ else
                                name="consentType"
                                Label="@L["Clients.Detail.ConsentLabel"].Value"
                                @bind-Value="consentType"
-                               MenuMaxWidth="min(30rem, calc(100vw - 24px))">
+                               Class="client-edit-consent-select">
                         <SUISelectItem Value="@("explicit")">@L["Clients.Draft.ConsentExplicitOption"]</SUISelectItem>
                         <SUISelectItem Value="@("implicit")">@L["Clients.Draft.ConsentImplicitOption"]</SUISelectItem>
                         <SUISelectItem Value="@("external")">@L["Clients.Edit.ConsentExternalOption"]</SUISelectItem>

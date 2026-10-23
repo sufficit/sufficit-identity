@@ -1,11 +1,13 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Localization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using System.Reflection;
 using Sufficit.Identity.Application.Accounts;
+using Sufficit.Identity.Application.Branding;
 using Sufficit.Identity.UI.Abstractions.Hosting;
 using Sufficit.Identity.UI.Services;
 
@@ -63,6 +65,20 @@ public static class ServiceCollectionExtensions
         // the root favicon don't get a 404.
         app.MapGet("/favicon.ico", () => Results.Redirect(
             "/_content/Sufficit.Identity.UI/img/favicon.png", permanent: true));
+
+        // Versioned by content: the page links ?v=<hash of the current css>, so
+        // a matching request can be cached for good and a stale one is not.
+        app.MapGet(BrandingStylesheet.Path, async (
+            HttpContext context,
+            [FromServices] IBrandingThemeProvider branding,
+            string? v) =>
+        {
+            var css = BrandingStylesheet.Build(await branding.GetActiveAsync(context.RequestAborted));
+            context.Response.Headers.CacheControl = v == BrandingStylesheet.Version(css)
+                ? "public, max-age=31536000, immutable"
+                : "no-cache";
+            return Results.Text(css, "text/css; charset=utf-8");
+        }).ExcludeFromDescription();
 
         app.MapGet("/culture/set", (
             HttpContext context,

@@ -1720,7 +1720,7 @@ h3 {
 
 .usage-chart__value,
 .usage-chart__date { color: var(--ink-muted); font-size: 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.usage-chart__bar { width: min(24px, 72%); min-height: 4px; border-radius: 4px 4px 1px 1px; background: var(--brand); }
+.usage-chart__bar { width: min(24px, 72%); height: var(--pct); min-height: 4px; border-radius: 4px 4px 1px 1px; background: var(--brand); }
 
 .metrics-health { margin: 0; }
 .metrics-health div { display: flex; min-height: 54px; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 20px; border-bottom: 1px solid var(--line); }
@@ -3236,7 +3236,7 @@ h3 {
     background-image:
         linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.42)),
         var(--preview-background-image, none),
-        radial-gradient(circle at 15% 20%, var(--preview-brand-soft), transparent 38%);
+        radial-gradient(circle at 15% 20%, var(--preview-brand-soft, #fbe9e9), transparent 38%);
     background-position: center, center, 15% 20%;
     background-repeat: no-repeat;
     background-size: cover, cover, auto;
@@ -3292,7 +3292,7 @@ h3 {
     height: 34px;
     margin-top: 18px;
     border-radius: var(--radius-sm);
-    background: var(--preview-brand);
+    background: var(--preview-brand, #cc0000);
 }
 
 .token-list {
@@ -3350,6 +3350,19 @@ h3 {
     flex: 0 0 14px;
     border: 1px solid rgba(31, 29, 30, 0.12);
     border-radius: 4px;
+}
+
+.theme-row__mark,
+.color-swatch {
+    display: inline-block;
+    overflow: hidden;
+}
+
+.theme-row__mark > svg,
+.color-swatch > svg {
+    display: block;
+    width: 100%;
+    height: 100%;
 }
 
 .brand-preview-actions {
@@ -5043,7 +5056,7 @@ h3 {
     height: 100%;
     border-radius: inherit;
     background: var(--info);
-    transform: scaleX(0);
+    transform: scaleX(var(--pct-ratio, 0));
     transform-origin: left center;
     transition: transform 280ms var(--ease);
 }
@@ -6452,3 +6465,120 @@ h3 {
 .clients-filter--search > svg { position: absolute; inset-inline-start: 12px; inset-block-end: 13px; z-index: 1; pointer-events: none; color: var(--ink-muted); }
 .clients-filter--search .sui-field__input { padding-inline-start: 40px; }
 .clients-filter :is(.sui-field__input, .sui-select__trigger) { font-weight: 400; }
+
+/* Menu size as a variable, not SUISelect's MenuMaxWidth: that renders an
+   inline style attribute, which the CSP does not allow. */
+.client-edit-consent-select .sui-select__menu {
+    --sui-select-menu-max-width: min(30rem, calc(100vw - 24px));
+}
+
+/* Audit before/after JSON keeps its line breaks and wraps long tokens. */
+.audit-json {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+/* Whole-percent utilities for bars and meters. The CSP allows no inline
+   style attribute, so a computed size travels as one of these classes:
+   --pct for lengths, --pct-ratio for scale(). */
+.pct-0 { --pct: 0%; --pct-ratio: 0; }
+.pct-1 { --pct: 1%; --pct-ratio: 0.01; }
+.pct-2 { --pct: 2%; --pct-ratio: 0.02; }
+.pct-3 { --pct: 3%; --pct-ratio: 0.03; }
+.pct-4 { --pct: 4%; --pct-ratio: 0.04; }
+.pct-5 { --pct: 5%; --pct-ratio: 0.05; }
+.pct-6 { --pct: 6%; --pct-ratio: 0.06; }
+.pct-7 { --pct: 7%; --pct-ratio: 0.07; }
+.pct-8 { --pct: 8%; --pct-ratio: 0.08; }
+.pct-9 { --pct: 9%; --pct-ratio: 0.09; }
+.pct-10 { --pct: 10%; --pct-ratio: 0.1; }
+.pct-11 { --pct: 11%; --pct-ratio: 0.11; }
+.pct-12 { --pct: 12%; --pct-ratio: 0.12; }
+.pct-13 { --pct: 13%; --pct-ratio: 0.13; }
+.pct-14 { --pct: 14%; --pct-ratio: 0.14; }
+.pct-15 { --pct: 15%; --pct-ratio: 0.15; }
+.pct-16 { --pct: 16%; --pct-ratio: 0.16; }
+.pct-17 { --pct: 17%; --pct-ratio: 0.17; }
+.pct-18 { --pct: 18%; --pct-ratio: 0.18; }
+.pct-19 { --pct: 19%; --pct-ratio: 0.19; }
+.pct-20 { --pct: 20%; --pct-ratio: 0.2; }
+.pct-21 { --pct: 21%; --pct-ratio: 0.21; }
+.pct-22 { --pct: 22%; --pct-ratio: 0.22; }
+.pct-23 { --pct: 23%; --pct-ratio: 0.23; }
+.pct-24 { --pct: 24%; --pct-ratio: 0.24; }
+.pct-25 { --pct: 25%; --pct-ratio: 0.25; }
+.pct-26 { --pct: 26%; --pct-ratio: 0.26; }
+.pct-27 { --pct: 27%; --pct-ratio: 0.27; }
+.pct-28 { --pct: 28%; --pct-ratio: 0.28; }
+.pct-29 { --pct: 29%; --pct-ratio: 0.29; }
+.pct-30 { --pct: 30%; --pct-ratio: 0.3; }
+.pct-31 { --pct: 31%; --pct-ratio: 0.31; }
+.pct-32 { --pct: 32%; --pct-ratio: 0.32; }
+.pct-33 { --pct: 33%; --pct-ratio: 0.33; }
+.pct-34 { --pct: 34%; --pct-ratio: 0.34; }
+.pct-35 { --pct: 35%; --pct-ratio: 0.35; }
+.pct-36 { --pct: 36%; --pct-ratio: 0.36; }
+.pct-37 { --pct: 37%; --pct-ratio: 0.37; }
+.pct-38 { --pct: 38%; --pct-ratio: 0.38; }
+.pct-39 { --pct: 39%; --pct-ratio: 0.39; }
+.pct-40 { --pct: 40%; --pct-ratio: 0.4; }
+.pct-41 { --pct: 41%; --pct-ratio: 0.41; }
+.pct-42 { --pct: 42%; --pct-ratio: 0.42; }
+.pct-43 { --pct: 43%; --pct-ratio: 0.43; }
+.pct-44 { --pct: 44%; --pct-ratio: 0.44; }
+.pct-45 { --pct: 45%; --pct-ratio: 0.45; }
+.pct-46 { --pct: 46%; --pct-ratio: 0.46; }
+.pct-47 { --pct: 47%; --pct-ratio: 0.47; }
+.pct-48 { --pct: 48%; --pct-ratio: 0.48; }
+.pct-49 { --pct: 49%; --pct-ratio: 0.49; }
+.pct-50 { --pct: 50%; --pct-ratio: 0.5; }
+.pct-51 { --pct: 51%; --pct-ratio: 0.51; }
+.pct-52 { --pct: 52%; --pct-ratio: 0.52; }
+.pct-53 { --pct: 53%; --pct-ratio: 0.53; }
+.pct-54 { --pct: 54%; --pct-ratio: 0.54; }
+.pct-55 { --pct: 55%; --pct-ratio: 0.55; }
+.pct-56 { --pct: 56%; --pct-ratio: 0.56; }
+.pct-57 { --pct: 57%; --pct-ratio: 0.57; }
+.pct-58 { --pct: 58%; --pct-ratio: 0.58; }
+.pct-59 { --pct: 59%; --pct-ratio: 0.59; }
+.pct-60 { --pct: 60%; --pct-ratio: 0.6; }
+.pct-61 { --pct: 61%; --pct-ratio: 0.61; }
+.pct-62 { --pct: 62%; --pct-ratio: 0.62; }
+.pct-63 { --pct: 63%; --pct-ratio: 0.63; }
+.pct-64 { --pct: 64%; --pct-ratio: 0.64; }
+.pct-65 { --pct: 65%; --pct-ratio: 0.65; }
+.pct-66 { --pct: 66%; --pct-ratio: 0.66; }
+.pct-67 { --pct: 67%; --pct-ratio: 0.67; }
+.pct-68 { --pct: 68%; --pct-ratio: 0.68; }
+.pct-69 { --pct: 69%; --pct-ratio: 0.69; }
+.pct-70 { --pct: 70%; --pct-ratio: 0.7; }
+.pct-71 { --pct: 71%; --pct-ratio: 0.71; }
+.pct-72 { --pct: 72%; --pct-ratio: 0.72; }
+.pct-73 { --pct: 73%; --pct-ratio: 0.73; }
+.pct-74 { --pct: 74%; --pct-ratio: 0.74; }
+.pct-75 { --pct: 75%; --pct-ratio: 0.75; }
+.pct-76 { --pct: 76%; --pct-ratio: 0.76; }
+.pct-77 { --pct: 77%; --pct-ratio: 0.77; }
+.pct-78 { --pct: 78%; --pct-ratio: 0.78; }
+.pct-79 { --pct: 79%; --pct-ratio: 0.79; }
+.pct-80 { --pct: 80%; --pct-ratio: 0.8; }
+.pct-81 { --pct: 81%; --pct-ratio: 0.81; }
+.pct-82 { --pct: 82%; --pct-ratio: 0.82; }
+.pct-83 { --pct: 83%; --pct-ratio: 0.83; }
+.pct-84 { --pct: 84%; --pct-ratio: 0.84; }
+.pct-85 { --pct: 85%; --pct-ratio: 0.85; }
+.pct-86 { --pct: 86%; --pct-ratio: 0.86; }
+.pct-87 { --pct: 87%; --pct-ratio: 0.87; }
+.pct-88 { --pct: 88%; --pct-ratio: 0.88; }
+.pct-89 { --pct: 89%; --pct-ratio: 0.89; }
+.pct-90 { --pct: 90%; --pct-ratio: 0.9; }
+.pct-91 { --pct: 91%; --pct-ratio: 0.91; }
+.pct-92 { --pct: 92%; --pct-ratio: 0.92; }
+.pct-93 { --pct: 93%; --pct-ratio: 0.93; }
+.pct-94 { --pct: 94%; --pct-ratio: 0.94; }
+.pct-95 { --pct: 95%; --pct-ratio: 0.95; }
+.pct-96 { --pct: 96%; --pct-ratio: 0.96; }
+.pct-97 { --pct: 97%; --pct-ratio: 0.97; }
+.pct-98 { --pct: 98%; --pct-ratio: 0.98; }
+.pct-99 { --pct: 99%; --pct-ratio: 0.99; }
+.pct-100 { --pct: 100%; --pct-ratio: 1; }

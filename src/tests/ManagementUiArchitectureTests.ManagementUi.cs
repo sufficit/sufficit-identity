@@ -546,7 +546,7 @@ public sealed partial class ManagementUiArchitectureTests
             "Configuration",
             "IdentitySuiTheme.cs"));
 
-        Assert.Contains("<SUIThemeProvider Theme=\"@ManagementTheme\">", app, StringComparison.Ordinal);
+        Assert.Contains("<SUIThemeProvider Theme=\"@ManagementTheme\"", app, StringComparison.Ordinal);
         Assert.Contains("IdentitySUITheme ManagementTheme", app, StringComparison.Ordinal);
         Assert.Contains("Primary = \"#cc0000\"", theme, StringComparison.Ordinal);
         Assert.Contains("PrimaryContrast = \"#ffffff\"", theme, StringComparison.Ordinal);

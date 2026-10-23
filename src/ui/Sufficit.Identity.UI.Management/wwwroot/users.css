@@ -247,7 +247,7 @@
 
 .registration-bar__column {
     width: 100%;
-    height: var(--registration-height);
+    height: var(--pct);
     min-height: 3px;
     border-radius: 4px 4px 0 0;
     background: var(--info);

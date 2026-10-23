@@ -103,8 +103,7 @@ else
                          aria-valuemin="0"
                          aria-valuenow="@PoolPressure(pool)"
                          aria-valuemax="100">
-                        <span class="database-capacity__fill database-capacity__fill--@PoolTone(pool)"
-                              style="transform: scaleX(@PressureScale(PoolPressure(pool)))"></span>
+                        <span class="database-capacity__fill database-capacity__fill--@PoolTone(pool) pct-@PoolPressure(pool)"></span>
                     </div>
                 </div>
 
@@ -489,11 +488,6 @@ else
             0,
             100);
     }
-
-    private static string PressureScale(int pressure) =>
-        (pressure / 100d).ToString(
-            "0.##",
-            System.Globalization.CultureInfo.InvariantCulture);
 
     private string PoolTone(DatabasePoolSnapshot pool)
     {

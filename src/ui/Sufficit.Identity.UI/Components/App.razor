@@ -2,20 +2,12 @@
 @inject IUiModuleRegistry UiModules
 @inject IStringLocalizer<SharedResource> L
 @using System.Globalization
-@using Microsoft.AspNetCore.Http
-@using Sufficit.Identity.Application.Security
 @using Sufficit.Identity.UI.Abstractions.Hosting
+@using Sufficit.Identity.UI.Components
 
 @code {
     private BrandingTheme? _theme;
-
-    [CascadingParameter]
-    private HttpContext? HttpContext { get; set; }
-
-    // Per-request CSP nonce, or null while nonce-based CSP is disabled — in
-    // which case the emitted policy still carries 'unsafe-inline' and Razor
-    // simply drops the null attribute (eval 2026-08-30, F-3).
-    private string? CspNonceValue => CspNonce.From(HttpContext?.Items);
+    private string _themeCss = string.Empty;
 
     // The browser writes constraint-validation messages ("Please fill out this
     // field.") in its own UI language, not the page's. identity.js swaps them
@@ -41,6 +33,7 @@
     protected override async Task OnInitializedAsync()
     {
         _theme = await BrandingProvider.GetActiveAsync();
+        _themeCss = BrandingStylesheet.Build(_theme);
     }
 }
 
@@ -63,37 +56,17 @@
     {
         <link rel="stylesheet" href="_content/Sufficit.Identity.UI.Vault/vault.css" />
     }
-    @if (!string.IsNullOrEmpty(_theme?.BrandColor))
+    @if (_themeCss.Length > 0)
     {
-        <style nonce="@CspNonceValue">
-            :root {
-                --brand: @_theme.BrandColor;
-                --brand-ring: @(_theme.BrandColor)40;
-                @if (!string.IsNullOrEmpty(_theme.BrandHoverColor))
-                {
-                    @:--brand-hover: @_theme.BrandHoverColor;
-                }
-                @if (!string.IsNullOrEmpty(_theme.BrandSoftColor))
-                {
-                    @:--brand-soft: @_theme.BrandSoftColor;
-                }
-            }
-        </style>
-    }
-    @if (!string.IsNullOrEmpty(_theme?.BackgroundImageUrl))
-    {
-        <style nonce="@CspNonceValue">
-            body {
-                background:
-                    linear-gradient(rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.15)),
-                    url("@_theme.BackgroundImageUrl") center / cover fixed no-repeat !important;
-            }
-        </style>
+        <link rel="stylesheet" href="@($"{BrandingStylesheet.Path.TrimStart('/')}?v={BrandingStylesheet.Version(_themeCss)}")" />
     }
     <HeadOutlet />
 </head>
 <body>
     <Routes />
+    <ReconnectModal Reconnecting="@L["App.Reconnecting"].Value"
+                    Failed="@L["App.ConnectionLost"].Value"
+                    Reload="@L["App.Reload"].Value" />
     <script src="_content/Sufficit.Identity.UI/js/identity.js"></script>
     <script src="_content/Sufficit.Identity.UI/js/password-requirements.js"></script>
     <script src="_content/Sufficit.Identity.UI/js/human-verification.js"></script>
