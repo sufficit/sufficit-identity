@@ -65,3 +65,19 @@ Data Protection, então cada usuário entra de novo uma vez no navegador.
 
 Passos 5 e 6 continuam pendentes até vencer o último token pessoal emitido
 antes de 05/10 ~11:40 UTC.
+
+### 23/10: o que ainda trava os passos 5 e 6
+
+Tokens pessoais válidos emitidos antes de 05/10 ~11:40 UTC (tabela `tokens`,
+`reference_id` preenchido, `application_id` nulo; payload é JWE, então a
+audiência não aparece no banco — supor `sufficit_fleet` só):
+
+| id (prefixo) | dono | descrição | vence (UTC) |
+|---|---|---|---|
+| `654cb44d` | uirison@aguasclarastelecom.com.br | Gestão sufficit | 2026-10-28 14:41 |
+| `8b23df8d` | deborah@sufficit.com.br | Claude | 2026-11-30 03:00 |
+| `83bf1230` | hugodeco@sufficit.com.br | code-server | 2026-12-31 03:00 |
+
+Passo 5 só depois que esses três vencerem ou forem trocados por tokens novos
+pelos donos (revogar sem combinar quebra a integração deles). Conferir de novo
+com a mesma consulta antes de executar.
