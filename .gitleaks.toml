@@ -53,6 +53,12 @@ keywords = ["password"]
   # Also allow anything in src/tests/ (test fixtures are supposed to have
   # constants that look like secrets).
   paths = ['''src/tests/.*''']
+  [[rules.allowlists]]
+  # Code, not configuration: `password = ResolvePassword(...)` assigns the
+  # result of a method call. The 12+ char identifier matched the value class
+  # (vault KEK loader, 19a77d1). A literal can never be followed by "(".
+  regexTarget = "line"
+  regexes = ['''password\s*=\s*[A-Za-z_][A-Za-z0-9_.]*\s*\(''']
 
 [[rules]]
 id = "sufficit-rabbitmq-password"
