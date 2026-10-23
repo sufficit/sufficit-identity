@@ -190,6 +190,8 @@ public sealed class AccountTwoFactorServiceTests(
 
         var regenerated = await service.GenerateRecoveryCodesAsync(principal);
         var disabled = await service.DisableAsync(principal);
+        // Turning 2FA off discards the codes; none survives into a new enrollment (plan C3).
+        var codesAfterDisable = await users.CountRecoveryCodesAsync(user);
         var reset = await service.ResetAuthenticatorAsync(principal);
 
         Assert.True(regenerated.Succeeded);
@@ -210,6 +212,8 @@ public sealed class AccountTwoFactorServiceTests(
             originalKey,
             reset.State!.AuthenticatorSetup!.SharedKey);
         Assert.False(await users.GetTwoFactorEnabledAsync(user));
+        Assert.Equal(0, codesAfterDisable);
+        Assert.Equal(0, await users.CountRecoveryCodesAsync(user));
     }
 
     [Fact]

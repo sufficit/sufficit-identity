@@ -290,15 +290,6 @@ CLI command of `Server.dll` itself.
 - [ ] **(operational)** Inventory certificates, prove the signing/KEK
   separation and execute a restore/disaster-recovery rehearsal
 
-### C3 — Authenticator and recovery material at rest
-
-Authenticator keys and recovery codes are encrypted through the vault on every
-write, and a worker encrypts the plain-text values left from before
-([`202610221900`](../activities/202610221900-second-factor-at-rest.md)).
-
-- [ ] Coordinate secret rotation with security-stamp, session and token
-  revocation and recovery-code regeneration
-
 ### C4 — Verified transport everywhere
 
 - [ ] **(operational)** SMTP `RequireTls` in production, if SMTP is used at

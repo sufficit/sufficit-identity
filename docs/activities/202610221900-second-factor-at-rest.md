@@ -46,3 +46,14 @@ autenticador, 15 conjuntos de códigos). Às 14:27 o worker do eveo cifrou os
 criada no cofre; nenhum erro de decifração. `TwoFactor:AcceptPlaintextSecrets`
 foi para `false` nos três nós às 14:3x (reinício um a um; backup
 `appsettings.Production.json.bak-twofactor-20261022`).
+
+## Troca do segredo coordenada (fecha o C3)
+
+Conferido: redefinir o autenticador ou desligar o 2FA já atualiza o security
+stamp e revoga as outras sessões (`CredentialMutationSecurityCoordinator`); a
+redefinição pelo administrador também descarta os códigos de recuperação e
+exige novo cadastro. Faltava, no autoatendimento, descartar os códigos de
+recuperação — o Identity os mantém quando a chave muda ou o 2FA é desligado.
+Eles não serviam para nada (a reativação gera novos e, desligado, nenhum fluxo
+os pede), mas ficavam guardados. Agora são descartados na redefinição e na
+desativação. C3 sai do plano.

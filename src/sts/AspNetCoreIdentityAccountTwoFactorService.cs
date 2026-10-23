@@ -310,6 +310,7 @@ public sealed class AspNetCoreIdentityAccountTwoFactorService(
                 cancellationToken);
         }
 
+        await DiscardRecoveryCodesAsync(user);
         await credentialSecurity.CompleteAsync(
             user,
             principal,
@@ -348,6 +349,8 @@ public sealed class AspNetCoreIdentityAccountTwoFactorService(
         }
 
         var result = await userManager.SetTwoFactorEnabledAsync(user, false);
+        if (result.Succeeded)
+            await DiscardRecoveryCodesAsync(user);
         if (!result.Succeeded)
         {
             return await FromIdentityResultAsync(
@@ -397,6 +400,17 @@ public sealed class AspNetCoreIdentityAccountTwoFactorService(
         cancellationToken.ThrowIfCancellationRequested();
         return new AccountTwoFactorOverview(enabled, recoveryCodes, setup,
             await MfaRecoveryState.IsRequiredAsync(userManager, user));
+    }
+
+    /// <summary>
+    /// Identity keeps the recovery codes when the key changes or 2FA is turned
+    /// off. They are useless until a new enrollment replaces them, but stay
+    /// stored; discard them, as the administrator reset already does (plan C3).
+    /// </summary>
+    private async Task DiscardRecoveryCodesAsync(ApplicationUser user)
+    {
+        if (await userManager.GenerateNewTwoFactorRecoveryCodesAsync(user, 0) is null)
+            logger.LogWarning("Recovery codes of user {UserId} could not be discarded.", user.Id);
     }
 
     private async Task<IReadOnlyList<string>?> GenerateRecoveryCodesInternalAsync(
