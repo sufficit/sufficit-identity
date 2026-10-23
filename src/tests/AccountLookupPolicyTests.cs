@@ -32,26 +32,38 @@ public sealed class AccountLookupPolicyTests
     }
 
     [Fact]
-    public async Task Duplicate_normalized_email_is_rejected_as_ambiguous()
+    public async Task A_second_account_cannot_take_an_email_while_accounts_without_one_coexist()
     {
+        // Plan F9: one account per normalized email, enforced by the validator
+        // and, against races, by the unique EmailIndex. The lookup policy still
+        // treats an ambiguous match as none, but it can no longer be created.
         using var factory = SufficitIdentityTestFactory.CreateIsolated(
             new Dictionary<string, string?>());
         await ((IAsyncLifetime)factory).InitializeAsync();
         await using var scope = factory.Services.CreateAsyncScope();
         var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-        foreach (var name in new[] { "lookup-duplicate-a", "lookup-duplicate-b" })
+
+        var first = await users.CreateAsync(new ApplicationUser
         {
-            var created = await users.CreateAsync(new ApplicationUser
-            {
-                UserName = name,
-                Email = "lookup-duplicate@tests.local",
-            }, "Str0ng!Passw0rd#1");
-            Assert.True(created.Succeeded);
-        }
+            UserName = "lookup-duplicate-a",
+            Email = "lookup-duplicate@tests.local",
+        }, "Str0ng!Passw0rd#1");
+        var second = await users.CreateAsync(new ApplicationUser
+        {
+            UserName = "lookup-duplicate-b",
+            Email = "Lookup-Duplicate@Tests.Local",
+        }, "Str0ng!Passw0rd#1");
+        IdentityResult[] withoutEmail =
+        [
+            await users.CreateAsync(new ApplicationUser { UserName = "lookup-no-email-a" }),
+            await users.CreateAsync(new ApplicationUser { UserName = "lookup-no-email-b" }),
+        ];
 
+        Assert.True(first.Succeeded);
+        Assert.False(second.Succeeded);
+        Assert.Contains(second.Errors, error => error.Code == "DuplicateEmail");
+        Assert.All(withoutEmail, result => Assert.True(result.Succeeded));
         var policy = scope.ServiceProvider.GetRequiredService<IAccountLookupPolicy>();
-        var result = await policy.FindUniqueByEmailAsync("lookup-duplicate@tests.local");
-
-        Assert.Null(result);
+        Assert.NotNull(await policy.FindUniqueByEmailAsync("lookup-duplicate@tests.local"));
     }
 }

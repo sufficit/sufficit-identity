@@ -575,19 +575,13 @@ CI and the provider configuration are pinned to MariaDB 10.4.34.
 - [ ] Remove the 10.4 lane only after rollback and restore rehearsals succeed on
   the target
 
-### F8 — Fresh-install and additive SQL parity
-
-- [ ] Compare the resulting legacy-schema state against the canonical
-  fresh-install schema for every additive script through HEAD
-
 ### F9 — Unambiguous normalized email identity
 
-- [ ] **(operational)** Run the redacted duplicate report from script 083 and
-  clean up, preserving existing accounts
 - [ ] Add registration, SCIM update, email change, login and recovery race tests
 
-Recovery, external-login, CIBA and passkey lookups already reject ambiguous
-normalized matches, and 083 provides the guarded nullable unique index.
+Recovery, external-login, CIBA and passkey lookups reject ambiguous normalized
+matches, and `EmailIndex` is unique since 108
+([`202610231300`](../activities/202610231300-schema-parity.md)).
 
 ### F10 — Dynamic client registration lifecycle
 

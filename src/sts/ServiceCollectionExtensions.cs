@@ -460,6 +460,7 @@ public static partial class ServiceCollectionExtensions
                 identity.SignIn.RequireConfirmedEmail = options.SignIn.RequireConfirmedEmail;
             })
             .AddEntityFrameworkStores<AppDbContext>()
+            .AddUserValidator<UniqueEmailWhenPresentValidator>()
             // Authenticator keys and recovery codes encrypted at rest (plan C3).
             .AddUserStore<Security.ProtectedSecretsUserStore>()
             .AddClaimsPrincipalFactory<OidcSessionClaimsPrincipalFactory>()

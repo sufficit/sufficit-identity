@@ -57,6 +57,11 @@ internal static class IdentityTablesMapping
                  .ValueGeneratedOnAdd();
                 b.HasIndex(u => u.CreatedAtUtc)
                  .HasDatabaseName("IX_users_createdatutc");
+                // One account per normalized email (plan F9); NULLs stay
+                // allowed, so accounts without an email are unaffected.
+                b.HasIndex(u => u.NormalizedEmail)
+                 .HasDatabaseName("EmailIndex")
+                 .IsUnique();
                 b.Property(u => u.LockoutEnd).HasColumnType("datetime(6)");
             });
 

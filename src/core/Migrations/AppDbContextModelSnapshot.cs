@@ -570,6 +570,7 @@ namespace Sufficit.Identity.Core.Migrations
                         .HasDatabaseName("IX_users_createdatutc");
 
                     b.HasIndex("NormalizedEmail")
+                        .IsUnique()
                         .HasDatabaseName("EmailIndex");
 
                     b.HasIndex("NormalizedUserName")

@@ -1,5 +1,7 @@
 -- ============================================================================
 -- 083-enforce-normalized-email-uniqueness.sql
+-- SUPERSEDED by 108 (the unique index is now part of the EF model, as
+-- EmailIndex). Do not apply.
 -- Report duplicate normalized emails without returning addresses, then fail
 -- closed until an operator resolves every collision. The unique index is
 -- additive and permits multiple NULL values, preserving legacy accounts that

@@ -938,3 +938,13 @@ VALUES ('20261022170606_DropClientCredentialSecretHint', '10.0.13');
 
 COMMIT;
 
+START TRANSACTION;
+ALTER TABLE `users` DROP INDEX `EmailIndex`;
+
+CREATE UNIQUE INDEX `EmailIndex` ON `users` (`normalizedemail`);
+
+INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
+VALUES ('20261023124342_UniqueNormalizedEmail', '10.0.13');
+
+COMMIT;
+
