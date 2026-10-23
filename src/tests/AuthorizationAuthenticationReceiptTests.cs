@@ -9,7 +9,7 @@ namespace Sufficit.Identity.Tests;
 
 public sealed class AuthorizationAuthenticationReceiptTests
 {
-    private const string Url = "/connect/authorize?client_id=fleet&state=unique&max_age=0";
+    private const string Url = "/connect/authorize?client_id=example-app&state=unique&max_age=0";
     private static readonly DateTimeOffset Now = DateTimeOffset.Parse("2026-09-10T21:00:00Z");
 
     [Theory]

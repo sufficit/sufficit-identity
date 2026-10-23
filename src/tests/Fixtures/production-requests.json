@@ -154,7 +154,7 @@
     },
     {
       "id": "device-01-deviceauthorization",
-      "$comment": "POST /connect/deviceauthorization — RFC 8628 Device Authorization Grant. 16 amostras (pequeno volume, client_vscode_symposium). Bug do sub-resolution que corrigimos (AuthorizationController.cs:355 ExchangeForDeviceCodeAsync) impedia este fluxo de completar E2E no novo STS antes do fix.",
+      "$comment": "POST /connect/deviceauthorization — RFC 8628 Device Authorization Grant. 16 amostras (pequeno volume, um client nativo). Bug do sub-resolution que corrigimos (AuthorizationController.cs:355 ExchangeForDeviceCodeAsync) impedia este fluxo de completar E2E no novo STS antes do fix.",
       "method": "POST",
       "path": "/connect/deviceauthorization",
       "observedStatusCodes": { "200": 10, "500": 5 },

@@ -16,7 +16,7 @@ public sealed class OperatorTokenRequestUrlTests
             + "&purpose=Old&lifetimeSeconds=300"
             + "&capability=identity.users.read"
             + "&capabilities=identity.clients.read,identity.clients.update"
-            + "&source=symposium#issuer");
+            + "&source=example-tool#issuer");
 
         var result = OperatorTokenRequestUrl.Build(
             navigation,
@@ -39,7 +39,7 @@ public sealed class OperatorTokenRequestUrlTests
         Assert.False(query.ContainsKey("capabilities"));
         Assert.Equal("en-US", query["culture"]);
         Assert.Equal("en-US", query["ui-culture"]);
-        Assert.Equal("symposium", query["source"]);
+        Assert.Equal("example-tool", query["source"]);
         Assert.Equal("#issuer", uri.Fragment);
     }
 

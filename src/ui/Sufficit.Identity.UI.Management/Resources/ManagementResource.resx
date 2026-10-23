@@ -1696,7 +1696,7 @@
   <data name="OperatorTokens.Issuer.EnabledBadge" xml:space="preserve"><value>Issuance enabled</value></data>
   <data name="OperatorTokens.Issuer.DisabledBadge" xml:space="preserve"><value>Issuance disabled</value></data>
   <data name="OperatorTokens.Field.Purpose.Helper" xml:space="preserve"><value>This description appears in the list and in the audit trail; do not include secrets.</value></data>
-  <data name="OperatorTokens.Field.Purpose.Placeholder" xml:space="preserve"><value>E.g.: update Hermes and Symposium clients</value></data>
+  <data name="OperatorTokens.Field.Purpose.Placeholder" xml:space="preserve"><value>E.g.: update the integration clients</value></data>
   <data name="OperatorTokens.CapabilityPicker.Summary" xml:space="preserve"><value>Select capabilities</value></data>
   <data name="OperatorTokens.CapabilityFilter.Label" xml:space="preserve"><value>Filter capabilities</value></data>
   <data name="OperatorTokens.CapabilityFilter.Placeholder" xml:space="preserve"><value>Name or area</value></data>

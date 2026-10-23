@@ -25,7 +25,7 @@ public static class TestDataSeeder
     /// Product scope whose entitlement lives on the scope record in the
     /// database rather than in configuration.
     /// </summary>
-    public const string AiBridgeScopeName = "sufficit_ai_openai_bridge";
+    public const string AiBridgeScopeName = "example_bridge";
 
     public const string AiBridgeEntitlementValue =
         "aiuser:00000000-0000-0000-0000-000000000000";
@@ -284,7 +284,7 @@ public static class TestDataSeeder
                 Permissions.Prefixes.Scope + Scopes.OfflineAccess,
                 Permissions.Prefixes.Scope + ScopeName,
                 Permissions.Prefixes.Scope + "directives",
-                Permissions.Prefixes.Scope + "sufficit_ai_openai_bridge",
+                Permissions.Prefixes.Scope + "example_bridge",
                 Permissions.Prefixes.Scope + "identity.mcp",
             },
         };

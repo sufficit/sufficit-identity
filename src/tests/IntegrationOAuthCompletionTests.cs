@@ -33,7 +33,7 @@ public sealed class IntegrationOAuthCompletionTests
 
         var result = Assert.IsType<ContentResult>(await fixture.Callback(ticket));
         Assert.Contains("Conta conectada", result.Content);
-        if (Environment.GetEnvironmentVariable("GENIUS_INTEGRATION_EVIDENCE") is { Length: > 0 } directory)
+        if (Environment.GetEnvironmentVariable("INTEGRATION_EVIDENCE") is { Length: > 0 } directory)
         {
             Directory.CreateDirectory(directory);
             File.WriteAllText(Path.Combine(directory, "completion.html"), result.Content);
@@ -89,7 +89,7 @@ public sealed class IntegrationOAuthCompletionTests
         var result = Assert.IsType<ContentResult>(await fixture.Callback(ticket));
         Assert.Contains("permissões necessárias não foram concedidas", result.Content);
         Assert.Contains("lang=\"pt-BR\"", result.Content);
-        if (Environment.GetEnvironmentVariable("GENIUS_INTEGRATION_EVIDENCE") is { Length: > 0 } directory)
+        if (Environment.GetEnvironmentVariable("INTEGRATION_EVIDENCE") is { Length: > 0 } directory)
         {
             Directory.CreateDirectory(directory);
             File.WriteAllText(Path.Combine(directory, "permissions.html"), result.Content);

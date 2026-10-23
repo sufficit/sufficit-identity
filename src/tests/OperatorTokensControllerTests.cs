@@ -28,7 +28,7 @@ public sealed class OperatorTokensControllerTests
         using var issueResponse = await client.PostAsJsonAsync(
             "/api/operator-tokens",
             new IssueOperatorTokenCommand(
-                "Atualizar clientes Hermes",
+                "Atualizar clientes de integração",
                 300,
                 requestedCapabilities));
 
@@ -40,7 +40,7 @@ public sealed class OperatorTokensControllerTests
         Assert.Equal("Bearer", issued.TokenType);
         Assert.Equal(["identity.management"], issued.Scopes);
         Assert.Equal(requestedCapabilities, issued.Capabilities);
-        Assert.Equal("Atualizar clientes Hermes", issued.Token.Purpose);
+        Assert.Equal("Atualizar clientes de integração", issued.Token.Purpose);
         Assert.InRange(
             issued.ExpiresAtUtc,
             DateTimeOffset.UtcNow.AddSeconds(275),

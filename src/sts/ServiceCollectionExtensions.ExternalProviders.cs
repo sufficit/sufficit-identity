@@ -193,9 +193,9 @@ public static partial class ServiceCollectionExtensions
                 // redirect URI already authorized in the Facebook Developer Console.
 
                 // Apps that carry the "Facebook Login for Business" product
-                // (mutually exclusive with classic Facebook Login — the
-                // Sufficit app 649979658412936 is one, because its WhatsApp
-                // Embedded Signup configurations belong to that product)
+                // (mutually exclusive with classic Facebook Login — e.g. an
+                // app whose WhatsApp Embedded Signup configurations belong to
+                // that product)
                 // require a `config_id` query parameter instead of the classic
                 // `scope` list. Without it, the OAuth dialog returns:
                 //   "App is unavailable / needs at least one supported permission"

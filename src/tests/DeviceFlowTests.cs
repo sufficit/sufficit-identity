@@ -475,7 +475,7 @@ public sealed class DeviceFlowTests
             {
                 ["client_id"] = TestDataSeeder.DeviceClientId,
                 ["client_secret"] = TestDataSeeder.DeviceClientSecret,
-                ["scope"] = "openid offline_access directives sufficit_ai_openai_bridge",
+                ["scope"] = "openid offline_access directives example_bridge",
             });
         Assert.Equal(HttpStatusCode.OK, authStatus);
 

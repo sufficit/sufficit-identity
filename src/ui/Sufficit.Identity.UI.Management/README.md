@@ -51,8 +51,8 @@ Não pertencem a este módulo:
 - associações de tenant, revendedor, cliente ou departamento;
 - decisão sobre o efeito de uma role, group ou entitlement.
 
-No deployment Sufficit, essas regras permanecem em `sufficit-identity-core`,
-`sufficit-blazor` e nas APIs de negócio. O host pode mapear sua autoridade
+Num deployment, essas regras permanecem nos componentes de autorização do
+próprio deployment e nas APIs de negócio dele. O host pode mapear sua autoridade
 operacional para capabilities do provedor sem expor essa role como opção de
 usuário.
 
@@ -171,7 +171,7 @@ preenchem o formulário, mas não emitem credenciais e não ignoram MFA ou
 autorização. Exemplo:
 
 ```text
-/management/tokens?action=issue&purpose=Atualizar%20clientes%20Hermes&lifetimeSeconds=900&capability=identity.clients.read&capability=identity.clients.update
+/management/tokens?action=issue&purpose=Atualizar%20clientes%20de%20integra%C3%A7%C3%A3o&lifetimeSeconds=900&capability=identity.clients.read&capability=identity.clients.update
 ```
 
 Parâmetros aceitos:

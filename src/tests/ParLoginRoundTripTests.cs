@@ -23,7 +23,7 @@ namespace Sufficit.Identity.Tests;
 ///  1. a <c>request_uri</c> presented at <c>/connect/authorize</c> that ends in
 ///     a login Challenge must still be usable when the browser comes back after
 ///     signing in — otherwise EVERY interactive PAR login (the flow the .NET 10
-///     OIDC client of SufficitBlazorServer performs) would fail;
+///     OIDC client of a server-side web app performs) would fail;
 ///  2. once the authorization code has been issued, re-presenting the same
 ///     <c>request_uri</c> must fail (single-use, RFC 9126 §6.1) — the stale
 ///     "Continuar com esta conta" click.

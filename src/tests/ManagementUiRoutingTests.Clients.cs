@@ -116,7 +116,7 @@ public sealed partial class ManagementUiRoutingTests
 
         using var response = await client.GetAsync(
             "/management/tokens?action=issue"
-            + "&purpose=Atualizar%20clientes%20Hermes"
+            + "&purpose=Atualizar%20clientes%20de%20integra%C3%A7%C3%A3o"
             + "&lifetimeSeconds=900"
             + $"&capability={ManagementCapabilities.ClientsRead}"
             + $"&capability={ManagementCapabilities.ClientsUpdate}");
@@ -125,7 +125,7 @@ public sealed partial class ManagementUiRoutingTests
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("Solicitação preparada pelo link", html, StringComparison.Ordinal);
-        Assert.Contains("Atualizar clientes Hermes", html, StringComparison.Ordinal);
+        Assert.Contains("Atualizar clientes de integração", html, StringComparison.Ordinal);
         Assert.Contains(ManagementCapabilities.ClientsRead, html, StringComparison.Ordinal);
         Assert.Contains(ManagementCapabilities.ClientsUpdate, html, StringComparison.Ordinal);
         Assert.Contains(

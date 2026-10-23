@@ -344,7 +344,7 @@ public sealed partial class ManagementApplicationAuthorizationTests
     // The grant lives in the database (a client property); what the role means
     // stays in configuration. The same split that already applied to people.
 
-    private const string ServiceClient = "sufficit_cloud_mobile_api";
+    private const string ServiceClient = "example_service_api";
     private const string VaultRole = "mobilecloudadministrator";
 
     private static CapabilityManagementAuthorizationEvaluator CreateEvaluator(
