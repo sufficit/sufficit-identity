@@ -673,18 +673,14 @@ Everything below needs a human against real infrastructure and clients.
 - [ ] Proxy and forwarded headers verified end to end
   (`X-Forwarded-Proto`/`Host`, TrustedProxies)
 
-**Rehearsals**
-
-- [ ] **(decision)** Drop the retired `identity_legacy` database (40 tables,
-  referenced only by script 091; cutover rehearsals were done in August)
+The cutover rehearsals were done in August, and the retired `identity_legacy`
+database was dropped on 2026-10-23.
 
 ### G5 — Confirmed-email rollout **(operational)**
 
-- [ ] Decide what happens to the 369 accounts with an unconfirmed email —
-  `RequireConfirmedEmail` is already on (code default, production does not
-  override it) — and fix step 2 of
-  [`RUNBOOK-CONFIRMED-EMAIL.md`](../runbooks/RUNBOOK-CONFIRMED-EMAIL.md), which
-  queries a `lastlogin_at` column that does not exist
+- [ ] Decide on the accounts with an unconfirmed email that **were** used (a
+  token in the last 90 days): confirm them in bulk or leave them to
+  reconfirmation — the unused ones are purged automatically
 
 ### G6 — Forward-looking protocol work
 

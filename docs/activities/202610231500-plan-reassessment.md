@@ -36,3 +36,16 @@ seção. Resultado: 128 itens → 125.
 - Runtime .NET 10.0.13 (correções de segurança de 10.0.11–10.0.13) em todos
   os serviços .NET 10 dos três nós de app; o identity é o único serviço deste
   repositório entre eles.
+
+## Decisões do dono (23/10/2026)
+
+- **`identity_legacy` apagado:** 40 tabelas, 91 MB, nenhuma conexão; o único
+  acesso era `SELECT` do usuário `identity` (revogado). O teste semanal de
+  restauração dele no Databasement e a cópia restaurada no CT 3176 foram
+  removidos. Restam os backups diários do Databasement por 3 dias.
+- **Contas não confirmadas:** purga automática diária
+  (`Management:UnconfirmedAccountPurgeDays=90` nos três nós, `6294aa6`). Na
+  data, 174 das 369 eram elegíveis (sem login externo, claim ou papel; sem
+  token, autorização, sessão, falha de login ou uso em 90 dias; com e-mail).
+  O runbook de confirmação de e-mail foi corrigido (usava `lastlogin_at`, que
+  não existe).

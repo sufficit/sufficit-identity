@@ -44,20 +44,27 @@ GROUP BY domain
 ORDER BY cnt DESC;
 ```
 
-### 2. Decidir a migração dos legados
+### 2. Contas que nunca confirmaram
 
-- **Confirmar em massa** os que já logavam (prova indireta de posse histórica):
-  ```sql
-  UPDATE users
-  SET emailconfirmed = 1
-  WHERE emailconfirmed = 0
-    AND lastlogin_at IS NOT NULL
-    AND lastlogin_at > (NOW() - INTERVAL 90 DAY);
-  ```
-- **Forçar reconfirmação** dos restantes: deixar `emailconfirmed=0` e garantir
-  que a UI tem fluxo de reenvio de confirmação acessível no login.
-- Documentar a decisão (quantos confirmados em massa, quantos em reconfirmação)
-  e a data no registro operacional do ambiente.
+A tabela `users` não guarda o último login; o sinal de uso é a emissão de
+token. Quem recebeu token recentemente usou a conta:
+
+```sql
+SELECT COUNT(*) FROM users u
+WHERE u.emailconfirmed = 0 AND u.email IS NOT NULL
+  AND EXISTS (SELECT 1 FROM tokens t
+              WHERE t.subject = u.id
+                AND t.creation_date > UTC_TIMESTAMP() - INTERVAL 90 DAY);
+```
+
+- Essas podem ser confirmadas em massa, se o ambiente aceitar o uso como
+  prova de posse; ou ficam para reconfirmação pelo fluxo de reenvio no login.
+- As que nunca mostram sinal de uso são removidas pela purga automática
+  (`Management:UnconfirmedAccountPurgeDays`; 0 = desligada): só contas sem
+  login externo, claim ou papel e sem token, autorização, sessão, falha de
+  login ou uso na janela. Cada remoção gera auditoria
+  `unconfirmed_account_purged`, sem e-mail.
+- Registrar a decisão e a data no registro operacional do ambiente.
 
 ### 3. Garantir ClaimActions de TODOS os provedores externos
 
