@@ -13,11 +13,7 @@ public static class VaultKeyEncryptionCertificate
     {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentException.ThrowIfNullOrWhiteSpace(options.CertificatePath);
-        var password = secretStore is null
-            ? options.CertificatePassword
-            : secretStore.GetSecretAsync("vault/kek-certificate-password")
-                .GetAwaiter()
-                .GetResult() ?? options.CertificatePassword;
+        var password = ResolvePassword(options, secretStore);
         var certificate = X509CertificateLoader.LoadPkcs12FromFile(
             options.CertificatePath,
             password);
@@ -32,6 +28,60 @@ public static class VaultKeyEncryptionCertificate
             throw;
         }
     }
+
+    /// <summary>
+    /// Loads the decrypt-only certificates of <see cref="VaultOptions.PreviousCertificatePaths"/>
+    /// with the active certificate's password. Validity dates are not
+    /// checked: an expired KEK still has to unwrap what it protected.
+    /// </summary>
+    public static IReadOnlyList<X509Certificate2> LoadPrevious(
+        VaultOptions options,
+        ISecretStore? secretStore = null)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        var paths = options.PreviousCertificatePaths
+            .Where(path => !string.IsNullOrWhiteSpace(path))
+            .ToArray();
+        if (paths.Length == 0)
+        {
+            return [];
+        }
+
+        var password = ResolvePassword(options, secretStore);
+        var loaded = new List<X509Certificate2>(paths.Length);
+        try
+        {
+            foreach (var path in paths)
+            {
+                var certificate = X509CertificateLoader.LoadPkcs12FromFile(path, password);
+                loaded.Add(certificate);
+                using var rsa = certificate.GetRSAPrivateKey();
+                if (!certificate.HasPrivateKey || rsa is null)
+                {
+                    throw new InvalidOperationException(
+                        $"The previous vault KEK certificate '{Path.GetFileName(path)}' must contain an RSA private key.");
+                }
+            }
+
+            return loaded;
+        }
+        catch
+        {
+            foreach (var certificate in loaded)
+            {
+                certificate.Dispose();
+            }
+
+            throw;
+        }
+    }
+
+    private static string? ResolvePassword(VaultOptions options, ISecretStore? secretStore) =>
+        secretStore is null
+            ? options.CertificatePassword
+            : secretStore.GetSecretAsync("vault/kek-certificate-password")
+                .GetAwaiter()
+                .GetResult() ?? options.CertificatePassword;
 
     public static void Validate(X509Certificate2 certificate)
     {

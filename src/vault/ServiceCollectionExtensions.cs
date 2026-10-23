@@ -135,6 +135,7 @@ public static class ServiceCollectionExtensions
                     ? null
                     : options.PlaintextReadCompatibility.ExpiresAtUtc));
             services.AddSingleton<IKeyVault>(sp => sp.GetRequiredService<KeyVault>());
+            services.AddSingleton<IVaultKekRewrap>(sp => sp.GetRequiredService<KeyVault>());
             if (options.ManageSigningKeys)
             {
                 services.AddSingleton<IHostedService,

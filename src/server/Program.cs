@@ -36,6 +36,7 @@ var reconcileClientTokenLifetimes = args.Contains(
 var repairMetricsExportSecret = args.Contains(
     "--repair-metrics-export-secret", StringComparer.Ordinal);
 var verifyVault = args.Contains("--verify-vault", StringComparer.Ordinal);
+var rewrapVaultKek = args.Contains("--rewrap-vault-kek", StringComparer.Ordinal);
 
 // Resolve configuration-time secrets through the same ISecretStore boundary
 // used by STS consumers. The store reads SUFFICIT_SECRET_* only.
@@ -290,6 +291,15 @@ if (repairMetricsExportSecret)
 if (verifyVault)
 {
     Environment.ExitCode = await HostBootstrap.VerifyVaultAsync(app);
+    return;
+}
+
+// KEK rotation (plan C1): after the new certificate is active everywhere and
+// the old one sits in PreviousCertificatePaths, move every data key and the
+// Data Protection key ring to the new one. Run on one host.
+if (rewrapVaultKek)
+{
+    Environment.ExitCode = await HostBootstrap.RewrapVaultKekAsync(app, args);
     return;
 }
 

@@ -245,12 +245,11 @@ The accepted warning and skips (`FAPIEnsureServerConfigurationDoesNotSupport`
 
 ### C1 — Vault production enablement and rotation
 
-- [ ] Add an authorized rotation orchestrator with a distributed lock, progress
-  journal, rewrap/re-encrypt strategy, rollback window and audit events
 - [ ] **(operational)** Separate database-reader authority from KEK authority
   in production
-- [ ] Tests: loss/recovery, old-version decrypt, concurrent rotate/encrypt,
-  disaster restore
+- [ ] Test a re-wrap racing a data-key rotation on another replica (loss,
+  old-version decrypt and restore are covered:
+  [`202610232000`](../activities/202610232000-vault-kek-rotation.md))
 
 The KEK is escrowed by a daily vzdump of `apoint-apps` (CT 1101) to the
 `nas-sufficit` NAS since 2026-10-23 —
@@ -685,7 +684,7 @@ Deliberately after everything above; none of it is required for production.
 
 ## Execution order
 
-1. **C1** — the vault rotation orchestrator
+1. **C1** — the re-wrap race test and the reader/KEK authority split
 2. **A1** — operator entitlements
 3. **B1** — answer the unified-service question before B2, B3 and B5's kernel
    item, which were written assuming it

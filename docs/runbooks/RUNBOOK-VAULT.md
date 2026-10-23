@@ -65,6 +65,43 @@ estende a validade do certificado, mas não reduz o impacto de um vazamento da
 chave privada; comprometimento exige uma rotação de chave com migração explícita
 do Data Protection/Vault.
 
+### Rotação da KEK (troca de chave)
+
+Para comprometimento ou troca planejada da chave privada. A KEK nova usa a
+**mesma senha** da atual (`SUFFICIT_SECRET_VAULT_KEK_CERTIFICATE_PASSWORD`),
+porque `PreviousCertificatePaths` é aberto com ela.
+
+1. Gere a KEK nova (RSA ≥ 3072) com a senha atual, no servidor, e copie para os
+   três nós como `/etc/sufficit/identity/vault-kek.next.pfx`
+   (`root:www-data 0640`).
+2. **Fase de leitura, nos três nós:** mantenha `CertificatePath` na KEK atual e
+   acrescente a nova em `Sufficit:Vault:PreviousCertificatePaths`. Reinicie um
+   nó por vez. Agora todos abrem as duas, e nenhum grava com a nova.
+3. **Troca, nos três nós:** `CertificatePath` passa a ser a nova e a antiga vai
+   para `PreviousCertificatePaths`. Reinicie um nó por vez. Chaves de dados e
+   chaves do Data Protection criadas a partir daqui já saem pela nova.
+4. **Recifragem, em um nó só**, com a unidade do serviço (o mesmo ambiente do
+   `--verify-vault`):
+
+   ```bash
+   dotnet Sufficit.Identity.Server.dll --rewrap-vault-kek \
+     --operation-id=kek-<data> --reason="<motivo>"
+   ```
+
+   Recifra cada linha de `vaultkeys` sob o lease da própria chave e o key-ring
+   do Data Protection, confere que a KEK ativa sozinha abre tudo, grava o
+   journal em `vaultsigningkeyoperations` (ação `kek_rewrap`) e um evento de
+   auditoria permanente (`vault.kek.rewrap`). Saída: só contagens e ids. Código
+   1 se algo continua só sob uma KEK anterior; repetir com o mesmo
+   `--operation-id` depois de concluído não refaz nada.
+5. `--verify-vault` em um nó deve terminar com zero falhas.
+6. **Janela de rollback:** mantenha a KEK antiga em `PreviousCertificatePaths`
+   pelo prazo combinado (o advisory `vault-kek-previous-configured` lembra a
+   cada partida). Para voltar atrás, inverta os papéis e rode a recifragem de
+   novo.
+7. Remova `PreviousCertificatePaths` dos três nós, apague o PFX antigo com
+   `shred` e confira que o backup diário do `apoint-apps` já pegou a KEK nova.
+
 `KeySource=dataprotection` é o caminho compatível para ambientes que já têm
 DEKs embrulhadas por Data Protection. `KeySource=certificate` usa o mesmo PFX
 dedicado para embrulhar DEKs diretamente. `KeySource=external` exige uma

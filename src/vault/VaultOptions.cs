@@ -58,6 +58,16 @@ public sealed class VaultOptions
     public string? CertificatePassword { get; init; }
 
     /// <summary>
+    /// KEK certificates being retired (plan C1). Decrypt-only: they unwrap
+    /// data keys and the Data Protection key ring that were protected before
+    /// a rotation, while every new wrap uses <see cref="CertificatePath"/>.
+    /// Opened with the same password as <see cref="CertificatePath"/>. Remove
+    /// them once <c>--rewrap-vault-kek</c> has moved everything to the active
+    /// certificate and the rollback window has passed.
+    /// </summary>
+    public string[] PreviousCertificatePaths { get; init; } = [];
+
+    /// <summary>
     /// Bounded compatibility window for Data Protection keys previously
     /// encrypted with a token-signing certificate. New keys are always
     /// protected by <see cref="CertificatePath"/>; this only permits reading

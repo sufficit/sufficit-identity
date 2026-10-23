@@ -23,5 +23,14 @@ public sealed class VaultProductionPostureContributor(VaultOptions options)
                 "Set Sufficit:Vault:KeySource=certificate with a dedicated CertificatePath readable only by the service account.",
                 Severity: ProductionPostureSeverity.Advisory);
         }
+
+        if (options.Enabled && options.PreviousCertificatePaths.Any(path => !string.IsNullOrWhiteSpace(path)))
+        {
+            yield return new(
+                "vault-kek-previous-configured",
+                "A previous vault KEK certificate is still configured, so a copy of it still opens whatever it protected.",
+                "Run --rewrap-vault-kek on one host, then remove Sufficit:Vault:PreviousCertificatePaths once the rollback window has passed.",
+                Severity: ProductionPostureSeverity.Advisory);
+        }
     }
 }

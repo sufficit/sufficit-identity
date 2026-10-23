@@ -101,6 +101,71 @@ internal static partial class HostBootstrap
         return results.Any(result => result.Failed.Count > 0) ? 1 : 0;
     }
 
+    /// <summary>
+    /// Plan C1: moves the vault data keys and the Data Protection key ring to
+    /// the active KEK certificate, after a rotation put the old one in
+    /// Sufficit:Vault:PreviousCertificatePaths. Counts and ids only; exit code
+    /// 1 when anything is still under a previous KEK. Audited, kept for good.
+    /// </summary>
+    internal static async Task<int> RewrapVaultKekAsync(WebApplication app, string[] args)
+    {
+        var operationId = ArgumentValue(args, "--operation-id");
+        var reason = ArgumentValue(args, "--reason");
+        if (string.IsNullOrWhiteSpace(operationId) || string.IsNullOrWhiteSpace(reason))
+        {
+            Console.Error.WriteLine("usage: --rewrap-vault-kek --operation-id=<id> --reason=<text>");
+            return 2;
+        }
+
+        var options = app.Services.GetRequiredService<VaultOptions>();
+        var rewrap = app.Services.GetService<IVaultKekRewrap>()
+            ?? throw new InvalidOperationException("The vault is disabled on this host.");
+        var keys = await rewrap.RewrapAsync(operationId, reason);
+        Console.WriteLine($"vault_kek_rewrap kind=vault_keys rewrapped={keys.Rewrapped} already_active={keys.AlreadyActive} failed={keys.Failed.Count} already_completed={keys.AlreadyCompleted.ToString().ToLowerInvariant()}");
+        foreach (var id in keys.Failed)
+            Console.WriteLine($"vault_kek_rewrap_failed kind=vault_keys key={id.Name}:{id.Version}");
+
+        using var certificate = VaultKeyEncryptionCertificate.Load(options, new EnvironmentSecretStore());
+        using var scope = app.Services.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var ring = await Sufficit.Identity.STS.Security.DataProtectionKeyRingRewrap.RewrapAsync(
+            database,
+            app.Services,
+            certificate,
+            app.Services.GetRequiredService<ILoggerFactory>());
+        Console.WriteLine($"vault_kek_rewrap kind=data_protection rewrapped={ring.Rewrapped} already_active={ring.AlreadyActive} failed={ring.Failed.Count}");
+        foreach (var id in ring.Failed)
+            Console.WriteLine($"vault_kek_rewrap_failed kind=data_protection row={id}");
+
+        var succeeded = keys.Failed.Count == 0 && ring.Failed.Count == 0;
+        database.ManagementAuditEvents.Add(new Sufficit.Identity.Core.Entities.ManagementAuditEvent
+        {
+            OccurredAtUtc = DateTime.UtcNow,
+            OperatorSubject = $"host:{Environment.MachineName}",
+            Capability = "vault.kek.rewrap",
+            ResourceType = "vault_kek",
+            ResourceId = $"certificate:{certificate.Thumbprint}",
+            AuthorizationOutcome = "allowed",
+            OperationOutcome = succeeded ? "succeeded" : "failed",
+            ReasonCode = "vault_kek_rewrapped",
+            CorrelationId = operationId,
+            AfterJson = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                reason,
+                vaultKeys = new { keys.Rewrapped, keys.AlreadyActive, failed = keys.Failed.Count },
+                dataProtection = new { ring.Rewrapped, ring.AlreadyActive, failed = ring.Failed.Count },
+            }),
+            ExpiresAtUtc = Sufficit.Identity.Core.Entities.ManagementAuditRetention.Never,
+        });
+        await database.SaveChangesAsync();
+        return succeeded ? 0 : 1;
+    }
+
+    private static string? ArgumentValue(string[] args, string name) =>
+        args.Where(arg => arg.StartsWith(name + "=", StringComparison.Ordinal))
+            .Select(arg => arg[(name.Length + 1)..])
+            .LastOrDefault();
+
     internal static async Task ApplyMigrationsWithAdvisoryLockAsync(
         AppDbContext database)
     {

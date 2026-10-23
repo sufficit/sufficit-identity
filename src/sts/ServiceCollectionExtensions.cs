@@ -405,6 +405,12 @@ public static partial class ServiceCollectionExtensions
 
             var decryptOnlyCertificates =
                 new List<X509Certificate2> { vaultProtectionCertificate };
+            // A KEK being retired (plan C1) still opens the ring it protected
+            // until --rewrap-vault-kek moves the ring to the active one.
+            decryptOnlyCertificates.AddRange(
+                VaultKeyEncryptionCertificate.LoadPrevious(
+                    vaultOptions,
+                    startupSecretStore));
             if (vaultOptions.LegacyDataProtectionCertificateMigration
                 .IsConfigured)
             {
