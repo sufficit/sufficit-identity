@@ -1,4 +1,4 @@
-# Genius Identity MCP and personal Vault scope — 2026-08-23
+# Identity MCP and personal Vault scope — 2026-08-23
 
 Issue: [#35](https://github.com/sufficit/sufficit-identity/issues/35)
 
@@ -9,7 +9,10 @@ dedicated OAuth scope `identity.mcp`. It is intentionally distinct from
 `identity.management`: it permits self-service operations for the authenticated
 subject only and never grants management capabilities or shared Vault contexts.
 
-`sufficit-ai-genius` is the only default trusted client. At server startup,
+At the time a single first-party native client was the only default trusted
+client; the built-in default is now empty (see the migration note in
+[ARCHITECTURE-NATIVE-RETURN-URIS](../architecture/ARCHITECTURE-NATIVE-RETURN-URIS.md)).
+At server startup,
 `McpScopeProvisioner` idempotently creates the scope and reconciles the client's
 OpenIddict permission. `McpScopeGrantPolicy` adds the scope during user-token
 issuance and refresh, so refresh tokens created before this contract repair

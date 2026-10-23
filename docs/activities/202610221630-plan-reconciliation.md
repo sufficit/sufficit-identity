@@ -16,7 +16,7 @@ estavam feitos. Na partida, a checagem de postura de produção informa
 | B5 — CIBA por cliente em `Enforce` | Padrão `Enforce` (`CibaOptions.cs`); CIBA desligado em produção. |
 | B8 — validação de recurso por cliente | Não existe modo Observe: `oi_rprm` sempre aplicado (`OpenIddictServerConfiguration.cs`, `ResourceIndicatorTests`). |
 | C1 — cofre ligado, zero `pt1.` | `Sufficit:Vault:RequireEncryptionInProduction=true`, KEK por certificado; 0 de 80 segredos em `pt1.`. Fica no plano a prova de backup/rollback e a declaração `SecretMigrationComplete`. |
-| C4 — RabbitMQ com TLS verificado | `Sufficit:Exchange:RabbitMQ:UseTls=true`, `RequireTls=true`, `TlsServerName=exchange.sufficit.com.br`. Ficam SMTP e o TLS do banco. |
+| C4 — RabbitMQ com TLS verificado | `Sufficit:Exchange:RabbitMQ:UseTls=true`, `RequireTls=true`, `TlsServerName=exchange.example.com`. Ficam SMTP e o TLS do banco. |
 | D1 — inventário de origens e CSP em bloqueio | `Csp:ReportOnly=false`, `UseNonce=true`, política explícita. Ficam os 9 atributos `style="…"` e a validade do `AcknowledgeReportOnly`. |
 | D2 — origem pública em `Enforce` | Padrão `Enforce` (`PublicOriginResolver.cs`), produção não sobrescreve. |
 | D3 — topologia explícita | `DeploymentTopology=ClusteredBehindTrustedProxy`, `RateLimit:FailOnUntrustedProxy=true`, `DistributedCache:RequireShared=true`. Fica o smoke test de duas réplicas. |

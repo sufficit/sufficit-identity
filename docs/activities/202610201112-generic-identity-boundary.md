@@ -28,4 +28,4 @@ Validation:
 - git diff --check passed.
 
 Delivery: commit and push to main authorized by the user; no deployment requested.
-The pre-existing untracked activity 202610192220-blazor-ai-bridge-migration.md was preserved.
+A pre-existing untracked activity was preserved.

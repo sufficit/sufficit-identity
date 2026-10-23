@@ -1,47 +1,35 @@
 # Prova de restauração do cofre (C1) e inventário de claims (B2)
 
-**22/10/2026.**
+**22/10/2026.** Registro operacional do deployment fora deste repositório; aqui
+fica só o que é do produto.
 
 ## C1 — o backup restaura e decifra
 
-- **Backup:** o banco `identity` tem dump diário no Databasement (CT 3175,
-  `data-cluster`, retenção 3 dias, cópia no GCS `suff-databasement-us`) e
-  restauração semanal no CT 3176 (sábado 09:00).
-- **Prova:** `--verify-vault` (novo, `56282e5`) aponta o host para uma cópia
-  e decifra todo valor protegido com a autoridade de chave do próprio host;
-  imprime contagens e ids que falharam, nunca valores; sai com 1 se algo
-  falhar. Rodado no castrum-apps (unit oneshot copiada da do serviço, para
-  ter o mesmo ambiente):
-  - cópia restaurada de 18/10 no CT 3176: **72/72 segredos nomeados**
-    decifrados. O segundo fator saiu 0/71 porque esse backup é anterior ao
-    C3 (texto claro conta como falha);
-  - produção: **80/80 segredos nomeados, 71/71 segredos do segundo fator**.
-  Usuário temporário de leitura no 3176 e unit removidos depois.
-- **KEK:** `vault-kek.pfx` idêntico (sha256 `cc30326a…`) nos três nós e na
-  cópia local da estação do operador (`sufficit-servers/eveo-apps/etc/sufficit/identity`,
-  fora do git); a senha local abre o PFX. Os CTs de app não têm vzdump, então
-  fora do cluster a única cópia é a da estação.
-- `Sufficit:Vault:SecretMigrationComplete=true` declarado nos três nós
-  (backup `appsettings.Production.json.bak-vault-migration-20261022`); postura
-  aprovada, sem fallback de configuração.
-
-Para repetir após a próxima restauração semanal (que já terá o segundo fator
-cifrado): usuário `SELECT` temporário no 3176 para 172.19.3.101, connection
-string da cópia no ambiente da unit, `dotnet Sufficit.Identity.Server.dll
---contentRoot /opt/sufficit-identity --verify-vault`.
+- `--verify-vault` (`56282e5`) aponta o host para uma cópia do banco e decifra
+  todo valor protegido com a autoridade de chave do próprio host; imprime
+  contagens e ids que falharam, nunca valores; sai com 1 se algo falhar.
+  Segredos do segundo fator em texto claro (backup anterior ao C3) contam como
+  falha.
+- Para repetir: usuário `SELECT` temporário na cópia restaurada, connection
+  string da cópia no ambiente de uma unit oneshot igual à do serviço, e
+  `dotnet Sufficit.Identity.Server.dll --contentRoot <raiz da instalação> --verify-vault`.
+- A KEK (`vault-kek.pfx`) precisa existir fora do cluster: sem ela o backup do
+  banco não decifra.
+- `Sufficit:Vault:SecretMigrationComplete=true` declara a postura sem fallback
+  de configuração.
 
 ## B2 — inventário das claims
 
-Tipos persistidos em produção (`userclaims`; `roleclaims` vazio):
+Claims persistidas (`userclaims`) e destino:
 
-| Claim | Usuários | Escopo exigido | Destino | Sensibilidade | Dono/consumidor |
-|-------|---------:|----------------|---------|---------------|-----------------|
-| `entitlements` | 1231 | `directives` (ou `entitlements`, `fleet.api`) | AT + id_token | alta (autorização) | consumidores por contexto; já mapeada |
-| `name` | 71 | `profile` | AT + id_token | baixa | regra própria |
-| `address` | 42 | `address` | AT + id_token | média (PII) | userinfo; no token vai como `urn:identity:claim:address` (texto livre legado), também sob `address` |
-| `picture` | 36 | `profile` | AT + id_token | baixa | userinfo (Run lê dali) |
-| `website` | 15 | `profile` | AT + id_token | baixa | — |
-| `profile` | 2 | `profile` | AT + id_token | baixa | — |
+| Claim | Escopo exigido | Destino | Sensibilidade |
+|-------|----------------|---------|---------------|
+| `entitlements` | `directives` (ou `entitlements` e sucessores configurados) | AT + id_token | alta (autorização) |
+| `name` | `profile` | AT + id_token | baixa |
+| `address` | `address` | AT + id_token | média (PII); no token vai como `urn:identity:claim:address` (texto livre legado), também sob `address` |
+| `picture` | `profile` | AT + id_token | baixa |
+| `website` | `profile` | AT + id_token | baixa |
+| `profile` | `profile` | AT + id_token | baixa |
 
 Acrescentadas na emissão (factory de sessão):
 
@@ -55,10 +43,8 @@ Acrescentadas na emissão (factory de sessão):
 Antes, `address`, `picture`, `website`, `profile`, `aal` e
 `identity:mfa_remembered` caíam no ramo "sem mapeamento" e iam para o access
 token de qualquer cliente, qualquer escopo. Agora as claims-padrão do OIDC
-exigem o escopo padrão e as duas de autenticação são explícitas. Nenhum
-consumidor em produção lê essas claims do token (o Run usa o userinfo, que já
-filtrava por escopo). Clientes interativos sem `profile`: ferramentas
-(Swagger, Postman, DCR).
+exigem o escopo padrão e as duas de autenticação são explícitas. Consumidores
+que precisem delas usam o userinfo, que já filtrava por escopo.
 
 O que ainda cair no ramo sem mapeamento é registrado uma vez por tipo e
 processo ("Claim inventory: unmapped claim type …"). Sem nenhum registro, pode
@@ -73,28 +59,16 @@ lados.
 
 ## `directive` persistida: eliminada
 
-As 17 claims `directive` restantes eram duplicatas exatas de uma
-`entitlements` (`aiuser:000…`) do mesmo usuário; 11 delas de agentes do Fleet
-criados hoje. Causa: o escopo `sufficit_ai_openai_bridge` em produção ainda
-declarava a concessão com o tipo `directive` (o manifesto do sufficit-ai já
-dizia `entitlements`, o registro do banco não); quem pede `ai.bridge` e ele
-ganhava a mesma concessão com os dois nomes. Corrigido o registro do escopo,
-apagadas as 17 duplicatas (0 restantes), e o provisionador de concessões
-passa a gravar `directive` como `entitlements`, nunca uma segunda linha. Os
-tokens continuam levando os dois nomes por compatibilidade com consumidores.
-Removido também do sufficit-provisioning o script que ainda criava a claim
-`directive` nas tabelas do Duende.
+Havia claims `directive` duplicando exatamente uma `entitlements` do mesmo
+usuário, porque um registro de escopo no banco ainda declarava a concessão com
+o tipo `directive`. Corrigido o registro, apagadas as duplicatas, e o
+provisionador de concessões passa a gravar `directive` como `entitlements`,
+nunca uma segunda linha.
 
 ## O nome `directive` sai da emissão
 
-Verificados todos os consumidores antes: os 18 clientes com o escopo
-`directives`/`entitlements`/`fleet.api` são da Sufficit, e cada serviço em
-produção lê `entitlements` (pacote `Sufficit.Identity.Core` ≥ 1.26.0902, ou
-código próprio que lê os dois nomes). Dois precisaram de ação: o
-`sufficit-ami-events` rodava código de 17/08 (main publicada, ver a atividade
-no repositório dele) e o sufficit-ai (login OIDC do web e hidratação por
-userinfo, `9ee4fcfa`).
-
+Antes da mudança, conferir que cada consumidor lê `entitlements` (pacote
+`Sufficit.Identity.Core` ≥ 1.26.0902, ou código próprio que lê os dois nomes).
 Agora tokens, introspecção e userinfo levam a concessão só como
 `entitlements`; um valor ainda guardado como `directive` é renomeado na saída
 (`NormalizeEntitlementClaimName`), e contas de serviço deixam de receber a

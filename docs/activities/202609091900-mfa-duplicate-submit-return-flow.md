@@ -13,7 +13,7 @@ aplicativo, mas sem oferecer um destino de retorno.
 Os logs correlacionados do Identity, do proxy e do Blazor mostraram esta
 sequência:
 
-1. o pedido OIDC do `SufficitBlazorServer` exigiu autenticação recente;
+1. o pedido OIDC do client web (`example-app`) exigiu autenticação recente;
 2. o Identity iniciou a cerimônia MFA preservando o `returnUrl` local;
 3. o primeiro POST para `/account/login/2fa` foi aceito às 18:45:38 e retomou
    `/connect/authorize` com sucesso;

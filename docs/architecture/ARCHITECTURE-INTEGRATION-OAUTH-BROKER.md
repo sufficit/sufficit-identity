@@ -1,6 +1,6 @@
 # Integration OAuth broker
 
-Sufficit Identity brokers third-party OAuth for trusted Genius integrations so
+Sufficit Identity brokers third-party OAuth for integrations of trusted first-party clients so
 an end user never handles access tokens, client secrets, or provider project
 configuration.
 

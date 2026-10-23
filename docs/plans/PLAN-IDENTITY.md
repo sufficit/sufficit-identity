@@ -297,7 +297,7 @@ CLI command of `Server.dll` itself.
 - [ ] **(operational)** Select `RequireVerifiedTls` — or the audited
   `PrivateSocket` exception — in each production deployment, after the CA or
   socket is provisioned. Today the connection string declares no `SslMode`
-  and goes through the local proxy (`eveo-proxy-local`)
+  and goes through the local proxy (`db-proxy-local`)
 
 An explicit transport policy already validates VerifyCA/VerifyFull or a
 UnixSocket exception; production still has to choose the mode.

@@ -98,17 +98,17 @@ new client registers its callbacks on the edit screen.
 ## Migration
 
 Before this change the server hard-coded two callbacks
-(`sufficit-genius://auth-complete`, `sufficit-aigenius://auth-complete`) and
+(`example-native-app://auth-complete`, `example-native-app-legacy://auth-complete`) and
 accepted them for any client. They are now registration data like any other, so
 an existing deployment must register them on the client that uses them, e.g.:
 
 ```bash
-curl -sS -X PUT "$IDENTITY/api/clients/sufficit-ai-genius" \
+curl -sS -X PUT "$IDENTITY/api/clients/example-native-app" \
   -H "authorization: Bearer $OPERATOR_TOKEN" \
   -H "content-type: application/json" \
   -d '{ "...": "existing fields, plus:",
-        "nativeReturnUris": ["sufficit-genius://auth-complete",
-                             "sufficit-aigenius://auth-complete"] }'
+        "nativeReturnUris": ["example-native-app://auth-complete",
+                             "example-native-app-legacy://auth-complete"] }'
 ```
 
 Until that registration exists, the device page ends on the neutral close-tab

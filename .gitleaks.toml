@@ -113,7 +113,7 @@ regexes = [
 # Commits whose only finding was reviewed as non-secret. Keep each entry
 # justified: a blanket path or regex exception would hide real leaks.
 commits = [
-  # docs/activities/202610211030-teste-user-reset-schreiber.md quotes an
+  # An activity log (since moved out of this repo) quoted an
   # entitlement context (`key:<context-guid>`), an identifier, not a credential.
   "8304cb963f604d054b0b56b50a455dba8e33ec71",
 ]

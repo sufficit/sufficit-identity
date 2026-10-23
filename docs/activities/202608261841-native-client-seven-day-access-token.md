@@ -1,15 +1,15 @@
-# Genius: access token de sete dias
+# Client nativo: access token de sete dias
 
 Data: 2026-08-26
 
 ## Contexto
 
-O cliente público `sufficit-ai-genius` usa Device Authorization Grant com
+O cliente público `example-native-app` usa Device Authorization Grant com
 `offline_access`. O aplicativo armazena o refresh token rotativo e renova o
 access token antes da expiração. A política global permanece em 60 minutos e o
 refresh token global permanece em 14 dias.
 
-Para reduzir especificamente a frequência de troca do access token no Genius,
+Para reduzir especificamente a frequência de troca do access token nesse client nativo,
 sem ampliar os demais clientes, o registro desse cliente recebe um override de
 10.080 minutos (sete dias). A alteração vale apenas para tokens emitidos depois
 da reconciliação; tokens existentes conservam a expiração original.
@@ -28,7 +28,7 @@ da reconciliação; tokens existentes conservam a expiração original.
 
 ## Segurança
 
-O padrão global curto não mudou. O Genius continua usando refresh token
+O padrão global curto não mudou. O client continua usando refresh token
 rotativo e access token de referência, portanto revogação e introspecção
 continuam disponíveis. O comando de reconciliação exige acesso local ao host e
 às mesmas configurações protegidas do serviço; não foi criado endpoint HTTP de

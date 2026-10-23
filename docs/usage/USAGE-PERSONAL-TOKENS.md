@@ -4,7 +4,7 @@ O escopo canônico é `personal.tokens.manage`. Ele permite solicitar tokens pr�
 
 O servidor anuncia o nome configurado em `Sufficit:Identity:PersonalTokens:RequiredScope` e cria o registro OpenIddict antes de aceitar tráfego. `ScopeClientIds` define quais clientes receberão a permissão OAuth correspondente, preservando suas outras permissões. A lista padrão é vazia.
 
-Exemplo da composição Sufficit (configuração operacional, sem segredos):
+Exemplo de composição (configuração operacional, sem segredos):
 
 ```json
 {
@@ -12,14 +12,14 @@ Exemplo da composição Sufficit (configuração operacional, sem segredos):
     "Identity": {
       "PersonalTokens": {
         "RequiredScope": "personal.tokens.manage",
-        "ScopeClientIds": ["SufficitBlazorServer"]
+        "ScopeClientIds": ["example-app"]
       }
     }
   }
 }
 ```
 
-O Blazor solicita esse escopo na autorização OIDC. Uma sessão antiga não o adquire apenas porque o aplicativo foi atualizado: é necessária nova autorização. Tokens pessoais existentes não são revogados por essa alteração.
+O `example-app` solicita esse escopo na autorização OIDC. Uma sessão antiga não o adquire apenas porque o aplicativo foi atualizado: é necessária nova autorização. Tokens pessoais existentes não são revogados por essa alteração.
 
 ## Requisitos mantidos
 

@@ -41,8 +41,8 @@ nós e reiniciar. Volta: `true`.
 ## Em produção (22/10/2026)
 
 Build `2319824` nos três nós. Antes: 71 valores em texto claro (56 chaves de
-autenticador, 15 conjuntos de códigos). Às 14:27 o worker do eveo cifrou os
-71; apoint e castrum encontraram 0. Chave `user-authentication-secrets` v1
+autenticador, 15 conjuntos de códigos). Às 14:27 o worker do app-node-1 cifrou os
+71; app-node-2 e app-node-3 encontraram 0. Chave `user-authentication-secrets` v1
 criada no cofre; nenhum erro de decifração. `TwoFactor:AcceptPlaintextSecrets`
 foi para `false` nos três nós às 14:3x (reinício um a um; backup
 `appsettings.Production.json.bak-twofactor-20261022`).

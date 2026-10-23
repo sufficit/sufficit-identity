@@ -10,7 +10,7 @@ Data: 2026-10-05 (UTC). Release `20261005T003450Z-9bceed1` nos três nós
   (`RequireForAllClients` e `RequireNonce` seguem `false`: DPoP opcional para
   os demais clientes).
 - `appsettings.Production.json`, `Sufficit:Identity:TokenExchange`:
-  `Enabled=true`, `AllowedClientIds=["sufficit-ai-genius"]` (nenhum outro
+  `Enabled=true`, `AllowedClientIds=["example-native-app"]` (nenhum outro
   cliente ganha a troca genérica) e `DelegatedCredentials` com
   `MaxAuthAgeHours=168`, `CredentialLifetimeDays=30`, `MaxActivePerUser=10`,
   `NotifyOnIssue=true`.
@@ -49,11 +49,11 @@ com `/health/ready`.
   token-exchange anunciado.
 - Posture check: passou (apenas avisos).
 
-## Permissão do cliente Genius (2026-10-05)
+## Permissão do cliente nativo (2026-10-05)
 
-`sufficit-ai-genius` recebeu `gt:urn:ietf:params:oauth:grant-type:token-exchange`
-e `scp:genius.executor.delegate` (PUT de Management com `expectedVersion`;
+`example-native-app` recebeu `gt:urn:ietf:params:oauth:grant-type:token-exchange`
+e `scp:example.executor.delegate` (PUT de Management com `expectedVersion`;
 nada removido, `ft:pkce`, tempos de vida e retornos nativos preservados). A
-partir daqui a delegação está ativa ponta a ponta no servidor; o Genius local
-só a usa com `WorkspaceExecution:DelegatedCredential:Enabled=true` e um login
+partir daqui a delegação está ativa ponta a ponta no servidor; o cliente
+só a usa quando liga a delegação na própria configuração e após um login
 novo (o escopo entra no login).

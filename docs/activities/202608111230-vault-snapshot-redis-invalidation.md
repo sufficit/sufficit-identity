@@ -57,7 +57,7 @@ intervenção manual.
 
 ### Redis dedicado do cluster Apps
 
-- O cluster VoIP não é usado pelo Identity. Foi criado um cluster Redis
+- O cluster Redis de outro serviço não é usado pelo Identity. Foi criado um cluster Redis
   dedicado nos próprios hosts Apps, usando somente a VPN `suffvpn`:
   `172.19.1.113` (node-b), `172.19.2.101` (node-a) e `172.19.3.101` (node-c).
 - Cada host é um master Redis 7.0.15; os `16384` slots foram distribuídos
@@ -70,7 +70,7 @@ intervenção manual.
   dados; a fonte de verdade continua sendo o banco e o snapshot tolera a perda
   temporária de um master por TTL/miss.
 
-### Recuperação do nó Redis `node-b-voip`
+### Recuperação do nó Redis `node-b-redis`
 
 - O CT 1104 estava em `emergency.target`: as interfaces de rede estavam
   `DOWN` e o `redis-server` não havia iniciado porque três mounts GCS falhos

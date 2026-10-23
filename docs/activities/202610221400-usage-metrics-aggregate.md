@@ -13,7 +13,7 @@ resultado e o hash do usuário.
   posições, descarta se cheio). Um worker grava em lotes de 100 no banco.
   Autenticação nunca espera.
 - Exportação: o mesmo worker reenvia cada lote ao VictoriaMetrics
-  (`metrics.sufficit.com.br`, line protocol, Basic), com disjuntor.
+  (`metrics.example.com`, line protocol, Basic), com disjuntor.
 - Retenção: 90 dias por idade (`identitymetricsconfiguration`).
 - Tela de métricas do Management: agrega na consulta (total, sucesso, falha,
   aplicações distintas, série diária), período de até 366 dias.

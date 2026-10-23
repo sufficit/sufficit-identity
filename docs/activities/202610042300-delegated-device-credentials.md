@@ -1,18 +1,17 @@
 # Credencial delegada de dispositivo (troca RFC 8693 presa a DPoP)
 
-Fase 5 de `sufficit-ai-genius/docs/PLAN-REMOTE-SESSIONS-KUBERNETES.md`
-("especificação aprovada (2026-10-04)"). Um cliente de primeira parte já
-logado (o Genius local) troca o access token do usuário por uma credencial
+Especificação aprovada em 2026-10-04. Um cliente de primeira parte já
+logado (o aplicativo nativo local) troca o access token do usuário por uma credencial
 **de outro cliente** (o executor), presa à chave DPoP que o dispositivo gerou
-e nunca entrega. Quem transporta a credencial (o Run) não consegue usá-la.
+e nunca entrega. Quem transporta a credencial (o orquestrador) não consegue usá-la.
 
 O recurso é genérico do produto: "credencial delegada de dispositivo". Nada no
-código cita Genius, Run ou executor; tudo vem da configuração. Desligado por
+código cita um aplicativo, orquestrador ou executor específico; tudo vem da configuração. Desligado por
 padrão.
 
-Ponto de partida: `main` em `14772f5`, que registrou o cliente
-`sufficit-ai-genius-executor` e o escopo `genius.executor.delegate` em
-produção, inertes ([atividade anterior](202610042110-genius-executor-client.md)).
+Ponto de partida: `main` em `14772f5`, com o cliente delegado
+`example-native-app-executor` e o escopo `example.executor.delegate` já
+registrados, inertes.
 
 ## Contrato
 
@@ -63,7 +62,7 @@ aninhando a cadeia anterior, e persiste em cada refresh.
 
 Prazo absoluto: `CredentialLifetimeDays`. `ClampDelegatedCredentialLifetime`
 corta a validade de todo refresh/access token da credencial no prazo, então
-renovar não estende; só uma nova delegação (o Genius do dono) renova.
+renovar não estende; só uma nova delegação (o aplicativo do dono) renova.
 
 ## Auditoria e aviso
 
@@ -113,9 +112,9 @@ configuração depois da prática**; nenhum está fixo no código.
   "TokenExchange": {
     "DelegatedCredentials": {
       "Enabled": true,
-      "DelegatorClientIds": [ "sufficit-ai-genius" ],
-      "DelegateClientId": "sufficit-ai-genius-executor",
-      "RequiredScope": "genius.executor.delegate",
+      "DelegatorClientIds": [ "example-native-app" ],
+      "DelegateClientId": "example-native-app-executor",
+      "RequiredScope": "example.executor.delegate",
       "MaxAuthAgeHours": 12,
       "CredentialLifetimeDays": 30,
       "MaxActivePerUser": 10,
@@ -125,11 +124,11 @@ configuração depois da prática**; nenhum está fixo no código.
 } }
 ```
 
-Se `TokenExchange:AllowedClientIds` estiver configurado, `sufficit-ai-genius`
+Se `TokenExchange:AllowedClientIds` estiver configurado, `example-native-app`
 também precisa constar nele. Ordem: deploy do código → configuração acima nos
 três nós (operação de configuração separada) → **só então** conceder
-`gt:token-exchange` e `scp:genius.executor.delegate` ao cliente
-`sufficit-ai-genius`, e o Genius pedir `genius.executor.delegate` no login.
+`gt:token-exchange` e `scp:example.executor.delegate` ao cliente
+`example-native-app`, e o aplicativo pedir `example.executor.delegate` no login.
 
 ## Validação
 
@@ -151,6 +150,6 @@ três nós (operação de configuração separada) → **só então** conceder
   pelo número de corridas; o teto limita acúmulo, não é trava.
 - O rótulo exibido ao usuário é o UUID; nome amigável do ambiente exigiria um
   parâmetro novo no contrato.
-- Revogação no retire/purge do executor (Run) e no "remover sessão" do Genius
+- Revogação no retire/purge do executor (orquestrador) e no "remover sessão" do aplicativo
   é do lado deles: chamar `/connect/revocation` com o refresh token, ou o
   autoatendimento.

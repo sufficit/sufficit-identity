@@ -18,7 +18,7 @@ porque barateiam e protegem todos os outros.
 | 4 | Datas no fuso e no idioma de quem vê | feito |
 | 5 | Todo segredo exibido uma vez passa pelo popup | feito |
 | 6 | Mensagens de validação dentro da página | feito |
-| 7 | Ajustes menores (URL do erro, nginx do apoint, baseline visual) | feito |
+| 7 | Ajustes menores (URL do erro, nginx de um nó, baseline visual) | feito |
 
 ## 1. Testes de navegador na CI
 
@@ -127,8 +127,8 @@ nos dois idiomas, com o atributo de acessibilidade.
 - **URL do erro do login:** depois de exibir o erro e o carimbo, remover
   `error`, `attempt` e `at` da URL com `history.replaceState`. Recarregar não
   repete a mensagem.
-- **nginx do apoint-apps:** repassar `Upgrade`/`Connection` no proxy da
-  porta 26501, como em eveo e castrum. O Blazor deixa de cair para long
+- **nginx do app-node-2:** repassar `Upgrade`/`Connection` no proxy da
+  porta 26501, como em app-node-1 e app-node-3. O Blazor deixa de cair para long
   polling nesse nó.
 - **Baseline visual (`.impeccable/review/*.png`):** os arquivos foram
   apagados do disco sem commit e a doc `DESIGN-AUDIENCES.md` aponta para
@@ -147,7 +147,7 @@ com conferência de versão e health.
 | 4 | `20e0764` | No navegador, a mesma expiração aparece 10:30 em `America/Sao_Paulo` e 22:30 em `Asia/Tokyo`. |
 | 5 | `446b849` | Teste de arquitetura: nenhuma das 6 telas revela segredo fora do popup. |
 | 6 | `9eb9d9a` | Roteiro no navegador, com idioma do navegador diferente do da página: mensagem abaixo do campo, `aria-invalid`, foco e limpeza. |
-| 7 | `1b4038c`; sufficit-servers `357ac76`; PNGs em `49732df` | apoint abre `wss://…/_blazor` sem erro no console; URL sem `error` depois de exibir a mensagem. |
+| 7 | `1b4038c`; repositório de operação `357ac76`; PNGs em `49732df` | app-node-2 abre `wss://…/_blazor` sem erro no console; URL sem `error` depois de exibir a mensagem. |
 
 **Decisão preservada.** Os campos de filtro por data do diretório de
 usuários continuam em pt-BR mesmo com a interface em inglês. É uma escolha

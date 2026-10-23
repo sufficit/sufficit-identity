@@ -10,7 +10,7 @@ IMPORTANT: This is a COPY from the centralized version. To check if it is up to 
 compare the Revision number above with the central file in sufficit-project-management/scripts/dotnet/deploy.py.
 Purpose: Deploy .NET applications directly from source with exclusions and progress tracking.
 How it works: Loads `config.json`, resolves the project root relative to the script when local paths are not portable, optionally runs `dotnet publish` to a unique output folder, uploads the published files via SCP to a staging directory while the service keeps running, stops the service briefly for an atomic directory swap, restarts the service, and prints remote status/log information.
-Usage: Run from the project root with `python3 deploy.py <server_name> --publish`; requires `config.json`, `dotnet`, SSH access to the target host, and the private key at `~/.ssh/id_ed25519_sufficit`.
+Usage: Run from the project root with `python3 deploy.py <server_name> --publish`; requires `config.json`, `dotnet`, SSH access to the target host, and the private key at `~/.ssh/id_ed25519` (or `IDENTITY_SSH_KEY`).
 Side-effects and required permissions: Publishes application binaries locally, copies files to the remote deployment folder, updates ownership/permissions remotely, restarts the target systemd service, and requires filesystem access plus SSH permission to the target server.
 
 ═══════════════════════════════════════════════════════════════════════════════
@@ -21,12 +21,12 @@ BASIC SYNTAX:
     python deploy.py <server_name> [--publish] [--hot] [--no-clean-binaries]
 
 EXAMPLES:
-    python deploy.py node-a-voip                # Staged deploy (default): upload to .staging, brief stop for swap
-    python deploy.py node-a-voip --publish      # Publish into a unique timestamped folder, then staged deploy
-    python deploy.py node-a-voip --hot          # Hot deploy: upload live dir, no stop, then restart (risky)
-    python deploy.py node-a-voip --no-clean-binaries
-    python deploy.py node-b-voip --publish
-    python deploy.py google-voip
+    python deploy.py app-node-1                # Staged deploy (default): upload to .staging, brief stop for swap
+    python deploy.py app-node-1 --publish      # Publish into a unique timestamped folder, then staged deploy
+    python deploy.py app-node-1 --hot          # Hot deploy: upload live dir, no stop, then restart (risky)
+    python deploy.py app-node-1 --no-clean-binaries
+    python deploy.py app-node-2 --publish
+    python deploy.py app-node-3
 
 STAGED DEPLOY FLOW (default, minimum downtime):
     1. SCP upload → /opt/app.staging/       (service keeps running)
@@ -43,16 +43,16 @@ JSON-ONLY CHANGE GUIDANCE:
     Use full deploy again when binaries, scripts, helpers, or any non-json runtime assets changed.
 
 USAGE FROM PROJECT DIRECTORY:
-  cd z:\Desenvolvimento\sufficit-asterisk-api
-  python deploy.py node-a-voip
+  cd <project directory>
+  python deploy.py app-node-1
 
 USAGE FROM CENTRAL SCRIPTS DIRECTORY:
-  cd z:\Desenvolvimento\scripts\dotnet
+  cd <central scripts directory>
   python deploy.py <project_name> <server_name>
 
 REQUIREMENTS:
   1. Python 3.6+ installed
-  2. SSH key at ~/.ssh/id_ed25519_sufficit configured
+  2. SSH key at ~/.ssh/id_ed25519, or the path in IDENTITY_SSH_KEY
   3. config.json file in the same directory as deploy.py
   4. Publish folder already created (publish-net10.0 or publish-net7.0)
   5. Network access to target server on port 26492
@@ -60,18 +60,18 @@ REQUIREMENTS:
 CONFIG.JSON STRUCTURE:
   {
     "servers": [
-      {"name": "node-a-voip", "dotnet": "net10.0"},
-      {"name": "node-b-voip", "dotnet": "net10.0"},
-      {"name": "google-voip", "dotnet": "net7.0"}
+      {"name": "app-node-1", "dotnet": "net10.0"},
+      {"name": "app-node-2", "dotnet": "net10.0"},
+      {"name": "app-node-3", "dotnet": "net7.0"}
     ],
-    "folder": "/opt/sufficit-asterisk-api",
-    "systemd_service": "sufficit-asterisk-api.service",
+    "folder": "/opt/sufficit-identity",
+    "systemd_service": "sufficit-identity.service",
     "deployment": {
       "excluded_folders": [],
       "auto_deploy": {
         "enabled": true,
         "skip_confirmation": true,
-        "enabled_servers": ["node-a-voip", "node-b-voip"],
+        "enabled_servers": ["app-node-1", "app-node-2"],
         "manual_only_servers": []
       },
       "publish_targets": [
@@ -218,8 +218,11 @@ def resolve_project_root(config):
 
 
 def get_ssh_key_path():
-    """Resolve the SSH key path portably across Linux/Windows style environments."""
-    return str(Path.home() / ".ssh" / "id_ed25519_sufficit")
+    """Resolve the SSH key path portably; IDENTITY_SSH_KEY overrides the default."""
+    configured = os.environ.get("IDENTITY_SSH_KEY")
+    if configured:
+        return os.path.expandvars(os.path.expanduser(configured))
+    return str(Path.home() / ".ssh" / "id_ed25519")
 
 
 def _get_remote_path(config):

@@ -1,12 +1,11 @@
-# Genius integration OAuth: Calendar scopes and central GitLab client
+# Integration OAuth: Calendar scopes and central GitLab client
 
 Issues:
 
 - Identity [#45](https://github.com/sufficit/sufficit-identity/issues/45)
-- Genius [#280](https://github.com/sufficit/sufficit-ai-genius/issues/280)
 
 The subject-bound integration broker now requests the Google Calendar scopes
-needed by Genius alongside Gmail and Docs. A stored Google grant that does not
+needed by a native client alongside Gmail and Docs. A stored Google grant that does not
 contain every required scope is reported as disconnected and access returns
 `authorization_required`, so the app starts the normal provider flow again
 instead of failing a Calendar tool later.
@@ -20,7 +19,7 @@ application, requests `api`, adds PKCE, and keeps its client credentials only in
 the deployment secret boundary. User access and refresh tokens remain encrypted
 and subject-bound in each user's personal Vault.
 
-The `api` scope lets Genius use GitLab's stable REST API even when
+The `api` scope lets the client use GitLab's stable REST API even when
 `/api/v4/mcp` returns the documented eligibility 404 for accounts without an
 enabled top-level group. Existing `mcp`-only grants are reported as incomplete
 and go through the normal provider authorization flow once; no PAT is requested.
@@ -33,7 +32,7 @@ Evidence:
 - the complete Identity suite passed (875/875);
 - production release `20260826-gitlab-oauth-02d30c0` is uniform and healthy on
   all three Identity nodes;
-- on the physical Lenovo tablet, the catalog reported GitLab connected with
+- on a physical tablet, the catalog reported GitLab connected with
   eight tools, the model selected `mcp__gitlab__list_projects`, and the REST
   fallback completed successfully; the tested account correctly returned an
   empty project list;

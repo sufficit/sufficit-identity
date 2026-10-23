@@ -11,7 +11,7 @@ autorização, a tela terminal só explicava como fechá-la manualmente.
 ## Entrega
 
 - O fluxo preserva `launch_mode=app` e um `return_uri` somente quando o endereço
-  corresponde ao callback fixo `sufficit-genius://auth-complete`.
+  corresponde ao callback fixo `example-native-app://auth-complete`.
   > Superado em 2026-08-26: o callback deixou de ser fixo e virou registro por
   > cliente — ver
   > [202608260133-native-return-uris-per-client](202608260133-native-return-uris-per-client.md).

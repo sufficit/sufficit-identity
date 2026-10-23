@@ -143,5 +143,6 @@ RFC 8414 requires alongside `private_key_jwt`.
 ## Deployed
 
 Released to the three production nodes on 2026-09-18 as `1feceae`, together
-with the Fleet SSO branch that production was already running; see
-`docs/activities/202609181200-deploy-conformance-fixes.md`.
+with the first-party user scopes branch that production was already running
+(`FirstPartyUserScopePolicy`, see
+[RUNBOOK-FIRST-PARTY-USER-SCOPES](../runbooks/RUNBOOK-FIRST-PARTY-USER-SCOPES.md)).

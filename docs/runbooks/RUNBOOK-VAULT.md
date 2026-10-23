@@ -47,7 +47,7 @@ pelo certificado dedicado acima, nunca pelo certificado de assinatura. Não
 altere `DataProtectionPurpose` depois de haver dados cifrados.
 
 Em hosts que não recebem segredos por um volume efêmero do supervisor, a
-implantação Sufficit mantém o PFX em
+implantação de referência mantém o PFX em
 `/etc/sufficit/identity/vault-kek.pfx` e define
 `Sufficit__Vault__CertificatePath` para esse caminho persistente. O caminho
 `/run/secrets/sufficit-vault-kek.pfx` continua válido quando o ambiente fornece
@@ -173,7 +173,7 @@ Para o cluster de produção Apps, configure
 `SUFFICIT_SECRET_DISTRIBUTED_CACHE_CONNECTION_STRING` com os três endpoints
 Redis privados da VPN (`172.19.1.113`, `172.19.2.101` e `172.19.3.101`) e
 mantenha `Sufficit:Identity:DistributedCache:RequireShared=true`. Esse Redis é
-dedicado ao Identity; não use o cluster Redis da infraestrutura VoIP.
+dedicado ao Identity; não compartilhe o Redis de outras aplicações.
 O host registra AddStackExchangeRedisCache antes do STS; sem essa variável, o
 fallback é MemoryDistributedCache, adequado somente para uma réplica.
 
@@ -313,8 +313,8 @@ dessas superfícies auxiliares para o vault é uma etapa posterior.
 
 ## Consumo remoto (consolidação 2026-08)
 
-O vault do Identity é o cofre central da Sufficit. O `sufficit-ai` retirou o
-vault próprio (`arin_secrets` + Data Protection) e consome este via REST.
+O vault do Identity pode ser o cofre central do deployment: serviços consumidores
+(ex.: `example-service`) deixam o cofre próprio e consomem este via REST.
 
 Superfície para consumidores remotos:
 
@@ -333,18 +333,16 @@ Superfície para consumidores remotos:
   próprio handler de client-credentials ao `IHttpClientBuilder` retornado por
   `AddSufficitVaultSecretsClient`.
 
-Para autorizar um serviço (ex.: `SufficitAIServer`): conceda o scope
+Para autorizar um serviço (ex.: `example-service`): conceda o scope
 `identity.management` e as capabilities de vault via claims `permission`
 (`identity.vault.secrets.read`, `.manage`, `.resolve`). Atenção ao
 `RequireMfa` do management: principais de serviço não carregam `amr`, então a
 implantação precisa de política compatível para esses clientes.
 
-Os segredos do sufficit-ai vivem no namespace `ai/` (nome = `ai/<referência>`).
-Contextos usados pelo AI: `<guid>` do tenant para segredos compartilhados no
-tenant, e `user-<guid>` para segredos pessoais (contexto nulo/vazio no AI
-significa "somente do usuário proprietário" — não existe tier global
-compartilhado). A cópia one-shot roda no sufficit-ai com
-`Sufficit:AI:Vault:MigrateLegacySecrets=true`; linhas globais legadas migram
-para o contexto pessoal do dono, e as sem dono para `legacy-unassigned`
-(reatribuir manualmente). A tabela legada `arin_secrets` só é removida
-manualmente após a validação.
+Convenção sugerida para um consumidor: namespace próprio (ex.: `svc/<referência>`),
+contexto `<guid>` do tenant para segredos compartilhados no tenant e
+`user-<guid>` para segredos pessoais (contexto nulo/vazio significando "somente
+do usuário proprietário" — sem tier global compartilhado). Ao migrar um cofre
+legado do consumidor, linhas globais sem dono devem ir para um contexto como
+`legacy-unassigned` e ser reatribuídas manualmente; a tabela legada só é
+removida após a validação.

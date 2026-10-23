@@ -5,9 +5,9 @@
 Two distinct audiences share the same surface, with very different mental models:
 
 1. **End users (the people logging in).** People authenticating for a relying
-   application. In the Sufficit deployment these include subscribers and account
-   holders of telephony, provisioning and billing products, but the provider does
-   not encode those business domains. Their context when reaching the Identity UI
+   application. In a typical deployment these include subscribers and account
+   holders of the relying products, but the provider does not encode those
+   business domains. Their context when reaching the Identity UI
    is usually *interrupted*: they were doing something in another product, were
    redirected to login or consent, and want to return quickly. Their job-to-be-done is
    "authenticate and return." Trust signals matter — a login screen that looks
@@ -17,15 +17,14 @@ Two distinct audiences share the same surface, with very different mental models
 
 2. **Provider operators.** People granted explicit provider-management
    capabilities by the composition host. They create clients, manage scopes,
-   inspect sessions, rotate secrets and provision identities. Sufficit business
+   inspect sessions, rotate secrets and provision identities. Deployment business
    roles such as administrator, manager or reseller are not part of the generic
    user model. Operator workflows are deliberate and audit-oriented; they need
    density and clarity rather than marketing polish.
 
 ## Product Purpose
 
-Sufficit Identity is a generic OAuth/OIDC identity provider with first-class
-compatibility for the Sufficit platform. Its embedded UIs replace the legacy
+Sufficit Identity is a generic OAuth/OIDC identity provider. Its embedded UIs replace the legacy
 Skoruba-based frontend with secure, fast server-rendered surfaces. OpenIddict
 and ASP.NET Core Identity are the current runtime adapters, not permanent UI
 contracts.

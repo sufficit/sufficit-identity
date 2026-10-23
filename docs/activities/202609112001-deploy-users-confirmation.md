@@ -56,7 +56,7 @@ sem falhas de inicialização, erros críticos ou exceções não tratadas.
 Verificação final executada:
 
 ```sh
-IDENTITY_SSH_KEY=/home/hugodeco/.ssh/id_ed25519_sufficit helpers/verify-production-cluster.sh 03243f37748f1332eacccf5405147d3db3cc0155
+IDENTITY_SSH_KEY=$HOME/.ssh/<deploy-key> helpers/verify-production-cluster.sh 03243f37748f1332eacccf5405147d3db3cc0155
 ```
 
 Backup anterior preservado em cada nó:

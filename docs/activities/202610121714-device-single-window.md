@@ -1,7 +1,7 @@
 # Autenticação de dispositivo em uma única janela
 
 ## Problema e mudança
-As capturas do usuário mostravam o Genius abrindo /device/launch, seguido de
+As capturas do usuário mostravam um client nativo abrindo /device/launch, seguido de
 um clique em Abrir autenticação para abrir um segundo popup. O launcher foi
 introduzido para facilitar fechamento automático, mas acrescentava uma etapa
 redundante ao login.
@@ -10,8 +10,8 @@ DeviceBrowserLaunch agora responde HTTP 302 para /connect/device com o código
 público validado e launch_mode=popup. O destino é relativo e fixo; parâmetros
 extras não são encaminhados. Mantidos no-store, no-referrer e COOP.
 Login, consentimento explícito, tickets protegidos e polling OAuth permanecem
-nos endpoints existentes. Genius instalado já usa essa rota e recebe a mudança
-sem precisar de atualização do cliente. Nenhum arquivo Genius foi alterado.
+nos endpoints existentes. O client nativo instalado já usa essa rota e recebe a mudança
+sem precisar de atualização do cliente. Nenhum arquivo do client foi alterado.
 
 ## Decisões e referências
 - Capturas e pedido do usuário: remover clique intermediário e popup filho.

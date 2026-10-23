@@ -118,7 +118,7 @@ found it.
 
 - [Audience management](management/USAGE-AUDIENCES.md) — inventory, scope bindings, permissions and audit.
 
-- [Opening and closing the Device Flow in a popup](design/DESIGN-DEVICE-FLOW-POPUP.md) — launcher for Symposium, messaging and browser limits.
+- [Opening and closing the Device Flow in a popup](design/DESIGN-DEVICE-FLOW-POPUP.md) — launcher for native clients, messaging and browser limits.
 
 - [Browser, API and Playwright classification](networking/USAGE-BROWSER-API-CLASSIFICATION.md) — HTML/JSON presentation rules, limits and reuse.
 

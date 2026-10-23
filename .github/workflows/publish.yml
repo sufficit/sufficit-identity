@@ -1,6 +1,6 @@
 name: Publish Packages
 
-# Sufficit.Identity.Vault.Client was consumed by sufficit-ai and sufficit-endpoints
+# Sufficit.Identity.Vault.Client was consumed by downstream services
 # through an Exists() sibling checkout, with a PackageReference fallback that could
 # never resolve: nothing here had ever been published. Any build without the
 # sibling on disk failed on NU1101.

@@ -15,7 +15,7 @@ error_uri:https://documentation.openiddict.com/errors/ID2013
 
 ## Root cause
 
-- The relying party (`SufficitBlazorServer`, .NET 10 OIDC client /
+- The relying party (`example-app`, .NET 10 OIDC client /
   IdentityModel 8.19.2) uses **PAR automatically** whenever the discovery
   document advertises `pushed_authorization_request_endpoint` (confirmed
   present; `request_uri_parameter_supported=false`, so PAR is the only path).

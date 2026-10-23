@@ -27,8 +27,8 @@ para o operador.
 
 O projeto é público e reutilizável por qualquer pessoa ou organização. Não deve
 incorporar o modelo de negócio da mantenedora nem de aplicações consumidoras:
-regras comerciais, permissões de domínio, integrações financeiras ou de telefonia
-e fluxos exclusivos de outros produtos pertencem aos respectivos consumidores.
+regras comerciais, permissões de domínio, integrações financeiras ou de
+negócio e fluxos exclusivos de outros produtos pertencem aos respectivos consumidores.
 Claims, scopes, capabilities e contextos são mecanismos genéricos; seus valores de
 negócio são definidos pelas implantações e pelos clientes, sem interpretação pelo
 Identity. Exemplos e instruções devem usar serviços e aplicações fictícios.
@@ -75,9 +75,8 @@ e o sistema visual documentado em `docs/design/` são a autoridade da interface.
 
 - Diagnóstico do incidente legado:
   `/mnt/sufficit/sufficit-identity-legacy/docs/202608042100-production-resilience.md`.
-- Implementação e captura da tela legada de conexões em
-  `/mnt/sufficit/sufficit-web/src/WebUserControls/WUCConexoes.ascx` e no anexo
-  fornecido pelo usuário.
+- Implementação e captura da tela legada de conexões do sistema web anterior,
+  no anexo fornecido pelo usuário.
 - Definição de produto, sistema visual e arquitetura em `docs/design/` e
   `docs/architecture/`.
 - O runtime fornece dados reais; a interface não deve fabricar demonstrações,

@@ -1,6 +1,6 @@
 # Device flow em popup
 
-O Genius usa o Device Authorization Grant (RFC 8628). Quando o cliente consegue
+Um client nativo usa o Device Authorization Grant (RFC 8628). Quando o cliente consegue
 abrir uma janela controlada por script, ele acrescenta `launch_mode=popup` à
 `verification_uri_complete`:
 
@@ -38,7 +38,7 @@ dispositivo, token, identificador de usuário ou URL de retorno. O destino `*`
 webview com outra origem; o controle de segurança fica na validação do
 chamador.
 
-Exemplo de abertura no Hermes ou em outra UI web:
+Exemplo de abertura em uma UI web:
 
 ```js
 const popup = window.open(
@@ -66,7 +66,7 @@ o navegador pode não considerar a aba scriptável. Nesse caso o Identity não
 força o fechamento: exibe a instrução de fechamento manual para não esconder
 o resultado do usuário.
 
-## Genius e abertura externa
+## Client nativo e abertura externa
 
 Clientes desktop já instalados podem abrir
 `/device/launch?user_code=...&launch_mode=popup`. Essa rota anônima redireciona
@@ -79,7 +79,7 @@ Aceita somente código público curto (até 64 caracteres ASCII alfanuméricos,
 espaços e hífens) e monta um destino relativo fixo. Parâmetros adicionais,
 incluindo URLs de retorno e device_code, não são repassados.
 
-O polling OAuth do token no Genius continua sendo a autoridade para concluir
+O polling OAuth do token no client nativo continua sendo a autoridade para concluir
 o login. O marcador `launch_mode=popup` permite a conclusão existente, mas
 não torna uma aba aberta pelo sistema operacional scriptável: quando o
 navegador recusa fechamento automático, a página final orienta o fechamento

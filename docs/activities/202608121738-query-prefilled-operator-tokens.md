@@ -29,7 +29,7 @@ Parâmetros de query string:
 Exemplo para editar clientes:
 
 ```text
-https://identity.example.com/management/tokens?action=issue&purpose=Atualizar%20clientes%20Hermes%20e%20Symposium&lifetimeSeconds=900&capability=identity.clients.read&capability=identity.clients.update
+https://identity.example.com/management/tokens?action=issue&purpose=Atualizar%20clientes%20example-app&lifetimeSeconds=900&capability=identity.clients.read&capability=identity.clients.update
 ```
 
 Abertura da URL não emite token. O operador precisa estar autenticado, cumprir
@@ -75,6 +75,5 @@ Sufficit__Identity__Management__TemporaryOperatorToken__Enabled=true
   global (`Inter` e um acento lateral antigo), sem ocorrência nova nesta tela;
 - `git diff --check`: sem erros de whitespace.
 
-O trabalho anterior sobre validade de tokens do Hermes e Symposium foi
-preservado separadamente em
-`docs/activities/202608121721-hermes-symposium-token-lifetimes-handoff.md`.
+O trabalho anterior sobre validade de tokens de clientes foi preservado
+separadamente.

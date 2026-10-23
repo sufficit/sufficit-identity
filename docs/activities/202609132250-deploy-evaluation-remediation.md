@@ -17,7 +17,7 @@ per-registrant DCR initial access tokens with their console page.
   token requirement does not change registration behavior.
 - `ExternalIdentities:RequireVerifiedEmail` defaults to true, so the new
   posture finding does not fire.
-- No other repository under `/mnt/sufficit` reads `urn:sufficit:acr`,
+- No consumer repository of the deployment reads `urn:sufficit:acr`,
   `urn:sufficit:claim:address`, `urn:sufficit:credential-type` or
   `urn:sufficit:token:`.
 
@@ -30,9 +30,9 @@ all three nodes, installed before activation:
 
 | Setting | Value | Why |
 |---|---|---|
-| `AuthenticationContext:AcrPrefix` | `urn:sufficit:acr:` | `acr` emitted to relying parties |
-| `PersonalTokens:ClientId` | `SufficitAPIUserAccess` | `client_id` of new personal access tokens |
-| `Branding:ProductName` | `Sufficit Identity` | e-mail subjects and authenticator issuer |
+| `AuthenticationContext:AcrPrefix` | the deployment's previous prefix (e.g. `urn:example:acr:`) | `acr` emitted to relying parties |
+| `PersonalTokens:ClientId` | the deployment's previous client id (e.g. `example-personal-tokens`) | `client_id` of new personal access tokens |
+| `Branding:ProductName` | the deployment's product name | e-mail subjects and authenticator issuer |
 
 The running process environment on each node contains the three values.
 

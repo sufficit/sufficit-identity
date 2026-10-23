@@ -37,7 +37,7 @@ the capability would have blocked ordinary client creation too.
 
 The refusal is `StepUpRequired`/`fresh_mfa_required`, which sends the operator
 to `/account/reauthenticate` — the ceremony that signs the remembered cookie
-out and asks for the factor again. Fleet already drives token management this
+out and asks for the factor again. A management client can drive token management this
 way, with `prompt=login` and `max_age=0`.
 
 A deployment that does not require MFA for Management is left alone. There is

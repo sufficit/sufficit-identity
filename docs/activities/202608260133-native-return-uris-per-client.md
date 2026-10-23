@@ -5,11 +5,11 @@
 O serviço de identidade é genérico: qualquer empresa pode subir sua própria
 instância. Mesmo assim, o retorno nativo do Device Authorization Grant estava
 gravado no código — `DeviceAuthorizationReturnTargets` continha
-`sufficit-genius://auth-complete` e `sufficit-aigenius://auth-complete`, e
+dois esquemas privados de um aplicativo específico (`<app>://auth-complete`), e
 qualquer cliente do servidor era aceito nesses endereços. Outros pontos
 carregavam a mesma marca: `client_name` fixo na registration dinâmica, o
 allowlist `Mcp.ImplicitClientIds` com valor embutido, a string
-`Device.ReturnToGenius` na tela terminal e o `client_id` do seeder de testes.
+`Device.ReturnTo<App>` específica do aplicativo na tela terminal e o `client_id` do seeder de testes.
 
 ## Entrega
 
@@ -33,15 +33,15 @@ allowlist `Mcp.ImplicitClientIds` com valor embutido, a string
   não depende mais de um endereço embutido.
 - `client_name` da registration dinâmica vem do display name do cliente
   chamador; `Mcp.ImplicitClientIds` não tem mais default; `Device.ReturnToApp`
-  substituiu `Device.ReturnToGenius`; seeder de testes usa
+  substituiu a string específica do aplicativo; seeder de testes usa
   `test-device-client`/`test-ropc` com callbacks próprios.
 
 ## Migração
 
-O cliente `sufficit-ai-genius` já implantado precisa registrar seus dois
-callbacks (`PUT /api/clients/sufficit-ai-genius` com `nativeReturnUris`) e o
+O cliente nativo já implantado (ex.: `example-native-app`) precisa registrar seus dois
+callbacks (`PUT /api/clients/example-native-app` com `nativeReturnUris`) e o
 `appsettings.json` de produção — que não é versionado — precisa manter
-`Sufficit:Identity:Mcp:ImplicitClientIds` com `sufficit-ai-genius`. O template
+`Sufficit:Identity:Mcp:ImplicitClientIds` com esse cliente. O template
 do repositório agora vem com a lista vazia, porque é o arquivo que qualquer
 empresa copia. Detalhes em
 [ARCHITECTURE-NATIVE-RETURN-URIS](../architecture/ARCHITECTURE-NATIVE-RETURN-URIS.md).

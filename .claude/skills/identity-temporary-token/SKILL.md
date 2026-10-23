@@ -76,8 +76,7 @@ Note the path: the **UI** lives under `/management/`, the **API** does not.
 ## Where provisioning manifests live
 
 Each product keeps its Identity provisioning manifest **in its own
-repository**, at the repository root: `identity-manifest.v1.json` (current
-examples: `sufficit-ai`, `sufficit-network-control`, `sufficit-phone`).
+repository**, at the repository root: `identity-manifest.v1.json`.
 Identity validates the
 schema at `preview` and applies the plan at `apply`; it does not store or
 centralize the manifest. So a scope or entitlement change is a pull request
