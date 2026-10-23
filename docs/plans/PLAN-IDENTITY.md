@@ -245,11 +245,6 @@ The accepted warning and skips (`FAPIEnsureServerConfigurationDoesNotSupport`
 
 ### C1 — Vault production enablement and rotation
 
-- [ ] **(operational)** Escrow the KEK (`vault-kek.pfx` and its password)
-  somewhere other than the operator workstation: the app CTs have no vzdump,
-  so a lost workstation plus three lost nodes leaves the database backups
-  undecryptable (restore proof and `SecretMigrationComplete`:
-  [`202610221930`](../activities/202610221930-vault-restore-proof-and-claim-inventory.md))
 - [ ] Add an authorized rotation orchestrator with a distributed lock, progress
   journal, rewrap/re-encrypt strategy, rollback window and audit events
 - [ ] **(operational)** Separate database-reader authority from KEK authority
@@ -257,8 +252,11 @@ The accepted warning and skips (`FAPIEnsureServerConfigurationDoesNotSupport`
 - [ ] Tests: loss/recovery, old-version decrypt, concurrent rotate/encrypt,
   disaster restore
 
-The vault module itself (phases 1–3: envelope crypto, named secrets, signing
-keys) is delivered; `KeySource=certificate` with a dedicated KEK is deployed on
+The KEK is escrowed by a daily vzdump of `apoint-apps` (CT 1101) to the
+`nas-sufficit` NAS since 2026-10-23 —
+[`202610231900`](../activities/202610231900-vault-kek-escrow.md). The vault
+module itself (phases 1–3: envelope crypto, named secrets, signing keys) is
+delivered; `KeySource=certificate` with a dedicated KEK is deployed on
 the three nodes. Procedure lives in `../runbooks/RUNBOOK-VAULT.md`.
 
 ### C2 — Signing and encryption key separation
@@ -687,7 +685,7 @@ Deliberately after everything above; none of it is required for production.
 
 ## Execution order
 
-1. **C1** — the KEK escrow and the vault rotation orchestrator
+1. **C1** — the vault rotation orchestrator
 2. **A1** — operator entitlements
 3. **B1** — answer the unified-service question before B2, B3 and B5's kernel
    item, which were written assuming it
