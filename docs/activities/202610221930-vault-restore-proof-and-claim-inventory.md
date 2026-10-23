@@ -73,3 +73,14 @@ Agora tokens, introspecção e userinfo levam a concessão só como
 `entitlements`; um valor ainda guardado como `directive` é renomeado na saída
 (`NormalizeEntitlementClaimName`), e contas de serviço deixam de receber a
 cópia. O mapeamento `directive` → `directives` continua para esse caso.
+
+## Ponte de compatibilidade desligada (23/10/2026)
+
+Desde 22/10 17:00 nenhum nó registrou "Claim inventory: unmapped claim type",
+com tráfego de todos os grants (refresh ~6,9 mil, client credentials ~4,3 mil,
+authorization code ~600, PAR, device, enrollment). `ClaimScopeMap:
+IncludeUnmappedClaimsInAccessTokens=false` nos três nós (backup
+`appsettings.Production.json.bak-unmapped-claims-20261023`, reinício um a um);
+o aviso de postura `access-token-unmapped-claims` saiu e nenhum consumidor
+(AI, endpoints, blazor) registrou negação depois. Claim nova agora só chega a
+um token se for mapeada.

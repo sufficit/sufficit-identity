@@ -165,8 +165,6 @@ writing.
 Inventory done and standard claims gated by their scope
 ([`202610221930`](../activities/202610221930-vault-restore-proof-and-claim-inventory.md)).
 
-- [ ] **(operational)** When no node logs "Claim inventory: unmapped claim
-  type" any more, set `IncludeUnmappedClaimsInAccessTokens=false`
 - [ ] Add `IClaimReleasePolicy` considering client, grant, scopes, resources
   and destination
 
