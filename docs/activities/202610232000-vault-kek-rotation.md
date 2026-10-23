@@ -50,3 +50,17 @@ dados em outra réplica.
 O `vault-kek.previous.pfx` saiu dos três nós: tinha a mesma chave pública do
 `vault-kek.pfx` (reemissão de agosto que só estendeu a validade) e nada o
 referenciava.
+
+## Ensaio em produção (23/10)
+
+Deploy nos três nós e `--rewrap-vault-kek` no eveo sem KEK anterior
+configurada (`kek-rehearsal-20261023`): key-ring do Data Protection 1 chave já
+sob a KEK ativa; `vaultkeys` 3 linhas já sob a KEK ativa e **2 que nenhuma KEK
+abre**: `identity-metrics-export:1` e `personal-secrets:1`. As duas têm 132
+bytes com o cabeçalho `09F0C9F0` do Data Protection — embrulhadas em agosto,
+quando `KeySource` era `dataprotection`, e nunca migradas; o key-ring daquela
+época já expirou. Nenhum dado as usa (a configuração de métricas está na
+versão 2; nenhuma coluna cifrada aponta para `personal-secrets`, e o código não
+usa mais esse nome). O `--verify-vault` não as via porque só confere segredos
+nomeados e segundo fator. Saída 1, journal não gravado, auditoria com
+`failed`.
