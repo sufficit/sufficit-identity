@@ -205,11 +205,9 @@ the runtime capability is not advertised.
 
 ### B7 — Consent configuration fails closed
 
-- [ ] **(operational)** Backfill null/unknown consent values to the intended
-  legacy mode before enforcing validation
-
-`AuthorizationConsentPolicy` already maps missing or unrecognized legacy
-metadata to interactive consent at runtime; the data cleanup is what is left.
+Delivered: the one client without a consent type was backfilled to `explicit`,
+what the runtime already applied —
+[`202610231700`](../activities/202610231700-csp-inline-styles.md).
 
 ### B8 — Per-client OAuth resource validation
 
@@ -305,12 +303,13 @@ UnixSocket exception; production still has to choose the mode.
 
 ### D1 — CSP from telemetry to enforcement
 
-- [ ] Extract the inline `style="…"` attributes from the management pages.
-  A per-request nonce for `<style>` elements already exists (`Csp:UseNonce`,
-  opt-in), but a nonce cannot authorize an attribute, and Firefox has no
-  `style-src-attr`. Production enforces CSP (`ReportOnly=false`, nonce on)
-  with `style-src 'unsafe-inline'` because of them; 9 attributes remain in
-  Branding, Audit, Users, Metrics and Database
+- [ ] Set `Csp:StyleAttributes=Block` (`style-src-attr 'none'`) once the
+  report-only header production carries since 2026-10-23
+  (`StyleAttributes=Report`) stays quiet. Two known reporters first: the
+  `SUIFormGrid` fix (sufficit-blazor-ui `2f3016a`) needs a SUI release, held
+  by that repository's failing CSS-budget gate, and the reCAPTCHA widget shown
+  by D6 may set style attributes of its own —
+  [`202610231700`](../activities/202610231700-csp-inline-styles.md)
 - [ ] Make the report-only rollback switch bounded: `AcknowledgeReportOnly` has
   no expiry (reports already strip query and userinfo)
 
@@ -699,18 +698,17 @@ Deliberately after everything above; none of it is required for production.
 2. **A1** — operator entitlements
 3. **B1** — answer the unified-service question before B2, B3 and B5's kernel
    item, which were written assuming it
-4. **B7, B8** — independent of the kernel, both operational
-5. **D4, D2, D3, D5** — the enforcement and topology inventories, together,
+4. **D4, D2, D3, D5** — the enforcement and topology inventories, together,
    per environment. They are what turns Observe into Enforce, and what clears
    the last advisory the posture check reports at every startup:
    `token-exchange-enabled-by-default` clears when D4 declares
    the switch
-6. **E1** — enforcement first, UI last. E3's disable action waits on it
-7. **E5, E6** — console consistency and the mobile pass; independent of the
+5. **E1** — enforcement first, UI last. E3's disable action waits on it
+6. **E5, E6** — console consistency and the mobile pass; independent of the
    protocol work and safe to run in parallel with it
-8. **E2, E4, E7, F1–F14** — as capacity allows, in the order the team prefers;
+7. **E2, E4, E7, F1–F14** — as capacity allows, in the order the team prefers;
    none of them blocks another
-9. **G** — conformance, audit, cutover and rehearsals, continuously, and G4
+8. **G** — conformance, audit, cutover and rehearsals, continuously, and G4
    before anyone calls the legacy migration finished
 
 What has already been delivered is in `../activities/`, dated, not here: this
