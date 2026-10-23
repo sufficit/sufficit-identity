@@ -41,7 +41,7 @@ There are ten `.csproj` files in one solution:
 
 | Product module | Source | Projects | Runtime |
 | --- | --- | --- | --- |
-| Neutral application contracts | `src/application/Sufficit.Identity.Application.Abstractions` | `Application.Abstractions` | Packable library with no project dependencies |
+| Neutral application contracts | [`src/application/Sufficit.Identity.Application.Abstractions`](../../src/application/Sufficit.Identity.Application.Abstractions/README.md) | `Application.Abstractions` | Packable library with no project dependencies |
 | Neutral UI hosting contracts | `src/ui/Sufficit.Identity.UI.Abstractions` | `UI.Abstractions` | Packable library with no runtime or UI implementation dependency |
 | Identity runtime and APIs | `src/core`, `src/sts`, `src/management`, `src/scim`, `src/server`, `src/tests` | `Core`, `STS`, `Management`, `Scim`, `Server`, `Tests` | `Server` is the only executable |
 | Public and account UI | `src/ui/Sufficit.Identity.UI` | `Sufficit.Identity.UI` | RCL embedded in `Server` |

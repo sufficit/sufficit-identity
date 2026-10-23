@@ -134,3 +134,5 @@ CI runs on GitHub Actions with real MariaDB 10.4.34, `-warnaserror`, SHA-verifie
 ## Documentation
 
 See the [documentation index](docs/README.md) for architecture, design, runbooks, active plans, and completed work records.
+
+Contributors and coding agents: read the [contributor instructions](AGENTS.md) first. External protocol conformance runs in the [OpenID conformance environment](conformance/README.md).

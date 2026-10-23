@@ -30,6 +30,8 @@ out of scope.
 
 ## External conformance
 
+The disposable test environment and how to run the suite: [OpenID conformance environment](../../conformance/README.md).
+
 Every claim here is backed by tests inside this repository, which show the
 behavior the code intends. The OpenID Foundation conformance suite shows how an
 independent implementation sees the same server: `conformance/` builds a

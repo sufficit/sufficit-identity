@@ -1,5 +1,7 @@
 # Deployment configuration
 
+The generic deployment script and its `config.json` are described in [DEPLOY.md](../../DEPLOY.md).
+
 ## Persistent OpenID Connect certificate
 
 The OpenIddict signing/encryption certificate is persistent cluster state. Its

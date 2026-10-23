@@ -48,6 +48,7 @@ found it.
 
 ## Completed work (activities/)
 
+- [Password recovery by link](activities/202610071840-password-recovery-link.md) — operators request a reset e-mail to the confirmed address; the account holder sets the password in Identity
 - [Delegated device credentials](activities/202610042300-delegated-device-credentials.md) — a trusted client exchanges a fresh user token for another client's refresh token, bound to the device's DPoP key; off by default
 - [The secret scan was reporting the secret store](activities/202609202100-secret-scan-false-positive.md) — a finding that fired on every correctly-configured node, found in the production journal
 - [SCIM decides each operation on its own terms](activities/202609201900-scim-per-operation.md) — provisioning no longer carries deletion and password reset with it
@@ -105,6 +106,11 @@ found it.
 - [Single-source UI boundary](architecture/ARCHITECTURE-SINGLE-SOURCE-UI.md)
 - [Management authorization boundary](architecture/ARCHITECTURE-MANAGEMENT-AUTHORIZATION.md)
 - [Public UI architecture](architecture/ARCHITECTURE-PUBLIC-UI.md)
+- [Host profiles: one binary, two planes](architecture/ARCHITECTURE-HOST-PROFILES.md)
+- [Client credentials and authentication methods](architecture/ARCHITECTURE-CLIENT-AUTHENTICATION-CREDENTIALS.md)
+- [Session validity: from polling to notification](architecture/ARCHITECTURE-SESSION-VALIDITY.md)
+- [Native return URIs](architecture/ARCHITECTURE-NATIVE-RETURN-URIS.md)
+- [Integration OAuth broker](architecture/ARCHITECTURE-INTEGRATION-OAUTH-BROKER.md)
 
 ## Design
 
@@ -129,6 +135,9 @@ found it.
 - [Embedded public and Management UIs](usage/USAGE-EMBEDDED-UI.md)
 - [Identity MCP — Vault and self-service](usage/USAGE-IDENTITY-MCP.md)
 - [SCIM 2.0](usage/USAGE-SCIM.md)
+- [Personal tokens: scope and authorization](usage/USAGE-PERSONAL-TOKENS.md)
+- [System users](usage/USAGE-SYSTEM-USERS.md) — ordinary users without e-mail, password, external login or passkey
+- [Administrative password recovery by e-mail](management/USAGE-PASSWORD-RECOVERY.md)
 - [Database migration assets](migration/README.md)
 
 ## Operations
@@ -141,10 +150,17 @@ found it.
 - [CSP calibration](runbooks/RUNBOOK-CSP-CALIBRATION.md)
 - [Confirmed-email rollout](runbooks/RUNBOOK-CONFIRMED-EMAIL.md)
 - [Internal vault](runbooks/RUNBOOK-VAULT.md)
+- [Cluster rolling deployment](runbooks/RUNBOOK-CLUSTER-ROLLING-DEPLOY.md)
+- [mTLS activation on a dedicated port](runbooks/RUNBOOK-MTLS-NODE-A.md)
+- [FAPI 2.0, JARM and Shared Signals rollout](runbooks/RUNBOOK-FAPI-SHARED-SIGNALS.md)
+- [Administrative authenticator recovery](runbooks/RUNBOOK-ADMIN-MFA-RECOVERY.md)
+- [Application usage metrics](operations/USAGE-APPLICATION-METRICS.md) — successful and rejected OAuth/OIDC operations per `client_id`
+- [Authorized scope for external security testing](security/RUNBOOK-STRIX-IDENTITY-SCOPE.md)
 
 ## Evaluations
 
 - [Evaluation prompt](evaluations/EVALUATION-PROMPT.md)
+- [Shared UI library adoption](frontend/EVALUATION-SUI-ADOPTION.md)
 
 An evaluation describes the repository at a point in time. Findings that still
 require work must be copied into the relevant active plan; an archived evaluation

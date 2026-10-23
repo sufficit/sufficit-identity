@@ -225,6 +225,7 @@ dotnet run --project src/server/Sufficit.Identity.Server.csproj
 
 ## Documentos
 
+- [Brief de superfície da página de clientes](.impeccable/surfaces/components-pages-clients-razor.md)
 - [`DESIGN-MANAGEMENT-PRODUCT.md`](../../../docs/design/DESIGN-MANAGEMENT-PRODUCT.md)
 - [`DESIGN-MANAGEMENT-UI.md`](../../../docs/design/DESIGN-MANAGEMENT-UI.md)
 - [`../../../docs/architecture/ARCHITECTURE-SINGLE-SOURCE-UI.md`](../../../docs/architecture/ARCHITECTURE-SINGLE-SOURCE-UI.md)
