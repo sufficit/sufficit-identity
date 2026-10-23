@@ -183,10 +183,10 @@ public sealed class SystemUserManagementTests
             new { entitlements = new[] { "aiuser:01a05f00-0000-7000-8000-000000000001", "AIUSER:01a05f0000007000800000000000000a" } });
         Assert.Equal(HttpStatusCode.OK, entitled.StatusCode);
         Assert.Equal(["aiuser:01a05f00000070008000000000000001", "aiuser:01a05f0000007000800000000000000a"],
-            await entitled.Content.ReadFromJsonAsync<string[]>());
+            (await entitled.Content.ReadFromJsonAsync<string[]>())!);
         using var narrowed = await provisioner.PutAsJsonAsync($"/api/system-users/entitlements?userId={agent}",
             new { entitlements = new[] { "aiuser:01a05f00000070008000000000000001" } });
-        Assert.Equal(["aiuser:01a05f00000070008000000000000001"], await narrowed.Content.ReadFromJsonAsync<string[]>());
+        Assert.Equal(["aiuser:01a05f00000070008000000000000001"], (await narrowed.Content.ReadFromJsonAsync<string[]>())!);
         using var invalid = await provisioner.PutAsJsonAsync($"/api/system-users/entitlements?userId={agent}",
             new { entitlements = new[] { "not a key:x" } });
         Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
