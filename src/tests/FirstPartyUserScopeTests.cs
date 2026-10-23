@@ -12,7 +12,7 @@ namespace Sufficit.Identity.Tests;
 
 public sealed class FirstPartyUserScopeTests
 {
-    private const string FleetScope = "fleet.api", FleetResource = "sufficit_fleet";
+    private const string FleetScope = "fleet.api", FleetResource = "sufficit-fleet";
 
     [Theory]
     [InlineData(true, true, true, true)]

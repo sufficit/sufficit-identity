@@ -12,7 +12,7 @@ The policy runs for authorization/device user grants and refresh; it is not appl
 to client credentials or token exchange.
 
 For the existing Genius client, preserve all existing permissions and add only
-`scp:fleet.api`. Preserve the existing `fleet.api` scope resource `sufficit_fleet`.
+`scp:fleet.api`. Preserve the existing `fleet.api` scope resource `sufficit-fleet`.
 Configure all Identity nodes:
 
 Add the following mapping to the existing `Sufficit.Identity` section in each
