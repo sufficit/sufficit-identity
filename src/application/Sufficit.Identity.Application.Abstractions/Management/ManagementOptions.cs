@@ -88,6 +88,15 @@ public sealed class ManagementOptions
     public int AuditRetentionDays { get; init; } = 15;
 
     /// <summary>
+    /// Days without any sign of use after which an account whose email was
+    /// never confirmed is deleted; 0 (default) never deletes. Only accounts
+    /// that hold nothing are eligible: no external login, claim or role, and
+    /// in the window no token, authorization, session, failed sign-in or usage.
+    /// Accounts without an email (system users) are never touched.
+    /// </summary>
+    public int UnconfirmedAccountPurgeDays { get; init; }
+
+    /// <summary>
     /// API-protection scopes that must NEVER be created via the runtime
     /// scope-management CRUD API or assigned to a client via the management-API
     /// client-create path. These scopes gate administrative surfaces (the

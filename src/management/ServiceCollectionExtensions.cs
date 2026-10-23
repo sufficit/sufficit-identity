@@ -164,6 +164,8 @@ public static class ServiceCollectionExtensions
         // The audit table is append-only and had no retention; this prunes
         // it past ManagementOptions.AuditRetentionDays.
         services.AddHostedService<ManagementAuditRetentionWorker>();
+        // Abandoned registrations (UnconfirmedAccountPurgeDays; 0 = off).
+        services.AddHostedService<Users.UnconfirmedAccountPurgeWorker>();
         // Shared authorization+denial-audit boundary (see
         // ManagementOperationGuard for why the audit choice stays explicit).
         services.AddMemoryCache();
