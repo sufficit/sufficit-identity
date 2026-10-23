@@ -360,25 +360,8 @@ out without it; the multi-replica rehearsal is the missing evidence.
 Shared per-account and per-IP counters, progressive delay, human verification
 and refusal for interactive password sign-in, second factor and recovery codes;
 per-account email limit and a minimum answer time on password recovery and
-email confirmation — all in `Observe`
+email confirmation — in `Enforce` since 2026-10-23
 ([`202610222030`](../activities/202610222030-credential-abuse-protection.md)).
-
-- [ ] **(operational)** Tune the thresholds with the observe decisions
-  (shared-NAT false positives, spraying), then set
-  `Sufficit:Identity:AbuseProtection:Mode=Enforce`
-### Domain limits that bind every item in this section
-
-- A user claim is a **generic** attribute of the provider. Sufficit's roles,
-  directives and business rules do not enter the identity provider.
-- An application claim is released only through an allow-list with explicit
-  destinations — never copied wholesale into a token.
-- A manifest-managed client is owned by its manifest. The console shows the
-  ownership and refuses the mutation; it never edits it behind the manifest's
-  back.
-- No secret, token, authorization or manifest property is ever copied into a
-  list, a URL, a draft, a log or an audit record.
-
-### E2 — Application lifecycle: credentials and cloning
 
 - [ ] Integrate `SecretReference` and the vault into the console's credential
   surface

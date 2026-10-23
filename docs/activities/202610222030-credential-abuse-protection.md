@@ -87,3 +87,13 @@ direto por IPv6.
   inexistente respondia na hora, existente esperava token + SMTP.
 - **Cadastro:** continua dizendo que o e-mail já tem conta (manda para o login
   com o e-mail preenchido). Decisão de UX, atrás do reCAPTCHA; mantida.
+
+## Enforce ligado (23/10/2026)
+
+Cerca de 18 h em `Observe` sem nenhuma decisão vinda de tráfego real (só os
+testes do operador): nenhum falso positivo, nenhum ataque. `AbuseProtection:
+Mode=Enforce` nos três nós (backup `.bak-abuse-enforce-20261023`); o aviso
+`credential-abuse-not-enforced` saiu. Teste em produção com conta inexistente:
+tentativas 1–3 normais, 4ª esperou 1 s, 5ª 2 s, 6ª recusada sem conferir a
+senha (`verification_required`, `verify=1`), e a página renderiza o widget.
+Desfazer: `Mode=Observe` e reiniciar.
