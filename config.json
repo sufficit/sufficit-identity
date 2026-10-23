@@ -20,7 +20,8 @@
       "appsettings.app-node-2.json",
       "appsettings.app-node-3.json",
       "certificate.pfx",
-      "certificate-old.pfx"
+      "certificate-old.pfx",
+      "certificate-encryption.pfx"
     ],
     "auto_deploy": {
       "enabled_servers": [],

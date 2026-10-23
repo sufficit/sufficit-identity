@@ -617,17 +617,22 @@ def deploy_to_server(config, server_name, source_path, hot=False, clean_binaries
         excluded_folders = config["deployment"].get("excluded_folders", [])
         excluded_files = config["deployment"].get("excluded_files", [])
         live_path = _get_remote_path(config)
-        carry_cmds = " ; ".join(
+        carry = [
             f"[ -d {live_path}/{f} ] && cp -a {live_path}/{f} {staging_path}/ || true"
             for f in excluded_folders
-        ) + " ; " + " ; ".join(
+        ] + [
             f"[ -f {live_path}/{name} ] && cp -a -p {live_path}/{name} {staging_path}/ || true"
             for name in excluded_files
-        )
-        if excluded_folders or excluded_files:
-            carry_cmd = build_ssh_command(server_name, carry_cmds)
-            run_command_with_progress(carry_cmd, f"Carrying persistent folders/files to staging on {server_name}")
-            print()
+        ]
+        # Every certificate*.pfx is persistent, listed or not: the same glob the
+        # hardening step applies. A certificate added on the server and missing
+        # from excluded_files was dropped by the swap and the service crashed
+        # at startup on every node (2026-10-23).
+        carry.append(f"cp -a -p {live_path}/certificate*.pfx {staging_path}/ 2>/dev/null ; true")
+        carry_cmds = " ; ".join(carry)
+        carry_cmd = build_ssh_command(server_name, carry_cmds)
+        run_command_with_progress(carry_cmd, f"Carrying persistent folders/files to staging on {server_name}")
+        print()
 
         # Step 5: Harden every release path after persistent files are carried over.
         # The prestart gate rejects group/other-writable files and directories.
@@ -709,6 +714,10 @@ def deploy_to_server(config, server_name, source_path, hot=False, clean_binaries
             return False
         print()
 
+        if not service_stays_up(config, server_name):
+            rollback_after_failed_start(config, server_name, hot)
+            return False
+
     # ── STATUS AND LOGS ────────────────────────────────────────────────────────
     # Wrap both commands with `timeout` so a stale SSH connection cannot block
     # the local shell/chat session after the remote command has already exited.
@@ -737,6 +746,46 @@ def deploy_to_server(config, server_name, source_path, hot=False, clean_binaries
     print_progress(f"{server_name} deployment successful!", "🎉")
     print_progress(f"Service: {config['systemd_service']} is running", "⚙️")
     return True
+
+def service_stays_up(config, server_name, settle_seconds=25):
+    """True when the service is still active, without automatic restarts,
+    settle_seconds after the restart. `systemctl restart` returns as soon as
+    the process is spawned, so a crash loop used to read as a success."""
+    service = config['systemd_service']
+    check_cmd = build_ssh_command(
+        server_name,
+        f"sleep {settle_seconds}; systemctl show {service} -p ActiveState -p NRestarts",
+        timeout_seconds=settle_seconds + 15
+    )
+    result = subprocess.run(check_cmd, shell=True, capture_output=True, text=True)
+    state = dict(line.split("=", 1) for line in result.stdout.splitlines() if "=" in line)
+    healthy = state.get("ActiveState") == "active" and state.get("NRestarts") == "0"
+    print_progress(
+        f"Service state after {settle_seconds}s: {state or 'unknown'}",
+        "✅" if healthy else "❌"
+    )
+    return healthy
+
+def rollback_after_failed_start(config, server_name, hot):
+    """Puts the previous release back after a start that did not hold, and
+    stops here so the rollout never reaches the next node."""
+    service = config['systemd_service']
+    live = _get_remote_path(config)
+    backup = _get_backup_path(config)
+    if hot:
+        print_progress(f"{service} did not stay up after a hot deploy; no previous release to restore", "🛑")
+        return
+    rollback_cmd = build_ssh_command(
+        server_name,
+        f"[ -d {backup} ] && rm -rf {live}.failed && mv {live} {live}.failed && mv {backup} {live} "
+        f"&& systemctl reset-failed {service} ; systemctl restart {service}"
+    )
+    run_command_with_progress(rollback_cmd, f"Restoring the previous release on {server_name}")
+    print_progress(
+        f"Deployment aborted: {service} did not stay up. Failed release kept at {live}.failed; "
+        f"journalctl -u {service} shows why.",
+        "🛑"
+    )
 
 def get_server_names(config):
     """Extract server names from config.json regardless of structure"""
