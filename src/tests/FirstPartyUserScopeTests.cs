@@ -12,7 +12,7 @@ namespace Sufficit.Identity.Tests;
 
 public sealed class FirstPartyUserScopeTests
 {
-    private const string FleetScope = "fleet.api", FleetResource = "sufficit-fleet";
+    private const string ExtraScope = "orders.api", ExtraResource = "orders-api";
 
     [Theory]
     [InlineData(true, true, true, true)]
@@ -28,10 +28,10 @@ public sealed class FirstPartyUserScopeTests
         using var scope = factory.Services.CreateScope();
         var policy = scope.ServiceProvider.GetRequiredService<FirstPartyUserScopePolicy>();
         var result = await policy.ResolveAsync(TestDataSeeder.DeviceClientId, [Scopes.OpenId]);
-        Assert.Equal(expected, result.Contains(FleetScope));
+        Assert.Equal(expected, result.Contains(ExtraScope));
         Assert.Contains(Scopes.OpenId, result);
-        Assert.DoesNotContain(FleetScope, await policy.ResolveAsync(TestDataSeeder.AuthorizationCodeClientId, [Scopes.OpenId]));
-        Assert.DoesNotContain(FleetScope, await policy.ResolveAsync(null, [Scopes.OpenId]));
+        Assert.DoesNotContain(ExtraScope, await policy.ResolveAsync(TestDataSeeder.AuthorizationCodeClientId, [Scopes.OpenId]));
+        Assert.DoesNotContain(ExtraScope, await policy.ResolveAsync(null, [Scopes.OpenId]));
     }
 
     [Fact]
@@ -41,7 +41,7 @@ public sealed class FirstPartyUserScopeTests
         await ((IAsyncLifetime)factory).InitializeAsync();
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
         var first = await Enroll(client);
-        Assert.DoesNotContain(FleetScope, first.GetProperty("scope").GetString());
+        Assert.DoesNotContain(ExtraScope, first.GetProperty("scope").GetString());
         var before = await Inspect(client, first.GetProperty("access_token").GetString()!);
         await Configure(factory, true, true, true);
         var (status, refreshed) = await client.PostFormAsync("/connect/token", new Dictionary<string, string> {
@@ -51,12 +51,12 @@ public sealed class FirstPartyUserScopeTests
         Assert.Equal(HttpStatusCode.OK, status);
         var after = await Inspect(client, refreshed.GetProperty("access_token").GetString()!);
         Assert.True(after.GetProperty("active").GetBoolean());
-        Assert.Contains(FleetScope, after.GetProperty("scope").ToString());
+        Assert.Contains(ExtraScope, after.GetProperty("scope").ToString());
         Assert.Equal(before.GetProperty("sub").GetString(), after.GetProperty("sub").GetString());
-        Assert.Contains(FleetResource, after.GetProperty("aud").ToString());
+        Assert.Contains(ExtraResource, after.GetProperty("aud").ToString());
         Assert.Contains(TestDataSeeder.IntrospectionClientId, after.GetProperty("aud").ToString());
         var fresh = await Enroll(client);
-        Assert.Contains(FleetScope, fresh.GetProperty("scope").GetString());
+        Assert.Contains(ExtraScope, fresh.GetProperty("scope").GetString());
     }
 
     [Fact]
@@ -72,23 +72,23 @@ public sealed class FirstPartyUserScopeTests
         });
         Assert.Equal(HttpStatusCode.OK, status);
         var details = await Inspect(client, body.GetProperty("access_token").GetString()!);
-        Assert.DoesNotContain(FleetScope, details.GetProperty("scope").ToString());
+        Assert.DoesNotContain(ExtraScope, details.GetProperty("scope").ToString());
     }
 
     private static async Task Configure(SufficitIdentityTestFactory factory, bool configured, bool permission,
         bool registered, string clientId = TestDataSeeder.DeviceClientId)
     {
         using var scope = factory.Services.CreateScope();
-        if (configured) scope.ServiceProvider.GetRequiredService<SufficitIdentityOptions>().FirstPartyUserScopes[clientId] = [FleetScope];
+        if (configured) scope.ServiceProvider.GetRequiredService<SufficitIdentityOptions>().FirstPartyUserScopes[clientId] = [ExtraScope];
         if (registered) await scope.ServiceProvider.GetRequiredService<IOpenIddictScopeManager>().CreateAsync(
-            new OpenIddictScopeDescriptor { Name = FleetScope, Resources = { FleetResource } });
+            new OpenIddictScopeDescriptor { Name = ExtraScope, Resources = { ExtraResource } });
         if (permission)
         {
             var apps = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
             var app = (await apps.FindByClientIdAsync(clientId))!;
             var descriptor = new OpenIddictApplicationDescriptor();
             await apps.PopulateAsync(descriptor, app);
-            descriptor.Permissions.Add(Permissions.Prefixes.Scope + FleetScope);
+            descriptor.Permissions.Add(Permissions.Prefixes.Scope + ExtraScope);
             await apps.UpdateAsync(app, descriptor);
         }
     }

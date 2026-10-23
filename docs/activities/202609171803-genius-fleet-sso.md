@@ -44,7 +44,7 @@ scope for client_credentials.
 ## References and limits
 
 Identity issue #73, PR #74; Genius issue #828, PR #829.
-See `docs/runbooks/RUNBOOK-FIRST-PARTY-USER-SCOPES.md`.
+Generic procedure: `docs/runbooks/RUNBOOK-FIRST-PARTY-USER-SCOPES.md`.
 Removing the server mapping does not revoke previously granted permissions;
 revoke affected grants when withdrawing that access. Deployment is the isolated
 PR build; unrelated canonical Identity changes remain untouched.
