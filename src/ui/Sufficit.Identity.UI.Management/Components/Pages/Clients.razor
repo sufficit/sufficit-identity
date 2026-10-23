@@ -109,6 +109,7 @@
                 <IdentitySelect T="string" id="client-status-filter" name="status" Label="@L["Clients.List.StatusLabel"].Value" Class="clients-filter" Value="@statusFilter" ValueChanged="StatusSelected">
                     <SUISelectItem Value="@("all")">@L["Clients.List.All"]</SUISelectItem>
                     <SUISelectItem Value="@("active")">@L["Clients.List.StatusActive"]</SUISelectItem>
+                    <SUISelectItem Value="@("disabled")">@L["Clients.State.Disabled"]</SUISelectItem>
                 </IdentitySelect>
                 <IdentityTextField T="string" Class="clients-filter" Label="Scope"
                               Id="client-scope-filter" name="scope" Value="@scopeFilter"
@@ -557,6 +558,7 @@
     private static string NormalizeStatus(string? value) => value?.ToLowerInvariant() switch
     {
         "active" => "active",
+        "disabled" => "disabled",
         _ => "all"
     };
 
@@ -590,9 +592,12 @@
             ? "info"
             : "neutral";
 
-    private string ClientStatusLabel(string? status) => L["Clients.List.ClientStatusActive"].Value;
+    private string ClientStatusLabel(string? status) => status == "disabled"
+        ? L["Clients.State.Disabled"].Value
+        : L["Clients.List.ClientStatusActive"].Value;
 
-    private static string ClientStatusTone(string? status) => "status-dot--success";
+    private static string ClientStatusTone(string? status) =>
+        status == "disabled" ? "status-dot--danger" : "status-dot--success";
 
     private string ClientOriginLabel(string? origin) =>
         string.Equals(origin, "manifest", StringComparison.OrdinalIgnoreCase)

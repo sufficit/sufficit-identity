@@ -253,6 +253,9 @@ public static partial class ServiceCollectionExtensions
         // behind an option would mean the storage rename is safe on some hosts
         // and silently breaking on others.
         server.AddEventHandler(NormalizeEntitlementClaimName.Descriptor);
+        // Disabled clients (plan E1): refused on every endpoint naming one.
+        foreach (var descriptor in Security.RejectDisabledClient.Descriptors)
+            server.AddEventHandler(descriptor);
 
         // -------------------------------------------------------------------
         // Token lifetimes (Sufficit:Identity:Tokens). Refresh rotation is

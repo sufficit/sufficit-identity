@@ -71,6 +71,7 @@ internal sealed partial class ClientManagementService
             entity?.JsonWebKeySet,
             tlsCertificates);
 
+        var disablement = ClientOperationalState.Read(descriptor.Properties.AsReadOnly());
         return new ManagementClientDetail(
             Id: (string)(await applications.GetIdAsync(
                 application,
@@ -155,7 +156,11 @@ internal sealed partial class ClientManagementService
             ActiveCredentialCount:
                 activeAdditionalCredentials + (hasPrimarySecret ? 1 : 0),
             NativeReturnUris: ReadNativeReturnUris(descriptor.Properties),
-            DeviceCloseFallbackUrl: DeviceCloseFallbackPolicy.Read(descriptor.Properties));
+            DeviceCloseFallbackUrl: DeviceCloseFallbackPolicy.Read(descriptor.Properties),
+            Status: disablement is null ? ClientOperationalState.Active : ClientOperationalState.Disabled,
+            DisabledAtUtc: disablement?.AtUtc,
+            DisabledBy: disablement?.By,
+            DisabledReason: disablement?.Reason);
     }
 
     /// <summary>

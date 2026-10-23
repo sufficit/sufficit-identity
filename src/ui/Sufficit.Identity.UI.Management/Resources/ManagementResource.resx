@@ -360,6 +360,23 @@
   <data name="Clients.Detail.NoEndpoints" xml:space="preserve"><value>No endpoint registered.</value></data>
   <data name="Clients.Detail.SecurityRequirementsHeading" xml:space="preserve"><value>Security requirements</value></data>
   <data name="Clients.Detail.SecurityRequirementsSubheading" xml:space="preserve"><value>Additional controls applied during authorization.</value></data>
+  <data name="Clients.State.Label" xml:space="preserve"><value>State</value></data>
+  <data name="Clients.State.Active" xml:space="preserve"><value>Active</value></data>
+  <data name="Clients.State.Disabled" xml:space="preserve"><value>Disabled</value></data>
+  <data name="Clients.State.DisabledTitle" xml:space="preserve"><value>This client is disabled</value></data>
+  <data name="Clients.State.DisabledSince" xml:space="preserve"><value>Since {0}, by {1}. Reason: {2}. No endpoint serves it and its tokens are not accepted.</value></data>
+  <data name="Clients.State.DisableTitle" xml:space="preserve"><value>Disable client</value></data>
+  <data name="Clients.State.DisableDescription" xml:space="preserve"><value>Cuts the client off at once on every node without deleting it: no sign-in, token, refresh or introspection, and tokens already issued stop working. It can be re-enabled later.</value></data>
+  <data name="Clients.State.EnableTitle" xml:space="preserve"><value>Re-enable client</value></data>
+  <data name="Clients.State.EnableDescription" xml:space="preserve"><value>Serves the client again. Tokens revoked when it was disabled stay revoked.</value></data>
+  <data name="Clients.State.EnableConfirm" xml:space="preserve"><value>Re-enable {0}? It can obtain tokens again immediately.</value></data>
+  <data name="Clients.State.Disable" xml:space="preserve"><value>Disable</value></data>
+  <data name="Clients.State.Enable" xml:space="preserve"><value>Re-enable</value></data>
+  <data name="Clients.State.ReasonLabel" xml:space="preserve"><value>Reason (kept in the audit log)</value></data>
+  <data name="Clients.State.RevokeTokens" xml:space="preserve"><value>Also revoke its tokens and authorizations (sessions do not come back on re-enable)</value></data>
+  <data name="Clients.State.ConfirmDisable" xml:space="preserve"><value>Disable now</value></data>
+  <data name="Clients.State.DisabledToast" xml:space="preserve"><value>Client disabled on every node.</value></data>
+  <data name="Clients.State.EnabledToast" xml:space="preserve"><value>Client re-enabled.</value></data>
   <data name="Clients.Detail.DeleteClient" xml:space="preserve"><value>Delete client</value></data>
   <data name="Clients.Detail.DeleteDescription" xml:space="preserve"><value>Deletion stops new OAuth flows for this client and is permanently recorded in the administrative audit log.</value></data>
   <data name="Clients.Detail.DeleteConfirmPrefix" xml:space="preserve"><value>Type</value></data>

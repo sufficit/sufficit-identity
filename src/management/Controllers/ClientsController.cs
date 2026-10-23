@@ -257,6 +257,28 @@ public sealed class ClientsController(IClientManagementService clients)
         return Ok(result);
     }
 
+    /// <summary>
+    /// Disables or re-enables a client without deleting it (plan E1); the
+    /// change reaches every replica at once.
+    /// </summary>
+    [HttpPost("state")]
+    public async Task<ActionResult<ManagementClientDetail>> SetState(
+        [FromQuery, Required] string clientId,
+        [FromBody] SetClientStateRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await clients.SetStateAsync(
+            new SetManagementClientStateCommand(
+                clientId,
+                request.Enabled,
+                request.Reason,
+                request.RevokeTokens,
+                request.ExpectedVersion),
+            RequestContext(),
+            cancellationToken);
+        return Ok(result);
+    }
+
     /// <summary>Deletes a client.</summary>
     [HttpDelete("{clientId}")]
     public async Task<IActionResult> Delete(
@@ -272,6 +294,20 @@ public sealed class ClientsController(IClientManagementService clients)
 
     private ManagementRequestContext RequestContext() =>
         new(User, HttpContext.TraceIdentifier);
+}
+
+public sealed class SetClientStateRequest
+{
+    public bool Enabled { get; set; }
+
+    /// <summary>Required when disabling; kept with the state and in the audit.</summary>
+    [MaxLength(500)]
+    public string? Reason { get; set; }
+
+    /// <summary>Also revokes the client's tokens and authorizations.</summary>
+    public bool RevokeTokens { get; set; }
+
+    public string? ExpectedVersion { get; set; }
 }
 
 public sealed class CreateClientRequest

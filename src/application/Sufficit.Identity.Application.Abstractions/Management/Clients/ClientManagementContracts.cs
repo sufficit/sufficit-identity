@@ -120,7 +120,26 @@ public interface IClientManagementService
         string clientId,
         ManagementRequestContext context,
         CancellationToken cancellationToken = default);
+
+    /// <summary>Disables or re-enables a client without deleting it (plan E1).</summary>
+    Task<ManagementClientDetail> SetStateAsync(
+        SetManagementClientStateCommand command,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            "This client management adapter does not support disabling clients.");
 }
+
+/// <summary>
+/// <paramref name="RevokeTokens"/> also revokes the client's tokens and
+/// authorizations, so re-enabling it later does not bring old sessions back.
+/// </summary>
+public sealed record SetManagementClientStateCommand(
+    string ClientId,
+    bool Enabled,
+    string? Reason = null,
+    bool RevokeTokens = false,
+    string? ExpectedVersion = null);
 
 public sealed record ManagementClientSummary(
     string Id,
@@ -204,7 +223,12 @@ public sealed record ManagementClientDetail(
     /// <summary>This application's own limit on the age of a user's sign-in
     /// when it delegates a credential; null follows the deployment default.</summary>
     int? DelegationMaxAuthAgeHours = null,
-    int GlobalDelegationMaxAuthAgeHours = 12);
+    int GlobalDelegationMaxAuthAgeHours = 12,
+    /// <summary>"active" or "disabled" (plan E1); a disabled client is refused on every endpoint.</summary>
+    string Status = "active",
+    DateTimeOffset? DisabledAtUtc = null,
+    string? DisabledBy = null,
+    string? DisabledReason = null);
 
 public sealed record CreateManagementClientCommand(
     string ClientId,

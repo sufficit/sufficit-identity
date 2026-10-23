@@ -134,6 +134,14 @@ public static partial class ServiceCollectionExtensions
                 ? new Security.RedisCredentialFailureCounter(redis)
                 : new Security.InMemoryCredentialFailureCounter(TimeProvider.System));
         services.AddSingleton<Security.CredentialAbuseGuard>();
+        // Disabled clients in memory on every replica (plan E1).
+        services.AddSingleton(provider => new Security.DisabledClientRegistry(
+            provider.GetRequiredService<IDbContextFactory<AppDbContext>>(),
+            provider.GetRequiredService<ILogger<Security.DisabledClientRegistry>>(),
+            provider.GetService<StackExchange.Redis.IConnectionMultiplexer>()));
+        services.AddSingleton<Sufficit.Identity.Core.Services.IDisabledClientRegistry>(provider =>
+            provider.GetRequiredService<Security.DisabledClientRegistry>());
+        services.AddHostedService(provider => provider.GetRequiredService<Security.DisabledClientRegistry>());
         services.AddSingleton(options.Branding);
         services.AddSingleton(options.AuthenticationContext);
         services.AddSingleton<IAuthenticationContextClassMapper,

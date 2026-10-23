@@ -30,7 +30,8 @@ internal sealed partial class ClientManagementService(
     IConfiguration configuration,
     ManagementOperationGuard guard,
     ClientCredentialRegistry credentials,
-    ILogger<ClientManagementService> logger) : IClientManagementService
+    ILogger<ClientManagementService> logger,
+    IDisabledClientRegistry? disabledClients = null) : IClientManagementService
 {
 
     private static (string? Search, string Type, string Grant, string Scope,
@@ -69,11 +70,11 @@ internal sealed partial class ClientManagementService(
         }
 
         var status = Normalize(query.Status);
-        if (status is not ("all" or "active"))
+        if (status is not ("all" or "active" or "disabled"))
         {
             throw new ManagementValidationException(
                 "client_query_status_invalid",
-                "status must be all or active until the activation cycle is enabled.",
+                "status must be all, active or disabled.",
                 "status");
         }
 

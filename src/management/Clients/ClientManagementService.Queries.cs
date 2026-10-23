@@ -136,6 +136,21 @@ internal sealed partial class ClientManagementService
                         DynamicClientRegistrationProperties.Origin)));
         }
 
+        // The marker key in the raw column narrows the rows; the parse above
+        // confirms each one, so a stray substring cannot mark a client disabled.
+        if (normalized.Status is "disabled")
+        {
+            applicationsQuery = applicationsQuery.Where(application =>
+                application.Properties != null &&
+                application.Properties.Contains(ClientOperationalState.PropertyName));
+        }
+        else if (normalized.Status is "active")
+        {
+            applicationsQuery = applicationsQuery.Where(application =>
+                application.Properties == null ||
+                !application.Properties.Contains(ClientOperationalState.PropertyName));
+        }
+
         var totalCount = await applicationsQuery.CountAsync(cancellationToken);
         var rows = await applicationsQuery
             .OrderBy(application => application.DisplayName ?? application.ClientId)
@@ -154,7 +169,9 @@ internal sealed partial class ClientManagementService
                     application.ClientId ?? string.Empty,
                     application.DisplayName,
                     application.ClientType,
-                    null,
+                    ClientOperationalState.Read(application.Properties) is null
+                        ? ClientOperationalState.Active
+                        : ClientOperationalState.Disabled,
                     ResolveOrigin(application.Properties),
                     registration.RegisteredAtUtc,
                     registration.Anonymous,

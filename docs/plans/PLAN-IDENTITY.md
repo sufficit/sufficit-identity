@@ -398,46 +398,11 @@ and refusal for interactive password sign-in, in `Observe`
 
 ### E1 — Client operational state (enable/disable)
 
-`OpenIddictEntityFrameworkCoreApplication` has no enablement field. The list can
-honestly report only `active`, because that is the only state the runtime
-enforces. Showing `blocked`, `disabled` or `revoked` before the endpoints
-consult and apply the decision would be a false indication to the operator.
+Delivered: a client can be disabled and re-enabled without deletion, refused at
+once on every node
+([`202610222230`](../activities/202610222230-client-operational-state.md)).
 
-**Model.** A dedicated operational-state table keyed by the OpenIddict
-`ApplicationId`, rather than overloading `applications.properties`:
-`application_id` (unique, logical FK to `applications.id`), `status`
-(`active` | `disabled` in this first version), optional `reason` carrying no
-secret, plus `changed_at_utc`, `changed_by_subject` and `version` for audit and
-optimistic concurrency. **The absence of a row means `active`**, which keeps
-every existing client working. `revoked` is deliberately not an application
-state: tokens, authorizations and sessions have their own lifecycle and are
-already revoked by the existing OpenIddict services.
-
-- [ ] Additive migration and index on `application_id,status`
-- [ ] Enforcement — required *before* any new filter appears in the UI or the
-  API — at: `connect/authorize` and consent; `connect/token`, including refresh
-  token and client credentials; PAR and device authorization/token;
-  introspection, userinfo and any endpoint accepting a `client_id` to start a
-  protocol operation; Management API create/edit/remove with audit and its own
-  capability
-- [ ] The verifier returns a consistent OAuth error (`invalid_client` or
-  `unauthorized_client` per protocol point), logs client ID and state without
-  sensitive data, and keeps cache invalidation coherent with the OpenIddict
-  application cache
-- [ ] Optional backfill for explicitly known states only; absence stays `active`
-- [ ] Start with read/telemetry, blocking no traffic; enable blocking by
-  capability/configuration after authorize, token, PAR and device are tested on
-  representative clients
-- [ ] Allow manual change only for clients not managed by a manifest
-- [ ] Audit, optimistic concurrency and a documented rollback
-- [ ] UI last: expose only `Todos`, `Ativos` and `Desabilitados`, with origin,
-  reason and date of the last change; show the impact before confirmation and
-  keep the filter in the URL. No "revoked" in the filter
-
-**Done when:** authorize, token, PAR and device consistently refuse a disabled
-application; reactivation restores the flow without erasing historical tokens
-or authorizations; API, UI, audit and metrics show the same state; and
-contract, integration, concurrency, cache and rollback tests pass.
+- [ ] Show the state on the DCR registrations list as well
 
 ### E2 — Application lifecycle: credentials and cloning
 

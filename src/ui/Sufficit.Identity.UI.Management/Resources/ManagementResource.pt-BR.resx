@@ -360,6 +360,23 @@
   <data name="Clients.Detail.NoEndpoints" xml:space="preserve"><value>Nenhum endpoint registrado.</value></data>
   <data name="Clients.Detail.SecurityRequirementsHeading" xml:space="preserve"><value>Requisitos de segurança</value></data>
   <data name="Clients.Detail.SecurityRequirementsSubheading" xml:space="preserve"><value>Controles adicionais aplicados durante a autorização.</value></data>
+  <data name="Clients.State.Label" xml:space="preserve"><value>Estado</value></data>
+  <data name="Clients.State.Active" xml:space="preserve"><value>Ativo</value></data>
+  <data name="Clients.State.Disabled" xml:space="preserve"><value>Suspenso</value></data>
+  <data name="Clients.State.DisabledTitle" xml:space="preserve"><value>Este cliente está suspenso</value></data>
+  <data name="Clients.State.DisabledSince" xml:space="preserve"><value>Desde {0}, por {1}. Motivo: {2}. Nenhum endpoint o atende e os tokens dele não valem.</value></data>
+  <data name="Clients.State.DisableTitle" xml:space="preserve"><value>Suspender cliente</value></data>
+  <data name="Clients.State.DisableDescription" xml:space="preserve"><value>Corta o cliente na hora em todos os nós, sem apagá-lo: nada de login, token, refresh ou introspecção, e os tokens já emitidos deixam de valer. Dá para reativar depois.</value></data>
+  <data name="Clients.State.EnableTitle" xml:space="preserve"><value>Reativar cliente</value></data>
+  <data name="Clients.State.EnableDescription" xml:space="preserve"><value>Volta a atender o cliente. Tokens revogados ao suspender continuam revogados.</value></data>
+  <data name="Clients.State.EnableConfirm" xml:space="preserve"><value>Reativar {0}? Ele volta a obter tokens imediatamente.</value></data>
+  <data name="Clients.State.Disable" xml:space="preserve"><value>Suspender</value></data>
+  <data name="Clients.State.Enable" xml:space="preserve"><value>Reativar</value></data>
+  <data name="Clients.State.ReasonLabel" xml:space="preserve"><value>Motivo (fica registrado na auditoria)</value></data>
+  <data name="Clients.State.RevokeTokens" xml:space="preserve"><value>Revogar também tokens e autorizações (as sessões não voltam ao reativar)</value></data>
+  <data name="Clients.State.ConfirmDisable" xml:space="preserve"><value>Suspender agora</value></data>
+  <data name="Clients.State.DisabledToast" xml:space="preserve"><value>Cliente suspenso em todos os nós.</value></data>
+  <data name="Clients.State.EnabledToast" xml:space="preserve"><value>Cliente reativado.</value></data>
   <data name="Clients.Detail.DeleteClient" xml:space="preserve"><value>Excluir cliente</value></data>
   <data name="Clients.Detail.DeleteDescription" xml:space="preserve"><value>A exclusão interrompe novos fluxos OAuth deste cliente e é registrada de forma permanente na auditoria administrativa.</value></data>
   <data name="Clients.Detail.DeleteConfirmPrefix" xml:space="preserve"><value>Digite</value></data>

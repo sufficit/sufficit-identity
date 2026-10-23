@@ -146,6 +146,18 @@ public sealed class ManagementClientDataSource(
             "Client update",
             cancellationToken);
 
+    public Task<ManagementDataResult<ManagementClientDetail>>
+        SetClientStateAsync(
+            SetManagementClientStateCommand command,
+            CancellationToken cancellationToken = default) =>
+        ExecuteAsync(
+            (clients, context) => clients.SetStateAsync(
+                command,
+                context,
+                cancellationToken),
+            "Client state change",
+            cancellationToken);
+
     public Task<ManagementDataResult<RotateManagementClientSecretResult>>
         RotateClientSecretAsync(
             RotateManagementClientSecretCommand command,
