@@ -338,12 +338,13 @@ token-exchange provenance, credential-mutation step-up) are reported by it.
 
 ### D5 — Real shared cache
 
-- [ ] **(operational)** Pass the issuance/consumption/replay rehearsal across
-  multiple replicas (production already runs the shared Redis cache with
-  `RequireShared=true` on three nodes)
+- [ ] **(operational)** Rehearse revocation across replicas: revoke on one
+  node, consume on the others. Needs a temporary client with the revocation
+  endpoint permission, which the Management create contract does not expose
 
-`AddStackExchangeRedisCache` is wired and `HostStartupGuards` refuses to scale
-out without it; the multi-replica rehearsal is the missing evidence.
+Issuance, consumption and DPoP replay across the three production replicas
+rehearsed 2026-10-24 —
+[`202610241900`](../activities/202610241900-replica-rehearsal.md).
 
 ---
 
@@ -678,7 +679,7 @@ Deliberately after everything above; none of it is required for production.
 
 1. **C1** — the re-wrap race test and the reader/KEK authority split
 2. **B3, B5** — test batteries: token exchange provenance and CIBA abuse
-3. **D5** — the shared-cache rehearsal in production
+3. **D5** — the revocation rehearsal across replicas
 4. **E1** — enforcement first, UI last. E3's disable action waits on it
 5. **E5, E6** — console consistency and the mobile pass; independent of the
    protocol work and safe to run in parallel with it
