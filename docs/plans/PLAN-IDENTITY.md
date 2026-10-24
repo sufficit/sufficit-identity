@@ -163,8 +163,21 @@ to apply until an application needs its own claims, so it moved to E4
 
 ### B3 — Token exchange provenance and delegation
 
-- [ ] Tests for a subject token from a foreign issuer, a personal token, a CIBA
-  token, and sender binding carried across the exchange
+- [ ] Let the holder of a DPoP-bound subject token exchange it. It fails
+  closed today: `ValidateDpopAccessTokenProof` checks `ath` against the
+  reference token's resolved payload (`context.Token`) because the token
+  endpoint has no `AccessToken`, so even the right key and a correct `ath`
+  are refused; once fixed, the same proof is checked again in
+  `TokenGrantDispatcher` and its replay guard may refuse it. Pinned by the
+  skipped test in `TokenExchangeSubjectTokenTests`. No production exchange
+  presents a DPoP-bound subject token today
+
+Tests for a foreign issuer, a personal token, a CIBA token and DPoP binding
+across the exchange landed 2026-10-24 (`TokenExchangeSubjectTokenTests`, 12):
+a foreign or re-signed token is refused; a personal or CIBA token is exchanged
+only by its holder or a declared audience, with `act`; a proof binds the new
+token to the caller's key; a DPoP-bound subject token is refused without its
+proof or with another key.
 
 Delegation depth is bounded since 2026-09-20
 (`TokenExchange:MaxDelegationDepth`, default 5) —
