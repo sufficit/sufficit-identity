@@ -64,3 +64,12 @@ versão 2; nenhuma coluna cifrada aponta para `personal-secrets`, e o código n�
 usa mais esse nome). O `--verify-vault` não as via porque só confere segredos
 nomeados e segundo fator. Saída 1, journal não gravado, auditoria com
 `failed`.
+
+## Limpeza das duas chaves órfãs (24/10)
+
+Com o aval do titular, as duas linhas foram apagadas (`vaultkeys` id 3 e 6, com
+guarda de tamanho, cabeçalho e versão); cópia em
+`/root/vaultkeys-orphans-dataprotection-20261024.tsv` no `eveo-apps` (0600).
+Nova recifragem (`kek-rehearsal-20261024`): 3 chaves e 1 chave do key-ring já
+sob a KEK ativa, 0 falhas, código 0, journal gravado. `--verify-vault`: 86
+segredos nomeados e 71 segredos de segundo fator decifrados, 0 falhas.
