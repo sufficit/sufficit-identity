@@ -14,6 +14,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.RateLimiting;
@@ -59,10 +60,17 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
 {
     private static readonly SqliteUtcTimestampInterceptor SqliteFunctions = new();
 
-    private readonly string _databasePath = Path.Combine(
+    private string _databasePath = Path.Combine(
         Path.GetTempPath(),
         $"sufficit-identity-tests-{Guid.NewGuid():N}.db");
     private IReadOnlyDictionary<string, string?>? _extraConfiguration;
+    private Microsoft.Extensions.Caching.Distributed.IDistributedCache? _sharedDistributedCache;
+
+    /// <summary>
+    /// The temporary SQLite database file this host uses. Exposed so a second
+    /// replica can be pointed at the same file (see <see cref="CreateReplica"/>).
+    /// </summary>
+    internal string DatabasePath => _databasePath;
 
     private string DatabaseConnectionString => new SqliteConnectionStringBuilder
     {
@@ -102,6 +110,29 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
     {
         var factory = new SufficitIdentityTestFactory();
         factory._extraConfiguration = extraConfiguration;
+        return factory;
+    }
+
+    /// <summary>
+    /// Builds one replica of a multi-replica deployment: it uses the SQLite
+    /// database file at <paramref name="databasePath"/> (shared with every
+    /// other replica built with the same path, the way production replicas
+    /// share one MariaDB) and resolves <paramref name="sharedCache"/> as its
+    /// <c>IDistributedCache</c> (the way production replicas share one Redis).
+    /// Pass a <c>null</c> path for the first replica to get a fresh database.
+    /// </summary>
+    internal static SufficitIdentityTestFactory CreateReplica(
+        string? databasePath,
+        Microsoft.Extensions.Caching.Distributed.IDistributedCache sharedCache,
+        IReadOnlyDictionary<string, string?> extraConfiguration)
+    {
+        var factory = CreateIsolated(extraConfiguration);
+        if (databasePath is not null)
+        {
+            factory._databasePath = databasePath;
+        }
+
+        factory._sharedDistributedCache = sharedCache;
         return factory;
     }
 
@@ -236,6 +267,14 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
             });
             services.AddSingleton<IAuthorizationHandler, ScopeHandler>();
             services.AddSingleton<IAuthorizationHandler, MfaHandler>();
+
+            // Multi-replica hosts: replace the process-local default with the
+            // one instance every replica shares (production: Redis).
+            if (_sharedDistributedCache is { } sharedCache)
+            {
+                services.RemoveAll<Microsoft.Extensions.Caching.Distributed.IDistributedCache>();
+                services.AddSingleton(sharedCache);
+            }
 
             // The integration factory registers a MINIMAL limiter: it only has
             // to resolve the "device-information" named policy so endpoints that

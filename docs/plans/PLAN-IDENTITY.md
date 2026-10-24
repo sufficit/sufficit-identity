@@ -320,7 +320,12 @@ override it — [`202610221630`](../activities/202610221630-plan-reconciliation.
 
 ### D3 — Explicit deployment topology
 
-- [ ] Add a two-replica DPoP/CIBA/passkey smoke test
+Delivered 2026-10-24: `TwoReplicaSmokeTests` runs two hosts on one database
+and one distributed cache. A DPoP proof used on one replica is a replay on the
+other; a DPoP nonce from one is honoured by the other; a CIBA request created
+on one is redeemed exactly once across both; a passkey registration or sign-in
+started on one completes on the other and cannot be replayed on either. No
+state that must be shared lives in one process's memory.
 
 ### D4 — Enforcement-mode inventory per environment
 
@@ -691,7 +696,7 @@ Deliberately after everything above; none of it is required for production.
 
 1. **C1** — the re-wrap race test and the reader/KEK authority split
 2. **B3, B5** — test batteries: token exchange provenance and CIBA abuse
-3. **D3, D5** — the two-replica smoke test and the shared-cache rehearsal
+3. **D5** — the shared-cache rehearsal in production
 4. **E1** — enforcement first, UI last. E3's disable action waits on it
 5. **E5, E6** — console consistency and the mobile pass; independent of the
    protocol work and safe to run in parallel with it
