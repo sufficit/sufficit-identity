@@ -4,10 +4,10 @@ Generic .NET Application Deployment Script - PROJECT COPY (sufficit-identity)
 Version: 202608160430
 Revision: R018-identity - fork of R017 with Step 4d: carry excluded persistent FILES (appsettings*, certificate*.pfx) from live to staging before the atomic swap, in addition to folders
 Last Modified UTC: 20260619163000
-Central Repository: sufficit-project-management/scripts/dotnet/deploy.py
+Central Repository: sufficit-ci/scripts/dotnet/deploy.py
 
 IMPORTANT: This is a COPY from the centralized version. To check if it is up to date,
-compare the Revision number above with the central file in sufficit-project-management/scripts/dotnet/deploy.py.
+compare the Revision number above with the central file in sufficit-ci/scripts/dotnet/deploy.py.
 Purpose: Deploy .NET applications directly from source with exclusions and progress tracking.
 How it works: Loads `config.json`, resolves the project root relative to the script when local paths are not portable, optionally runs `dotnet publish` to a unique output folder, uploads the published files via SCP to a staging directory while the service keeps running, stops the service briefly for an atomic directory swap, restarts the service, and prints remote status/log information.
 Usage: Run from the project root with `python3 deploy.py <server_name> --publish`; requires `config.json`, `dotnet`, SSH access to the target host, and the private key at `~/.ssh/id_ed25519` (or `IDENTITY_SSH_KEY`).
@@ -119,7 +119,7 @@ TROUBLESHOOTING:
 ═══════════════════════════════════════════════════════════════════════════════
 
 IMPORTANT: This is a PROJECT COPY of the centralized deployment script.
-The master copy lives in sufficit-project-management/scripts/dotnet/deploy.py.
+The master copy lives in sufficit-ci/scripts/dotnet/deploy.py.
 
 INSTRUCTIONS FOR MAINTENANCE:
 - Do NOT make local-only changes here; edit the central master copy first.
