@@ -143,22 +143,10 @@ endpoint rather than in each relying party.
 
 ### B1 — One issuance kernel
 
-There are two issuance boundaries, not five, and the open question is whether
-they should be one.
-
-- [ ] **(decision)** Decide whether an `ITokenIssuanceService` spanning both
-  boundaries is worth having. A grant signs in through OpenIddict's pipeline
-  and gets a JWT access token, an id token and possibly a refresh token; a
-  privileged mint dispatches `GenerateTokenContext` directly for a single
-  reference token. A contract covering both would be a union of two shapes,
-  and the original item assumed a duplication that the A2/A3 extractions have
-  since removed
-
-Delivered, and what the item assumed that the code had already changed:
-[`202609201400`](../activities/202609201400-one-issuance-boundary.md).
-
-**Done when:** the unified-service question is answered either way in
-writing.
+Decided 2026-10-24: **no** `ITokenIssuanceService` across the two boundaries —
+[`202610240200`](../activities/202610240200-no-unified-issuance-service.md).
+Grants and privileged mints each already have a single assembly point; B2's
+claim-release policy is shared by both instead.
 
 ### B2 — Claim release fails closed
 
@@ -685,8 +673,8 @@ Deliberately after everything above; none of it is required for production.
 ## Execution order
 
 1. **C1** — the re-wrap race test and the reader/KEK authority split
-2. **B1** — answer the unified-service question before B2, B3 and B5's kernel
-   item, which were written assuming it
+2. **B2** — the claim-release policy shared by grants and privileged mints;
+   B3 and B5 are test batteries that need nothing from it
 3. **D4, D2, D3, D5** — the enforcement and topology inventories, together,
    per environment. They are what turns Observe into Enforce, and what clears
    the last advisory the posture check reports at every startup:
