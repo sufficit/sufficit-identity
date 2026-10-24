@@ -176,10 +176,33 @@ map one or more deployment-specific operator roles to the full provider
 capability set. That mapping belongs to composition/configuration and is never
 shown as a role recommendation for managed users.
 
-The Sufficit deployment may map its company `administrator` role to provider
-operator access because that is a host choice. Its `manager` role does not gain
-access to the provider console; managers continue to manage company users and
-directives through `sufficit-blazor`.
+The Sufficit deployment maps its company `administrator` role to full
+provider operator access because that is a host choice. Its `manager` role maps
+to `identity.users.read` and `identity.claims.read/create/delete` only — the
+directive and entitlement claims managers keep for their company users — and
+other deployment roles map to narrow sets (vault secrets, system users, claim
+reads). The mapping lives in `Management:Authorization:RoleCapabilities`.
+
+### Where operator authority comes from
+
+Console authority never comes from something the console itself can hand out:
+
+- **Roles** grant it only through the reviewed mapping above, and no Identity
+  surface — Management, SCIM, provisioning — assigns roles
+  (`OperatorAuthorityContractTests`).
+- **Capability claims** (`permission`), the protected-principal tier and the
+  break-glass markers are reserved: the claim API refuses them, and token
+  release drops them whatever the unmapped-claims setting, so they never reach
+  a relying party.
+- **Operator tokens** delegate a subset of the issuing operator's own
+  capabilities; issuing and revoking them is never delegable.
+- **Service principals** get theirs from the closed `ServicePrincipals` list.
+
+Break-glass against a protected principal is recorded the same way whichever
+path reaches the user — the user itself, a claim, a session or an
+authorization: `AuthorizationOutcome` reads
+`allowed:protected_principal_break_glass` next to the operation's own reason
+code.
 
 ## Management UI changes
 

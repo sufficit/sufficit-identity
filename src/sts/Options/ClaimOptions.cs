@@ -124,6 +124,17 @@ public sealed class ClaimScopeMapOptions
         "password_hash",
         "authenticator_key",
         "recovery_codes",
+
+        // Console authority (plan A1): management capabilities, the protected
+        // principal tier and the break-glass markers. They authorize changes
+        // to the Identity itself and mean nothing to a relying party, so they
+        // stay out of every token even if the unmapped-claims bridge is turned
+        // back on. Defaults of ManagementAuthorizationOptions; a deployment
+        // that renames them adds the new names here.
+        "permission",
+        "identity_principal_tier",
+        "identity_break_glass",
+        "identity_vault_break_glass",
     };
 }
 /// <summary>

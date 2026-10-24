@@ -74,12 +74,29 @@ internal static class ManagementAuditEventFactory
             // multi-tenant system (2026-08 decision). The column stays for
             // legacy rows; new events record the provider context only.
             ContextId = null,
-            AuthorizationOutcome = authorization.Outcome.ToString().ToLowerInvariant(),
+            AuthorizationOutcome = TruncateRequired(DescribeAuthorization(authorization), 50),
             OperationOutcome = TruncateRequired(operationOutcome, 50),
             ReasonCode = Truncate(reasonCode ?? authorization.ReasonCode, 100),
             CorrelationId = TruncateRequired(context.CorrelationId, 100),
             AuthenticationMethods = Truncate(context.AuthenticationMethods, 255)
         };
+
+    /// <summary>
+    /// An allowance with a reason of its own — break-glass on a protected
+    /// principal, an Observe-mode pass, self-service — keeps that reason here.
+    /// ReasonCode carries the operation's own code ("claim_created"), which
+    /// used to overwrite it, so no audit row ever showed a break-glass use
+    /// (plan A1).
+    /// </summary>
+    internal static string DescribeAuthorization(ManagementAuthorizationDecision authorization)
+    {
+        var outcome = authorization.Outcome.ToString().ToLowerInvariant();
+        return authorization.IsAllowed
+            && !string.IsNullOrWhiteSpace(authorization.ReasonCode)
+            && !string.Equals(authorization.ReasonCode, "allowed", StringComparison.Ordinal)
+                ? $"{outcome}:{authorization.ReasonCode}"
+                : outcome;
+    }
 
     private static string TruncateRequired(string value, int maxLength) =>
         value.Length <= maxLength ? value : value[..maxLength];

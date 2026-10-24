@@ -459,7 +459,10 @@ public sealed class CapabilityManagementAuthorizationEvaluator
                 : objectDecision;
         }
 
-        return ManagementAuthorizationDecision.Allowed();
+        // An allowance can carry its own reason — break-glass on a protected
+        // principal, an Observe-mode pass. Returning a plain Allowed() here
+        // dropped it before any service could audit it (plan A1).
+        return objectDecision;
     }
 
     private static bool HasMfaEvidence(ClaimsPrincipal principal) =>

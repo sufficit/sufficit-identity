@@ -24,6 +24,26 @@ public sealed class TokenIssuancePolicyTests
     }
 
     [Theory]
+    [InlineData("permission", "identity.users.delete")]
+    [InlineData("identity_principal_tier", "9")]
+    [InlineData("identity_break_glass", "identity.management")]
+    [InlineData("identity_vault_break_glass", "identity.vault.secrets")]
+    public void Console_authority_never_reaches_a_token_even_with_the_bridge_on(string type, string value)
+    {
+        // Plan A1: what lets someone change the Identity is not an attribute
+        // a relying party should see, whatever the unmapped-claims setting.
+        var policy = new ApplicationClaimDestinationPolicy(new ClaimScopeMapOptions
+        {
+            IncludeUnmappedClaimsInAccessTokens = true,
+        });
+        var identity = new ClaimsIdentity();
+        var claim = new Claim(type, value);
+        identity.AddClaim(claim);
+
+        Assert.Empty(policy.GetDestinations(claim, includeIdentityToken: true));
+    }
+
+    [Theory]
     [InlineData("picture", "profile")]
     [InlineData("website", "profile")]
     [InlineData("profile", "profile")]

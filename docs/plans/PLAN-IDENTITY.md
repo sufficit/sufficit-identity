@@ -65,11 +65,11 @@ predicates on every query, and context shadow telemetry. They were exactly the
 machinery the decision removed, and they are gone from here. What V-19 asked
 for that still applies under the current contract is below.
 
-- [ ] Separate operator entitlements from the roles and scopes issued to
-  managed identities
-- [ ] Test that break-glass through a claim, session or authorization is
-  audited the same way as break-glass through a user (the equal/higher tier
-  matrix across every capability that reaches a user is covered)
+Delivered 2026-10-24 —
+[`202610240100`](../activities/202610240100-operator-authority.md): console
+authority comes only from reviewed role mapping, reserved claims that never
+reach a token, self-bounded operator tokens and the service-principal list;
+break-glass is now audited, alike on every path that reaches a user.
 
 Protected principals: [`202609192300`](../activities/202609192300-protected-principals-everywhere.md).
 
@@ -685,20 +685,19 @@ Deliberately after everything above; none of it is required for production.
 ## Execution order
 
 1. **C1** — the re-wrap race test and the reader/KEK authority split
-2. **A1** — operator entitlements
-3. **B1** — answer the unified-service question before B2, B3 and B5's kernel
+2. **B1** — answer the unified-service question before B2, B3 and B5's kernel
    item, which were written assuming it
-4. **D4, D2, D3, D5** — the enforcement and topology inventories, together,
+3. **D4, D2, D3, D5** — the enforcement and topology inventories, together,
    per environment. They are what turns Observe into Enforce, and what clears
    the last advisory the posture check reports at every startup:
    `token-exchange-enabled-by-default` clears when D4 declares
    the switch
-5. **E1** — enforcement first, UI last. E3's disable action waits on it
-6. **E5, E6** — console consistency and the mobile pass; independent of the
+4. **E1** — enforcement first, UI last. E3's disable action waits on it
+5. **E5, E6** — console consistency and the mobile pass; independent of the
    protocol work and safe to run in parallel with it
-7. **E2, E4, E7, F1–F14** — as capacity allows, in the order the team prefers;
+6. **E2, E4, E7, F1–F14** — as capacity allows, in the order the team prefers;
    none of them blocks another
-8. **G** — conformance, audit, cutover and rehearsals, continuously, and G4
+7. **G** — conformance, audit, cutover and rehearsals, continuously, and G4
    before anyone calls the legacy migration finished
 
 What has already been delivered is in `../activities/`, dated, not here: this
