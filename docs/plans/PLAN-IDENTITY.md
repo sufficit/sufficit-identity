@@ -309,17 +309,14 @@ override it — [`202610221630`](../activities/202610221630-plan-reconciliation.
 
 - [ ] Add a two-replica DPoP/CIBA/passkey smoke test
 
-### D4 — Enforcement-mode inventory per environment **(operational)**
+### D4 — Enforcement-mode inventory per environment
 
-- [ ] For each environment **other than production**, inventory SCIM, token
-  exchange, personal tokens, CIBA, credential mutations, public origin and
-  Management; remove every `Observe`/`Audit`/authorization-off setting, or
-  register a valid temporary exception with owner and expiry. Production passes
-  the posture check with no unresolved permissive setting — [`202610221630`](../activities/202610221630-plan-reconciliation.md)
-
-The posture check already reports `ciba-client-policy-observe`,
-`personal-tokens-observe`, `token-exchange-provenance-observe` and
-`credential-mutations-step-up-audit` — this item is the pass that empties them.
+Closed 2026-10-24: production is the only deployment of the Identity (the three
+`*-apps` nodes; no staging or homolog host exists), and its posture check
+passes with **no** finding — not even an advisory — since the C2/D1/A1 deploys.
+A new environment must pass the same check before it serves traffic; the code
+defaults that still start in `Observe` (CIBA client policy, personal tokens,
+token-exchange provenance, credential-mutation step-up) are reported by it.
 
 ### D5 — Real shared cache
 
@@ -681,11 +678,7 @@ Deliberately after everything above; none of it is required for production.
 
 1. **C1** — the re-wrap race test and the reader/KEK authority split
 2. **B3, B5** — test batteries: token exchange provenance and CIBA abuse
-3. **D4, D2, D3, D5** — the enforcement and topology inventories, together,
-   per environment. They are what turns Observe into Enforce, and what clears
-   the last advisory the posture check reports at every startup:
-   `token-exchange-enabled-by-default` clears when D4 declares
-   the switch
+3. **D3, D5** — the two-replica smoke test and the shared-cache rehearsal
 4. **E1** — enforcement first, UI last. E3's disable action waits on it
 5. **E5, E6** — console consistency and the mobile pass; independent of the
    protocol work and safe to run in parallel with it
