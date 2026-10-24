@@ -22,3 +22,13 @@ estão centralizadas dentro de cada fronteira.
 Consequência para o plano: o B2 (`IClaimReleasePolicy`) é uma política usada
 pelas duas fronteiras, sem depender do serviço; B3 e B5 são baterias de teste
 e seguem independentes.
+
+## B2 fechado no mesmo passo
+
+O que sobrava no B2 era um `IClaimReleasePolicy` que considerasse cliente,
+grant, escopos, recursos e destino. Escopo e destino já decidem hoje; cliente e
+recurso só teriam efeito com uma regra concreta, e não há nenhuma: o único
+claim mapeado em produção é `entitlements`/`directive` → `directives`, e
+filtrar por recurso tiraria `entitlements` de tokens que hoje funcionam. O item
+foi para o E4, junto das claims de aplicação com allow-list e destinos, que é
+quando a regra existir.

@@ -153,8 +153,13 @@ claim-release policy is shared by both instead.
 Inventory done and standard claims gated by their scope
 ([`202610221930`](../activities/202610221930-vault-restore-proof-and-claim-inventory.md)).
 
-- [ ] Add `IClaimReleasePolicy` considering client, grant, scopes, resources
-  and destination
+Closed 2026-10-24. Release already fails closed: standard claims follow their
+scope, the only mapped claim (`entitlements`/`directive`) follows `directives`,
+unmapped claims stay out (`IncludeUnmappedClaimsInAccessTokens=false`) and
+console authority never leaves. A client- and resource-aware policy has no rule
+to apply until an application needs its own claims, so it moved to E4
+("Application claims with allow-list and destinations") —
+[`202610240200`](../activities/202610240200-no-unified-issuance-service.md).
 
 ### B3 — Token exchange provenance and delegation
 
@@ -365,7 +370,9 @@ out without it; the multi-replica rehearsal is the missing evidence.
 ### E4 — Application advanced settings (only where enforcement is real)
 
 - [ ] Typed public metadata (`description`, `client_uri`, `logo_uri`)
-- [ ] Application claims with allow-list and destinations
+- [ ] Application claims with allow-list and destinations, through a release
+  policy that sees client, grant, scopes, resources and destination and is
+  shared by the grants and the privileged mints (from B2)
 - [ ] Advanced properties with a namespace and reserved keys
 - [ ] Per-client DPoP/JAR/CIBA/FAPI configuration only where the runtime
   actually honours it
@@ -673,8 +680,7 @@ Deliberately after everything above; none of it is required for production.
 ## Execution order
 
 1. **C1** — the re-wrap race test and the reader/KEK authority split
-2. **B2** — the claim-release policy shared by grants and privileged mints;
-   B3 and B5 are test batteries that need nothing from it
+2. **B3, B5** — test batteries: token exchange provenance and CIBA abuse
 3. **D4, D2, D3, D5** — the enforcement and topology inventories, together,
    per environment. They are what turns Observe into Enforce, and what clears
    the last advisory the posture check reports at every startup:
