@@ -5360,14 +5360,20 @@ h3 {
         font-size: 16px;
     }
 
+    /* Closed, the drawer is off-screen AND hidden: off-screen alone left its
+       links in the tab order and the accessibility tree. Visibility flips
+       only after the slide-out, so the animation still plays. */
     .app-sidebar {
         transform: translateX(-102%);
+        visibility: hidden;
         box-shadow: var(--shadow-float);
-        transition: transform 220ms var(--ease);
+        transition: transform 220ms var(--ease), visibility 0s linear 220ms;
     }
 
     .app-shell--nav-open .app-sidebar {
         transform: translateX(0);
+        visibility: visible;
+        transition: transform 220ms var(--ease), visibility 0s;
     }
 
     .app-shell--nav-open .sidebar-scrim {

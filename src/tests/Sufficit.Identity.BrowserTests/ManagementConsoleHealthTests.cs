@@ -13,64 +13,14 @@ namespace Sufficit.Identity.BrowserTests;
 [Parallelizable(ParallelScope.None)]
 public class ManagementConsoleHealthTests : PageTest
 {
-    private static readonly string BaseUrl =
-        Environment.GetEnvironmentVariable("SUFFICIT_TEST_BASE_URL")
-        ?? "https://localhost:5001";
-
-    private static readonly string TestUser =
-        Environment.GetEnvironmentVariable("SUFFICIT_TEST_USER")
-        ?? "browsertest";
-
-    private static readonly string TestPassword =
-        Environment.GetEnvironmentVariable("SUFFICIT_TEST_PASSWORD")
-        ?? "BrowserTest2026!";
+    private static readonly string BaseUrl = ManagementSession.BaseUrl;
 
     private ConsoleCollector _console = null!;
 
     [SetUp]
     public async Task AuthenticateAsync()
     {
-        TestServerProbe.EnsureServerAvailable();
-        await Page.GotoAsync($"{BaseUrl}/account/login");
-        var userInput = Page.Locator(
-            "#username, input[name='UserName']");
-        await userInput.First.FillAsync(TestUser);
-        var passInput = Page.Locator("#password, input[name='Password']");
-        await passInput.First.FillAsync(TestPassword);
-        await Page.ClickAsync("button[type='submit']");
-        try
-        {
-            await Page.WaitForURLAsync(
-                url => !url.Contains("/account/login"),
-                new PageWaitForURLOptions { Timeout = 15_000 });
-        }
-        catch (TimeoutException)
-        {
-            var errorText = await Page.TextContentAsync(".alert-error, .error") ?? "";
-            Assert.Fail($"Login failed. Error: {errorText}. Ensure test user '{TestUser}' exists.");
-        }
-
-        // The management console requires MFA (amr=mfa) to render its pages.
-        // In Development the host exposes /__test__/signin, which reissues the
-        // session cookie with the missing amr/acr claims. Outside Development
-        // the endpoint does not exist; page-level checks then run against the
-        // MFA gate instead of the full console. The fetch runs inside the page
-        // so it shares the browser's cookies.
-        var upgraded = await Page.EvaluateAsync<bool>(@"async () => {
-            const r = await fetch('/__test__/signin', {
-                method: 'POST',
-                headers: { 'content-type': 'application/x-www-form-urlencoded' },
-                body: 'username=" + TestUser + @"&mfa=true',
-                credentials: 'same-origin'
-            });
-            return r.ok;
-        }");
-        if (upgraded)
-        {
-            // The endpoint rewrote the auth cookie; reload so server-side
-            // prerendering sees the elevated claims.
-            await Page.GotoAsync($"{BaseUrl}/management/");
-        }
+        await ManagementSession.SignInAsync(Page);
 
         // Attach the console collector only after the optional MFA upgrade
         // probe. The fetch above intentionally targets /__test__/signin,
