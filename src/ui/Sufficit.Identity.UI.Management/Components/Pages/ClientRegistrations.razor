@@ -42,16 +42,11 @@
 
 <section class="table-card">
     <div class="table-card__body">
-        @if (Page is null)
-        {
-            <div class="table-skeleton" aria-label="@L["Clients.Registrations.LoadingRegistrations"].Value">
-                @for (var index = 0; index < 4; index++)
-                {
-                    <span></span>
-                }
-            </div>
-        }
-        else if (Page.Items.Count == 0)
+        <ManagementDataView Result="result"
+                            OnRetry="LoadAsync"
+                            LoadingLabel="@L["Clients.Registrations.LoadingRegistrations"].Value">
+            <Success Context="loadedPage">
+        @if (loadedPage.Items.Count == 0)
         {
             <SUIEmptyState Icon="key"
                         Title="@L["Clients.Registrations.EmptyTitle"].Value"
@@ -72,7 +67,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var client in Page.Items)
+                        @foreach (var client in loadedPage.Items)
                         {
                             <tr>
                                 <td data-label="@L["Clients.Registrations.ColumnApplication"].Value">
@@ -131,6 +126,8 @@
                 </table>
             </div>
         }
+            </Success>
+        </ManagementDataView>
     </div>
 
     <footer class="table-footer table-footer--paginated">
@@ -181,7 +178,9 @@
         : null;
 
     private string ResultCountLabel => Page is null
-        ? L["Clients.Registrations.LoadingRegistrations"].Value
+        ? result is { IsSuccess: false }
+            ? string.Empty
+            : L["Clients.Registrations.LoadingRegistrations"].Value
         : Page.TotalCount == 0
             ? L["Clients.Registrations.EmptyTitle"].Value
             : L["Clients.Registrations.CountFormat", Page.TotalCount].Value;

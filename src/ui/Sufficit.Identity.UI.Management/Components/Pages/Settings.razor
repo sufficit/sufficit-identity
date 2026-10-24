@@ -13,33 +13,17 @@
     <a class="button button--secondary" href="settings/trusted-proxies">@L["Settings.ConfigureTrustedProxies"]</a>
 </AuthorizeView>
 
-@if (loading)
-{
-    <div class="detail-shell"
-             aria-busy="true"
-             aria-label="@L["Settings.LoadingAriaLabel"].Value">
-        <div class="detail-skeleton"></div>
-        <div class="detail-skeleton detail-skeleton--short"></div>
-    </div>
-}
-else if (result?.IsSuccess is not true || result.Value is null)
-{
-    <div>
-        <SUIEmptyState Icon="alert"
-                    Title="@L["Settings.LoadError.Title"].Value"
-                    Description="@(result?.ErrorMessage ?? L["Settings.LoadError.Description"].Value)">
-            <Actions>
-                <button class="button button--primary"
-                        type="button"
-                        @onclick="RefreshAsync">
-                    @L["Settings.Retry"]
-                </button>
-            </Actions>
-        </SUIEmptyState>
-    </div>
-}
-else
-{
+<ManagementDataView Result="result"
+                    Loading="loading"
+                    OnRetry="RefreshAsync"
+                    UnavailableTitle="@L["Settings.LoadError.Title"].Value">
+    <LoadingContent>
+        <div class="detail-shell" aria-label="@L["Settings.LoadingAriaLabel"].Value">
+            <div class="detail-skeleton"></div>
+            <div class="detail-skeleton detail-skeleton--short"></div>
+        </div>
+    </LoadingContent>
+    <Success Context="_">
     <div class="contract-strip contract-strip--info">
         <SUIIcon Name="settings" Size="20" />
         <div>
@@ -162,7 +146,8 @@ else
             }
         </dl>
     </div>
-}
+    </Success>
+</ManagementDataView>
 
 @code {
     [CascadingParameter(Name = "ManagementOverview")]

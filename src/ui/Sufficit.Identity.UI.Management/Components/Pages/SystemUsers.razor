@@ -78,18 +78,12 @@
     </section>
 }
 
-@if (loading)
-{
-    <p aria-busy="true">@L["SystemUsers.Loading"]</p>
-}
-else if (loadError is not null)
-{
-    <div class="inline-notice inline-notice--danger" role="alert">
-        <SUIIcon Name="alert" Size="19" />
-        <div><span>@loadError</span></div>
-    </div>
-}
-else if (systemUsers.Count == 0)
+<ManagementDataView Result="listResult" Loading="loading" OnRetry="LoadAsync">
+    <LoadingContent>
+        <p>@L["SystemUsers.Loading"]</p>
+    </LoadingContent>
+    <Success Context="_">
+@if (systemUsers.Count == 0)
 {
     <SUIEmptyState Icon="server"
                    Title="@L["SystemUsers.Empty.Title"].Value"
@@ -148,6 +142,8 @@ else
         </table>
     </div>
 }
+    </Success>
+</ManagementDataView>
 
 @if (selected is not null)
 {
@@ -270,11 +266,12 @@ else
     [CascadingParameter]
     private BrowserTime Time { get; set; } = BrowserTime.Server;
 
-    private IReadOnlyList<SystemUserSummary> systemUsers = [];
+    private ManagementDataResult<IReadOnlyList<SystemUserSummary>>? listResult;
+    private IReadOnlyList<SystemUserSummary> systemUsers => listResult?.Value ?? [];
     private IReadOnlyList<SystemUserEnrollmentSummary> enrollments = [];
     private SystemUserSummary? selected;
     private bool loading = true, creating, showCreate, issuing;
-    private string? loadError, toggling;
+    private string? toggling;
     private string draftUserName = string.Empty, draftDisplayName = string.Empty;
     private string draftClientId = string.Empty, draftLabel = string.Empty;
     private int draftLifetimeHours = 24;
@@ -284,10 +281,8 @@ else
     private async Task LoadAsync()
     {
         loading = true;
-        var result = await SystemUserData.ListAsync();
+        listResult = await SystemUserData.ListAsync();
         loading = false;
-        loadError = result.IsSuccess ? null : result.ErrorMessage;
-        systemUsers = result.Value ?? [];
         if (selected is not null)
         {
             selected = systemUsers.FirstOrDefault(x => x.UserId == selected.UserId);

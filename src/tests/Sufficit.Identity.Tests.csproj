@@ -17,6 +17,7 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="bunit" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
     <!-- Direct (version-less; version comes from Directory.Packages.props)
          reference to force this project's resolution of the

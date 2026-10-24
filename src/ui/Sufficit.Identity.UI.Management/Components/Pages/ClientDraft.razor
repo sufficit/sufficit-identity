@@ -8,29 +8,31 @@
 
 <PageTitle>@L["Clients.Draft.PageTitle"] | Sufficit Identity</PageTitle>
 
-@if (loading)
-{
-    <div class="wizard-loading" aria-busy="true" aria-label="@L["Clients.Draft.LoadingAriaLabel"].Value">
-        <span class="button-spinner" aria-hidden="true"></span>
-        <p>@L["Clients.Draft.RecoveringDraft"]</p>
-    </div>
-}
-else if (draft is null)
+@if (!loading && draftResult?.IsSuccess is false)
 {
     <div>
         <SUIPageHeader Title="@L["Clients.Draft.UnavailableTitle"].Value"
                     Description="@L["Clients.Draft.UnavailableDescription"].Value" />
     </div>
-    <div>
-        <SUIEmptyState Icon="alert" Title="@L["Clients.Draft.OpenErrorTitle"].Value" Description="@errorMessage">
-            <Actions>
-                <a class="button button--primary" href="clients/new">@L["Clients.Draft.StartNewApplication"]</a>
-                <a class="button button--secondary" href="clients">@L["Clients.Create.Back"]</a>
-            </Actions>
-        </SUIEmptyState>
-    </div>
 }
-else if (completion is not null)
+
+<ManagementDataView Result="draftResult"
+                    Loading="loading"
+                    OnRetry="LoadAsync"
+                    NotFoundTitle="@L["Clients.Draft.OpenErrorTitle"].Value"
+                    UnavailableTitle="@L["Clients.Draft.OpenErrorTitle"].Value">
+    <LoadingContent>
+        <div class="wizard-loading" aria-label="@L["Clients.Draft.LoadingAriaLabel"].Value">
+            <span class="button-spinner" aria-hidden="true"></span>
+            <p>@L["Clients.Draft.RecoveringDraft"]</p>
+        </div>
+    </LoadingContent>
+    <FailureActions>
+        <a class="button button--primary" href="clients/new">@L["Clients.Draft.StartNewApplication"]</a>
+        <a class="button button--secondary" href="clients">@L["Clients.Create.Back"]</a>
+    </FailureActions>
+    <Success Context="_">
+@if (completion is not null)
 {
     <div>
         <SUIPageHeader Title="@L["Clients.Draft.CreatedTitle"].Value"
@@ -117,7 +119,7 @@ else
                     <div class="field-group">
                         <label for="client-display-name">@L["Clients.Draft.AppNameLabel"]</label>
                         <input id="client-display-name" name="displayName" class="form-control"
-                               autocomplete="organization" value="@draft.Values.DisplayName"
+                               autocomplete="organization" value="@draft!.Values.DisplayName"
                                @oninput="DisplayNameChangedAsync" />
                         <span class="field-hint">@L["Clients.Draft.AppNameHint"]</span>
                         @foreach (var issue in IssuesFor("displayName"))
@@ -149,7 +151,7 @@ else
                     <div class="choice-grid choice-grid--two">
                         <label class="choice-control">
                             <input name="client-type" type="radio" value="public"
-                                   checked="@(draft.Values.ClientType == "public")"
+                                   checked="@(draft!.Values.ClientType == "public")"
                                    @onchange='() => SetClientTypeAsync("public")' />
                             <span><strong>@L["Clients.Detail.TypePublic"]</strong><small>@L["Clients.Draft.PublicClientHint"]</small></span>
                         </label>
@@ -237,7 +239,7 @@ else
                     {
                         <label class="scope-option">
                             <input name="selectedScopes" type="checkbox" value="@scope.Name"
-                                   checked="@draft.Values.Scopes.Contains(scope.Name, StringComparer.Ordinal)"
+                                   checked="@draft!.Values.Scopes.Contains(scope.Name, StringComparer.Ordinal)"
                                    @onchange="args => ScopeChangedAsync(scope.Name, args)" />
                             <span><strong>@scope.DisplayName</strong><code>@scope.Name</code><small>@scope.Description</small></span>
                             @if (scope.IsProtocolScope)
@@ -256,7 +258,7 @@ else
             {
                 <div class="uri-editor">
                     <div class="uri-editor__heading"><div><h3>Redirect URIs</h3><p>@L["Clients.Draft.RedirectUrisHint"]</p></div><button class="button button--secondary button--compact" type="button" @onclick="AddRedirectAsync"><SUIIcon Name="plus" Size="16" />@L["Clients.Draft.AddAction"]</button></div>
-                    @if (draft.Values.RedirectUris.Count == 0)
+                    @if (draft!.Values.RedirectUris.Count == 0)
                     {
                         <p class="uri-editor__empty">@L["Clients.Draft.NoUriAdded"]</p>
                     }
@@ -315,7 +317,7 @@ else
             }
             else
             {
-                <div class="review-status review-status--@(draft.Validation.IsReady ? "ready" : "blocked")">
+                <div class="review-status review-status--@(draft!.Validation.IsReady ? "ready" : "blocked")">
                     <SUIIcon Name="@(draft.Validation.IsReady ? "check" : "alert")" Size="22" />
                     <div><strong>@(draft.Validation.IsReady ? L["Clients.Draft.ReadyTitle"] : L["Clients.Draft.NotReadyTitle"])</strong><span>@(draft.Validation.IsReady ? L["Clients.Draft.ReadyMessage"] : L["Clients.Draft.NotReadyMessage"])</span></div>
                 </div>
@@ -364,7 +366,7 @@ else
                     }
                     else
                     {
-                        <button class="button button--primary" type="button" disabled="@(busy || !draft.Validation.IsReady)" @onclick="CompleteAsync">
+                        <button class="button button--primary" type="button" disabled="@(busy || !draft!.Validation.IsReady)" @onclick="CompleteAsync">
                             @if (busy)
                             {
                                 <span class="button-spinner" aria-hidden="true"></span>
@@ -391,6 +393,8 @@ else
     </div>
     </div>
 }
+    </Success>
+</ManagementDataView>
 
 @code {
     // The reader's zone once the browser answers (BrowserTimeProvider in the layout).
@@ -410,6 +414,7 @@ else
         new(ManagementClientDraftSteps.Review, L["Clients.Draft.Step.Review"].Value, L["Clients.Draft.Step.Review"].Value, L["Clients.Draft.Eyebrow.Review"].Value, L["Clients.Draft.StepDescription.Review"].Value),
     ];
 
+    private ManagementDataResult<ManagementClientDraftDetail>? draftResult;
     private ManagementClientDraftDetail? draft;
     private IReadOnlyList<ManagementClientProfile> profiles = [];
     private IReadOnlyList<ManagementClientAvailableScope> scopes = [];
@@ -472,11 +477,10 @@ else
         var profilesTask = ClientData.GetClientProfilesAsync();
         var scopesTask = ClientData.GetAvailableClientScopesAsync();
         await Task.WhenAll(draftTask, profilesTask, scopesTask);
-        var draftResult = await draftTask;
+        draftResult = await draftTask;
         draft = draftResult.Value;
         profiles = (await profilesTask).Value ?? [];
         scopes = (await scopesTask).Value ?? [];
-        errorMessage = draftResult.IsSuccess ? null : draftResult.ErrorMessage ?? L["Clients.Draft.DraftNotFoundError"].Value;
         loadedId = Id;
         loading = false;
         if (draft is not null && !ManagementClientDraftSteps.All.Contains(Step, StringComparer.OrdinalIgnoreCase))

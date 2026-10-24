@@ -126,6 +126,16 @@
   <data name="Common.Access.Forbidden" xml:space="preserve"><value>Sua conta não possui a autoridade necessária.</value></data>
   <data name="Common.Timeout" xml:space="preserve"><value>O serviço demorou mais que o esperado. Tente novamente.</value></data>
   <data name="Common.Unavailable" xml:space="preserve"><value>O serviço de identidade não conseguiu concluir a operação.</value></data>
+  <data name="Common.State.Loading" xml:space="preserve"><value>Carregando…</value></data>
+  <data name="Common.State.Retry" xml:space="preserve"><value>Tentar novamente</value></data>
+  <data name="Common.State.Forbidden.Title" xml:space="preserve"><value>Acesso não autorizado</value></data>
+  <data name="Common.State.StepUp.Title" xml:space="preserve"><value>Segundo fator necessário</value></data>
+  <data name="Common.State.StepUp.Action" xml:space="preserve"><value>Encerrar sessão e entrar com MFA</value></data>
+  <data name="Common.State.Unavailable.Title" xml:space="preserve"><value>Não foi possível carregar estas informações</value></data>
+  <data name="Common.State.NotFound.Title" xml:space="preserve"><value>Não encontrado</value></data>
+  <data name="Common.State.NotFound.Description" xml:space="preserve"><value>O registro não existe ou foi removido.</value></data>
+  <data name="Common.State.Invalid.Title" xml:space="preserve"><value>A solicitação não foi aceita</value></data>
+  <data name="Common.State.Conflict.Title" xml:space="preserve"><value>As informações mudaram enquanto isso</value></data>
   <data name="Audiences.PageTitle" xml:space="preserve"><value>Audiências | Sufficit Identity</value></data>
   <data name="Audiences.HeaderTitle" xml:space="preserve"><value>Audiências</value></data>
   <data name="Audiences.HeaderDescription" xml:space="preserve"><value>Consulte os destinatários dos tokens e gerencie seus vínculos com scopes.</value></data>
@@ -159,7 +169,6 @@
   <data name="Audiences.SearchPlaceholder" xml:space="preserve"><value>Audiência, scope ou cliente</value></data>
   <data name="Audiences.LoadingAriaLabel" xml:space="preserve"><value>Carregando audiências</value></data>
   <data name="Audiences.LoadErrorTitle" xml:space="preserve"><value>Não foi possível consultar as audiências</value></data>
-  <data name="Audiences.TryAgain" xml:space="preserve"><value>Tentar novamente</value></data>
   <data name="Audiences.EmptyTitleNone" xml:space="preserve"><value>Nenhuma audiência registrada</value></data>
   <data name="Audiences.EmptyTitleSearch" xml:space="preserve"><value>Nenhuma audiência encontrada</value></data>
   <data name="Audiences.EmptyDescriptionNone" xml:space="preserve"><value>Vincule uma audiência a um scope de API para registrá-la.</value></data>
@@ -232,7 +241,6 @@
   <data name="Users.Header.Title" xml:space="preserve"><value>Usuários</value></data>
   <data name="Users.Header.Description" xml:space="preserve"><value>Investigue cadastros, encontre picos fora do padrão e navegue pelo diretório com filtros compartilháveis.</value></data>
   <data name="Users.Actions.New" xml:space="preserve"><value>Novo usuário</value></data>
-  <data name="Users.Actions.Retry" xml:space="preserve"><value>Tentar novamente</value></data>
   <data name="Users.Badge.GlobalDirectory" xml:space="preserve"><value>Diretório global</value></data>
   <data name="Users.Deleted.Title" xml:space="preserve"><value>Conta excluída</value></data>
   <data name="Users.Deleted.Description" xml:space="preserve"><value>Credenciais, sessões, tokens e autorizações anteriores foram revogados.</value></data>
@@ -386,7 +394,6 @@
   <data name="Clients.Detail.ConfirmDelete" xml:space="preserve"><value>Confirmar exclusão</value></data>
   <data name="Clients.Detail.NotFoundTitle" xml:space="preserve"><value>Cliente não encontrado</value></data>
   <data name="Clients.Detail.GenericErrorTitle" xml:space="preserve"><value>Não foi possível abrir o cliente</value></data>
-  <data name="Clients.Detail.GenericErrorDescription" xml:space="preserve"><value>O serviço de identidade não conseguiu ler esse registro. Tente novamente.</value></data>
   <data name="Clients.Detail.HeaderFallbackTitle" xml:space="preserve"><value>Detalhes do cliente</value></data>
   <data name="Clients.Detail.TypePublic" xml:space="preserve"><value>Público</value></data>
   <data name="Clients.Detail.TypeConfidential" xml:space="preserve"><value>Confidencial</value></data>
@@ -569,7 +576,6 @@
   <data name="Clients.Draft.ConfirmAbandonMessage" xml:space="preserve"><value>Descartar definitivamente este rascunho?</value></data>
   <data name="Clients.Draft.ConfirmAbandonYes" xml:space="preserve"><value>Sim, descartar</value></data>
   <data name="Clients.Draft.AbandonDraft" xml:space="preserve"><value>Descartar rascunho</value></data>
-  <data name="Clients.Draft.DraftNotFoundError" xml:space="preserve"><value>O rascunho não foi encontrado.</value></data>
   <data name="Clients.Draft.SaveFailedError" xml:space="preserve"><value>Não foi possível salvar o rascunho.</value></data>
   <data name="Clients.Draft.CreateFailedError" xml:space="preserve"><value>Não foi possível criar a aplicação.</value></data>
   <data name="Clients.Draft.AbandonFailedError" xml:space="preserve"><value>Não foi possível descartar o rascunho.</value></data>
@@ -593,7 +599,6 @@
   <data name="Clients.Edit.LoadingAriaLabel" xml:space="preserve"><value>Carregando aplicação</value></data>
   <data name="Clients.Edit.RecoveringConfig" xml:space="preserve"><value>Recuperando configuração…</value></data>
   <data name="Clients.Edit.OpenErrorTitle" xml:space="preserve"><value>Não foi possível editar esta aplicação</value></data>
-  <data name="Clients.Edit.RecordUnavailable" xml:space="preserve"><value>O registro não está disponível.</value></data>
   <data name="Clients.Edit.ManifestManagedTitle" xml:space="preserve"><value>Aplicação gerenciada por manifesto</value></data>
   <data name="Clients.Edit.ManifestManagedMessage" xml:space="preserve"><value>Edite o manifesto declarativo e aplique o provisionamento para alterar este registro.</value></data>
   <data name="Clients.Edit.BackToDetails" xml:space="preserve"><value>Voltar aos detalhes</value></data>
@@ -771,7 +776,6 @@
   <data name="Users.Create.ContractStrip.Description" xml:space="preserve"><value>Esta operação cria identificação e credencial. Grupos, cargos e permissões são definidos pelos sistemas que os utilizam.</value></data>
   <data name="Users.Create.ContractStrip.Badge" xml:space="preserve"><value>Auditável</value></data>
   <data name="Users.Create.LoadingAriaLabel" xml:space="preserve"><value>Carregando autorização</value></data>
-  <data name="Users.Create.Retry" xml:space="preserve"><value>Tentar novamente</value></data>
   <data name="Users.Create.Forbidden.Title" xml:space="preserve"><value>Criação de usuários não autorizada</value></data>
   <data name="Users.Create.Forbidden.Description" xml:space="preserve"><value>Sua sessão pode consultar o diretório, mas não possui a capability necessária para criar contas.</value></data>
   <data name="Users.Create.Identity.Heading" xml:space="preserve"><value>Identificação</value></data>
@@ -804,7 +808,6 @@
   <data name="Users.Edit.BackToUser" xml:space="preserve"><value>Voltar para o usuário</value></data>
   <data name="Users.Edit.LoadingAriaLabel" xml:space="preserve"><value>Carregando perfil do usuário</value></data>
   <data name="Users.Edit.BackToUsers" xml:space="preserve"><value>Voltar para usuários</value></data>
-  <data name="Users.Edit.Retry" xml:space="preserve"><value>Tentar novamente</value></data>
   <data name="Users.Edit.MfaRequired.Title" xml:space="preserve"><value>MFA necessário para editar o perfil</value></data>
   <data name="Users.Edit.MfaRequired.Description" xml:space="preserve"><value>A política administrativa exige autenticação multifator. Conclua o MFA e retorne a esta página.</value></data>
   <data name="Users.Edit.Forbidden.Title" xml:space="preserve"><value>Edição de perfil não autorizada</value></data>
@@ -921,14 +924,12 @@
   <data name="Users.Detail.Delete.MfaRequiredDescription" xml:space="preserve"><value>A política administrativa exige autenticação multifator antes de uma exclusão permanente.</value></data>
   <data name="Users.Detail.Delete.SelfTitle" xml:space="preserve"><value>Sua própria conta não pode ser excluída</value></data>
   <data name="Users.Detail.Delete.SelfDescription" xml:space="preserve"><value>Outro operador autorizado deve executar esta operação para evitar perda acidental do acesso administrativo.</value></data>
-  <data name="Users.Detail.Retry" xml:space="preserve"><value>Tentar novamente</value></data>
   <data name="Users.Detail.HeaderTitleDefault" xml:space="preserve"><value>Detalhes do usuário</value></data>
   <data name="Users.Detail.PageTitleFormat" xml:space="preserve"><value>{0} | Sufficit Identity</value></data>
   <data name="Users.Detail.Error.NotFound" xml:space="preserve"><value>Usuário não encontrado</value></data>
   <data name="Users.Detail.Error.StepUp" xml:space="preserve"><value>MFA exigido para consultar o usuário</value></data>
   <data name="Users.Detail.Error.Forbidden" xml:space="preserve"><value>Acesso ao usuário negado</value></data>
   <data name="Users.Detail.Error.Generic" xml:space="preserve"><value>Não foi possível abrir o usuário</value></data>
-  <data name="Users.Detail.Error.GenericDescription" xml:space="preserve"><value>O serviço de identidade não conseguiu ler esse registro.</value></data>
   <data name="Users.Detail.Reset.Error.StepUp" xml:space="preserve"><value>MFA exigido para redefinir a senha</value></data>
   <data name="Users.Detail.Error.InsufficientAuthority" xml:space="preserve"><value>Autoridade insuficiente sobre a conta</value></data>
   <data name="Users.Detail.Reset.Error.Generic" xml:space="preserve"><value>Não foi possível redefinir a senha</value></data>
@@ -972,8 +973,6 @@
   <data name="Sessions.NoClient" xml:space="preserve"><value>Sem cliente</value></data>
   <data name="Sessions.ExpiresPrefix" xml:space="preserve"><value>expira</value></data>
   <data name="Sessions.RevokeAction" xml:space="preserve"><value>Revogar</value></data>
-  <data name="Sessions.Error.GenericDescription" xml:space="preserve"><value>O serviço não conseguiu consultar as sessões.</value></data>
-  <data name="Sessions.Retry" xml:space="preserve"><value>Tentar novamente</value></data>
   <data name="Sessions.PaginationAriaLabel" xml:space="preserve"><value>Paginação de sessões</value></data>
   <data name="Sessions.Previous" xml:space="preserve"><value>Anterior</value></data>
   <data name="Sessions.PageOfFormat" xml:space="preserve"><value>Página {0} de {1}</value></data>
@@ -1080,8 +1079,6 @@
   <data name="Authorizations.NoClient" xml:space="preserve"><value>Sem cliente</value></data>
   <data name="Authorizations.NoScopes" xml:space="preserve"><value>Sem scopes</value></data>
   <data name="Authorizations.RevokeAction" xml:space="preserve"><value>Revogar</value></data>
-  <data name="Authorizations.Error.GenericDescription" xml:space="preserve"><value>O serviço não conseguiu consultar as autorizações.</value></data>
-  <data name="Authorizations.Retry" xml:space="preserve"><value>Tentar novamente</value></data>
   <data name="Authorizations.PaginationAriaLabel" xml:space="preserve"><value>Paginação de autorizações</value></data>
   <data name="Authorizations.Previous" xml:space="preserve"><value>Anterior</value></data>
   <data name="Authorizations.PageOfFormat" xml:space="preserve"><value>Página {0} de {1}</value></data>
@@ -1122,7 +1119,6 @@
   <data name="Claims.Search.Submit" xml:space="preserve"><value>Pesquisar</value></data>
   <data name="Claims.Search.Clear" xml:space="preserve"><value>Limpar</value></data>
   <data name="Claims.LoadingAriaLabel" xml:space="preserve"><value>Carregando claims</value></data>
-  <data name="Claims.User.Error.GenericDescription" xml:space="preserve"><value>O serviço não conseguiu ler a conta.</value></data>
   <data name="Claims.BackToUsers" xml:space="preserve"><value>Voltar para usuários</value></data>
   <data name="Claims.Empty.Title" xml:space="preserve"><value>Nenhuma claim atribuída</value></data>
   <data name="Claims.AssignFirstClaim" xml:space="preserve"><value>Atribuir primeira claim</value></data>
@@ -1132,8 +1128,6 @@
   <data name="Claims.Column.Actions" xml:space="preserve"><value>Ações</value></data>
   <data name="Claims.AssignedBadge" xml:space="preserve"><value>Atribuída</value></data>
   <data name="Claims.Edit" xml:space="preserve"><value>Editar</value></data>
-  <data name="Claims.Error.GenericDescription" xml:space="preserve"><value>O serviço não conseguiu ler as atribuições agora.</value></data>
-  <data name="Claims.Retry" xml:space="preserve"><value>Tentar novamente</value></data>
   <data name="Claims.PaginationAriaLabel" xml:space="preserve"><value>Paginação de claims</value></data>
   <data name="Claims.Previous" xml:space="preserve"><value>Anterior</value></data>
   <data name="Claims.PageOfFormat" xml:space="preserve"><value>Página {0} de {1}</value></data>
@@ -1227,7 +1221,6 @@
   <data name="ClaimDetail.Error.NotFound" xml:space="preserve"><value>Claim não encontrada</value></data>
   <data name="ClaimDetail.Error.StepUp" xml:space="preserve"><value>MFA exigido para consultar a claim</value></data>
   <data name="ClaimDetail.Error.Generic" xml:space="preserve"><value>Não foi possível abrir a claim</value></data>
-  <data name="ClaimDetail.Error.GenericDescription" xml:space="preserve"><value>A claim não pertence a esta conta ou não foi encontrada.</value></data>
   <data name="ClaimDetail.Validation.TypeRequired" xml:space="preserve"><value>Informe o tipo da claim.</value></data>
   <data name="ClaimDetail.Validation.MaxLength256" xml:space="preserve"><value>Use no máximo 256 caracteres.</value></data>
   <data name="ClaimDetail.Validation.ValueRequired" xml:space="preserve"><value>Informe o valor da claim.</value></data>
@@ -1260,8 +1253,6 @@
   <data name="Scopes.ErrorTitle.StepUp" xml:space="preserve"><value>MFA exigido para consultar scopes</value></data>
   <data name="Scopes.ErrorTitle.Forbidden" xml:space="preserve"><value>Acesso aos scopes negado</value></data>
   <data name="Scopes.ErrorTitle.Generic" xml:space="preserve"><value>Não foi possível consultar os scopes</value></data>
-  <data name="Scopes.Error.Fallback" xml:space="preserve"><value>O serviço não conseguiu consultar os scopes agora.</value></data>
-  <data name="Scopes.Retry" xml:space="preserve"><value>Tentar novamente</value></data>
   <data name="Scopes.ResultCount.Format" xml:space="preserve"><value>{0} de {1} scope(s)</value></data>
   <data name="Scopes.ResultCount.None" xml:space="preserve"><value>Nenhum resultado carregado</value></data>
   <data name="Scopes.SafetyHeading" xml:space="preserve"><value>Ciclo de vida seguro</value></data>
@@ -1324,7 +1315,6 @@
   <data name="Scopes.ErrorTitle.NotFound" xml:space="preserve"><value>Scope não encontrado</value></data>
   <data name="Scopes.ErrorTitle.DetailStepUp" xml:space="preserve"><value>MFA exigido para consultar o scope</value></data>
   <data name="Scopes.ErrorTitle.DetailGeneric" xml:space="preserve"><value>Não foi possível abrir o scope</value></data>
-  <data name="Scopes.Error.DetailFallback" xml:space="preserve"><value>O serviço não conseguiu ler o scope.</value></data>
   <data name="Audit.PageTitle" xml:space="preserve"><value>Auditoria | Sufficit Identity</value></data>
   <data name="Audit.HeaderTitle" xml:space="preserve"><value>Auditoria</value></data>
   <data name="Audit.HeaderDescription" xml:space="preserve"><value>Rastreabilidade das decisões de autorização e mutações administrativas.</value></data>
@@ -1348,8 +1338,6 @@
   <data name="Audit.Before" xml:space="preserve"><value>Antes</value></data>
   <data name="Audit.After" xml:space="preserve"><value>Depois</value></data>
   <data name="Audit.ErrorTitle" xml:space="preserve"><value>Não foi possível consultar a auditoria</value></data>
-  <data name="Audit.Error.Fallback" xml:space="preserve"><value>O serviço de identidade não retornou os eventos agora.</value></data>
-  <data name="Audit.Retry" xml:space="preserve"><value>Tentar novamente</value></data>
   <data name="Audit.Footer.UtcLimit" xml:space="preserve"><value>Registros em UTC · limite de 100</value></data>
   <data name="Audit.Safety.Heading" xml:space="preserve"><value>Conteúdo protegido</value></data>
   <data name="Audit.Safety.Description" xml:space="preserve"><value>A trilha registra metadados operacionais suficientes para investigação sem replicar dados sensíveis.</value></data>
@@ -1376,7 +1364,6 @@
   <data name="TrustedProxies.HeaderDescription" xml:space="preserve"><value>Defina quais proxies podem informar o endereço original de quem acessa o Identity.</value></data>
   <data name="TrustedProxies.Loading.Aria" xml:space="preserve"><value>Carregando proxies confiáveis</value></data>
   <data name="TrustedProxies.LoadError.Title" xml:space="preserve"><value>Não foi possível carregar os proxies</value></data>
-  <data name="TrustedProxies.Retry" xml:space="preserve"><value>Tentar novamente</value></data>
   <data name="TrustedProxies.Effective.Heading" xml:space="preserve"><value>Configuração em uso</value></data>
   <data name="TrustedProxies.Effective.Description" xml:space="preserve"><value>As redes do arquivo e do banco são combinadas, sem duplicatas.</value></data>
   <data name="TrustedProxies.ForwardLimitBadge" xml:space="preserve"><value>{0} saltos</value></data>
@@ -1417,8 +1404,6 @@
   <data name="Database.RefreshNow" xml:space="preserve"><value>Atualizar agora</value></data>
   <data name="Database.Loading.Aria" xml:space="preserve"><value>Carregando telemetria do banco de dados</value></data>
   <data name="Database.LoadError.Title" xml:space="preserve"><value>Não foi possível consultar o banco de dados</value></data>
-  <data name="Database.LoadError.Fallback" xml:space="preserve"><value>O runtime não informou a telemetria de conexões.</value></data>
-  <data name="Database.Retry" xml:space="preserve"><value>Tentar novamente</value></data>
   <data name="Database.StaleData.Title" xml:space="preserve"><value>Os dados podem estar desatualizados</value></data>
   <data name="Database.StaleData.Suffix" xml:space="preserve"><value>A última captura válida continua visível.</value></data>
   <data name="Database.Capacity.Aria" xml:space="preserve"><value>Capacidade dos pools de conexão</value></data>
@@ -1500,8 +1485,6 @@
   <data name="Metrics.Filter.Apply" xml:space="preserve"><value>Aplicar filtros</value></data>
   <data name="Metrics.Loading.Aria" xml:space="preserve"><value>Carregando métricas</value></data>
   <data name="Metrics.LoadError.Title" xml:space="preserve"><value>Não foi possível consultar as métricas</value></data>
-  <data name="Metrics.LoadError.Fallback" xml:space="preserve"><value>O coletor não informou seu estado.</value></data>
-  <data name="Metrics.Retry" xml:space="preserve"><value>Tentar novamente</value></data>
   <data name="Metrics.Summary.Aria" xml:space="preserve"><value>Resumo de uso</value></data>
   <data name="Metrics.Summary.EventsInPeriod" xml:space="preserve"><value>Eventos no período</value></data>
   <data name="Metrics.Summary.ActiveApplications" xml:space="preserve"><value>Aplicações ativas</value></data>
@@ -1784,8 +1767,6 @@
   <data name="Home.ViewConfiguration" xml:space="preserve"><value>Ver configuração</value></data>
   <data name="Home.LoadingAriaLabel" xml:space="preserve"><value>Carregando estado administrativo</value></data>
   <data name="Home.RuntimeError.Title" xml:space="preserve"><value>Não foi possível consultar o runtime</value></data>
-  <data name="Home.RuntimeError.Description" xml:space="preserve"><value>O serviço de identidade não informou seu estado administrativo.</value></data>
-  <data name="Home.Retry" xml:space="preserve"><value>Tentar novamente</value></data>
   <data name="Home.RuntimeState.Title" xml:space="preserve"><value>Estado fornecido pelo runtime</value></data>
   <data name="Home.RuntimeState.Summary" xml:space="preserve"><value>Ambiente {0} · {1} capabilities efetivas</value></data>
   <data name="Home.Current" xml:space="preserve"><value>Atual</value></data>
@@ -1845,8 +1826,6 @@
   <data name="Settings.ConfigureTrustedProxies" xml:space="preserve"><value>Configurar proxies confiáveis</value></data>
   <data name="Settings.LoadingAriaLabel" xml:space="preserve"><value>Carregando configuração administrativa</value></data>
   <data name="Settings.LoadError.Title" xml:space="preserve"><value>Não foi possível carregar a configuração</value></data>
-  <data name="Settings.LoadError.Description" xml:space="preserve"><value>O serviço de identidade não informou sua configuração administrativa.</value></data>
-  <data name="Settings.Retry" xml:space="preserve"><value>Tentar novamente</value></data>
   <data name="Settings.ProvidedByService.Title" xml:space="preserve"><value>Configuração fornecida pelo serviço</value></data>
   <data name="Settings.ProvidedByService.Description" xml:space="preserve"><value>Os valores abaixo são a mesma projeção publicada pelo adaptador HTTP.</value></data>
   <data name="Settings.OperatorPolicy.Title" xml:space="preserve"><value>Política do operador</value></data>
@@ -1890,7 +1869,6 @@
   <data name="Branding.SavedConfigurations" xml:space="preserve"><value>Configurações salvas</value></data>
   <data name="Branding.LoadingThemes" xml:space="preserve"><value>Carregando temas</value></data>
   <data name="Branding.LoadError.Title" xml:space="preserve"><value>Não foi possível carregar os temas</value></data>
-  <data name="Branding.Retry" xml:space="preserve"><value>Tentar novamente</value></data>
   <data name="Branding.NoThemes.Title" xml:space="preserve"><value>Nenhum tema configurado</value></data>
   <data name="Branding.NoThemes.Description" xml:space="preserve"><value>Crie a primeira identidade visual; ela só será publicada após a ativação.</value></data>
   <data name="Branding.CreateTheme" xml:space="preserve"><value>Criar tema</value></data>
@@ -2071,7 +2049,6 @@
   <data name="Clients.RegistrationTokens.RevealExpires" xml:space="preserve"><value>Expira em {0}</value></data>
   <data name="Clients.RegistrationTokens.RevealAriaLabel" xml:space="preserve"><value>Valor do token de registro</value></data>
   <data name="Clients.RegistrationTokens.Loading" xml:space="preserve"><value>Carregando tokens de registro</value></data>
-  <data name="Clients.RegistrationTokens.LoadError" xml:space="preserve"><value>Os tokens de registro estão indisponíveis.</value></data>
   <data name="Clients.RegistrationTokens.EmptyTitle" xml:space="preserve"><value>Nenhum token de registro</value></data>
   <data name="Clients.RegistrationTokens.EmptyDescription" xml:space="preserve"><value>Emita um token para permitir que uma aplicação se registre sozinha.</value></data>
   <data name="Clients.RegistrationTokens.ColumnRegistrant" xml:space="preserve"><value>Registrante</value></data>

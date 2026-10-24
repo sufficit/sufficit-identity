@@ -18,32 +18,17 @@
     </Actions>
 </SUIPageHeader>
 
-@if (loading)
-{
-    <div class="detail-shell"
-             aria-busy="true"
-             aria-label="@L["Home.LoadingAriaLabel"].Value">
-        <div class="detail-skeleton"></div>
-        <div class="detail-skeleton detail-skeleton--short"></div>
-    </div>
-}
-else if (result?.IsSuccess is not true || result.Value is null)
-{
-    <div>
-        <SUIEmptyState Icon="alert"
-                    Title="@L["Home.RuntimeError.Title"].Value"
-                    Description="@(result?.ErrorMessage ?? L["Home.RuntimeError.Description"].Value)">
-            <Actions>
-                <SUIButton ColorValue="SUIColor.Primary"
-                           OnClick="RefreshAsync">
-                    @L["Home.Retry"]
-                </SUIButton>
-            </Actions>
-        </SUIEmptyState>
-    </div>
-}
-else
-{
+<ManagementDataView Result="result"
+                    Loading="loading"
+                    OnRetry="RefreshAsync"
+                    UnavailableTitle="@L["Home.RuntimeError.Title"].Value">
+    <LoadingContent>
+        <div class="detail-shell" aria-label="@L["Home.LoadingAriaLabel"].Value">
+            <div class="detail-skeleton"></div>
+            <div class="detail-skeleton detail-skeleton--short"></div>
+        </div>
+    </LoadingContent>
+    <Success Context="_">
     <div class="contract-strip contract-strip--success">
         <SUIIcon Name="shield" Size="20" />
         <div>
@@ -195,7 +180,8 @@ else
             <SUIIcon Name="arrow-right" Size="15" />
         </a>
     </div>
-}
+    </Success>
+</ManagementDataView>
 
 @code {
     [CascadingParameter(Name = "ManagementOverview")]

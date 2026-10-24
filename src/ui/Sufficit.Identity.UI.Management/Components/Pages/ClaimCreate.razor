@@ -50,6 +50,8 @@ else
         </div>
     }
 
+    <ManagementDataView Result="userResult" OnRetry="LoadAsync">
+    <Success Context="_">
     <div>
     <EditForm Model="model"
               OnValidSubmit="CreateAsync"
@@ -129,6 +131,8 @@ else
         </footer>
     </EditForm>
     </div>
+    </Success>
+    </ManagementDataView>
 }
 
 @code {
@@ -173,6 +177,12 @@ else
             return;
         }
 
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        userResult = null;
         var metadataTask = ClaimData.GetMetadataAsync();
         var userTask = UserData.GetAsync(UserId!);
         await Task.WhenAll(metadataTask, userTask);

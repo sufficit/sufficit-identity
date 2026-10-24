@@ -57,18 +57,15 @@
         </div>
     </div>
 
-    <div class="client-results" aria-live="polite">
-        @if (loading)
-        {
-            <div class="table-skeleton" aria-label="@L["Scopes.Loading"].Value">
-                @for (var index = 0; index < 4; index++)
-                {
-                    <span></span>
-                }
-            </div>
-        }
-        else if (result?.IsSuccess is true)
-        {
+    <ManagementDataView Result="result"
+                        Loading="loading"
+                        OnRetry="LoadAsync"
+                        Class="client-results"
+                        LoadingLabel="@L["Scopes.Loading"].Value"
+                        StepUpTitle="@L["Scopes.ErrorTitle.StepUp"].Value"
+                        ForbiddenTitle="@L["Scopes.ErrorTitle.Forbidden"].Value"
+                        UnavailableTitle="@L["Scopes.ErrorTitle.Generic"].Value">
+        <Success Context="_">
             @if (FilteredScopes.Count is 0)
             {
                 <SUIEmptyState Icon="scope"
@@ -128,18 +125,8 @@
                     </table>
                 </div>
             }
-        }
-        else
-        {
-            <SUIEmptyState Icon="alert"
-                        Title="@ErrorTitle"
-                        Description="@(result?.ErrorMessage ?? L["Scopes.Error.Fallback"].Value)">
-                <Actions>
-                    <button class="button button--secondary" type="button" @onclick="LoadAsync">@L["Scopes.Retry"]</button>
-                </Actions>
-            </SUIEmptyState>
-        }
-    </div>
+        </Success>
+    </ManagementDataView>
 
     <footer class="table-footer">
         <span>@ResultCountLabel</span>
@@ -178,13 +165,6 @@
                     || (scope.DisplayName?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false)
                     || (scope.Description?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false))
                 .ToArray();
-
-    private string ErrorTitle =>
-        result?.Outcome is ManagementDataOutcome.StepUpRequired
-            ? L["Scopes.ErrorTitle.StepUp"].Value
-            : result?.Outcome is ManagementDataOutcome.Forbidden
-                ? L["Scopes.ErrorTitle.Forbidden"].Value
-                : L["Scopes.ErrorTitle.Generic"].Value;
 
     private string ResultCountLabel =>
         loading

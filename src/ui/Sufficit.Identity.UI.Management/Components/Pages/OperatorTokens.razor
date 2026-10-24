@@ -26,24 +26,21 @@
     }
 </div>
 
-@if (workspaceResult is null)
-{
-    <div class="operator-token-loading" aria-live="polite">
-        <span class="button-spinner" aria-hidden="true"></span>
-        <span>@L["OperatorTokens.Loading"]</span>
-    </div>
-}
-else if (workspaceResult.IsSuccess is false || workspace is null)
-{
-    <SUIAlert ToneValue="SUITone.Danger" Icon="alert" Class="operator-token-alert">
-        <div class="operator-token-alert__copy">
-            <strong>@ErrorTitle(workspaceResult)</strong>
-            <span>@workspaceResult.ErrorMessage</span>
+<ManagementDataView Result="workspaceResult"
+                    OnRetry="LoadAsync"
+                    InvalidTitle="@L["OperatorTokens.Error.InvalidTitle"].Value"
+                    ConflictTitle="@L["OperatorTokens.Error.ConflictTitle"].Value"
+                    NotFoundTitle="@L["OperatorTokens.Error.NotFoundTitle"].Value"
+                    ForbiddenTitle="@L["OperatorTokens.Error.ForbiddenTitle"].Value"
+                    StepUpTitle="@L["OperatorTokens.Error.StepUpTitle"].Value"
+                    UnavailableTitle="@L["OperatorTokens.Error.UnavailableTitle"].Value">
+    <LoadingContent>
+        <div class="operator-token-loading">
+            <span class="button-spinner" aria-hidden="true"></span>
+            <span>@L["OperatorTokens.Loading"]</span>
         </div>
-    </SUIAlert>
-}
-else
-{
+    </LoadingContent>
+    <Success Context="_">
     @if (queryPrepared)
     {
         <section class="operator-token-request" aria-labelledby="prepared-request-heading">
@@ -122,7 +119,7 @@ else
                     <h2 id="operator-token-issuer-heading">@L["OperatorTokens.Issuer.Title"]</h2>
                     <p>@L["OperatorTokens.Issuer.Description"]</p>
                 </div>
-                <SUIStatusBadge ToneValue="@(workspace.IssuanceEnabled ? SUITone.Success : SUITone.Danger)">
+                <SUIStatusBadge ToneValue="@(workspace!.IssuanceEnabled ? SUITone.Success : SUITone.Danger)">
                     @(workspace.IssuanceEnabled ? L["OperatorTokens.Issuer.EnabledBadge"] : L["OperatorTokens.Issuer.DisabledBadge"])
                 </SUIStatusBadge>
             </header>
@@ -313,7 +310,8 @@ else
             </div>
         }
     </section>
-}
+    </Success>
+</ManagementDataView>
 
 @code {
     // The reader's zone once the browser answers (BrowserTimeProvider in the layout).
@@ -351,8 +349,11 @@ else
     private string? pendingRevokeId;
     private string? revokedPurpose;
 
-    protected override async Task OnInitializedAsync()
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
     {
+        workspaceResult = null;
         workspaceResult = await TokenData.GetAsync();
         workspace = workspaceResult.Value;
         if (workspace is null)

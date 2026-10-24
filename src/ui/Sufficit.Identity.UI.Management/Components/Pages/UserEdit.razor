@@ -16,40 +16,31 @@
     </Actions>
 </SUIPageHeader>
 
-@if (loading)
-{
-    <div class="form-section" aria-busy="true">
-        <div class="table-skeleton" aria-label="@L["Users.Edit.LoadingAriaLabel"].Value">
-            @for (var index = 0; index < 4; index++)
-            {
-                <span></span>
-            }
-        </div>
-    </div>
-}
-else if (detailResult?.IsSuccess is false)
-{
-    <div class="panel">
-        <SUIEmptyState Icon="alert"
-                    Title="@LoadErrorTitle"
-                    Description="@detailResult.ErrorMessage">
-            <Actions>
-                <a class="button button--secondary" href="@UsersHref">
-                    @L["Users.Edit.BackToUsers"]
-                </a>
-                @if (detailResult.Outcome is ManagementDataOutcome.Unavailable)
+<ManagementDataView Result="detailResult"
+                    Loading="loading"
+                    OnRetry="LoadAsync"
+                    FailureClass="panel"
+                    NotFoundTitle="@L["Users.Edit.LoadError.NotFound"].Value"
+                    StepUpTitle="@L["Users.Edit.LoadError.StepUp"].Value"
+                    ForbiddenTitle="@L["Users.Edit.LoadError.Forbidden"].Value"
+                    UnavailableTitle="@L["Users.Edit.LoadError.Generic"].Value">
+    <LoadingContent>
+        <div class="form-section">
+            <div class="table-skeleton" aria-label="@L["Users.Edit.LoadingAriaLabel"].Value">
+                @for (var index = 0; index < 4; index++)
                 {
-                    <button class="button button--primary"
-                            type="button"
-                            @onclick="LoadAsync">
-                        @L["Users.Edit.Retry"]
-                    </button>
+                    <span></span>
                 }
-            </Actions>
-        </SUIEmptyState>
-    </div>
-}
-else if (User.Actions.UpdateProfileRequiresMfa)
+            </div>
+        </div>
+    </LoadingContent>
+    <FailureActions>
+        <a class="button button--secondary" href="@UsersHref">
+            @L["Users.Edit.BackToUsers"]
+        </a>
+    </FailureActions>
+    <Success Context="_">
+@if (User.Actions.UpdateProfileRequiresMfa)
 {
     <div class="panel">
         <SUIEmptyState Icon="shield"
@@ -183,6 +174,8 @@ else
     </EditForm>
     </div>
 }
+    </Success>
+</ManagementDataView>
 
 @code {
     [Parameter]
@@ -213,15 +206,6 @@ else
         $"users/{Uri.EscapeDataString(Id)}";
 
     private const string UsersHref = "users";
-
-    private string LoadErrorTitle =>
-        detailResult?.Outcome is ManagementDataOutcome.NotFound
-            ? L["Users.Edit.LoadError.NotFound"].Value
-            : detailResult?.Outcome is ManagementDataOutcome.StepUpRequired
-                ? L["Users.Edit.LoadError.StepUp"].Value
-                : detailResult?.Outcome is ManagementDataOutcome.Forbidden
-                    ? L["Users.Edit.LoadError.Forbidden"].Value
-                    : L["Users.Edit.LoadError.Generic"].Value;
 
     private string SubmissionTitle =>
         submission?.Outcome is ManagementDataOutcome.StepUpRequired

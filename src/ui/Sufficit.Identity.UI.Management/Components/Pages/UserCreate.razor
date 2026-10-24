@@ -25,34 +25,24 @@
     <SUIStatusBadge ToneValue="SUITone.Success">@L["Users.Create.ContractStrip.Badge"]</SUIStatusBadge>
 </div>
 
-@if (loading)
-{
-    <div class="form-section" aria-busy="true">
-        <div class="table-skeleton" aria-label="@L["Users.Create.LoadingAriaLabel"].Value">
-            @for (var index = 0; index < 4; index++)
-            {
-                <span></span>
-            }
+<ManagementDataView Result="accessResult"
+                    Loading="loading"
+                    OnRetry="LoadAsync"
+                    FailureClass="panel"
+                    StepUpTitle="@L["Users.Create.AccessError.StepUpTitle"].Value"
+                    UnavailableTitle="@L["Users.Create.AccessError.GenericTitle"].Value">
+    <LoadingContent>
+        <div class="form-section">
+            <div class="table-skeleton" aria-label="@L["Users.Create.LoadingAriaLabel"].Value">
+                @for (var index = 0; index < 4; index++)
+                {
+                    <span></span>
+                }
+            </div>
         </div>
-    </div>
-}
-else if (accessResult?.IsSuccess is false)
-{
-    <div class="panel">
-        <SUIEmptyState Icon="shield"
-                    Title="@AccessErrorTitle"
-                    Description="@accessResult.ErrorMessage">
-            <Actions>
-                <button class="button button--secondary"
-                        type="button"
-                        @onclick="LoadAsync">
-                    @L["Users.Create.Retry"]
-                </button>
-            </Actions>
-        </SUIEmptyState>
-    </div>
-}
-else if (!Access.CanCreate)
+    </LoadingContent>
+    <Success Context="_">
+@if (!Access.CanCreate)
 {
     <div class="panel">
         <SUIEmptyState Icon="users"
@@ -176,6 +166,8 @@ else
     </EditForm>
     </div>
 }
+    </Success>
+</ManagementDataView>
 
 @code {
     private readonly UserCreateModel model = new();
@@ -186,11 +178,6 @@ else
 
     private ManagementUserAccess Access =>
         accessResult?.Value ?? new(false, false);
-
-    private string AccessErrorTitle =>
-        accessResult?.Outcome is ManagementDataOutcome.StepUpRequired
-            ? L["Users.Create.AccessError.StepUpTitle"].Value
-            : L["Users.Create.AccessError.GenericTitle"].Value;
 
     private string SubmissionTitle =>
         submission?.Outcome is ManagementDataOutcome.StepUpRequired

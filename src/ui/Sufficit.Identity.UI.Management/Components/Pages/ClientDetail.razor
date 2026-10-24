@@ -66,15 +66,21 @@
     </div>
 }
 
-@if (loading)
-{
-    <div class="detail-shell" aria-busy="true" aria-label="@L["Clients.Detail.LoadingAriaLabel"].Value">
-        <div class="detail-skeleton"></div>
-        <div class="detail-skeleton detail-skeleton--short"></div>
-    </div>
-}
-else if (result?.IsSuccess is true && result.Value is not null)
-{
+<ManagementDataView Result="result"
+                    Loading="loading"
+                    OnRetry="LoadAsync"
+                    NotFoundTitle="@L["Clients.Detail.NotFoundTitle"].Value"
+                    UnavailableTitle="@L["Clients.Detail.GenericErrorTitle"].Value">
+    <LoadingContent>
+        <div class="detail-shell" aria-label="@L["Clients.Detail.LoadingAriaLabel"].Value">
+            <div class="detail-skeleton"></div>
+            <div class="detail-skeleton detail-skeleton--short"></div>
+        </div>
+    </LoadingContent>
+    <FailureActions>
+        <a class="button button--secondary" href="clients">@L["Clients.Detail.Back"]</a>
+    </FailureActions>
+    <Success Context="_">
     <div class="detail-shell client-detail-shell">
         <div class="detail-summary">
             <div>
@@ -483,27 +489,8 @@ else if (result?.IsSuccess is true && result.Value is not null)
             </div>
         }
     </div>
-}
-else
-{
-    <div>
-        <SUIEmptyState Icon="alert"
-                    Title="@ErrorTitle"
-                    Description="@ErrorDescription">
-            <Actions>
-                <a class="button button--secondary" href="clients">@L["Clients.Detail.Back"]</a>
-                @if (result?.Outcome is ManagementDataOutcome.Unavailable)
-                {
-                    <button class="button button--primary"
-                            type="button"
-                            @onclick="LoadAsync">
-                        @L["Clients.Create.Retry"]
-                    </button>
-                }
-            </Actions>
-        </SUIEmptyState>
-    </div>
-}
+    </Success>
+</ManagementDataView>
 
 @code {
     [Parameter]
@@ -601,15 +588,6 @@ else
             deleteConfirmation,
             result.Value.ClientId,
             StringComparison.Ordinal);
-
-    private string ErrorTitle =>
-        result?.Outcome is ManagementDataOutcome.NotFound
-            ? L["Clients.Detail.NotFoundTitle"].Value
-            : L["Clients.Detail.GenericErrorTitle"].Value;
-
-    private string ErrorDescription =>
-        result?.ErrorMessage
-        ?? L["Clients.Detail.GenericErrorDescription"].Value;
 
     protected override async Task OnParametersSetAsync() =>
         await LoadAsync();

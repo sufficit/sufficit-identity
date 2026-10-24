@@ -398,31 +398,8 @@ create and update (`ClientTokenLifetimePolicy`), as does per-client PAR.
 
 ### E5 — One result-state component for the Management console
 
-`ManagementDataResult<T>` models `Success`, `Forbidden`, `StepUpRequired`,
-`Unavailable`, `NotFound` and `Invalid` — a rich contract, consumed unevenly.
-Coverage improved over the last month, but every page still writes the
-conditional tree by hand, so the cheap path is still to handle the happy case
-only. Of the 24 pages consuming the contract (2026-09-19): `StepUpRequired` 14,
-`Invalid` 12, `Forbidden` 11, `NotFound` 11, `Unavailable` 10. On the rest, an
-operator without permission and a backend that is down look identical.
-
-- [ ] Create `ManagementDataView<T>` in `Sufficit.Identity.UI.Components`: takes
-  a `ManagementDataResult<T>`, renders the matching state, with a
-  `RenderFragment` for success and standard messages for the others. It must
-  compose with `EmptyState`, not replace it
-- [ ] Define the canonical message per outcome — text, tone and suggested
-  recovery action — so the same condition presents identically everywhere
-- [ ] Announce state transitions accessibly (`aria-live`) inside the component,
-  so pages inherit the behaviour instead of repeating it
-- [ ] Migrate first the pages handling neither `Forbidden` nor `Unavailable`
-- [ ] Migrate the rest, deleting the duplicated conditionals
-- [ ] Tests: each outcome renders its state; success with an empty collection
-  stays distinguishable from failure
-- [ ] Re-measure the largest pages (`Branding.razor`, `UserDetail.razor`,
-  `Clients.razor`) afterwards to see how much of their length was duplication
-
-Out of scope here: visual redesign, information hierarchy, and any change to
-`ManagementDataResult<T>` itself, which is adequate.
+Delivered 2026-10-24 —
+[`202610240300`](../activities/202610240300-management-data-view.md).
 
 ### E6 — Mobile-first validation and rollout
 

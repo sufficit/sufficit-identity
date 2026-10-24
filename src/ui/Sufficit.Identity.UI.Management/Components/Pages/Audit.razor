@@ -46,18 +46,13 @@
         </div>
     </div>
 
-    <div class="audit-results" aria-live="polite">
-        @if (loading)
-        {
-            <div class="table-skeleton" aria-label="@L["Audit.Loading.Aria"].Value">
-                @for (var index = 0; index < 4; index++)
-                {
-                    <span></span>
-                }
-            </div>
-        }
-        else if (result?.IsSuccess is true)
-        {
+    <ManagementDataView Result="result"
+                        Loading="loading"
+                        OnRetry="LoadAsync"
+                        Class="audit-results"
+                        LoadingLabel="@L["Audit.Loading.Aria"].Value"
+                        UnavailableTitle="@L["Audit.ErrorTitle"].Value">
+        <Success Context="_">
             @if (FilteredEvents.Count is 0)
             {
                 <SUIEmptyState Icon="audit"
@@ -139,22 +134,8 @@
                     </table>
                 </div>
             }
-        }
-        else
-        {
-            <SUIEmptyState Icon="alert"
-                        Title="@L["Audit.ErrorTitle"].Value"
-                        Description="@(result?.ErrorMessage ?? L["Audit.Error.Fallback"].Value)">
-                <Actions>
-                    <button class="button button--secondary"
-                            type="button"
-                            @onclick="LoadAsync">
-                        @L["Audit.Retry"]
-                    </button>
-                </Actions>
-            </SUIEmptyState>
-        }
-    </div>
+        </Success>
+    </ManagementDataView>
 
     <footer class="table-footer">
         <span>@ResultCountLabel</span>

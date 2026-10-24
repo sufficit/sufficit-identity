@@ -68,18 +68,15 @@
         </div>
     </div>
 
-    <div class="client-results" aria-live="polite">
-        @if (loading)
-        {
-            <div class="table-skeleton" aria-label="@L["Sessions.LoadingAriaLabel"].Value">
-                @for (var index = 0; index < 4; index++)
-                {
-                    <span></span>
-                }
-            </div>
-        }
-        else if (result?.IsSuccess is true)
-        {
+    <ManagementDataView Result="result"
+                        Loading="loading"
+                        OnRetry="LoadAsync"
+                        Class="client-results"
+                        LoadingLabel="@L["Sessions.LoadingAriaLabel"].Value"
+                        StepUpTitle="@L["Sessions.Error.StepUp"].Value"
+                        ForbiddenTitle="@L["Sessions.Error.Forbidden"].Value"
+                        UnavailableTitle="@L["Sessions.Error.Generic"].Value">
+        <Success Context="_">
             @if (Page.Items.Count is 0)
             {
                 <SUIEmptyState Icon="clock"
@@ -158,18 +155,8 @@
                     </table>
                 </div>
             }
-        }
-        else
-        {
-            <SUIEmptyState Icon="alert"
-                        Title="@ErrorTitle"
-                        Description="@(result?.ErrorMessage ?? L["Sessions.Error.GenericDescription"].Value)">
-                <Actions>
-                    <button class="button button--secondary" type="button" @onclick="LoadAsync">@L["Sessions.Retry"]</button>
-                </Actions>
-            </SUIEmptyState>
-        }
-    </div>
+        </Success>
+    </ManagementDataView>
 
     <footer class="table-footer table-footer--paginated">
         <span>@ResultCountLabel</span>
@@ -270,13 +257,6 @@
             : ClientId is not null
                 ? string.Format(L["Sessions.FilterDescription.ByClientFormat"].Value, ClientId)
                 : L["Sessions.FilterDescription.Default"].Value;
-
-    private string ErrorTitle =>
-        result?.Outcome is ManagementDataOutcome.StepUpRequired
-            ? L["Sessions.Error.StepUp"].Value
-            : result?.Outcome is ManagementDataOutcome.Forbidden
-                ? L["Sessions.Error.Forbidden"].Value
-                : L["Sessions.Error.Generic"].Value;
 
     private string ResultCountLabel =>
         loading

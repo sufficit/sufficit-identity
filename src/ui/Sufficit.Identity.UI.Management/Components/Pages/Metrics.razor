@@ -56,26 +56,17 @@
     </div>
 </div>
 
-@if (loading)
-{
-    <div class="detail-shell" aria-busy="true" aria-label="@L["Metrics.Loading.Aria"].Value">
-        <div class="detail-skeleton"></div>
-        <div class="detail-skeleton detail-skeleton--short"></div>
-    </div>
-}
-else if (overviewResult?.IsSuccess is not true || overviewResult.Value is null)
-{
-    <div>
-        <SUIEmptyState Icon="alert" Title="@L["Metrics.LoadError.Title"].Value"
-                    Description="@(overviewResult?.ErrorMessage ?? L["Metrics.LoadError.Fallback"].Value)">
-            <Actions>
-                <SUIButton ColorValue="SUIColor.Primary" OnClick="LoadAsync">@L["Metrics.Retry"]</SUIButton>
-            </Actions>
-        </SUIEmptyState>
-    </div>
-}
-else
-{
+<ManagementDataView Result="overviewResult"
+                    Loading="loading"
+                    OnRetry="LoadAsync"
+                    UnavailableTitle="@L["Metrics.LoadError.Title"].Value">
+    <LoadingContent>
+        <div class="detail-shell" aria-label="@L["Metrics.Loading.Aria"].Value">
+            <div class="detail-skeleton"></div>
+            <div class="detail-skeleton detail-skeleton--short"></div>
+        </div>
+    </LoadingContent>
+    <Success Context="_">
     <div class="metrics-summary" aria-label="@L["Metrics.Summary.Aria"].Value">
         <div><span>@L["Metrics.Summary.EventsInPeriod"]</span><strong>@FormatNumber(overview.TotalEvents)</strong></div>
         <div><span>@L["Metrics.Summary.ActiveApplications"]</span><strong>@FormatNumber(overview.ActiveApplications)</strong></div>
@@ -177,7 +168,8 @@ else
             }
         </div>
     }
-}
+    </Success>
+</ManagementDataView>
 
 <div class="form-section metrics-settings" aria-labelledby="metrics-settings-heading">
     <div class="form-section__heading">

@@ -1,0 +1,219 @@
+@* One result-state presentation for every Management console load
+   (PLAN-IDENTITY E5). The component decides only "loading, success or which
+   failure"; what success looks like — including an empty collection, which
+   the page composes with SUIEmptyState inside Success — stays in the page.
+
+   Lives in UI.Management rather than UI.Components because
+   ManagementDataResult<T> is defined here and UI.Components must not depend
+   on the Management console. *@
+@typeparam T
+
+<div class="@WrapperClass"
+     aria-live="polite"
+     aria-busy="@(IsLoading ? "true" : "false")"
+     data-outcome="@OutcomeName"
+     @attributes="AdditionalAttributes">
+    @if (IsLoading)
+    {
+        @if (LoadingContent is not null)
+        {
+            @LoadingContent
+        }
+        else
+        {
+            <div class="table-skeleton" aria-label="@(LoadingLabel ?? L["Common.State.Loading"].Value)">
+                @for (var index = 0; index < SkeletonRows; index++)
+                {
+                    <span></span>
+                }
+            </div>
+        }
+    }
+    else if (IsSuccess)
+    {
+        @Success(Result!.Value!)
+    }
+    else if (string.IsNullOrWhiteSpace(FailureClass))
+    {
+        @FailureState
+    }
+    else
+    {
+        <div class="@FailureClass">@FailureState</div>
+    }
+</div>
+
+@code {
+    /// <summary>The load result. <c>null</c> renders the loading state.</summary>
+    [Parameter]
+    public ManagementDataResult<T>? Result { get; set; }
+
+    /// <summary>True while the load (or a reload) is in flight.</summary>
+    [Parameter]
+    public bool Loading { get; set; }
+
+    /// <summary>Recovery for retryable failures (Unavailable, Invalid, Conflict).</summary>
+    [Parameter]
+    public EventCallback OnRetry { get; set; }
+
+    /// <summary>The page's success rendering, empty collections included.</summary>
+    [Parameter, EditorRequired]
+    public RenderFragment<T> Success { get; set; } = default!;
+
+    /// <summary>Replaces the default <c>table-skeleton</c> placeholder.</summary>
+    [Parameter]
+    public RenderFragment? LoadingContent { get; set; }
+
+    /// <summary>Accessible name of the default skeleton.</summary>
+    [Parameter]
+    public string? LoadingLabel { get; set; }
+
+    /// <summary>Bars in the default skeleton.</summary>
+    [Parameter]
+    public int SkeletonRows { get; set; } = 4;
+
+    /// <summary>Extra actions shown after the canonical recovery action.</summary>
+    [Parameter]
+    public RenderFragment? FailureActions { get; set; }
+
+    // Per-outcome wording overrides. Pages pass them only where their own
+    // text carries information the canonical message does not (which
+    // resource, which operation). A description override replaces the
+    // service message; without it the service message wins over the
+    // canonical fallback.
+    [Parameter] public string? ForbiddenTitle { get; set; }
+    [Parameter] public string? ForbiddenDescription { get; set; }
+    [Parameter] public string? StepUpTitle { get; set; }
+    [Parameter] public string? StepUpDescription { get; set; }
+    [Parameter] public string? UnavailableTitle { get; set; }
+    [Parameter] public string? UnavailableDescription { get; set; }
+    [Parameter] public string? NotFoundTitle { get; set; }
+    [Parameter] public string? NotFoundDescription { get; set; }
+    [Parameter] public string? InvalidTitle { get; set; }
+    [Parameter] public string? ConflictTitle { get; set; }
+
+    /// <summary>Container class around the failure state only (for example
+    /// <c>panel</c> where the page framed its error in a card).</summary>
+    [Parameter]
+    public string? FailureClass { get; set; }
+
+    /// <summary>Extra class on the live region wrapper.</summary>
+    [Parameter]
+    public string? Class { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private bool IsLoading => Loading || Result is null;
+
+    // A success without a value (a reference-typed payload the service did
+    // not return) cannot be rendered; it is presented as Unavailable rather
+    // than handed to the page as null.
+    private bool IsSuccess => Result is { IsSuccess: true, Value: not null };
+
+    private ManagementDataOutcome FailureOutcome =>
+        Result is null || Result.IsSuccess
+            ? ManagementDataOutcome.Unavailable
+            : Result.Outcome;
+
+    private string OutcomeName =>
+        IsLoading ? "loading" : IsSuccess ? "success" : FailureOutcome switch
+        {
+            ManagementDataOutcome.Forbidden => "forbidden",
+            ManagementDataOutcome.StepUpRequired => "step-up-required",
+            ManagementDataOutcome.NotFound => "not-found",
+            ManagementDataOutcome.Invalid => "invalid",
+            ManagementDataOutcome.Conflict => "conflict",
+            _ => "unavailable"
+        };
+
+    private bool CanRetry => FailureOutcome is ManagementDataOutcome.Unavailable
+        or ManagementDataOutcome.Invalid
+        or ManagementDataOutcome.Conflict;
+
+    private string WrapperClass =>
+        string.IsNullOrWhiteSpace(Class)
+            ? "management-data-view"
+            : $"management-data-view {Class}";
+
+    private string FailureIcon => FailureOutcome switch
+    {
+        ManagementDataOutcome.Forbidden => "lock",
+        ManagementDataOutcome.StepUpRequired => "shield",
+        ManagementDataOutcome.NotFound => "search",
+        _ => "alert"
+    };
+
+    private string FailureTone => FailureOutcome switch
+    {
+        ManagementDataOutcome.Forbidden or ManagementDataOutcome.StepUpRequired => "warning",
+        ManagementDataOutcome.NotFound => "neutral",
+        _ => "danger"
+    };
+
+    private string FailureTitleText => FailureOutcome switch
+    {
+        ManagementDataOutcome.Forbidden => ForbiddenTitle ?? L["Common.State.Forbidden.Title"].Value,
+        ManagementDataOutcome.StepUpRequired => StepUpTitle ?? L["Common.State.StepUp.Title"].Value,
+        ManagementDataOutcome.NotFound => NotFoundTitle ?? L["Common.State.NotFound.Title"].Value,
+        ManagementDataOutcome.Invalid => InvalidTitle ?? L["Common.State.Invalid.Title"].Value,
+        ManagementDataOutcome.Conflict => ConflictTitle ?? L["Common.State.Conflict.Title"].Value,
+        _ => UnavailableTitle ?? L["Common.State.Unavailable.Title"].Value
+    };
+
+    private string FailureDescriptionText => FailureOutcome switch
+    {
+        ManagementDataOutcome.Forbidden =>
+            ForbiddenDescription ?? ServiceMessage ?? L["Common.Access.Forbidden"].Value,
+        ManagementDataOutcome.StepUpRequired =>
+            StepUpDescription ?? ServiceMessage ?? L["Common.Access.StepUpRequired"].Value,
+        ManagementDataOutcome.NotFound =>
+            NotFoundDescription ?? ServiceMessage ?? L["Common.State.NotFound.Description"].Value,
+        ManagementDataOutcome.Invalid or ManagementDataOutcome.Conflict =>
+            ServiceMessage ?? L["Common.Unavailable"].Value,
+        _ => UnavailableDescription ?? ServiceMessage ?? L["Common.Unavailable"].Value
+    };
+
+    private string? ServiceMessage =>
+        string.IsNullOrWhiteSpace(Result?.ErrorMessage) ? null : Result.ErrorMessage;
+
+    private Task RetryAsync() => OnRetry.InvokeAsync();
+
+    private RenderFragment FailureState => __builder =>
+    {
+        <SUIEmptyState Icon="@FailureIcon"
+                       Title="@FailureTitleText"
+                       Description="@FailureDescriptionText"
+                       Class="@($"management-data-state management-data-state--{FailureTone}")"
+                       data-outcome="@OutcomeName">
+            <Actions>
+                @if (FailureOutcome is ManagementDataOutcome.StepUpRequired)
+                {
+                    @* Same recovery the Home page offers: end the session and
+                       sign in again, skipping the remembered second factor,
+                       so the new session carries MFA evidence (amr). *@
+                    <form method="post"
+                          action="/connect/endsession"
+                          data-enhance="false"
+                          class="management-data-state__step-up">
+                        <AntiforgeryToken />
+                        <input type="hidden" name="force_mfa" value="true" />
+                        <SUIButton ButtonTypeValue="SUIButtonType.Submit"
+                                   ColorValue="SUIColor.Primary">
+                            @L["Common.State.StepUp.Action"]
+                        </SUIButton>
+                    </form>
+                }
+                else if (CanRetry && OnRetry.HasDelegate)
+                {
+                    <button class="button button--secondary"
+                            type="button"
+                            @onclick="RetryAsync">
+                        @L["Common.State.Retry"]
+                    </button>
+                }
+                @FailureActions
+            </Actions>
+        </SUIEmptyState>
+    };
+}

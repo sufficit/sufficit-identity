@@ -32,33 +32,17 @@
     </Actions>
 </SUIPageHeader>
 
-@if (loading)
-{
-    <div class="detail-shell"
-             aria-busy="true"
-             aria-label="@L["Database.Loading.Aria"].Value">
-        <div class="detail-skeleton"></div>
-        <div class="detail-skeleton detail-skeleton--short"></div>
-    </div>
-}
-else if (snapshot is null)
-{
-    <div>
-        <SUIEmptyState Icon="database"
-                    Title="@L["Database.LoadError.Title"].Value"
-                    Description="@(refreshError ?? L["Database.LoadError.Fallback"].Value)">
-            <Actions>
-                <button class="button button--primary"
-                        type="button"
-                        @onclick="RefreshAsync">
-                    @L["Database.Retry"]
-                </button>
-            </Actions>
-        </SUIEmptyState>
-    </div>
-}
-else
-{
+<ManagementDataView Result="View"
+                    Loading="loading"
+                    OnRetry="RefreshAsync"
+                    UnavailableTitle="@L["Database.LoadError.Title"].Value">
+    <LoadingContent>
+        <div class="detail-shell" aria-label="@L["Database.Loading.Aria"].Value">
+            <div class="detail-skeleton"></div>
+            <div class="detail-skeleton detail-skeleton--short"></div>
+        </div>
+    </LoadingContent>
+    <Success Context="snapshot">
     <div class="contract-strip @WatchdogStripClass"
              aria-live="polite">
         <SUIIcon Name="database" Size="20" />
@@ -231,7 +215,8 @@ else
             <span>@L["Database.Footer.FailedCommands", FormatNumber(snapshot.FailedCommands)]</span>
         </footer>
     </div>
-}
+    </Success>
+</ManagementDataView>
 
 @code {
     // The reader's zone once the browser answers (BrowserTimeProvider in the layout).
@@ -244,10 +229,22 @@ else
     private DatabaseRuntimeSnapshot? snapshot;
     private Task? liveUpdateLoop;
     private string? refreshError;
+    private ManagementDataOutcome failureOutcome = ManagementDataOutcome.Unavailable;
     private bool loading = true;
     private bool refreshing;
     private bool liveUpdatesEnabled = true;
     private bool liveConnected;
+
+    // Telemetry arrives as a stream, not as one load result: the first
+    // snapshot (or the failure that prevented it) is presented as one.
+    private ManagementDataResult<DatabaseRuntimeSnapshot>? View =>
+        snapshot is not null
+            ? ManagementDataResult<DatabaseRuntimeSnapshot>.Success(snapshot)
+            : loading
+                ? null
+                : ManagementDataResult<DatabaseRuntimeSnapshot>.Failure(
+                    failureOutcome,
+                    refreshError);
 
     private string? LiveStatusDotClass => !liveUpdatesEnabled
         ? null
@@ -361,6 +358,7 @@ else
             }
             else
             {
+                failureOutcome = result.Outcome;
                 refreshError = result.ErrorMessage
                     ?? L["Database.RefreshError.NotAvailable"].Value;
             }
@@ -413,10 +411,14 @@ else
                 {
                     liveConnected = false;
                     loading = false;
-                    refreshError = exception.Decision.Outcome is
-                        ManagementAuthorizationOutcome.StepUpRequired
-                            ? L["Common.Access.StepUpRequired"].Value
-                            : L["Common.Access.Forbidden"].Value;
+                    var stepUp = exception.Decision.Outcome is
+                        ManagementAuthorizationOutcome.StepUpRequired;
+                    failureOutcome = stepUp
+                        ? ManagementDataOutcome.StepUpRequired
+                        : ManagementDataOutcome.Forbidden;
+                    refreshError = stepUp
+                        ? L["Common.Access.StepUpRequired"].Value
+                        : L["Common.Access.Forbidden"].Value;
                     initialSnapshot.TrySetResult(false);
                     StateHasChanged();
                 });
@@ -431,6 +433,7 @@ else
                 {
                     liveConnected = false;
                     loading = false;
+                    failureOutcome = ManagementDataOutcome.Unavailable;
                     refreshError = L["Database.LiveStream.Interrupted"].Value;
                     initialSnapshot.TrySetResult(false);
                     StateHasChanged();

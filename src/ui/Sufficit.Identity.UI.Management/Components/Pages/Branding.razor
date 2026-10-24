@@ -82,30 +82,19 @@
             }
         </div>
 
-        @if (loading)
-        {
-            <div class="theme-list theme-list--loading"
-                 aria-busy="true"
-                 aria-label="@L["Branding.LoadingThemes"].Value">
-                <div class="theme-row-skeleton"></div>
-                <div class="theme-row-skeleton"></div>
-            </div>
-        }
-        else if (loadResult?.IsSuccess is false)
-        {
-            <SUIEmptyState Icon="alert"
-                        Title="@L["Branding.LoadError.Title"].Value"
-                        Description="@loadResult.ErrorMessage">
-                <Actions>
-                    <button class="button button--primary"
-                            type="button"
-                            @onclick="RefreshAsync">
-                        @L["Branding.Retry"]
-                    </button>
-                </Actions>
-            </SUIEmptyState>
-        }
-        else if (themes.Count is 0)
+        <ManagementDataView Result="loadResult"
+                            Loading="loading"
+                            OnRetry="RefreshAsync"
+                            UnavailableTitle="@L["Branding.LoadError.Title"].Value">
+            <LoadingContent>
+                <div class="theme-list theme-list--loading"
+                     aria-label="@L["Branding.LoadingThemes"].Value">
+                    <div class="theme-row-skeleton"></div>
+                    <div class="theme-row-skeleton"></div>
+                </div>
+            </LoadingContent>
+            <Success Context="_">
+        @if (themes.Count is 0)
         {
             <SUIEmptyState Icon="palette"
                         Title="@L["Branding.NoThemes.Title"].Value"
@@ -145,6 +134,8 @@
                 }
             </div>
         }
+            </Success>
+        </ManagementDataView>
     </div>
 
     <div class="brand-preview-panel" aria-labelledby="brand-preview-heading">

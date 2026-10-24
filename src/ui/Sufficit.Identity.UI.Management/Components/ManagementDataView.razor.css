@@ -1,0 +1,14 @@
+/* Tone of a failed load: the icon carries it, the copy stays neutral. */
+::deep .management-data-state--warning .sui-empty__icon {
+    color: var(--sui-color-warning);
+    opacity: 1;
+}
+
+::deep .management-data-state--danger .sui-empty__icon {
+    color: var(--sui-color-error);
+    opacity: 1;
+}
+
+::deep .management-data-state__step-up {
+    display: contents;
+}

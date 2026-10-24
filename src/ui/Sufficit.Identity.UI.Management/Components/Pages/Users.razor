@@ -29,22 +29,18 @@
     </div>
 }
 
-@if (accessLoading)
-{
-    <div class="users-dashboard users-dashboard--loading" aria-busy="true">
-        <div class="table-skeleton" aria-label="@L["Users.Loading.Dashboard"]"><span></span><span></span><span></span><span></span></div>
-    </div>
-}
-else if (accessResult?.IsSuccess is false)
-{
-    <div class="panel">
-        <SUIEmptyState Icon="shield" Title="@AccessErrorTitle" Description="@accessResult.ErrorMessage">
-            <Actions><button class="button button--secondary" type="button" @onclick="LoadAccessAsync">@L["Users.Actions.Retry"]</button></Actions>
-        </SUIEmptyState>
-    </div>
-}
-else
-{
+<ManagementDataView Result="accessResult"
+                    Loading="accessLoading"
+                    OnRetry="LoadAccessAsync"
+                    FailureClass="panel"
+                    StepUpTitle="@L["Users.Error.StepUpTitle"]"
+                    ForbiddenTitle="@L["Users.Error.AccessDeniedTitle"]">
+    <LoadingContent>
+        <div class="users-dashboard users-dashboard--loading">
+            <div class="table-skeleton" aria-label="@L["Users.Loading.Dashboard"]"><span></span><span></span><span></span><span></span></div>
+        </div>
+    </LoadingContent>
+    <Success Context="access">
     <main class="users-dashboard" aria-busy="@usersLoading">
         <div class="users-overview" aria-labelledby="registration-overview-heading">
             <div class="users-overview__heading">
@@ -212,16 +208,17 @@ else
                 <div><h2 id="users-list-heading">@L["Users.Results.Heading"]</h2><p>@ResultContextLabel</p></div>
                 <span class="users-result-total" aria-live="polite">@ResultCountLabel</span>
             </div>
-            <div class="client-results" aria-live="polite">
-                @if (usersLoading)
-                {
-                    <div class="table-skeleton" aria-label="@L["Users.Loading.Users"]"><span></span><span></span><span></span><span></span><span></span></div>
-                }
-                else if (usersResult?.IsSuccess is false)
-                {
-                    <SUIEmptyState Icon="alert" Title="@UsersErrorTitle" Description="@usersResult.ErrorMessage"><Actions><button class="button button--secondary" type="button" @onclick="LoadUsersAsync">@L["Users.Actions.Retry"]</button></Actions></SUIEmptyState>
-                }
-                else if (Page.Items.Count is 0)
+            <ManagementDataView Result="usersResult"
+                                Loading="usersLoading"
+                                OnRetry="LoadUsersAsync"
+                                Class="client-results"
+                                LoadingLabel="@L["Users.Loading.Users"]"
+                                SkeletonRows="5"
+                                StepUpTitle="@L["Users.Error.MfaRequiredTitle"]"
+                                ForbiddenTitle="@L["Users.Error.DirectoryDeniedTitle"]"
+                                UnavailableTitle="@L["Users.Error.QueryFailedTitle"]">
+                <Success Context="loadedUsers">
+                @if (Page.Items.Count is 0)
                 {
                     <SUIEmptyState Icon="users" Title="@EmptyStateTitle" Description="@EmptyStateDescription"><Actions><button class="button button--secondary" type="button" @onclick="ClearFilters">@L["Users.Empty.BackToDirectory"]</button></Actions></SUIEmptyState>
                 }
@@ -280,7 +277,8 @@ else
                         </table>
                     </div>
                 }
-            </div>
+                </Success>
+            </ManagementDataView>
             <footer class="table-footer table-footer--paginated">
                 <span>@PaginationLabel</span>
                 @if (TotalPages > 1)
@@ -294,7 +292,8 @@ else
             </footer>
         </div>
     </main>
-}
+    </Success>
+</ManagementDataView>
 
 @code {
     // The reader's zone once the browser answers (BrowserTimeProvider in the layout).
@@ -347,8 +346,6 @@ else
     private int ChartMax => Math.Max(1, Analytics.Days.Count > 0 ? Analytics.Days.Max(day => day.Count) : 1);
     private ManagementUserSort ToggleCreatedSort => QuerySort == ManagementUserSort.CreatedNewest ? ManagementUserSort.CreatedOldest : ManagementUserSort.CreatedNewest;
     private ManagementUserSort ToggleNameSort => QuerySort == ManagementUserSort.NameAscending ? ManagementUserSort.NameDescending : ManagementUserSort.NameAscending;
-    private string AccessErrorTitle => accessResult?.Outcome is ManagementDataOutcome.StepUpRequired ? L["Users.Error.StepUpTitle"] : L["Users.Error.AccessDeniedTitle"];
-    private string UsersErrorTitle => usersResult?.Outcome is ManagementDataOutcome.StepUpRequired ? L["Users.Error.MfaRequiredTitle"] : usersResult?.Outcome is ManagementDataOutcome.Forbidden ? L["Users.Error.DirectoryDeniedTitle"] : L["Users.Error.QueryFailedTitle"];
     private string AnalyticsRangeLabel => L["Users.Overview.RangeLabel", analyticsDays];
     private string ResultContextLabel => IsStaleUnverifiedReview ? L["Users.Results.StaleContext"] : SelectedDay is { } day ? L["Users.Results.DayContext", BrowserTime.FormatDay(day)] : L["Users.Results.DefaultContext"];
     private string ResultCountLabel => usersLoading ? L["Users.Results.Updating"] : $"{Page.TotalCount:N0} {Pluralize(Page.TotalCount, L["Users.Count.AccountSingular"], L["Users.Count.AccountPlural"])}";

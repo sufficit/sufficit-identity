@@ -99,28 +99,23 @@ else
             </div>
         </div>
 
-        <div class="client-results" aria-live="polite">
-            @if (loading)
-            {
-                <div class="table-skeleton" aria-label="@L["Claims.LoadingAriaLabel"].Value">
-                    @for (var index = 0; index < 4; index++)
-                    {
-                        <span></span>
-                    }
-                </div>
-            }
-            else if (userResult?.IsSuccess is false)
-            {
-                <SUIEmptyState Icon="alert"
-                            Title="@UserErrorTitle"
-                            Description="@(userResult.ErrorMessage ?? L["Claims.User.Error.GenericDescription"].Value)">
-                    <Actions>
-                        <a class="button button--secondary" href="users">@L["Claims.BackToUsers"]</a>
-                    </Actions>
-                </SUIEmptyState>
-            }
-            else if (result?.IsSuccess is true)
-            {
+        <ManagementDataView Result="userResult"
+                            Loading="loading"
+                            OnRetry="LoadAsync"
+                            Class="client-results"
+                            LoadingLabel="@L["Claims.LoadingAriaLabel"].Value"
+                            NotFoundTitle="@L["Claims.User.Error.NotFound"].Value"
+                            UnavailableTitle="@L["Claims.User.Error.Generic"].Value">
+            <FailureActions>
+                <a class="button button--secondary" href="users">@L["Claims.BackToUsers"]</a>
+            </FailureActions>
+            <Success Context="_">
+            <ManagementDataView Result="result"
+                                OnRetry="LoadAsync"
+                                StepUpTitle="@L["Claims.Error.StepUp"].Value"
+                                ForbiddenTitle="@L["Claims.Error.Forbidden"].Value"
+                                UnavailableTitle="@L["Claims.Error.Generic"].Value">
+                <Success Context="claimPage">
                 @if (Page.Items.Count is 0)
                 {
                     <SUIEmptyState Icon="shield"
@@ -162,20 +157,10 @@ else
                         </table>
                     </div>
                 }
-            }
-            else
-            {
-                <SUIEmptyState Icon="alert"
-                            Title="@ErrorTitle"
-                            Description="@(result?.ErrorMessage ?? L["Claims.Error.GenericDescription"].Value)">
-                    <Actions>
-                        <button class="button button--secondary" type="button" @onclick="LoadAsync">
-                            @L["Claims.Retry"]
-                        </button>
-                    </Actions>
-                </SUIEmptyState>
-            }
-        </div>
+                </Success>
+            </ManagementDataView>
+            </Success>
+        </ManagementDataView>
 
         <footer class="table-footer table-footer--paginated">
             <span>@ResultCountLabel</span>
@@ -263,18 +248,6 @@ else
         string.IsNullOrWhiteSpace(search)
             ? L["Claims.Empty.NoAttributesYet"].Value
             : L["Claims.Empty.NoMatch"].Value;
-
-    private string UserErrorTitle =>
-        userResult?.Outcome is ManagementDataOutcome.NotFound
-            ? L["Claims.User.Error.NotFound"].Value
-            : L["Claims.User.Error.Generic"].Value;
-
-    private string ErrorTitle =>
-        result?.Outcome is ManagementDataOutcome.StepUpRequired
-            ? L["Claims.Error.StepUp"].Value
-            : result?.Outcome is ManagementDataOutcome.Forbidden
-                ? L["Claims.Error.Forbidden"].Value
-                : L["Claims.Error.Generic"].Value;
 
     private string ResultCountLabel =>
         loading

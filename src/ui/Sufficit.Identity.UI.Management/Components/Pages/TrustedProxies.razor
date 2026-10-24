@@ -8,29 +8,25 @@
 <SUIPageHeader Title="@L["TrustedProxies.HeaderTitle"].Value"
                Description="@L["TrustedProxies.HeaderDescription"].Value" />
 
-@if (loading)
-{
-    <div class="detail-shell" aria-busy="true" aria-label="@L["TrustedProxies.Loading.Aria"].Value">
-        <div class="detail-skeleton"></div>
-    </div>
-}
-else if (configuration is null)
-{
-    <SUIEmptyState Icon="alert" Title="@L["TrustedProxies.LoadError.Title"].Value" Description="@message">
-        <Actions><SUIButton OnClick="LoadAsync">@L["TrustedProxies.Retry"]</SUIButton></Actions>
-    </SUIEmptyState>
-}
-else
-{
+<ManagementDataView Result="loadResult"
+                    Loading="loading"
+                    OnRetry="LoadAsync"
+                    UnavailableTitle="@L["TrustedProxies.LoadError.Title"].Value">
+    <LoadingContent>
+        <div class="detail-shell" aria-label="@L["TrustedProxies.Loading.Aria"].Value">
+            <div class="detail-skeleton"></div>
+        </div>
+    </LoadingContent>
+    <Success Context="_">
     <div class="proxy-workspace">
         <section class="settings-panel" aria-labelledby="proxy-effective-heading">
             <div class="panel-header">
                 <div><h2 id="proxy-effective-heading">@L["TrustedProxies.Effective.Heading"]</h2>
                     <p>@L["TrustedProxies.Effective.Description"]</p></div>
-                <SUIStatusBadge ToneValue="SUITone.Info">@L["TrustedProxies.ForwardLimitBadge", configuration.ForwardLimit]</SUIStatusBadge>
+                <SUIStatusBadge ToneValue="SUITone.Info">@L["TrustedProxies.ForwardLimitBadge", configuration!.ForwardLimit]</SUIStatusBadge>
             </div>
             <div class="proxy-panel-body">
-            @if (configuration.EffectiveNetworks.Count == 0)
+            @if (configuration!.EffectiveNetworks.Count == 0)
             {
                 <p>@L["TrustedProxies.NoProxies"]</p>
             }
@@ -105,13 +101,15 @@ else
             <SUIAlert ToneValue="@(error ? SUITone.Danger : SUITone.Success)">@message</SUIAlert>
         </div>
     }
-}
+    </Success>
+</ManagementDataView>
 
 @code {
     // The reader's zone once the browser answers (BrowserTimeProvider in the layout).
     [CascadingParameter]
     private BrowserTime Time { get; set; } = BrowserTime.Server;
 
+    private ManagementDataResult<ManagementTrustedProxies>? loadResult;
     private ManagementTrustedProxies? configuration;
     private ProxyForm model = new();
     private bool loading = true, saving, error;
@@ -130,10 +128,9 @@ else
         if (saving) return;
         loading = true;
         message = null;
-        var result = await ProxyData.GetAsync();
-        configuration = result.Value;
-        if (result.IsSuccess && configuration is not null) Apply(configuration);
-        else { error = true; message = result.ErrorMessage; }
+        loadResult = await ProxyData.GetAsync();
+        configuration = loadResult.Value;
+        if (loadResult.IsSuccess && configuration is not null) Apply(configuration);
         loading = false;
     }
 

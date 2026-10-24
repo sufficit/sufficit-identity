@@ -37,16 +37,17 @@
     </div>
 }
 
-@if (loading)
-{
-    <div class="profile-grid" aria-label="@L["Clients.Create.LoadingAriaLabel"].Value" aria-busy="true">
-        @for (var index = 0; index < 4; index++)
-        {
-            <div class="profile-card profile-card--loading"></div>
-        }
-    </div>
-}
-else if (profiles.Count is 0)
+<ManagementDataView Result="profilesResult" Loading="loading" OnRetry="LoadAsync">
+    <LoadingContent>
+        <div class="profile-grid" aria-label="@L["Clients.Create.LoadingAriaLabel"].Value">
+            @for (var index = 0; index < 4; index++)
+            {
+                <div class="profile-card profile-card--loading"></div>
+            }
+        </div>
+    </LoadingContent>
+    <Success Context="_">
+@if (profiles.Count is 0)
 {
     <div>
         <SUIEmptyState Icon="alert"
@@ -93,6 +94,8 @@ else
         }
     </div>
 }
+    </Success>
+</ManagementDataView>
 
 <div class="setup-footnote">
     <SUIIcon Name="lock" Size="18" />
@@ -100,7 +103,8 @@ else
 </div>
 
 @code {
-    private IReadOnlyList<ManagementClientProfile> profiles = [];
+    private ManagementDataResult<IReadOnlyList<ManagementClientProfile>>? profilesResult;
+    private IReadOnlyList<ManagementClientProfile> profiles => profilesResult?.Value ?? [];
     private bool loading = true;
     private string? creatingProfile;
     private string? errorMessage;
@@ -111,9 +115,7 @@ else
     {
         loading = true;
         errorMessage = null;
-        var result = await ClientData.GetClientProfilesAsync();
-        profiles = result.Value ?? [];
-        errorMessage = result.IsSuccess ? null : result.ErrorMessage;
+        profilesResult = await ClientData.GetClientProfilesAsync();
         loading = false;
     }
 

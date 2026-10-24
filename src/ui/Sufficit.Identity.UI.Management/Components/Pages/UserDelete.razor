@@ -12,15 +12,22 @@
     </Actions>
 </SUIPageHeader>
 
-@if (loading)
-{
-    <div class="delete-zone" aria-busy="true" aria-label="@L["Users.Actions.Loading"].Value"><div class="detail-skeleton"></div><div class="detail-skeleton detail-skeleton--short"></div></div>
-}
-else if (result?.IsSuccess is false || result?.Value is null)
-{
-    <div class="panel"><SUIEmptyState Icon="alert" Title="@LoadErrorTitle" Description="@result?.ErrorMessage"><Actions><a class="button button--secondary" href="@DetailHref">@L["Users.Actions.BackToUser"]</a></Actions></SUIEmptyState></div>
-}
-else if (result.Value.Actions.CanDelete)
+<ManagementDataView Result="result"
+                    Loading="loading"
+                    OnRetry="LoadAsync"
+                    FailureClass="panel"
+                    NotFoundTitle="@L["Users.Detail.Error.NotFound"].Value"
+                    StepUpTitle="@L["Users.Detail.Error.StepUp"].Value"
+                    ForbiddenTitle="@L["Users.Detail.Error.Forbidden"].Value"
+                    UnavailableTitle="@L["Users.Detail.Error.Generic"].Value">
+    <LoadingContent>
+    <div class="delete-zone" aria-label="@L["Users.Actions.Loading"].Value"><div class="detail-skeleton"></div><div class="detail-skeleton detail-skeleton--short"></div></div>
+    </LoadingContent>
+    <FailureActions>
+        <a class="button button--secondary" href="@DetailHref">@L["Users.Actions.BackToUser"]</a>
+    </FailureActions>
+    <Success Context="user">
+@if (user.Actions.CanDelete)
 {
     <section class="delete-zone" aria-labelledby="delete-user-heading">
         <div><h2 id="delete-user-heading">@L["Users.Detail.Delete.Heading"]</h2><p>@L["Users.Detail.Delete.Description"]</p></div>
@@ -40,11 +47,11 @@ else if (result.Value.Actions.CanDelete)
         }
     </section>
 }
-else if (result.Value.Actions.DeleteRequiresMfa)
+else if (user.Actions.DeleteRequiresMfa)
 {
     <div class="decision-note decision-note--neutral"><SUIIcon Name="shield" Size="21" /><div><h2>@L["Users.Detail.Delete.MfaRequiredTitle"]</h2><p>@L["Users.Detail.Delete.MfaRequiredDescription"]</p></div></div>
 }
-else if (result.Value.Actions.DeleteReasonCode is "user_self_delete_not_allowed")
+else if (user.Actions.DeleteReasonCode is "user_self_delete_not_allowed")
 {
     <div class="decision-note decision-note--neutral"><SUIIcon Name="shield" Size="21" /><div><h2>@L["Users.Detail.Delete.SelfTitle"]</h2><p>@L["Users.Detail.Delete.SelfDescription"]</p></div></div>
 }
@@ -52,6 +59,8 @@ else
 {
     <div class="decision-note decision-note--neutral"><SUIIcon Name="lock" Size="21" /><div><h2>@L["Users.Detail.Delete.Error.Forbidden"]</h2><p>@L["Common.Access.Forbidden"]</p></div></div>
 }
+    </Success>
+</ManagementDataView>
 
 @code {
     [Parameter] public string Id { get; set; } = string.Empty;
@@ -65,13 +74,6 @@ else
     private string HeaderTitle => result?.Value?.UserName ?? result?.Value?.Email ?? L["Users.Detail.Delete.Heading"].Value;
     private string ConfirmationValue => result?.Value?.UserName ?? result?.Value?.Email ?? Id;
     private bool CanSubmit => !busy && string.Equals(confirmation.Trim(), ConfirmationValue, StringComparison.Ordinal);
-    private string LoadErrorTitle => result?.Outcome is ManagementDataOutcome.NotFound
-        ? L["Users.Detail.Error.NotFound"].Value
-        : result?.Outcome is ManagementDataOutcome.StepUpRequired
-            ? L["Users.Detail.Error.StepUp"].Value
-            : result?.Outcome is ManagementDataOutcome.Forbidden
-                ? L["Users.Detail.Error.Forbidden"].Value
-                : L["Users.Detail.Error.Generic"].Value;
     private string OperationErrorTitle => operation?.Outcome is ManagementDataOutcome.StepUpRequired
         ? L["Users.Detail.Delete.Error.StepUp"].Value
         : operation?.Outcome is ManagementDataOutcome.Forbidden
@@ -80,7 +82,9 @@ else
                 ? L["Users.Detail.Delete.Error.NotFound"].Value
                 : L["Users.Detail.Delete.Error.Generic"].Value;
 
-    protected override async Task OnParametersSetAsync()
+    protected override Task OnParametersSetAsync() => LoadAsync();
+
+    private async Task LoadAsync()
     {
         loading = true;
         result = await UserData.GetAsync(Id);

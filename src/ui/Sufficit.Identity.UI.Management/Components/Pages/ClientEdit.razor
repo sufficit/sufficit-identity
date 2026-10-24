@@ -19,22 +19,22 @@
     </Actions>
 </SUIPageHeader>
 
-@if (loading)
-{
-    <div class="wizard-loading" aria-busy="true" aria-label="@L["Clients.Edit.LoadingAriaLabel"].Value">
-        <span class="button-spinner" aria-hidden="true"></span>
-        <p>@L["Clients.Edit.RecoveringConfig"]</p>
-    </div>
-}
-else if (client is null)
-{
-    <SUIEmptyState Icon="alert"
-                Title="@L["Clients.Edit.OpenErrorTitle"].Value"
-                Description="@(loadResult?.ErrorMessage ?? L["Clients.Edit.RecordUnavailable"].Value)">
-        <Actions><a class="button button--secondary" href="clients">@L["Clients.Create.Back"]</a></Actions>
-    </SUIEmptyState>
-}
-else if (client.IsManifestManaged)
+<ManagementDataView Result="loadResult"
+                    Loading="loading"
+                    OnRetry="LoadAsync"
+                    NotFoundTitle="@L["Clients.Edit.OpenErrorTitle"].Value"
+                    UnavailableTitle="@L["Clients.Edit.OpenErrorTitle"].Value">
+    <LoadingContent>
+        <div class="wizard-loading" aria-label="@L["Clients.Edit.LoadingAriaLabel"].Value">
+            <span class="button-spinner" aria-hidden="true"></span>
+            <p>@L["Clients.Edit.RecoveringConfig"]</p>
+        </div>
+    </LoadingContent>
+    <FailureActions>
+        <a class="button button--secondary" href="clients">@L["Clients.Create.Back"]</a>
+    </FailureActions>
+    <Success Context="_">
+@if (client!.IsManifestManaged)
 {
     <div class="inline-notice inline-notice--warning" role="status">
         <SUIIcon Name="lock" Size="19" />
@@ -893,6 +893,8 @@ else
         </main>
     </div>
 }
+    </Success>
+</ManagementDataView>
 
 @code {
     // The reader's zone once the browser answers (BrowserTimeProvider in the layout).
@@ -1045,7 +1047,9 @@ else
         _ => L["Clients.Edit.SectionDescCredentials"].Value,
     };
 
-    protected override async Task OnParametersSetAsync()
+    protected override Task OnParametersSetAsync() => LoadAsync();
+
+    private async Task LoadAsync()
     {
         loading = true;
         loadResult = await ClientData.GetClientAsync(Id);

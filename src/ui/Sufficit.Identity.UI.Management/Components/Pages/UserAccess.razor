@@ -3,7 +3,7 @@
 @attribute [StreamRendering]
 @inject ManagementUserDataSource UserData
 
-@{ var user = result?.Value; var currentlyLocked = IsLockedOut(user); }
+@{ var user = result?.Value!; var currentlyLocked = IsLockedOut(user); }
 
 <PageTitle>@L["Users.Access.PageTitle"]</PageTitle>
 
@@ -16,22 +16,25 @@
     </Actions>
 </SUIPageHeader>
 
-@if (loading)
-{
-    <div class="account-access-panel" aria-busy="true" aria-label="@L["Users.Actions.Loading"].Value">
+<ManagementDataView Result="result"
+                    Loading="loading"
+                    OnRetry="LoadAsync"
+                    FailureClass="panel"
+                    NotFoundTitle="@L["Users.Detail.Error.NotFound"].Value"
+                    StepUpTitle="@L["Users.Detail.Error.StepUp"].Value"
+                    ForbiddenTitle="@L["Users.Detail.Error.Forbidden"].Value"
+                    UnavailableTitle="@L["Users.Detail.Error.Generic"].Value">
+    <LoadingContent>
+    <div class="account-access-panel" aria-label="@L["Users.Actions.Loading"].Value">
         <div class="detail-skeleton"></div>
         <div class="detail-skeleton detail-skeleton--short"></div>
     </div>
-}
-else if (result?.IsSuccess is false || user is null)
-{
-    <div class="panel">
-        <SUIEmptyState Icon="alert" Title="@LoadErrorTitle" Description="@result?.ErrorMessage">
-            <Actions><a class="button button--secondary" href="@DetailHref">@L["Users.Actions.BackToUser"]</a></Actions>
-        </SUIEmptyState>
-    </div>
-}
-else if (user.Actions.CanSetLockout)
+    </LoadingContent>
+    <FailureActions>
+        <a class="button button--secondary" href="@DetailHref">@L["Users.Actions.BackToUser"]</a>
+    </FailureActions>
+    <Success Context="_">
+@if (user.Actions.CanSetLockout)
 {
     <section class="account-access-panel @(currentlyLocked ? "account-access-panel--restore" : "account-access-panel--restrict")"
              aria-labelledby="account-access-heading">
@@ -102,6 +105,8 @@ else
 {
     <div class="decision-note decision-note--neutral"><SUIIcon Name="lock" Size="21" /><div><h2>@L["Users.Detail.Access.ForbiddenTitle"]</h2><p>@L["Users.Detail.Access.ForbiddenDescription"]</p></div></div>
 }
+    </Success>
+</ManagementDataView>
 
 @code {
     [Parameter] public string Id { get; set; } = string.Empty;
@@ -114,20 +119,15 @@ else
     private bool? lastLockoutState;
     private string DetailHref => $"users/{Uri.EscapeDataString(Id)}";
     private string HeaderTitle => result?.Value?.UserName ?? result?.Value?.Email ?? L["Users.Detail.Actions.Access"].Value;
-    private string LoadErrorTitle => result?.Outcome is ManagementDataOutcome.NotFound
-        ? L["Users.Detail.Error.NotFound"].Value
-        : result?.Outcome is ManagementDataOutcome.StepUpRequired
-            ? L["Users.Detail.Error.StepUp"].Value
-            : result?.Outcome is ManagementDataOutcome.Forbidden
-                ? L["Users.Detail.Error.Forbidden"].Value
-                : L["Users.Detail.Error.Generic"].Value;
     private string OperationErrorTitle => operation?.Outcome is ManagementDataOutcome.StepUpRequired
         ? L["Users.Detail.Access.Error.StepUp"].Value
         : operation?.Outcome is ManagementDataOutcome.Forbidden
             ? L["Users.Detail.Error.InsufficientAuthority"].Value
             : L["Users.Detail.Access.Error.Generic"].Value;
 
-    protected override async Task OnParametersSetAsync()
+    protected override Task OnParametersSetAsync() => LoadAsync();
+
+    private async Task LoadAsync()
     {
         loading = true;
         result = await UserData.GetAsync(Id);

@@ -103,22 +103,12 @@
             </SUIAlert>
         }
 
-        @if (tokens is null)
-        {
-            <div class="table-skeleton" aria-label="@L["Clients.RegistrationTokens.Loading"].Value">
-                @for (var index = 0; index < 2; index++)
-                {
-                    <span></span>
-                }
-            </div>
-        }
-        else if (!tokens.IsSuccess)
-        {
-            <SUIAlert ToneValue="SUITone.Danger" Icon="alert">
-                <span>@(tokens.ErrorMessage ?? L["Clients.RegistrationTokens.LoadError"].Value)</span>
-            </SUIAlert>
-        }
-        else if (tokens.Value is not { Count: > 0 } items)
+        <ManagementDataView Result="tokens"
+                            OnRetry="LoadAsync"
+                            LoadingLabel="@L["Clients.RegistrationTokens.Loading"].Value"
+                            SkeletonRows="2">
+            <Success Context="items">
+        @if (items.Count is 0)
         {
             <SUIEmptyState Icon="key"
                            Title="@L["Clients.RegistrationTokens.EmptyTitle"].Value"
@@ -204,6 +194,8 @@
                 </table>
             </div>
         }
+            </Success>
+        </ManagementDataView>
     </div>
 </section>
 

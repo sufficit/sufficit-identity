@@ -40,16 +40,24 @@
         </SUIEmptyState>
     </div>
 }
-else if (loading)
+else
 {
-    <div class="detail-shell" aria-busy="true" aria-label="@L["ClaimDetail.LoadingAriaLabel"].Value">
-        <div class="detail-skeleton"></div>
-        <div class="detail-skeleton detail-skeleton--short"></div>
-    </div>
-}
-else if (result?.IsSuccess is true && result.Value is not null
-         && string.Equals(result.Value.UserId, UserId, StringComparison.Ordinal))
-{
+<ManagementDataView Result="View"
+                    Loading="loading"
+                    OnRetry="LoadAsync"
+                    NotFoundTitle="@L["ClaimDetail.Error.NotFound"].Value"
+                    StepUpTitle="@L["ClaimDetail.Error.StepUp"].Value"
+                    UnavailableTitle="@L["ClaimDetail.Error.Generic"].Value">
+    <LoadingContent>
+        <div class="detail-shell" aria-label="@L["ClaimDetail.LoadingAriaLabel"].Value">
+            <div class="detail-skeleton"></div>
+            <div class="detail-skeleton detail-skeleton--short"></div>
+        </div>
+    </LoadingContent>
+    <FailureActions>
+        <a class="button button--secondary" href="@BackHref">@L["ClaimDetail.BackToClaims"]</a>
+    </FailureActions>
+    <Success Context="_">
     <div class="contract-strip contract-strip--warning">
         <SUIIcon Name="refresh" Size="20" />
         <div>
@@ -164,18 +172,8 @@ else if (result?.IsSuccess is true && result.Value is not null
             @(deleting ? L["ClaimDetail.Delete.Removing"] : L["ClaimDetail.Delete.Submit"])
         </button>
     </div>
-}
-else
-{
-    <div>
-        <SUIEmptyState Icon="alert"
-                    Title="@ErrorTitle"
-                    Description="@(result?.ErrorMessage ?? L["ClaimDetail.Error.GenericDescription"].Value)">
-            <Actions>
-                <a class="button button--secondary" href="@BackHref">@L["ClaimDetail.BackToClaims"]</a>
-            </Actions>
-        </SUIEmptyState>
-    </div>
+    </Success>
+</ManagementDataView>
 }
 
 @code {
@@ -208,14 +206,17 @@ else
             ? $"users/{Uri.EscapeDataString(UserId)}"
             : "users";
 
-    private string ErrorTitle =>
-        result?.Outcome is ManagementDataOutcome.NotFound
-            ? L["ClaimDetail.Error.NotFound"].Value
-            : result?.Outcome is ManagementDataOutcome.StepUpRequired
-                ? L["ClaimDetail.Error.StepUp"].Value
-                : L["ClaimDetail.Error.Generic"].Value;
+    // A claim that belongs to another account than the one in the address
+    // is presented as not found: the page never edits it from here.
+    private ManagementDataResult<ManagementClaimAssignment>? View =>
+        result is { IsSuccess: true, Value: { } loaded }
+        && !string.Equals(loaded.UserId, UserId, StringComparison.Ordinal)
+            ? ManagementDataResult<ManagementClaimAssignment>.Failure(ManagementDataOutcome.NotFound)
+            : result;
 
-    protected override async Task OnParametersSetAsync()
+    protected override Task OnParametersSetAsync() => LoadAsync();
+
+    private async Task LoadAsync()
     {
         loading = true;
         result = null;

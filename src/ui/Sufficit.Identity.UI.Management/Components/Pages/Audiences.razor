@@ -93,17 +93,14 @@
             <input type="search" placeholder="@L["Audiences.SearchPlaceholder"].Value" autocomplete="off" @bind="search" @bind:event="oninput" />
         </label>
     </div>
-    @if (loading)
-    {
-        <div class="table-skeleton" aria-label="@L["Audiences.LoadingAriaLabel"].Value"><span></span><span></span><span></span></div>
-    }
-    else if (result?.IsSuccess is not true)
-    {
-        <SUIEmptyState Icon="alert" Title="@L["Audiences.LoadErrorTitle"].Value" Description="@result?.ErrorMessage">
-            <Actions><button type="button" class="button button--secondary" @onclick="LoadAsync">@L["Audiences.TryAgain"]</button></Actions>
-        </SUIEmptyState>
-    }
-    else if (FilteredAudiences.Count is 0)
+    <ManagementDataView Result="result"
+                        Loading="loading"
+                        OnRetry="LoadAsync"
+                        LoadingLabel="@L["Audiences.LoadingAriaLabel"].Value"
+                        SkeletonRows="3"
+                        UnavailableTitle="@L["Audiences.LoadErrorTitle"].Value">
+    <Success Context="inventory">
+    @if (FilteredAudiences.Count is 0)
     {
         <SUIEmptyState Icon="server" Title="@(AllAudiences.Count is 0 ? L["Audiences.EmptyTitleNone"].Value : L["Audiences.EmptyTitleSearch"].Value)" Description="@(AllAudiences.Count is 0 ? L["Audiences.EmptyDescriptionNone"].Value : L["Audiences.EmptyDescriptionSearch"].Value)">
             <Actions>@if (search.Length > 0) { <button type="button" class="button button--secondary" @onclick="ClearSearch">@L["Audiences.ClearSearch"]</button> }</Actions>
@@ -152,6 +149,8 @@
             </table>
         </div>
     }
+    </Success>
+    </ManagementDataView>
     <footer class="table-footer"><span role="status">@(loading ? L["Audiences.LoadingFooter"].Value : result?.IsSuccess is true ? L["Audiences.FooterCountFormat", FilteredAudiences.Count, AllAudiences.Count].Value : L["Audiences.NoResultsLoaded"].Value)</span><a href="scopes">@L["Audiences.ManageScopesLink"]</a></footer>
 </div>
 

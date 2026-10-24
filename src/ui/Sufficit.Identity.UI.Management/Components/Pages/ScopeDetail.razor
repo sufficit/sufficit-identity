@@ -39,14 +39,21 @@
     </div>
 }
 
-@if (loading)
-{
-    <div class="detail-shell" aria-busy="true" aria-label="@L["Scopes.Loading.Aria"].Value">
-        <div class="detail-skeleton"></div>
-    </div>
-}
-else if (result?.IsSuccess is true && result.Value is not null)
-{
+<ManagementDataView Result="result"
+                    Loading="loading"
+                    OnRetry="LoadAsync"
+                    NotFoundTitle="@L["Scopes.ErrorTitle.NotFound"].Value"
+                    StepUpTitle="@L["Scopes.ErrorTitle.DetailStepUp"].Value"
+                    UnavailableTitle="@L["Scopes.ErrorTitle.DetailGeneric"].Value">
+    <LoadingContent>
+        <div class="detail-shell" aria-label="@L["Scopes.Loading.Aria"].Value">
+            <div class="detail-skeleton"></div>
+        </div>
+    </LoadingContent>
+    <FailureActions>
+        <a class="button button--secondary" href="scopes">@L["Scopes.BackToScopes"]</a>
+    </FailureActions>
+    <Success Context="_">
     @if (scope.IsManifestManaged)
     {
         <div class="contract-strip contract-strip--info">
@@ -185,19 +192,8 @@ else if (result?.IsSuccess is true && result.Value is not null)
             </button>
         </div>
     }
-}
-else
-{
-    <div>
-        <SUIEmptyState Icon="alert"
-                    Title="@ErrorTitle"
-                    Description="@(result?.ErrorMessage ?? L["Scopes.Error.DetailFallback"].Value)">
-            <Actions>
-                <a class="button button--secondary" href="scopes">@L["Scopes.BackToScopes"]</a>
-            </Actions>
-        </SUIEmptyState>
-    </div>
-}
+    </Success>
+</ManagementDataView>
 
 @code {
     [Parameter]
@@ -225,14 +221,9 @@ else
 
     private string PageTitleText => $"{HeaderTitle} | Sufficit Identity";
 
-    private string ErrorTitle =>
-        result?.Outcome is ManagementDataOutcome.NotFound
-            ? L["Scopes.ErrorTitle.NotFound"].Value
-            : result?.Outcome is ManagementDataOutcome.StepUpRequired
-                ? L["Scopes.ErrorTitle.DetailStepUp"].Value
-                : L["Scopes.ErrorTitle.DetailGeneric"].Value;
+    protected override Task OnParametersSetAsync() => LoadAsync();
 
-    protected override async Task OnParametersSetAsync()
+    private async Task LoadAsync()
     {
         loading = true;
         model.Localizer = L;

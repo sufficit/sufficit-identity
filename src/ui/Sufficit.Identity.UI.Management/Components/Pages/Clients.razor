@@ -118,18 +118,14 @@
         </div>
     </div>
 
-    <div class="client-results" aria-live="polite">
-        @if (loading)
-        {
-            <div class="table-skeleton" aria-label="@L["Clients.List.LoadingClientsAriaLabel"].Value">
-                @for (var index = 0; index < 4; index++)
-                {
-                    <span></span>
-                }
-            </div>
-        }
-        else if (result?.IsSuccess is true)
-        {
+    <ManagementDataView Result="result"
+                        Loading="loading"
+                        OnRetry="LoadClientsAsync"
+                        Class="client-results"
+                        LoadingLabel="@L["Clients.List.LoadingClientsAriaLabel"].Value"
+                        UnavailableTitle="@L["Clients.List.QueryErrorTitle"].Value"
+                        UnavailableDescription="@L["Clients.List.QueryErrorDescription"].Value">
+        <Success Context="_">
             @if (FilteredClients.Count is 0)
             {
                 @if (!HasActiveClientFilters)
@@ -207,21 +203,8 @@
                     </table>
                 </div>
             }
-        }
-        else
-        {
-            <SUIEmptyState Icon="database"
-                        Title="@L["Clients.List.QueryErrorTitle"].Value"
-                        Description="@L["Clients.List.QueryErrorDescription"].Value">
-                <Actions>
-                    <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default"
-                            OnClick="LoadClientsAsync">
-                        @L["Clients.Create.Retry"]
-                    </SUIButton>
-                </Actions>
-            </SUIEmptyState>
-        }
-    </div>
+        </Success>
+    </ManagementDataView>
 
     <footer class="table-footer table-footer--paginated">
         <span aria-live="polite" aria-atomic="true">@ResultCountLabel</span>

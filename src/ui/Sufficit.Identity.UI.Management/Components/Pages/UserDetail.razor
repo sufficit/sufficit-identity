@@ -77,15 +77,23 @@
     </div>
 }
 
-@if (loading)
-{
-    <div class="detail-shell" aria-busy="true" aria-label="@L["Users.Detail.LoadingAriaLabel"].Value">
-        <div class="detail-skeleton"></div>
-        <div class="detail-skeleton detail-skeleton--short"></div>
-    </div>
-}
-else if (result?.IsSuccess is true && result.Value is not null)
-{
+<ManagementDataView Result="result"
+                    Loading="loading"
+                    OnRetry="LoadAsync"
+                    NotFoundTitle="@L["Users.Detail.Error.NotFound"].Value"
+                    StepUpTitle="@L["Users.Detail.Error.StepUp"].Value"
+                    ForbiddenTitle="@L["Users.Detail.Error.Forbidden"].Value"
+                    UnavailableTitle="@L["Users.Detail.Error.Generic"].Value">
+    <LoadingContent>
+        <div class="detail-shell" aria-label="@L["Users.Detail.LoadingAriaLabel"].Value">
+            <div class="detail-skeleton"></div>
+            <div class="detail-skeleton detail-skeleton--short"></div>
+        </div>
+    </LoadingContent>
+    <FailureActions>
+        <a class="button button--secondary" href="@BackHref">@L["Users.Detail.BackToUsers"]</a>
+    </FailureActions>
+    <Success Context="_">
     <div class="detail-shell">
         <div class="detail-summary detail-summary--users">
             <div>
@@ -215,27 +223,8 @@ else if (result?.IsSuccess is true && result.Value is not null)
             </a>
         </div>
     </section>
-}
-else
-{
-    <div>
-        <SUIEmptyState Icon="alert"
-                    Title="@ErrorTitle"
-                    Description="@ErrorDescription">
-            <Actions>
-                <a class="button button--secondary" href="@BackHref">@L["Users.Detail.BackToUsers"]</a>
-                @if (result?.Outcome is ManagementDataOutcome.Unavailable)
-                {
-                    <button class="button button--primary"
-                            type="button"
-                            @onclick="LoadAsync">
-                        @L["Users.Detail.Retry"]
-                    </button>
-                }
-            </Actions>
-        </SUIEmptyState>
-    </div>
-}
+    </Success>
+</ManagementDataView>
 
 @code {
     // The reader's zone once the browser answers (BrowserTimeProvider in the layout).
@@ -293,19 +282,6 @@ else
 
     private string ActionHref(string action) =>
         $"users/{Uri.EscapeDataString(Id)}/actions/{action}";
-
-    private string ErrorTitle =>
-        result?.Outcome is ManagementDataOutcome.NotFound
-            ? L["Users.Detail.Error.NotFound"].Value
-            : result?.Outcome is ManagementDataOutcome.StepUpRequired
-                ? L["Users.Detail.Error.StepUp"].Value
-                : result?.Outcome is ManagementDataOutcome.Forbidden
-                    ? L["Users.Detail.Error.Forbidden"].Value
-                    : L["Users.Detail.Error.Generic"].Value;
-
-    private string ErrorDescription =>
-        result?.ErrorMessage
-        ?? L["Users.Detail.Error.GenericDescription"].Value;
 
     protected override async Task OnParametersSetAsync() => await LoadAsync();
 
