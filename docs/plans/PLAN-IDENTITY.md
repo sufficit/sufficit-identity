@@ -405,11 +405,16 @@ Delivered 2026-10-24 —
 
 - [ ] Deliver and test the client configurator at 320–430 px first, then tablet
   and desktop
-- [ ] Automated visual inspection at 320, 360, 390 and 430 px
 - [ ] Validate keyboard, focus, virtual keyboard, deep link, F5 and concurrency
   on the creation and edit flows
 - [ ] **(operational)** Publish the update capability per deployment and
   validate the real clients
+
+Automated phone inspection delivered 2026-10-24: `ManagementConsoleResponsiveTests`
+checks every console page at 320, 360, 390 and 430 px and the drawer's tab
+order. Run against production on a tablet, it found the closed drawer's 18
+links still focusable off-screen and the service-accounts table widening the
+page to 425 px; both fixed (`9dc112f`).
 
 ### E7 — Pluggable UI, phases 2–5
 
