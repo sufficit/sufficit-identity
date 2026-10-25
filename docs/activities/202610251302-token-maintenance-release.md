@@ -45,3 +45,18 @@ no operator token was minted or configuration row modified around that boundary.
 
 Two isolated Galera containers and their dedicated network were removed after
 validation. Production backups and the separate old release remain for rollback.
+
+## Authenticated activation
+
+The user supplied the scoped temporary token for this task. API policy PUT
+returned 204 and execution POST returned 202. Both legacy timers were disabled
+and their maintenance process was confirmed stopped before activation. The
+managed run `ea1f7ca0d0f04faebe7d4d131e8ebd1e` succeeded at
+2026-10-25T23:15:34.513565Z: 261 tokens, 0 authorizations. Next run is
+2026-10-26T05:15:34.513565Z (30-day retention, six-hour interval).
+No credential was saved to a file or published.
+
+Full CI exposed two missing capability-help mappings in English/Portuguese.
+The read/manage labels and detailed permission explanations were added; the
+six existing presentation tests now pass. The other 1865 tests, browser job,
+CodeQL and secret scanning had passed. A corrected release and fresh CI follow.

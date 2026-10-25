@@ -2281,4 +2281,8 @@
   <data name="Error.maintenance_conflict" xml:space="preserve"><value>A manutenção mudou. Atualize antes de salvar.</value></data>
   <data name="Error.maintenance_disabled" xml:space="preserve"><value>Ative a manutenção primeiro.</value></data>
   <data name="Error.invalid_maintenance_configuration" xml:space="preserve"><value>Use retenção entre 1 e 3650 dias e intervalo entre 5 e 10080 minutos.</value></data>
+  <data name="Capability.identity.maintenance.read.Title" xml:space="preserve"><value>Consultar manutenção de tokens</value></data>
+  <data name="Capability.identity.maintenance.read.Description" xml:space="preserve"><value>Permite consultar a política de limpeza, a próxima execução, solicitações pendentes e resultados recentes. Não permite alterar a retenção nem solicitar uma limpeza.</value></data>
+  <data name="Capability.identity.maintenance.manage.Title" xml:space="preserve"><value>Gerenciar manutenção de tokens</value></data>
+  <data name="Capability.identity.maintenance.manage.Description" xml:space="preserve"><value>Permite ativar ou pausar a limpeza, alterar retenção e frequência e solicitar uma execução. As alterações são auditadas; sessões válidas e ativas continuam protegidas.</value></data>
 </root>

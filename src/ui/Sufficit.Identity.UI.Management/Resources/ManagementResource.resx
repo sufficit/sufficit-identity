@@ -2281,4 +2281,8 @@
   <data name="Error.maintenance_conflict" xml:space="preserve"><value>Maintenance changed. Reload before saving.</value></data>
   <data name="Error.maintenance_disabled" xml:space="preserve"><value>Enable maintenance first.</value></data>
   <data name="Error.invalid_maintenance_configuration" xml:space="preserve"><value>Retention must be 1–3650 days and interval 5–10080 minutes.</value></data>
+  <data name="Capability.identity.maintenance.read.Title" xml:space="preserve"><value>View token maintenance</value></data>
+  <data name="Capability.identity.maintenance.read.Description" xml:space="preserve"><value>Allows viewing the cleanup policy, next scheduled run, pending requests and recent execution results. It does not allow changing retention or requesting cleanup.</value></data>
+  <data name="Capability.identity.maintenance.manage.Title" xml:space="preserve"><value>Manage token maintenance</value></data>
+  <data name="Capability.identity.maintenance.manage.Description" xml:space="preserve"><value>Allows enabling or pausing token cleanup, changing retention and frequency, and requesting an execution. Changes are audited; valid active sessions remain protected.</value></data>
 </root>
