@@ -1,0 +1,133 @@
+@page "/settings/token-maintenance"
+@attribute [Authorize(Policy = ManagementUiPolicies.ReadMaintenance)]
+@using Sufficit.Identity.Management.Maintenance
+@using Sufficit.Identity.UI.Management.Maintenance
+@inject ManagementMaintenanceDataSource MaintenanceData
+
+<PageTitle>@L["Maintenance.Title"]</PageTitle>
+<SUIPageHeader Title="@L["Maintenance.Title"].Value" Description="@L["Maintenance.Description"].Value" />
+<ManagementDataView Result="result" Loading="loading" OnRetry="LoadAsync"
+                    UnavailableTitle="@L["Maintenance.LoadError"].Value">
+    <Success Context="snapshot">
+        <section class="settings-panel" aria-labelledby="maintenance-policy">
+            <div class="panel-header">
+                <h2 id="maintenance-policy">@L["Maintenance.Policy"]</h2>
+                <SUIStatusBadge ToneValue="@(snapshot.Enabled ? SUITone.Success : SUITone.Info)">
+                    @(snapshot.Enabled ? L["Maintenance.Enabled"] : L["Maintenance.Disabled"])
+                </SUIStatusBadge>
+            </div>
+            <dl class="config-list">
+                <div><dt>@L["Maintenance.NextRun"]</dt><dd>@(snapshot.Enabled ? Format(snapshot.NextRunAtUtc) : L["Maintenance.Disabled"].Value)</dd></div>
+                <div><dt>@L["Maintenance.Request"]</dt><dd>@(snapshot.RunRequested ? L["Maintenance.Pending"] : L["Maintenance.NoRequest"])</dd></div>
+            </dl>
+            <AuthorizeView Policy="@ManagementUiPolicies.WriteMaintenance">
+                <Authorized Context="operatorState">
+                    <EditForm Model="model" OnValidSubmit="SaveAsync" FormName="token-maintenance">
+                        <DataAnnotationsValidator />
+                        <fieldset disabled="@busy">
+                            <SUISwitch id="maintenance-enabled" Label="@L["Maintenance.Enable"].Value" @bind-Value="model.Enabled" />
+                            <IdentityNumericField T="int" id="maintenance-retention" Label="@L["Maintenance.Retention"].Value"
+                                                  Min="@(1)" Max="@(3650)" @bind-Value="model.RetentionDays" />
+                            <ValidationMessage For="@(() => model.RetentionDays)" />
+                            <IdentityNumericField T="int" id="maintenance-interval" Label="@L["Maintenance.Interval"].Value"
+                                                  Min="@(5)" Max="@(10080)" @bind-Value="model.IntervalMinutes" />
+                            <ValidationMessage For="@(() => model.IntervalMinutes)" />
+                            <div class="form-actions">
+                                <SUIButton ButtonTypeValue="SUIButtonType.Submit" ColorValue="SUIColor.Primary" Disabled="@busy">@L["Maintenance.Save"]</SUIButton>
+                                <SUIButton OnClick="RequestAsync" VariantValue="SUIVariant.Outlined" Disabled="@(busy || !snapshot.Enabled || snapshot.RunRequested)">@L["Maintenance.Run"]</SUIButton>
+                            </div>
+                        </fieldset>
+                    </EditForm>
+                </Authorized>
+                <NotAuthorized>
+                    <p>@L["Maintenance.ReadOnly"]</p>
+                    <dl class="config-list">
+                        <div><dt>@L["Maintenance.Retention"]</dt><dd>@snapshot.RetentionDays</dd></div>
+                        <div><dt>@L["Maintenance.Interval"]</dt><dd>@snapshot.IntervalMinutes</dd></div>
+                    </dl>
+                </NotAuthorized>
+            </AuthorizeView>
+            <div class="maintenance-refresh"><SUIButton OnClick="LoadAsync" VariantValue="SUIVariant.Outlined" Disabled="@busy">@L["Maintenance.Reload"]</SUIButton></div>
+        </section>
+        @if (message is not null)
+        {
+            <div role="status" aria-live="polite"><SUIAlert ToneValue="@(error ? SUITone.Danger : SUITone.Success)">@message</SUIAlert></div>
+        }
+        <section class="table-panel" aria-labelledby="maintenance-history">
+            <div class="panel-header"><h2 id="maintenance-history">@L["Maintenance.History"]</h2></div>
+            @if (snapshot.Runs.Count == 0)
+            {
+                <p>@L["Maintenance.Empty"]</p>
+            }
+            else
+            {
+                <div class="table-scroll">
+                    <table class="data-table maintenance-history">
+                        <thead><tr><th>@L["Maintenance.Start"]</th><th>@L["Maintenance.End"]</th><th>@L["Maintenance.Status"]</th><th>@L["Maintenance.Tokens"]</th><th>@L["Maintenance.Authorizations"]</th></tr></thead>
+                        <tbody>
+                            @foreach (var run in snapshot.Runs)
+                            {
+                                <tr @key="run.Id">
+                                    <td data-label="@L["Maintenance.Start"]">@Format(run.StartedAtUtc)</td>
+                                    <td data-label="@L["Maintenance.End"]">@(run.FinishedAtUtc is { } end ? Format(end) : "—")</td>
+                                    <td data-label="@L["Maintenance.Status"]">@L[$"Maintenance.Status.{run.Status}"]</td>
+                                    <td data-label="@L["Maintenance.Tokens"]">@run.Tokens</td>
+                                    <td data-label="@L["Maintenance.Authorizations"]">@run.Authorizations</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </section>
+    </Success>
+</ManagementDataView>
+
+@code {
+    [CascadingParameter] private BrowserTime Time { get; set; } = BrowserTime.Server;
+    private ManagementDataResult<TokenMaintenanceOverview>? result;
+    private PolicyForm model = new();
+    private bool loading = true, busy, error;
+    private string? message;
+    protected override Task OnInitializedAsync() => LoadAsync();
+    private string Format(DateTime value) => value <= DateTime.UnixEpoch ? L["Maintenance.Due"].Value : Time.Format(value, TimeStyle.DateTimeSeconds);
+
+    private async Task LoadAsync()
+    {
+        if (busy) return;
+        loading = true;
+        message = null;
+        try { await RefreshAsync(); }
+        finally { loading = false; }
+    }
+
+    private async Task RefreshAsync()
+    {
+        result = await MaintenanceData.GetAsync();
+        if (result.Value is { } value)
+            model = new() { Enabled = value.Enabled, RetentionDays = value.RetentionDays, IntervalMinutes = value.IntervalMinutes };
+    }
+
+    private Task SaveAsync() => MutateAsync(false);
+    private Task RequestAsync() => MutateAsync(true);
+    private async Task MutateAsync(bool request)
+    {
+        if (busy || result?.Value is not { } value) return;
+        busy = true;
+        try
+        {
+            var response = request ? await MaintenanceData.RequestAsync(value.Revision)
+                : await MaintenanceData.SaveAsync(new(value.Revision, model.Enabled, model.RetentionDays, model.IntervalMinutes));
+            error = !response.IsSuccess;
+            message = response.IsSuccess ? L[request ? "Maintenance.Requested" : "Maintenance.Saved"].Value : response.ErrorMessage;
+            if (response.IsSuccess) await RefreshAsync();
+        }
+        finally { busy = false; }
+    }
+    private sealed class PolicyForm
+    {
+        public bool Enabled { get; set; }
+        [Range(1, 3650)] public int RetentionDays { get; set; } = 30;
+        [Range(5, 10080)] public int IntervalMinutes { get; set; } = 360;
+    }
+}

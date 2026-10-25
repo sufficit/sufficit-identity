@@ -13,7 +13,7 @@ namespace Sufficit.Identity.Tests;
 /// OpenIddict never deletes token entries: codes are marked redeemed,
 /// revocation is a status flip, and reference tokens stay forever. The
 /// pruning worker applies <see cref="TokenPruningOptions.RetentionDays"/>
-/// through OpenIddict's supported <c>PruneAsync</c> path — these tests pin
+/// with OpenIddict's eligibility rules — these tests pin
 /// the two bounds that matter: dead entries older than the threshold
 /// disappear, and a valid, unexpired token is never pruned regardless of age.
 /// </summary>
@@ -40,6 +40,12 @@ public sealed class OpenIddictPruningWorkerTests
         var validOld = await SeedTokenAsync(factory,
             createdDaysAgo: 40, TokenTypeIdentifiers.RefreshToken, Statuses.Valid,
             expirationDaysFromNow: 1);
+        var inactive = await SeedTokenAsync(factory,
+            createdDaysAgo: 40, DeviceCodeType, Statuses.Inactive,
+            expirationDaysFromNow: null);
+        var validWithoutExpiry = await SeedTokenAsync(factory,
+            createdDaysAgo: 40, TokenTypeIdentifiers.RefreshToken, Statuses.Valid,
+            expirationDaysFromNow: null);
         var deadRecent = await SeedTokenAsync(factory,
             createdDaysAgo: 1, DeviceCodeType, Statuses.Redeemed,
             expirationDaysFromNow: 1);
@@ -52,6 +58,8 @@ public sealed class OpenIddictPruningWorkerTests
         // A valid token with future expiration survives even though it was
         // created before the threshold — retention never cuts live sessions.
         await AssertTokenPresentAsync(factory, validOld, Statuses.Valid);
+        await AssertTokenPresentAsync(factory, inactive, Statuses.Inactive);
+        await AssertTokenPresentAsync(factory, validWithoutExpiry, Statuses.Valid);
         // Dead-but-recent entries stay until they age past the threshold:
         // revocation history remains auditable for the retention window.
         await AssertTokenPresentAsync(factory, deadRecent, Statuses.Redeemed);
@@ -118,14 +126,15 @@ public sealed class OpenIddictPruningWorkerTests
         int createdDaysAgo,
         string type,
         string status,
-        int expirationDaysFromNow)
+        int? expirationDaysFromNow)
     {
         await using var scope = factory.Services.CreateAsyncScope();
         var tokens = scope.ServiceProvider.GetRequiredService<IOpenIddictTokenManager>();
         var token = await tokens.CreateAsync(new OpenIddictTokenDescriptor
         {
             CreationDate = DateTimeOffset.UtcNow.AddDays(-createdDaysAgo),
-            ExpirationDate = DateTimeOffset.UtcNow.AddDays(expirationDaysFromNow),
+            ExpirationDate = expirationDaysFromNow is { } days
+                ? DateTimeOffset.UtcNow.AddDays(days) : null,
             ReferenceId = $"pruning-test-{Guid.NewGuid():N}",
             Subject = TestSubject(),
             Type = type,

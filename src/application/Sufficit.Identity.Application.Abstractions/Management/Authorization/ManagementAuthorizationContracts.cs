@@ -48,6 +48,8 @@ public static class ManagementCapabilities
     public const string AuthorizationsRevoke =
         "identity.authorizations.revoke";
     public const string AuditRead = "identity.audit.read";
+    public const string MaintenanceRead = "identity.maintenance.read";
+    public const string MaintenanceManage = "identity.maintenance.manage";
     public const string DatabaseRead = "identity.database.read";
     public const string TrustedProxiesRead = "identity.trusted-proxies.read";
     public const string TrustedProxiesManage = "identity.trusted-proxies.manage";
@@ -114,6 +116,8 @@ public static class ManagementCapabilities
                 AuthorizationsRevoke,
                 AuditRead,
                 DatabaseRead,
+                MaintenanceRead,
+                MaintenanceManage,
                 TrustedProxiesRead,
                 TrustedProxiesManage,
                 MetricsRead,

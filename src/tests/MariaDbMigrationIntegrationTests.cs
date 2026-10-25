@@ -88,6 +88,7 @@ public sealed class MariaDbMigrationIntegrationTests
             IdentityDatabaseSchema.SystemUsersAsOrdinaryUsersMigrationId,
             IdentityDatabaseSchema.AggregateUsageMetricsMigrationId,
             IdentityDatabaseSchema.AddUserToUsageMetricsMigrationId,
+            IdentityDatabaseSchema.TokenMaintenanceMigrationId,
         };
         var appliedMigrations = await context.Database
             .GetAppliedMigrationsAsync();
@@ -104,14 +105,14 @@ public sealed class MariaDbMigrationIntegrationTests
         await using var connection = context.Database.GetDbConnection();
         await connection.OpenAsync();
 
-        // 37 base tables remain, including trustedproxyconfiguration,
+        // 39 base tables remain, including trustedproxyconfiguration,
         // dcrinitialaccesstokens, systemuserenrollments and
         // identityapplicationusagedaily: the canonical script creates the
         // migrations history table plus the model tables, and migrations drop
         // vaultpersonalsecrets (user-typed secrets live in vaultsecrets),
         // systemusers (system users are ordinary users) and
         // identityapplicationusageevents (replaced by the daily aggregate).
-        Assert.Equal(37, await ScalarIntAsync(connection, """
+        Assert.Equal(39, await ScalarIntAsync(connection, """
             SELECT COUNT(*)
             FROM information_schema.tables
             WHERE table_schema = DATABASE()

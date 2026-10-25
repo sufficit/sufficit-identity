@@ -2247,4 +2247,38 @@
   <data name="Error.system_user_enrollment_client_not_allowed" xml:space="preserve"><value>O cliente precisa existir e permitir o grant de habilitação de usuário de sistema e refresh tokens.</value></data>
   <data name="Error.system_user_enrollment_label_required" xml:space="preserve"><value>Informe onde a credencial vai morar.</value></data>
   <data name="Layout.Reconnecting" xml:space="preserve"><value>Reconectando ao painel…</value></data>
+  <data name="Maintenance.Title" xml:space="preserve"><value>Manutenção de tokens</value></data>
+  <data name="Maintenance.Description" xml:space="preserve"><value>Limpe tokens expirados e autorizações temporárias sem uso. Sessões ativas são preservadas.</value></data>
+  <data name="Maintenance.LoadError" xml:space="preserve"><value>Não foi possível carregar a manutenção</value></data>
+  <data name="Maintenance.Policy" xml:space="preserve"><value>Política de limpeza</value></data>
+  <data name="Maintenance.Enabled" xml:space="preserve"><value>Ativada</value></data>
+  <data name="Maintenance.Disabled" xml:space="preserve"><value>Desativada</value></data>
+  <data name="Maintenance.NextRun" xml:space="preserve"><value>Próxima execução agendada</value></data>
+  <data name="Maintenance.Request" xml:space="preserve"><value>Solicitação manual</value></data>
+  <data name="Maintenance.Pending" xml:space="preserve"><value>Pendente</value></data>
+  <data name="Maintenance.NoRequest" xml:space="preserve"><value>Nenhuma</value></data>
+  <data name="Maintenance.Enable" xml:space="preserve"><value>Ativar limpeza agendada</value></data>
+  <data name="Maintenance.Retention" xml:space="preserve"><value>Retenção (dias)</value></data>
+  <data name="Maintenance.Interval" xml:space="preserve"><value>Intervalo (minutos)</value></data>
+  <data name="Maintenance.Save" xml:space="preserve"><value>Salvar política</value></data>
+  <data name="Maintenance.Run" xml:space="preserve"><value>Solicitar execução</value></data>
+  <data name="Maintenance.ReadOnly" xml:space="preserve"><value>Você pode consultar esta política. Alterações exigem permissão de manutenção.</value></data>
+  <data name="Maintenance.Reload" xml:space="preserve"><value>Atualizar</value></data>
+  <data name="Maintenance.History" xml:space="preserve"><value>Execuções recentes</value></data>
+  <data name="Maintenance.Empty" xml:space="preserve"><value>Nenhuma execução registrada ainda.</value></data>
+  <data name="Maintenance.Start" xml:space="preserve"><value>Início</value></data>
+  <data name="Maintenance.End" xml:space="preserve"><value>Término</value></data>
+  <data name="Maintenance.Status" xml:space="preserve"><value>Situação</value></data>
+  <data name="Maintenance.Tokens" xml:space="preserve"><value>Tokens removidos</value></data>
+  <data name="Maintenance.Authorizations" xml:space="preserve"><value>Autorizações removidas</value></data>
+  <data name="Maintenance.Status.running" xml:space="preserve"><value>Em execução</value></data>
+  <data name="Maintenance.Status.succeeded" xml:space="preserve"><value>Concluída</value></data>
+  <data name="Maintenance.Status.failed" xml:space="preserve"><value>Falhou</value></data>
+  <data name="Maintenance.Status.interrupted" xml:space="preserve"><value>Interrompida</value></data>
+  <data name="Maintenance.Due" xml:space="preserve"><value>Aguardando execução</value></data>
+  <data name="Maintenance.Requested" xml:space="preserve"><value>Execução solicitada. Ela começará quando houver um executor disponível.</value></data>
+  <data name="Maintenance.Saved" xml:space="preserve"><value>Política salva.</value></data>
+  <data name="Error.maintenance_conflict" xml:space="preserve"><value>A manutenção mudou. Atualize antes de salvar.</value></data>
+  <data name="Error.maintenance_disabled" xml:space="preserve"><value>Ative a manutenção primeiro.</value></data>
+  <data name="Error.invalid_maintenance_configuration" xml:space="preserve"><value>Use retenção entre 1 e 3650 dias e intervalo entre 5 e 10080 minutos.</value></data>
 </root>

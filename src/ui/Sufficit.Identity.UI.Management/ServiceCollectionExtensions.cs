@@ -44,6 +44,8 @@ public static class ManagementUiPolicies
         "sufficit-identity-management-ui-provisioning";
     public const string ManageProvisioningToken =
         "sufficit-identity-management-ui-provisioning-token";
+    public const string ReadMaintenance = "sufficit-identity-management-ui-maintenance-read";
+    public const string WriteMaintenance = "sufficit-identity-management-ui-maintenance-write";
     public const string ReadTrustedProxies = "sufficit-identity-management-ui-trusted-proxies";
     public const string WriteTrustedProxies = "sufficit-identity-management-ui-trusted-proxies-write";
     public const string ManageMetrics = "sufficit-identity-management-ui-metrics";
@@ -251,6 +253,18 @@ public static class ServiceCollectionExtensions
                             ManagementCapabilities.ProvisioningApply,
                             ManagementResourceTypes.Provisioning));
                 });
+            authorization.AddPolicy(ManagementUiPolicies.ReadMaintenance, policy =>
+            {
+                policy.RequireAuthenticatedUser();
+                policy.Requirements.Add(new ManagementCapabilityRequirement(
+                    ManagementCapabilities.MaintenanceRead, "token-maintenance"));
+            });
+            authorization.AddPolicy(ManagementUiPolicies.WriteMaintenance, policy =>
+            {
+                policy.RequireAuthenticatedUser();
+                policy.Requirements.Add(new ManagementCapabilityRequirement(
+                    ManagementCapabilities.MaintenanceManage, "token-maintenance"));
+            });
             authorization.AddPolicy(ManagementUiPolicies.ReadTrustedProxies, policy =>
             {
                 policy.RequireAuthenticatedUser();
@@ -324,6 +338,7 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<ManagementDatabaseDataSource>();
         services.TryAddScoped<ManagementMetricsDataSource>();
         services.TryAddScoped<Networking.ManagementTrustedProxiesDataSource>();
+        services.TryAddScoped<Maintenance.ManagementMaintenanceDataSource>();
         services.TryAddScoped<ManagementOperatorTokenDataSource>();
         services.TryAddScoped<ManagementRegistrationTokenDataSource>();
         services.TryAddScoped<SystemUsers.ManagementSystemUserDataSource>();

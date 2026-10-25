@@ -186,6 +186,7 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<IUserManagementService, UserManagementService>();
         services.TryAddScoped<IManagementOverviewService,
             ManagementOverviewService>();
+        services.TryAddScoped<Maintenance.ITokenMaintenanceManagementService, Maintenance.TokenMaintenanceManagementService>();
         services.TryAddScoped<IDatabaseMonitoringService,
             DatabaseMonitoringService>();
         services.TryAddScoped<IMetricsManagementService,

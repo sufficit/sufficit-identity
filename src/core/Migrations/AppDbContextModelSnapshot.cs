@@ -1745,6 +1745,112 @@ namespace Sufficit.Identity.Core.Migrations
                     b.ToTable("systemuserenrollments", (string)null);
                 });
 
+            modelBuilder.Entity("Sufficit.Identity.Core.Entities.TokenMaintenance", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    b.Property<string>("CurrentRunId")
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("currentrunid");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("enabled");
+
+                    b.Property<int>("IntervalMinutes")
+                        .HasColumnType("int")
+                        .HasColumnName("intervalminutes");
+
+                    b.Property<DateTime?>("LeaseUntilUtc")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("leaseuntilutc");
+
+                    b.Property<DateTime>("NextRunAtUtc")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("nextrunatutc");
+
+                    b.Property<string>("Owner")
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)")
+                        .HasColumnName("owner");
+
+                    b.Property<int>("RetentionDays")
+                        .HasColumnType("int")
+                        .HasColumnName("retentiondays");
+
+                    b.Property<string>("Revision")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("revision");
+
+                    b.Property<bool>("RunRequested")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("runrequested");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("tokenmaintenance", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Enabled = false,
+                            IntervalMinutes = 360,
+                            NextRunAtUtc = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            RetentionDays = 30,
+                            Revision = "initial",
+                            RunRequested = false
+                        });
+                });
+
+            modelBuilder.Entity("Sufficit.Identity.Core.Entities.TokenMaintenanceRun", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("id");
+
+                    b.Property<long>("Authorizations")
+                        .HasColumnType("bigint")
+                        .HasColumnName("authorizations");
+
+                    b.Property<DateTime?>("FinishedAtUtc")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("finishedatutc");
+
+                    b.Property<string>("Owner")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)")
+                        .HasColumnName("owner");
+
+                    b.Property<DateTime>("StartedAtUtc")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("startedatutc");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("varchar(24)")
+                        .HasColumnName("status");
+
+                    b.Property<long>("Tokens")
+                        .HasColumnType("bigint")
+                        .HasColumnName("tokens");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StartedAtUtc");
+
+                    b.ToTable("tokenmaintenanceruns", (string)null);
+                });
+
             modelBuilder.Entity("Sufficit.Identity.Core.Entities.TrustedProxyConfiguration", b =>
                 {
                     b.Property<int>("Id")

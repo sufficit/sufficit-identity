@@ -313,3 +313,9 @@ not a database-engine migration.
 These assets contain no connection strings, credentials, client secrets,
 password hashes, tokens or personal data. Supply database access through the
 approved secret mechanism at execution time.
+
+## Token maintenance
+
+[109-add-token-maintenance.sql](sql/109-add-token-maintenance.sql) adds the disabled
+database schedule and run history. Follow the [token maintenance transition](../operations/RUNBOOK-TOKEN-PRUNING.md#transition-from-the-external-timer)
+when replacing an existing external timer.

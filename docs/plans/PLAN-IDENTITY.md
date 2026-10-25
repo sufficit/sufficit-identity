@@ -705,3 +705,19 @@ file is what is left to do.
 - [ ] Every operational item has environment evidence in the format of
   [`RUNBOOK-PRODUCTION-EVIDENCE.md`](../runbooks/RUNBOOK-PRODUCTION-EVIDENCE.md)
 - [ ] Release build plus the focused and full regression suites are green
+
+## G8 — Publish database-controlled token maintenance (2026-10-25)
+
+Authorized: publish and test the integrated maintenance feature.
+
+1. **Completed:** inspect deployment state, isolate the release and confirm rollback.
+2. **Completed:** rehearse coordination on two isolated Galera nodes (20 claim races and stale-owner rejection); 111 other tests passed with local SUI.
+3. **In progress:** publish code/artifact, migrate once and roll normal Identity hosts sequentially.
+4. **Pending:** drain legacy timers, enable managed maintenance, verify real execution and health.
+5. **Pending:** record delivery evidence and clean up test resources.
+
+Preserve unrelated claim-delivery edits. Preserve production secrets, FK checks
+and single-applier mitigation. Record existing revisions and unit overrides.
+On failure keep/restore the last healthy release and one scheduler; do not
+bootstrap production Galera or change its membership. Use existing deployment
+helpers and local SUI as required by DEPLOY.md.

@@ -2,7 +2,7 @@ namespace Sufficit.Identity.STS;
 
 /// <summary>
 /// Retention policy for dead OpenIddict tokens and orphaned authorizations,
-/// applied by the maintenance command or optional background worker.
+/// applied by the legacy maintenance command. The background worker uses the database policy.
 /// Bound from <c>Sufficit:Identity:TokenPruning</c>.
 /// </summary>
 public sealed class TokenPruningOptions
@@ -17,7 +17,7 @@ public sealed class TokenPruningOptions
     /// </summary>
     public int RetentionDays { get; init; } = 30;
 
-    /// <summary>Disable on every API replica when an external scheduler owns pruning.</summary>
+    /// <summary>Deployment kill switch for the database-coordinated worker; disable while the external timer owns pruning.</summary>
     public bool RunInWebHost { get; init; } = true;
 
     /// <summary>Absolute path on durable storage, shared by the job and its watchdog.</summary>
