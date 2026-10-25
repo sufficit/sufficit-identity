@@ -37,9 +37,9 @@ manual production validation completed at 2026-10-25T16:04:58.6434196Z: 383 toke
 and 1 authorization, exit 0. The subsequent watchdog also exited 0. These are
 **CLI-mode** results, not a database-scheduled execution.
 
-All integrated workers are deployed with RunInWebHost=true, but the seeded
-database policy remains disabled. The external timer stays enabled until an
-authenticated Management request can enable the policy and verify a managed run.
+At the initial deployment checkpoint, all integrated workers had
+RunInWebHost=true and the seeded database policy was still disabled. The external
+timer remained enabled until the authenticated cutover recorded below.
 The repository's temporary-management-token skill requires that credential;
 no operator token was minted or configuration row modified around that boundary.
 
@@ -60,3 +60,28 @@ Full CI exposed two missing capability-help mappings in English/Portuguese.
 The read/manage labels and detailed permission explanations were added; the
 six existing presentation tests now pass. The other 1865 tests, browser job,
 CodeQL and secret scanning had passed. A corrected release and fresh CI follow.
+
+## Corrected release checkpoint
+
+Artifact revision `9d8397ca98f01045b1777280564bd3a6f531e8c6`, SHA-256
+`173dbdf58cd6f60b690cbfffd7d688ae14e0ba344c29e04e54de29380ef0c686`.
+Two hosts were rolled sequentially and confirmed Healthy through the readiness
+socket. The third host became unreachable on SSH and HTTPS over public IPv4,
+IPv6 and VPN; the same failure was observed from another production host and
+affected its infrastructure host too. The upload failed before any remote
+mutation. Its last verified revision remains the initial feature release.
+Do not claim the corrected artifact is installed on all hosts until connectivity
+returns and the remaining rollout is verified. Original and corrected-release
+rollback directories remain available. Public discovery still returns the
+expected issuer. Both legacy timers are disabled on their former owner.
+
+Corrected commit CI run 40244019123 passed: 1867 tests passed, 2 skipped,
+0 failed; browser, production container, SQL rehearsals, API-only smoke and
+dependency audit passed. CodeQL run 40244019122 and secret scanning passed.
+Publication: [PR #98](https://github.com/sufficit/sufficit-identity/pull/98).
+
+Final authenticated API read after rolling the two hosts confirms enabled=true,
+retentionDays=30, intervalMinutes=360, no pending request or active lease, and
+the successful managed run above. During the network outage the database
+readiness check reports Primary/Synced, ready ON, cluster size 3 and one applier;
+the earlier size-4 verification preceded that outage.
