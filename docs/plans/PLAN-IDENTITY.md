@@ -712,9 +712,9 @@ Authorized: publish and test the integrated maintenance feature.
 
 1. **Completed:** inspect deployment state, isolate the release and confirm rollback.
 2. **Completed:** rehearse coordination on two isolated Galera nodes (20 claim races and stale-owner rejection); 111 other tests passed with local SUI.
-3. **In progress:** publish code/artifact, migrate once and roll normal Identity hosts sequentially.
-4. **Pending:** drain legacy timers, enable managed maintenance, verify real execution and health.
-5. **Pending:** record delivery evidence and clean up test resources.
+3. **Completed:** published commit 96fccc0 / PR #98; schema applied once and all three normal hosts healthy on the same artifact.
+4. **In progress — credential required:** managed policy is disabled pending an authenticated Management token; retain the external timer until cutover. Normal-binary CLI completed 383 tokens / 1 authorization and watchdog passed.
+5. **Pending:** finalize delivery evidence after authenticated activation; isolated test resources cleaned up.
 
 Preserve unrelated claim-delivery edits. Preserve production secrets, FK checks
 and single-applier mitigation. Record existing revisions and unit overrides.

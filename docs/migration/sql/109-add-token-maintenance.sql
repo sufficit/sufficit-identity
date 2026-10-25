@@ -33,4 +33,3 @@ INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
 VALUES ('20261024204655_AddTokenMaintenance', '10.0.13');
 
 COMMIT;
-
