@@ -61,3 +61,18 @@ must use the current snapshot, not those old claims.
 The empty default preserves legacy claim delivery. A missing deployment key list
 is **not** equivalent to server-only delivery and must fail release acceptance.
 No application-specific defaults are embedded in the public provider.
+
+## Authorized management snapshot
+
+`GET /api/claims/effective?userId=...` provides a separate management-only snapshot
+of a selected user's current authorization-related claims, including role claims
+through the registered `IUserClaimsPrincipalFactory`. It requires the management
+policy and `identity.claims.read` authorization for the target claim collection.
+It does not broaden UserInfo or exchange the operator's identity for the target.
+
+The response has `schemaVersion: 1`, `subject` and `claims` (`type`, `value`).
+Only `entitlements`, `directive` and role claim types are returned; their business
+meaning remains opaque to Identity. Locked-out users are denied; missing users
+return 404. Responses use `Cache-Control: no-store`. Consumers must verify the
+subject and schema and apply their own context and action policies. This endpoint
+does not issue a token or authorize a consumer-side operation by itself.
