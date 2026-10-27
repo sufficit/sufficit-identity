@@ -34,8 +34,13 @@ id: pertencem a quem registrou.
 | `sufficit_mobile_ai_models` | `sufficit-mobile-ai-models` | sem consumidor no código |
 | `sufficit_mobile_apps` | `sufficit-mobile-apps` | sem consumidor no código |
 
-Sem cópia, a desativar: `sufficit_fleet_beta`, `skoruba_identity_admin`,
-`skoruba_identity_admin_api_swaggerui` (nenhum token emitido).
+Sem cópia, a desativar: `sufficit_fleet_beta` (nenhum token emitido).
+
+`skoruba_identity_admin` e `skoruba_identity_admin_api_swaggerui` (o admin
+antigo, que não existe mais) foram **apagados** em 27/10 com o aval do
+titular: nenhum token, autorização, uso diário nem linha de log em 30 dias
+nos três nós. Cópia das linhas em
+`/root/applications-skoruba-20261027.tsv` no `eveo-apps` (0600).
 
 ## Execução (27/10)
 
