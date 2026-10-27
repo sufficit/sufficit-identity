@@ -85,3 +85,20 @@ retentionDays=30, intervalMinutes=360, no pending request or active lease, and
 the successful managed run above. During the network outage the database
 readiness check reports Primary/Synced, ready ON, cluster size 3 and one applier;
 the earlier size-4 verification preceded that outage.
+
+## Rollout closure — 2026-10-27
+
+Connectivity recovered. The remaining host was still Healthy on revision
+96fccc0 before the final rollout. Recovered the original corrected archive
+from an already updated host and verified its SHA-256 against the recorded
+value; no rebuild or schema change was needed. Preserved seven runtime
+configuration/certificate files byte-for-byte, backed up overrides, and
+retained the previous live directory for rollback.
+
+All three hosts now report revision
+`9d8397ca98f01045b1777280564bd3a6f531e8c6`, readiness Healthy, and identical
+STS SHA-256 `146b647e5e48a16ab5c3efe577b1483297224c85361edc6c5d2f83d4384d3844`.
+Public discovery on every host returns the expected issuer. Galera reports
+Primary/Synced, ready ON and four members again. PR #98 checks for fbf02cc
+passed (CI 40244470395, CodeQL 40244470405). The previously blocked rollout
+is complete. No management policy or credentials were changed during closure.
