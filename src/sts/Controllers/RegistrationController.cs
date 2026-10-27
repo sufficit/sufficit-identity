@@ -103,7 +103,9 @@ public sealed class RegistrationController : ControllerBase
         }
 
         var clientId = string.IsNullOrWhiteSpace(request.ClientId)
-            ? "dcr_" + WebEncoders.Base64UrlEncode(
+            // Hex keeps generated ids to letters, digits and hyphens, like
+            // every other client id.
+            ? "dcr-" + Convert.ToHexStringLower(
                 RandomNumberGenerator.GetBytes(24))
             : request.ClientId;
         if (await _applications.FindByClientIdAsync(clientId, ct) is not null)

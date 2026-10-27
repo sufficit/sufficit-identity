@@ -121,7 +121,7 @@ public sealed class DcrTests
             ?? throw new InvalidOperationException("DCR client_id missing.");
         var clientSecret = body.GetProperty("client_secret").GetString()
             ?? throw new InvalidOperationException("DCR client_secret missing.");
-        Assert.StartsWith("dcr_", clientId, StringComparison.Ordinal);
+        Assert.Matches("^dcr-[0-9a-f]{48}$", clientId);
         Assert.True(clientSecret.Length >= 64);
 
         using (var scope = factory.Services.CreateScope())
