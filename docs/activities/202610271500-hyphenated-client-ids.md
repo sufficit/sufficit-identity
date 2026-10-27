@@ -89,3 +89,30 @@ Pendentes: deploy do landing e da Web do network-control; depois remover
 `personal_tokens.manage`, `sufficit_network_control` e `sufficit_background`
 (escopo, permissões e audiência `sufficit_background_api`), e desativar os
 client ids antigos.
+
+## Fechamento (27/10, fim do dia)
+
+- **landing:** publicado no eveo a partir da árvore de trabalho, porque o
+  binário no ar já tinha código não commitado de outra sessão
+  (`hermes/availability`, `sitemap.xml`); um deploy de `origin/main` o
+  apagaria. appsettings e `data/` preservados; backup em
+  `/opt/sufficit-landing-pages.before-scope-20261027`. Login pede só
+  `openid profile email roles sufficit.landing.publish`.
+- **network-control Web:** publicada a partir de `origin/main` (inclui a SUI
+  2.* com pacote, sem WIP local); backup em
+  `/opt/sufficit/network-control/web.before-scope-20261027`. Login pede só
+  `network.control`.
+- Escopos `personal_tokens.manage`, `sufficit_network_control` e
+  `sufficit_background` apagados, com as permissões; `background.jobs`
+  declara só `sufficit-background`. Cópias em
+  `/root/scope-personal_tokens-20261027.tsv` e
+  `/root/scopes-underscore-20261027.tsv` (eveo-apps, 0600).
+- Os 10 client ids com sublinhado **desativados** (`sufficit:disabled`), sem
+  token desde as trocas; o token endpoint responde `unauthorized_client: The
+  client application is disabled.`
+- Identity reiniciado nos 3 nós; os 4 logins web chegam ao `/account/login`;
+  vault (200) e provisioning (204) conferidos com os ids novos.
+
+Restam: `sufficit_ai_openai_bridge` (cadeias do Genius de agosto); apagar os
+clientes desativados depois de um período; tirar a aceitação dos nomes antigos
+do endpoints (`LegacyClientId`) e do background (`Legacy*`).
