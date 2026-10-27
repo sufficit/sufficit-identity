@@ -151,6 +151,36 @@ public sealed class ClaimsControllerTests
     }
 
     [Fact]
+    public async Task A_claim_is_updated_and_deleted_by_id_in_the_query_string_too()
+    {
+        // Both forms are accepted: api/claims/{id} and api/claims?id={id}.
+        using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        using var client = factory.CreateClient();
+        string userId;
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            userId = (await users.FindByNameAsync(TestDataSeeder.DefaultUsername)
+                ?? throw new InvalidOperationException("Seeded user is missing.")).Id;
+        }
+
+        using var created = await client.PostAsJsonAsync("/api/claims",
+            new CreateClaimRequest { UserId = userId, Type = "urn:tests:query-id", Value = "before" });
+        var claimId = (await created.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+
+        using var updated = await client.PutAsJsonAsync($"/api/claims?id={claimId}",
+            new UpdateClaimRequest { Type = "urn:tests:query-id", Value = "after" });
+        Assert.Equal(HttpStatusCode.OK, updated.StatusCode);
+        Assert.Equal("after", (await updated.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("value").GetString());
+
+        using var deleted = await client.DeleteAsync($"/api/claims?id={claimId}");
+        Assert.Equal(HttpStatusCode.NoContent, deleted.StatusCode);
+        using var again = await client.DeleteAsync($"/api/claims/{claimId}");
+        Assert.Equal(HttpStatusCode.NotFound, again.StatusCode);
+    }
+
+    [Fact]
     public async Task Create_update_and_delete_change_security_stamp_and_redact_audit()
     {
         using var factory = new ManagementTestFactory();

@@ -79,7 +79,8 @@ POST /api/claims
 { "userId": "<id>", "type": "entitlements", "value": "aiuser:<contexto compacto>" }
 
 GET    /api/claims?userId=<id>
-DELETE /api/claims/<claimId>
+DELETE /api/claims?id=<claimId>      (ou /api/claims/<claimId>)
+PUT    /api/claims?id=<claimId>      (ou /api/claims/<claimId>)
 ```
 
 **Rota legada (obsoleta, só durante a transição):**

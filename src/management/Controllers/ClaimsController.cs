@@ -62,6 +62,13 @@ public sealed class ClaimsController(IClaimManagementService claims)
             result);
     }
 
+    // Both forms are accepted: api/claims/{id} and api/claims?id={id}.
+    [HttpDelete]
+    public Task<IActionResult> DeleteByQuery(
+        [FromQuery] int id,
+        CancellationToken cancellationToken) =>
+        Delete(id, cancellationToken);
+
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(
         int id,
@@ -73,6 +80,14 @@ public sealed class ClaimsController(IClaimManagementService claims)
             cancellationToken);
         return NoContent();
     }
+
+    // Both forms are accepted: api/claims/{id} and api/claims?id={id}.
+    [HttpPut]
+    public Task<ActionResult<ManagementClaimAssignment>> UpdateByQuery(
+        [FromQuery] int id,
+        [FromBody] UpdateClaimRequest request,
+        CancellationToken cancellationToken) =>
+        Update(id, request, cancellationToken);
 
     [HttpPut("{id:int}")]
     public async Task<ActionResult<ManagementClaimAssignment>> Update(
