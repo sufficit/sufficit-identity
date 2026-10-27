@@ -101,19 +101,20 @@ issuance page will refuse it.
 | Area | Capabilities |
 | --- | --- |
 | Clients | `identity.clients.read` `.create` `.update` `.delete` |
-| Users | `identity.users.read` `.create` `.update` `.delete` `.disable` `.reset` |
-| Claims | `identity.claims.read` `.create` `.update` `.delete` |
+| Users | `identity.users.read` `.create` `.update` `.delete` `.disable` `.reset` `.mfa.reset` `.confirmation` `.system` |
+| Claims | `identity.claims.read` `.create` `.update` `.delete` `.system` |
 | Scopes | `identity.scopes.read` `.create` `.update` `.delete` |
 | Sessions | `identity.sessions.read` `identity.sessions.revoke` |
 | Authorizations | `identity.authorizations.read` `identity.authorizations.revoke` |
 | Audit / metrics | `identity.audit.read` `identity.metrics.read` `identity.metrics.manage` |
 | Branding | `identity.branding.read` `identity.branding.manage` |
-| Vault | `identity.vault.secrets.read` `.resolve` `.manage` |
+| Secrets | `identity.secrets.read` `.resolve` `.manage` |
+| Proxies | `identity.proxies.read` `identity.proxies.manage` |
 | Provisioning | `identity.provisioning.preview` `identity.provisioning.apply` |
 | Database | `identity.database.read` |
-| Tokens | `identity.management.tokens.read` `identity.management.tokens.issue` `identity.management.tokens.revoke` |
+| Tokens | `identity.tokens.read` `identity.tokens.issue` `identity.tokens.revoke` |
 
-The user must themselves hold `identity.management.tokens.issue` to use the
+The user must themselves hold `identity.tokens.issue` to use the
 page. If they cannot issue, that is an access problem for them to resolve — not
 something to route around.
 

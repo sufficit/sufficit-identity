@@ -32,9 +32,9 @@ public sealed class ManagementOverviewService(
         new("sessions", ManagementCapabilities.SessionsRead),
         new("audit", ManagementCapabilities.AuditRead),
         new("database", ManagementCapabilities.DatabaseRead),
-        new("trusted-proxies", ManagementCapabilities.TrustedProxiesRead),
+        new("trusted-proxies", ManagementCapabilities.ProxiesRead),
         new("metrics", ManagementCapabilities.MetricsRead),
-        new("operator-tokens", ManagementCapabilities.ManagementTokensRead),
+        new("operator-tokens", ManagementCapabilities.TokensRead),
         new("provisioning", ManagementCapabilities.ProvisioningPreview)
     ];
 

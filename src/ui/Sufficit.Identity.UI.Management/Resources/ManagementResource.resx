@@ -55,8 +55,8 @@
   <data name="Capability.identity.users.delete.Title" xml:space="preserve"><value>Delete users</value></data>
   <data name="Capability.identity.users.delete.Description" xml:space="preserve"><value>Used to remove an account from the provider through administration. It is a sensitive operation separate from permissions to block or edit the user.</value></data>
   <data name="Capability.Label.ResendConfirmation" xml:space="preserve"><value>Resend confirmation</value></data>
-  <data name="Capability.identity.system-users.manage.Title" xml:space="preserve"><value>Manage system users</value></data>
-  <data name="Capability.identity.system-users.manage.Description" xml:space="preserve"><value>Allows creating, enabling and disabling system users, issuing and revoking their enrollment codes and setting their entitlements. Every action is confined to system users, so a provisioning service holding only this capability can never change a person's account.</value></data>
+  <data name="Capability.identity.users.system.Title" xml:space="preserve"><value>Manage system users only</value></data>
+  <data name="Capability.identity.users.system.Description" xml:space="preserve"><value>Every users action, but only on system users: create them, enable and disable them, and issue and revoke their enrollment codes. Every action is confined to system users, so a provisioning service holding only this capability can never change a person's account. Entitlements are set through the claims API with identity.claims.system.</value></data>
   <data name="Capability.identity.users.confirmation.Title" xml:space="preserve"><value>Resend confirmation emails</value></data>
   <data name="Capability.identity.users.confirmation.Description" xml:space="preserve"><value>Allows triggering a new account-confirmation email to any user from the console. It is an outbound mail action with individual audit records; read-only operators do not receive it, which prevents the console from being used to flood accounts with messages.</value></data>
   <data name="Capability.identity.users.reset.Title" xml:space="preserve"><value>Reset user passwords</value></data>
@@ -70,6 +70,8 @@
   <data name="Capability.identity.claims.update.Description" xml:space="preserve"><value>Used to change the type or value of an assigned custom claim. The change may appear in tokens and sessions issued afterward.</value></data>
   <data name="Capability.identity.claims.delete.Title" xml:space="preserve"><value>Remove user claims</value></data>
   <data name="Capability.identity.claims.delete.Description" xml:space="preserve"><value>Used to remove a custom attribute from an account. Apply it carefully when applications depend on that claim for authorization.</value></data>
+  <data name="Capability.identity.claims.system.Title" xml:space="preserve"><value>Manage claims of system users only</value></data>
+  <data name="Capability.identity.claims.system.Description" xml:space="preserve"><value>Read, assign, edit and remove claims, but only when the claim belongs to a system user. On any other account it grants nothing and the attempt is refused and audited. Reserved claim types and protected accounts remain off limits.</value></data>
 
   <data name="Capability.identity.scopes.read.Title" xml:space="preserve"><value>View OAuth and OIDC scopes</value></data>
   <data name="Capability.identity.scopes.read.Description" xml:space="preserve"><value>Used to list and inspect scopes, resources, associated claims, and display properties. It does not change what clients can request.</value></data>
@@ -99,29 +101,29 @@
   <data name="Capability.identity.metrics.manage.Title" xml:space="preserve"><value>Configure usage metrics</value></data>
   <data name="Capability.identity.metrics.manage.Description" xml:space="preserve"><value>Used to enable collection and define retention, batch size, timeout, and metric export. The change modifies the collector's operational behavior.</value></data>
 
-  <data name="Capability.identity.vault.secrets.read.Title" xml:space="preserve"><value>View secret metadata</value></data>
-  <data name="Capability.identity.vault.secrets.read.Description" xml:space="preserve"><value>Used in Vault to list names, contexts, and metadata for secrets available to the operator. The interface does not reveal the stored value.</value></data>
-  <data name="Capability.identity.vault.secrets.manage.Title" xml:space="preserve"><value>Manage secrets</value></data>
-  <data name="Capability.identity.vault.secrets.manage.Description" xml:space="preserve"><value>Used in Vault to write, replace, or remove secret values in authorized namespaces. This is a sensitive capability, and every change is audited.</value></data>
+  <data name="Capability.identity.secrets.read.Title" xml:space="preserve"><value>View secret metadata</value></data>
+  <data name="Capability.identity.secrets.read.Description" xml:space="preserve"><value>Used in Vault to list names, contexts, and metadata for secrets available to the operator. The interface does not reveal the stored value.</value></data>
+  <data name="Capability.identity.secrets.manage.Title" xml:space="preserve"><value>Manage secrets</value></data>
+  <data name="Capability.identity.secrets.manage.Description" xml:space="preserve"><value>Used in Vault to write, replace, or remove secret values in authorized namespaces. This is a sensitive capability, and every change is audited.</value></data>
 
-  <data name="Capability.identity.vault.secrets.resolve.Title" xml:space="preserve"><value>Resolve secrets</value></data>
-  <data name="Capability.identity.vault.secrets.resolve.Description" xml:space="preserve"><value>Used in Vault to obtain the plaintext value of a named secret. This is the most sensitive Vault capability: intended for authorized service principals, and every resolution is audited.</value></data>
+  <data name="Capability.identity.secrets.resolve.Title" xml:space="preserve"><value>Resolve secrets</value></data>
+  <data name="Capability.identity.secrets.resolve.Description" xml:space="preserve"><value>Used in Vault to obtain the plaintext value of a named secret. This is the most sensitive Vault capability: intended for authorized service principals, and every resolution is audited.</value></data>
 
   <data name="Capability.identity.provisioning.preview.Title" xml:space="preserve"><value>Preview manifest impact</value></data>
   <data name="Capability.identity.provisioning.preview.Description" xml:space="preserve"><value>Used in Provisioning to run inventory and preview and show differences before applying them. It does not modify clients, scopes, or other resources.</value></data>
   <data name="Capability.identity.provisioning.apply.Title" xml:space="preserve"><value>Apply provisioning manifests</value></data>
   <data name="Capability.identity.provisioning.apply.Description" xml:space="preserve"><value>Used in Enforce mode to create, update, or reconcile resources described by a manifest. The operation requires confirmation and produces auditable evidence.</value></data>
 
-  <data name="Capability.identity.management.tokens.read.Title" xml:space="preserve"><value>View temporary Management tokens</value></data>
-  <data name="Capability.identity.management.tokens.read.Description" xml:space="preserve"><value>Used in Tokens to open the workspace and list metadata for the authenticated administrator's temporary tokens. The Bearer value is never retrieved by the list.</value></data>
-  <data name="Capability.identity.management.tokens.issue.Title" xml:space="preserve"><value>Issue temporary Management tokens</value></data>
-  <data name="Capability.identity.management.tokens.issue.Description" xml:space="preserve"><value>Used to generate a temporary Bearer with a subset of capabilities already held by the administrator. This capability cannot be delegated to the token itself.</value></data>
-  <data name="Capability.identity.management.tokens.revoke.Title" xml:space="preserve"><value>Revoke temporary Management tokens</value></data>
-  <data name="Capability.identity.management.tokens.revoke.Description" xml:space="preserve"><value>Used to invalidate a temporary token before it expires. This capability cannot be included in another temporary token.</value></data>
-  <data name="Capability.identity.trusted-proxies.read.Title" xml:space="preserve"><value>Read trusted proxies</value></data>
-  <data name="Capability.identity.trusted-proxies.read.Description" xml:space="preserve"><value>View trusted proxies, their sources and the effective forwarding limit. Changes require the separate management permission.</value></data>
-  <data name="Capability.identity.trusted-proxies.manage.Title" xml:space="preserve"><value>Manage trusted proxies</value></data>
-  <data name="Capability.identity.trusted-proxies.manage.Description" xml:space="preserve"><value>Change database-managed trusted proxies and forwarding limits with an audit trail. The file-managed baseline remains in effect.</value></data>
+  <data name="Capability.identity.tokens.read.Title" xml:space="preserve"><value>View temporary Management tokens</value></data>
+  <data name="Capability.identity.tokens.read.Description" xml:space="preserve"><value>Used in Tokens to open the workspace and list metadata for the authenticated administrator's temporary tokens. The Bearer value is never retrieved by the list.</value></data>
+  <data name="Capability.identity.tokens.issue.Title" xml:space="preserve"><value>Issue temporary Management tokens</value></data>
+  <data name="Capability.identity.tokens.issue.Description" xml:space="preserve"><value>Used to generate a temporary Bearer with a subset of capabilities already held by the administrator. This capability cannot be delegated to the token itself.</value></data>
+  <data name="Capability.identity.tokens.revoke.Title" xml:space="preserve"><value>Revoke temporary Management tokens</value></data>
+  <data name="Capability.identity.tokens.revoke.Description" xml:space="preserve"><value>Used to invalidate a temporary token before it expires. This capability cannot be included in another temporary token.</value></data>
+  <data name="Capability.identity.proxies.read.Title" xml:space="preserve"><value>Read trusted proxies</value></data>
+  <data name="Capability.identity.proxies.read.Description" xml:space="preserve"><value>View trusted proxies, their sources and the effective forwarding limit. Changes require the separate management permission.</value></data>
+  <data name="Capability.identity.proxies.manage.Title" xml:space="preserve"><value>Manage trusted proxies</value></data>
+  <data name="Capability.identity.proxies.manage.Description" xml:space="preserve"><value>Change database-managed trusted proxies and forwarding limits with an audit trail. The file-managed baseline remains in effect.</value></data>
   <data name="Common.Access.StepUpRequired" xml:space="preserve"><value>Complete multi-factor authentication to continue.</value></data>
   <data name="Common.Access.Forbidden" xml:space="preserve"><value>Your account does not have the required authority.</value></data>
   <data name="Common.Timeout" xml:space="preserve"><value>The service took longer than expected. Try again.</value></data>
@@ -2089,8 +2091,9 @@
   <data name="Posture.vault-kek-in-data-protection.Summary" xml:space="preserve"><value>The vault key-encryption key is protected by the Data Protection key ring, stored in the same database as the wrapped data keys.</value></data>
   <data name="Posture.vault-kek-in-data-protection.Recommendation" xml:space="preserve"><value>Set Sufficit:Vault:KeySource=certificate with a dedicated certificate readable only by the service account.</value></data>
   <data name="Capability.Label.ResetMfa" xml:space="preserve"><value>Reset two-factor authentication</value></data>
-  <data name="Capability.identity.users.reset-mfa.Title" xml:space="preserve"><value>Reset user two-factor authentication</value></data>
-  <data name="Capability.identity.users.reset-mfa.Description" xml:space="preserve"><value>Allows recovery of another user after verifying their identity. Requires recent MFA, revokes previous access and requires authenticator enrollment.</value></data>
+  <data name="Capability.Label.SystemOnly" xml:space="preserve"><value>System users only</value></data>
+  <data name="Capability.identity.users.mfa.reset.Title" xml:space="preserve"><value>Reset user two-factor authentication</value></data>
+  <data name="Capability.identity.users.mfa.reset.Description" xml:space="preserve"><value>Allows recovery of another user after verifying their identity. Requires recent MFA, revokes previous access and requires authenticator enrollment.</value></data>
   <data name="Users.MfaReset.Title" xml:space="preserve"><value>Reset two-factor authentication</value></data>
   <data name="Users.MfaReset.PageTitle" xml:space="preserve"><value>Reset two-factor authentication | Sufficit Identity</value></data>
   <data name="Users.Access.PageTitle" xml:space="preserve"><value>Manage user access | Sufficit Identity</value></data>

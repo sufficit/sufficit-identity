@@ -113,6 +113,7 @@ delegate client and a DPoP proof made with the bound key, obtaining DPoP-bound
 access tokens (`cnf.jkt`).
 
 Every issuance and refusal is audited (`ManagementAuditEvents`, capability
+`identity.credentials.delegate`, audit-only; rows before 2026-10-27 carry
 `token_exchange.delegated_credential`) without token material; an issuance
 whose audit row cannot be written is withdrawn. `NotifyOnIssue` emails the
 user. Users list and revoke the credentials at `/manage/grants`. Enabling the

@@ -81,13 +81,13 @@ public static class ServiceCollectionExtensions
             {
                 policy.RequireAuthenticatedUser();
                 policy.AddRequirements(new VaultCapabilityRequirement(
-                    ManagementCapabilities.VaultSecretsRead));
+                    ManagementCapabilities.SecretsRead));
             });
             options.AddPolicy(VaultUiPolicies.AdminManage, policy =>
             {
                 policy.RequireAuthenticatedUser();
                 policy.AddRequirements(new VaultCapabilityRequirement(
-                    ManagementCapabilities.VaultSecretsManage));
+                    ManagementCapabilities.SecretsManage));
             });
         });
         services.AddScoped<IAuthorizationHandler,

@@ -27,7 +27,7 @@ public sealed class ServiceAccountManagementTests
                 {
                     ["mobilecloudadministrator"] =
                     [
-                        ManagementCapabilities.VaultSecretsManage,
+                        ManagementCapabilities.SecretsManage,
                         "identity.capability.que.nao.existe",
                     ]
                 }
@@ -48,6 +48,6 @@ public sealed class ServiceAccountManagementTests
         var vault = Assert.Single(workspace!, option => !option.IsFullAdministrator);
         // O nome inventado cai fora — a tela mostra exatamente o que o
         // avaliador concederia, e o avaliador ignora capability desconhecida.
-        Assert.Equal([ManagementCapabilities.VaultSecretsManage], vault.Capabilities);
+        Assert.Equal([ManagementCapabilities.SecretsManage], vault.Capabilities);
     }
 }

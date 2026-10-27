@@ -2,6 +2,18 @@ using System.Security.Claims;
 
 namespace Sufficit.Identity.Management.Authorization;
 
+/// <summary>
+/// The management capability catalog.
+/// </summary>
+/// <remarks>
+/// Naming rule: every capability is <c>identity.&lt;resource&gt;.&lt;action&gt;</c>
+/// or <c>identity.&lt;resource&gt;.&lt;qualifier&gt;</c>, optionally followed by
+/// one more single-word level (e.g. <c>identity.users.mfa.reset</c>). Every
+/// segment is ONE lowercase word: no hyphens, no compound words. The
+/// <c>.system</c> qualifier means "every action of that resource, but only on
+/// system users". Retired spellings keep working through
+/// <see cref="Normalize"/>.
+/// </remarks>
 public static class ManagementCapabilities
 {
     public const string ClientsRead = "identity.clients.read";
@@ -16,7 +28,7 @@ public static class ManagementCapabilities
     public const string UsersDisable = "identity.users.disable";
     public const string UsersDelete = "identity.users.delete";
     public const string UsersReset = "identity.users.reset";
-    public const string UsersResetMfa = "identity.users.reset-mfa";
+    public const string UsersMfaReset = "identity.users.mfa.reset";
 
     /// <summary>
     /// Resends the account-confirmation email to an arbitrary user. Gated by
@@ -28,16 +40,24 @@ public static class ManagementCapabilities
     public const string UsersConfirmation =
         "identity.users.confirmation";
     /// <summary>
-    /// Everything about system users and nothing about anyone else: create,
-    /// enable/disable, issue and revoke enrollment codes, set entitlements.
-    /// Every operation is confined to users marked as system users, so a
-    /// provisioning service holding only this cannot touch a person.
+    /// Every users action, but only on system users: create, enable/disable,
+    /// issue and revoke enrollment codes (and, during the transition, the
+    /// legacy entitlements routes). Every operation is confined to users
+    /// recognized as system users, so a provisioning service holding only
+    /// this cannot touch a person.
     /// </summary>
-    public const string SystemUsersManage = "identity.system-users.manage";
+    public const string UsersSystem = "identity.users.system";
     public const string ClaimsRead = "identity.claims.read";
     public const string ClaimsCreate = "identity.claims.create";
     public const string ClaimsUpdate = "identity.claims.update";
     public const string ClaimsDelete = "identity.claims.delete";
+    /// <summary>
+    /// Every claims action (read, create, update, delete), but only on claims
+    /// whose owner is a system user. For any other owner it never satisfies
+    /// anything; reserved claim types and the protected-principal policy
+    /// still apply.
+    /// </summary>
+    public const string ClaimsSystem = "identity.claims.system";
     public const string ScopesRead = "identity.scopes.read";
     public const string ScopesCreate = "identity.scopes.create";
     public const string ScopesUpdate = "identity.scopes.update";
@@ -51,38 +71,65 @@ public static class ManagementCapabilities
     public const string MaintenanceRead = "identity.maintenance.read";
     public const string MaintenanceManage = "identity.maintenance.manage";
     public const string DatabaseRead = "identity.database.read";
-    public const string TrustedProxiesRead = "identity.trusted-proxies.read";
-    public const string TrustedProxiesManage = "identity.trusted-proxies.manage";
+    public const string ProxiesRead = "identity.proxies.read";
+    public const string ProxiesManage = "identity.proxies.manage";
     public const string MetricsRead = "identity.metrics.read";
     public const string MetricsManage = "identity.metrics.manage";
-    public const string VaultSecretsRead = "identity.vault.secrets.read";
-    public const string VaultSecretsManage = "identity.vault.secrets.manage";
+    public const string SecretsRead = "identity.secrets.read";
+    public const string SecretsManage = "identity.secrets.manage";
     /// <summary>Plaintext disclosure of a named secret. Deliberately separate
-    /// from <see cref="VaultSecretsRead"/> (metadata only) so service
+    /// from <see cref="SecretsRead"/> (metadata only) so service
     /// principals that resolve secrets need an explicit grant.</summary>
-    public const string VaultSecretsResolve = "identity.vault.secrets.resolve";
+    public const string SecretsResolve = "identity.secrets.resolve";
     public const string ProvisioningPreview =
         "identity.provisioning.preview";
     public const string ProvisioningApply =
         "identity.provisioning.apply";
-    public const string ManagementTokensRead =
-        "identity.management.tokens.read";
-    public const string ManagementTokensIssue =
-        "identity.management.tokens.issue";
-    public const string ManagementTokensRevoke =
-        "identity.management.tokens.revoke";
+    public const string TokensRead = "identity.tokens.read";
+    public const string TokensIssue = "identity.tokens.issue";
+    public const string TokensRevoke = "identity.tokens.revoke";
 
     [Obsolete($"Use {nameof(UsersReset)}.")]
     public const string UsersResetPassword = UsersReset;
 
-    [Obsolete($"Use {nameof(ManagementTokensRead)}.")]
-    public const string OperatorTokensRead = ManagementTokensRead;
+    [Obsolete($"Use {nameof(UsersMfaReset)}.")]
+    public const string UsersResetMfa = UsersMfaReset;
 
-    [Obsolete($"Use {nameof(ManagementTokensIssue)}.")]
-    public const string OperatorTokensIssue = ManagementTokensIssue;
+    [Obsolete($"Use {nameof(UsersSystem)}.")]
+    public const string SystemUsersManage = UsersSystem;
 
-    [Obsolete($"Use {nameof(ManagementTokensRevoke)}.")]
-    public const string OperatorTokensRevoke = ManagementTokensRevoke;
+    [Obsolete($"Use {nameof(ProxiesRead)}.")]
+    public const string TrustedProxiesRead = ProxiesRead;
+
+    [Obsolete($"Use {nameof(ProxiesManage)}.")]
+    public const string TrustedProxiesManage = ProxiesManage;
+
+    [Obsolete($"Use {nameof(SecretsRead)}.")]
+    public const string VaultSecretsRead = SecretsRead;
+
+    [Obsolete($"Use {nameof(SecretsManage)}.")]
+    public const string VaultSecretsManage = SecretsManage;
+
+    [Obsolete($"Use {nameof(SecretsResolve)}.")]
+    public const string VaultSecretsResolve = SecretsResolve;
+
+    [Obsolete($"Use {nameof(TokensRead)}.")]
+    public const string ManagementTokensRead = TokensRead;
+
+    [Obsolete($"Use {nameof(TokensIssue)}.")]
+    public const string ManagementTokensIssue = TokensIssue;
+
+    [Obsolete($"Use {nameof(TokensRevoke)}.")]
+    public const string ManagementTokensRevoke = TokensRevoke;
+
+    [Obsolete($"Use {nameof(TokensRead)}.")]
+    public const string OperatorTokensRead = TokensRead;
+
+    [Obsolete($"Use {nameof(TokensIssue)}.")]
+    public const string OperatorTokensIssue = TokensIssue;
+
+    [Obsolete($"Use {nameof(TokensRevoke)}.")]
+    public const string OperatorTokensRevoke = TokensRevoke;
 
     public static IReadOnlySet<string> All { get; } =
         new HashSet<string>(
@@ -99,13 +146,14 @@ public static class ManagementCapabilities
                 UsersDisable,
                 UsersDelete,
                 UsersReset,
-                UsersResetMfa,
+                UsersMfaReset,
                 UsersConfirmation,
-                SystemUsersManage,
+                UsersSystem,
                 ClaimsRead,
                 ClaimsCreate,
                 ClaimsUpdate,
                 ClaimsDelete,
+                ClaimsSystem,
                 ScopesRead,
                 ScopesCreate,
                 ScopesUpdate,
@@ -118,18 +166,18 @@ public static class ManagementCapabilities
                 DatabaseRead,
                 MaintenanceRead,
                 MaintenanceManage,
-                TrustedProxiesRead,
-                TrustedProxiesManage,
+                ProxiesRead,
+                ProxiesManage,
                 MetricsRead,
                 MetricsManage,
-                VaultSecretsRead,
-                VaultSecretsManage,
-                VaultSecretsResolve,
+                SecretsRead,
+                SecretsManage,
+                SecretsResolve,
                 ProvisioningPreview,
                 ProvisioningApply,
-                ManagementTokensRead,
-                ManagementTokensIssue,
-                ManagementTokensRevoke
+                TokensRead,
+                TokensIssue,
+                TokensRevoke
             ],
             StringComparer.Ordinal);
 
@@ -138,15 +186,35 @@ public static class ManagementCapabilities
     /// bounded compatibility bridge protects already-issued short-lived tokens
     /// and deployment role mappings while all new output uses <see cref="All"/>.
     /// </summary>
-    public static string Normalize(string capability) => capability switch
-    {
-        "identity.users.reset-password" => UsersReset,
-        "identity.users.resend_confirmation" => UsersConfirmation,
-        "identity.operator-tokens.read" => ManagementTokensRead,
-        "identity.operator-tokens.issue" => ManagementTokensIssue,
-        "identity.operator-tokens.revoke" => ManagementTokensRevoke,
-        _ => capability,
-    };
+    public static string Normalize(string capability) =>
+        capability is not null
+        && LegacyNames.TryGetValue(capability, out var canonical)
+            ? canonical
+            : capability!;
+
+    /// <summary>
+    /// Every retired spelling and the canonical name it maps to. Kept as data
+    /// so tests can prove each one lands on a member of <see cref="All"/>.
+    /// </summary>
+    public static IReadOnlyDictionary<string, string> LegacyNames { get; } =
+        new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["identity.users.reset-password"] = UsersReset,
+            ["identity.users.resend_confirmation"] = UsersConfirmation,
+            ["identity.users.reset-mfa"] = UsersMfaReset,
+            ["identity.system-users.manage"] = UsersSystem,
+            ["identity.trusted-proxies.read"] = ProxiesRead,
+            ["identity.trusted-proxies.manage"] = ProxiesManage,
+            ["identity.vault.secrets.read"] = SecretsRead,
+            ["identity.vault.secrets.manage"] = SecretsManage,
+            ["identity.vault.secrets.resolve"] = SecretsResolve,
+            ["identity.management.tokens.read"] = TokensRead,
+            ["identity.management.tokens.issue"] = TokensIssue,
+            ["identity.management.tokens.revoke"] = TokensRevoke,
+            ["identity.operator-tokens.read"] = TokensRead,
+            ["identity.operator-tokens.issue"] = TokensIssue,
+            ["identity.operator-tokens.revoke"] = TokensRevoke,
+        };
 }
 
 public static class ManagementResourceTypes

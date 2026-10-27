@@ -122,10 +122,10 @@ As ferramentas de Vault são `vault_prepare_entry`, `vault_list`, `vault_get_inf
 pessoal `user-<sub>`. Um contexto explícito é uma operação compartilhada e
 exige a capability correspondente:
 
-- leitura (`vault_list`, `vault_get_info`): `identity.vault.secrets.read`;
-- escrita (`vault_save`, `vault_delete`): `identity.vault.secrets.manage`;
+- leitura (`vault_list`, `vault_get_info`): `identity.secrets.read`;
+- escrita (`vault_save`, `vault_delete`): `identity.secrets.manage`;
 - resolução em texto claro (`vault_resolve`):
-  `identity.vault.secrets.resolve`.
+  `identity.secrets.resolve`.
 
 `vault_resolve` só responde quando `confirmPlaintext=true`. Toda resolução,
 inclusive segredo ausente ou expirado, é registrada na auditoria. Listagem e

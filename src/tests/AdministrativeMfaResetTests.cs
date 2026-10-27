@@ -252,7 +252,7 @@ public sealed class AdministrativeMfaResetTests
         if (scenario == "missing-permission")
         {
             var identity = (ClaimsIdentity)context.Operator.Identity!;
-            identity.RemoveClaim(identity.FindFirst(x => x.Type == "permission" && x.Value == ManagementCapabilities.UsersResetMfa)!);
+            identity.RemoveClaim(identity.FindFirst(x => x.Type == "permission" && x.Value == ManagementCapabilities.UsersMfaReset)!);
             identity.AddClaim(new("permission", ManagementCapabilities.UsersReset));
         }
         if (scenario == "protected-target")
@@ -286,7 +286,7 @@ public sealed class AdministrativeMfaResetTests
     private static ManagementRequestContext Operator(string id = "operator-1") => new(new ClaimsPrincipal(new ClaimsIdentity(
         [new Claim(ClaimTypes.NameIdentifier, id), new Claim("amr", "mfa"),
          new Claim("auth_time", DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture)),
-         new Claim("permission", ManagementCapabilities.UsersRead), new Claim("permission", ManagementCapabilities.UsersResetMfa)], "test")), "test-mfa-reset");
+         new Claim("permission", ManagementCapabilities.UsersRead), new Claim("permission", ManagementCapabilities.UsersMfaReset)], "test")), "test-mfa-reset");
     private static OidcUserSession Session(string subject) => new()
     {
         Subject = subject, SessionId = Guid.NewGuid().ToString(), CreatedAtUtc = DateTime.UtcNow,

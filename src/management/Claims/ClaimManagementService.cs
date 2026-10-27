@@ -89,7 +89,7 @@ internal sealed partial class ClaimManagementService(
         ManagementRequestContext context,
         CancellationToken cancellationToken = default)
     {
-        await guard.DemandAsync(
+        await DemandClaimAccessAsync(
             context,
             ManagementCapabilities.ClaimsRead,
             new ManagementResource(
@@ -115,16 +115,29 @@ internal sealed partial class ClaimManagementService(
         var resource = new ManagementResource(
             ManagementResourceTypes.ClaimCollection,
             userId);
-        var decision = await guard.DemandAsync(
+        var access = await DemandClaimAccessAsync(
             context,
             ManagementCapabilities.ClaimsRead,
             resource,
             cancellationToken);
+        if (access.SystemUsersOnly && userId is not null)
+        {
+            await DemandSystemOwnerAsync(
+                context,
+                ManagementCapabilities.ClaimsRead,
+                resource,
+                userId,
+                cancellationToken);
+        }
 
+        // On the system-only qualifier the listing never reaches a person.
+        var owners = access.SystemUsersOnly
+            ? SystemUserStore.WhereSystemUser(database)
+            : database.Users;
         var claims =
             from claim in database.Set<IdentityUserClaim<string>>()
                 .AsNoTracking()
-            join user in database.Users.AsNoTracking()
+            join user in owners.AsNoTracking()
                 on claim.UserId equals user.Id
             select new
             {
@@ -185,7 +198,7 @@ internal sealed partial class ClaimManagementService(
         var resource = new ManagementResource(
             ManagementResourceTypes.Claim,
             id.ToString());
-        var decision = await guard.DemandAsync(
+        var access = await DemandClaimAccessAsync(
             context,
             ManagementCapabilities.ClaimsRead,
             resource,
@@ -196,6 +209,16 @@ internal sealed partial class ClaimManagementService(
             throw new ManagementNotFoundException(
                 "claim_not_found",
                 "The assigned claim was not found.");
+        }
+
+        if (access.SystemUsersOnly)
+        {
+            await DemandSystemOwnerAsync(
+                context,
+                ManagementCapabilities.ClaimsRead,
+                resource,
+                claim.UserId,
+                cancellationToken);
         }
 
         // L3 fix (eval): no audit row on read paths.
@@ -220,12 +243,21 @@ internal sealed partial class ClaimManagementService(
             ManagementResourceTypes.ClaimCollection,
             userId,
             SubjectId: userId);
-        var decision = await guard.DemandAsync(
+        var access = await DemandClaimAccessAsync(
             context,
             ManagementCapabilities.ClaimsCreate,
             resource,
             cancellationToken,
             auditDenial: true);
+        var decision = access.SystemUsersOnly
+            ? await DemandSystemOwnerAsync(
+                context,
+                ManagementCapabilities.ClaimsCreate,
+                resource,
+                userId,
+                cancellationToken,
+                auditDenial: true)
+            : access.Decision;
 
         var user = await userManager.FindByIdAsync(userId);
         if (user is null)
@@ -342,12 +374,13 @@ internal sealed partial class ClaimManagementService(
         var resource = new ManagementResource(
             ManagementResourceTypes.Claim,
             id.ToString());
-        var decision = await guard.DemandAsync(
+        var access = await DemandClaimAccessAsync(
             context,
             ManagementCapabilities.ClaimsDelete,
             resource,
             cancellationToken,
             auditDenial: true);
+        var decision = access.Decision;
         var claim = await database.Set<IdentityUserClaim<string>>()
             .SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
         if (claim is null)
@@ -370,12 +403,20 @@ internal sealed partial class ClaimManagementService(
         // on the principal — the claim may belong to someone this operator
         // must not touch. Loading first would let an operator without the
         // capability probe which claim ids exist.
-        decision = await guard.DemandAsync(
-            context,
-            ManagementCapabilities.ClaimsDelete,
-            resource with { SubjectId = user.Id },
-            cancellationToken,
-            auditDenial: true);
+        decision = access.SystemUsersOnly
+            ? await DemandSystemOwnerAsync(
+                context,
+                ManagementCapabilities.ClaimsDelete,
+                resource with { SubjectId = user.Id },
+                user.Id,
+                cancellationToken,
+                auditDenial: true)
+            : await guard.DemandAsync(
+                context,
+                ManagementCapabilities.ClaimsDelete,
+                resource with { SubjectId = user.Id },
+                cancellationToken,
+                auditDenial: true);
 
         await using var transaction = await database.Database
             .BeginTransactionAsync(cancellationToken);
@@ -452,12 +493,13 @@ internal sealed partial class ClaimManagementService(
         var resource = new ManagementResource(
             ManagementResourceTypes.Claim,
             id.ToString());
-        var decision = await guard.DemandAsync(
+        var access = await DemandClaimAccessAsync(
             context,
             ManagementCapabilities.ClaimsUpdate,
             resource,
             cancellationToken,
             auditDenial: true);
+        var decision = access.Decision;
         var claim = await database.Set<IdentityUserClaim<string>>()
             .SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
         if (claim is null)
@@ -480,12 +522,20 @@ internal sealed partial class ClaimManagementService(
         // on the principal — the claim may belong to someone this operator
         // must not touch. Loading first would let an operator without the
         // capability probe which claim ids exist.
-        decision = await guard.DemandAsync(
-            context,
-            ManagementCapabilities.ClaimsUpdate,
-            resource with { SubjectId = user.Id },
-            cancellationToken,
-            auditDenial: true);
+        decision = access.SystemUsersOnly
+            ? await DemandSystemOwnerAsync(
+                context,
+                ManagementCapabilities.ClaimsUpdate,
+                resource with { SubjectId = user.Id },
+                user.Id,
+                cancellationToken,
+                auditDenial: true)
+            : await guard.DemandAsync(
+                context,
+                ManagementCapabilities.ClaimsUpdate,
+                resource with { SubjectId = user.Id },
+                cancellationToken,
+                auditDenial: true);
 
         if (await database.Set<IdentityUserClaim<string>>().AnyAsync(
                 item =>

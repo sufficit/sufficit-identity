@@ -58,10 +58,10 @@ public sealed class OperatorTokensControllerTests
         Assert.Equal(issued.Token.Id, active.Id);
         Assert.Equal(requestedCapabilities, active.Capabilities);
         Assert.DoesNotContain(
-            ManagementCapabilities.ManagementTokensIssue,
+            ManagementCapabilities.TokensIssue,
             workspace.AvailableCapabilities);
         Assert.DoesNotContain(
-            ManagementCapabilities.ManagementTokensRevoke,
+            ManagementCapabilities.TokensRevoke,
             workspace.AvailableCapabilities);
 
         using (var scope = factory.Services.CreateScope())
@@ -76,7 +76,7 @@ public sealed class OperatorTokensControllerTests
                     .ToArrayAsync());
             Assert.Equal("succeeded", audit.OperationOutcome);
             Assert.Equal(
-                ManagementCapabilities.ManagementTokensIssue,
+                ManagementCapabilities.TokensIssue,
                 audit.Capability);
             Assert.DoesNotContain(
                 issued.AccessToken,
@@ -122,7 +122,7 @@ public sealed class OperatorTokensControllerTests
             new IssueOperatorTokenCommand(
                 "Tentar delegar emissão",
                 300,
-                [ManagementCapabilities.ManagementTokensIssue]));
+                [ManagementCapabilities.TokensIssue]));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -165,6 +165,39 @@ public sealed class OperatorTokensControllerTests
         Assert.DoesNotContain(
             legacy,
             issued.Capabilities);
+    }
+
+    [Theory]
+    [InlineData("identity.trusted-proxies.read", ManagementCapabilities.ProxiesRead)]
+    [InlineData("identity.vault.secrets.read", ManagementCapabilities.SecretsRead)]
+    public async Task ListShowsTokensIssuedUnderARetiredNameWithTheCanonicalName(
+        string legacy,
+        string canonical)
+    {
+        await using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        using var client = factory.CreateClient();
+
+        using var response = await client.PostAsJsonAsync(
+            "/api/operator-tokens",
+            new IssueOperatorTokenCommand("Emitido antes da troca de nomes", 300, [canonical]));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        // Rewind the stored metadata to what a token issued before the
+        // rename carries.
+        using (var scope = factory.Services.CreateScope())
+        {
+            var database = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var row = await database
+                .Set<OpenIddict.EntityFrameworkCore.Models.OpenIddictEntityFrameworkCoreToken>()
+                .SingleAsync(token => token.Properties != null && token.Properties.Contains(canonical));
+            row.Properties = row.Properties!.Replace(canonical, legacy, StringComparison.Ordinal);
+            await database.SaveChangesAsync();
+        }
+
+        var workspace = await client.GetFromJsonAsync<OperatorTokenWorkspace>("/api/operator-tokens");
+        var active = Assert.Single(workspace!.ActiveTokens);
+        Assert.Equal([canonical], active.Capabilities);
     }
 
     [Fact]

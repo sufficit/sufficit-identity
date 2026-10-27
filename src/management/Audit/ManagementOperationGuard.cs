@@ -122,6 +122,25 @@ public sealed class ManagementOperationGuard(
             return decision;
         }
 
+        return await RefuseAsync(
+            context, capability, resource, decision, cancellationToken, auditDenial);
+    }
+
+    /// <summary>
+    /// Refuses an operation the evaluator would have allowed on capability
+    /// alone but a service-level rule forbids (e.g. a system-only qualifier
+    /// used against a person). Recorded exactly like an evaluator refusal —
+    /// same suppression of repeats — and always throws
+    /// <see cref="ManagementAccessException"/>.
+    /// </summary>
+    public async Task<ManagementAuthorizationDecision> RefuseAsync(
+        ManagementRequestContext context,
+        string capability,
+        ManagementResource resource,
+        ManagementAuthorizationDecision decision,
+        CancellationToken cancellationToken,
+        bool auditDenial = false)
+    {
         if (auditDenial && ShouldRecordDenial(context, capability, resource))
         {
             await TryWriteAuditAsync(

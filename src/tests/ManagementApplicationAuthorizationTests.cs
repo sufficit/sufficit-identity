@@ -140,7 +140,7 @@ public sealed partial class ManagementApplicationAuthorizationTests
             ManagementCapabilities.UsersReset,
             entitlements.Capabilities);
         Assert.Contains(
-            ManagementCapabilities.ManagementTokensRead,
+            ManagementCapabilities.TokensRead,
             entitlements.Capabilities);
         Assert.DoesNotContain(
             "identity.users.reset-password",
@@ -162,8 +162,8 @@ public sealed partial class ManagementApplicationAuthorizationTests
         var evaluator = CreateEvaluator();
         var decision = await evaluator.EvaluateAsync(
             PrincipalWithClaims(new Claim(
-                "permission", ManagementCapabilities.VaultSecretsRead)),
-            ManagementCapabilities.VaultSecretsManage,
+                "permission", ManagementCapabilities.SecretsRead)),
+            ManagementCapabilities.SecretsManage,
             new ManagementResource(ManagementResourceTypes.VaultSecrets,
                 "providers/google/client-secret"));
 

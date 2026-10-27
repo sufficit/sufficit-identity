@@ -175,7 +175,7 @@ internal sealed partial class OperatorTokenManagementService
     {
         await TryWriteAuditAsync(
             context,
-            ManagementCapabilities.ManagementTokensIssue,
+            ManagementCapabilities.TokensIssue,
             CollectionResource,
             decision,
             outcome,

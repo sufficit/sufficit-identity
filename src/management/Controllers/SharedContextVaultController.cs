@@ -44,7 +44,7 @@ public sealed class SharedContextVaultController(
             return BadRequest(new { error = "shared_context_only" }); // personal Vaults have their own API
         var decision = await authorization.EvaluateAsync(
             User,
-            ManagementCapabilities.VaultSecretsResolve,
+            ManagementCapabilities.SecretsResolve,
             new ManagementResource(ManagementResourceTypes.VaultSecretCollection),
             cancellationToken);
         if (!decision.IsAllowed)
@@ -55,7 +55,7 @@ public sealed class SharedContextVaultController(
         var status = VaultSecretExpiration.GetStatus(resolution?.Metadata.ExpiresAtUtc, DateTime.UtcNow);
         database.ManagementAuditEvents.Add(Audit.ManagementAuditEventFactory.Create(
             new ManagementRequestContext(User, HttpContext.TraceIdentifier),
-            ManagementCapabilities.VaultSecretsResolve,
+            ManagementCapabilities.SecretsResolve,
             new ManagementResource(ManagementResourceTypes.VaultSecrets, normalizedName),
             decision,
             "succeeded",

@@ -84,7 +84,7 @@ public sealed class VaultUiCompositionTests
         Assert.DoesNotContain("ResolveAsync", dataSource, StringComparison.Ordinal);
         Assert.Contains("VaultUiPolicies.AdminManage", adminUserPage,
             StringComparison.Ordinal);
-        Assert.Contains("ManagementCapabilities.VaultSecretsManage", policies,
+        Assert.Contains("ManagementCapabilities.SecretsManage", policies,
             StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 640px)", css,
             StringComparison.Ordinal);

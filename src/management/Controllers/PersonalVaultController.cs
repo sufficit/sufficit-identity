@@ -187,7 +187,7 @@ public sealed class PersonalVaultController(
                 new ManagementRequestContext(
                     User,
                     HttpContext.TraceIdentifier),
-                ManagementCapabilities.VaultSecretsResolve,
+                ManagementCapabilities.SecretsResolve,
                 new ManagementResource(
                     ManagementResourceTypes.VaultSecrets,
                     name),

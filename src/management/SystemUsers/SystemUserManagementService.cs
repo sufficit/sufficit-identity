@@ -24,10 +24,14 @@ namespace Sufficit.Identity.Management.SystemUsers;
 /// capability that already governs a user's credentials. Issuing is marked as
 /// minting a credential. Entitlements use the claims capabilities.
 /// <para>
-/// <see cref="ManagementCapabilities.SystemUsersManage"/> satisfies all of
+/// <see cref="ManagementCapabilities.UsersSystem"/> (the <c>.system</c>
+/// qualifier: every users action, but only on system users) satisfies all of
 /// them here and nowhere else: every operation either creates a system user or
 /// resolves its target among system users first, so a holder of only that
-/// capability (a provisioning service) never reaches a person.
+/// capability (a provisioning service) never reaches a person. During the
+/// transition it also satisfies the legacy entitlements operations; the
+/// canonical path for entitlements is the claims API with
+/// <see cref="ManagementCapabilities.ClaimsSystem"/>.
 /// </para>
 /// </remarks>
 internal sealed partial class SystemUserManagementService(
@@ -469,7 +473,7 @@ internal sealed partial class SystemUserManagementService(
     private static partial System.Text.RegularExpressions.Regex EntitlementKey();
 
     /// <summary>
-    /// <see cref="ManagementCapabilities.SystemUsersManage"/> first, then the
+    /// <see cref="ManagementCapabilities.UsersSystem"/> first, then the
     /// general capability; only the second refusal is reported and audited.
     /// </summary>
     private async Task<ManagementAuthorizationDecision> DemandAsync(
@@ -483,7 +487,7 @@ internal sealed partial class SystemUserManagementService(
         try
         {
             return await guard.DemandAsync(
-                context, ManagementCapabilities.SystemUsersManage, resource, cancellationToken,
+                context, ManagementCapabilities.UsersSystem, resource, cancellationToken,
                 mintsCredential: mintsCredential);
         }
         catch (ManagementAccessException)

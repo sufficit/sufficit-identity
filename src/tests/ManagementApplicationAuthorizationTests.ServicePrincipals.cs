@@ -23,12 +23,12 @@ public sealed partial class ManagementApplicationAuthorizationTests
     public async Task Service_principal_gets_what_its_role_maps_to()
     {
         var evaluator = CreateEvaluator(
-            roleCapabilities: new() { [VaultRole] = [ManagementCapabilities.VaultSecretsManage] },
+            roleCapabilities: new() { [VaultRole] = [ManagementCapabilities.SecretsManage] },
             clientRoles: [VaultRole]);
 
         var concedida = await evaluator.EvaluateAsync(
             MachinePrincipal(ServiceClient),
-            ManagementCapabilities.VaultSecretsManage,
+            ManagementCapabilities.SecretsManage,
             new ManagementResource(ManagementResourceTypes.VaultSecrets));
         var fora = await evaluator.EvaluateAsync(
             MachinePrincipal(ServiceClient),
@@ -49,12 +49,12 @@ public sealed partial class ManagementApplicationAuthorizationTests
         var evaluator = CreateEvaluator(
             requireMfa: true,
             adminRoles: [],
-            roleCapabilities: new() { [VaultRole] = [ManagementCapabilities.VaultSecretsManage] },
+            roleCapabilities: new() { [VaultRole] = [ManagementCapabilities.SecretsManage] },
             clientRoles: [VaultRole]);
 
         var decisao = await evaluator.EvaluateAsync(
             MachinePrincipal(ServiceClient),
-            ManagementCapabilities.VaultSecretsManage,
+            ManagementCapabilities.SecretsManage,
             new ManagementResource(ManagementResourceTypes.VaultSecrets));
 
         Assert.True(decisao.IsAllowed);
@@ -65,12 +65,12 @@ public sealed partial class ManagementApplicationAuthorizationTests
     {
         var evaluator = CreateEvaluator(
             requireMfa: true,
-            roleCapabilities: new() { [VaultRole] = [ManagementCapabilities.VaultSecretsManage] },
+            roleCapabilities: new() { [VaultRole] = [ManagementCapabilities.SecretsManage] },
             clientRoles: [VaultRole]);
 
         var outro = await evaluator.EvaluateAsync(
             MachinePrincipal("dcr_algum_cliente_anonimo"),
-            ManagementCapabilities.VaultSecretsManage,
+            ManagementCapabilities.SecretsManage,
             new ManagementResource(ManagementResourceTypes.VaultSecrets));
 
         Assert.Equal(ManagementAuthorizationOutcome.Denied, outro.Outcome);
@@ -84,13 +84,13 @@ public sealed partial class ManagementApplicationAuthorizationTests
         var evaluator = CreateEvaluator(
             requireMfa: true,
             adminRoles: [],
-            roleCapabilities: new() { [VaultRole] = [ManagementCapabilities.VaultSecretsManage] },
+            roleCapabilities: new() { [VaultRole] = [ManagementCapabilities.SecretsManage] },
             clientRoles: [VaultRole]);
 
         var humano = await evaluator.EvaluateAsync(
             PrincipalWithClaims(
-                new Claim("permission", ManagementCapabilities.VaultSecretsManage)),
-            ManagementCapabilities.VaultSecretsManage,
+                new Claim("permission", ManagementCapabilities.SecretsManage)),
+            ManagementCapabilities.SecretsManage,
             new ManagementResource(ManagementResourceTypes.VaultSecrets));
 
         Assert.Equal(
@@ -106,12 +106,12 @@ public sealed partial class ManagementApplicationAuthorizationTests
         var evaluator = CreateEvaluator(
             requireMfa: true,
             adminRoles: [],
-            roleCapabilities: new() { [VaultRole] = [ManagementCapabilities.VaultSecretsManage] },
+            roleCapabilities: new() { [VaultRole] = [ManagementCapabilities.SecretsManage] },
             clientRoles: []);
 
         var maquina = await evaluator.EvaluateAsync(
             MachinePrincipal(ServiceClient),
-            ManagementCapabilities.VaultSecretsManage,
+            ManagementCapabilities.SecretsManage,
             new ManagementResource(ManagementResourceTypes.VaultSecrets));
 
         Assert.Equal(ManagementAuthorizationOutcome.Denied, maquina.Outcome);

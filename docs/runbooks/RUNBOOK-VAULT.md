@@ -358,7 +358,7 @@ Superfície para consumidores remotos:
 - `GET /api/vault/secrets/resolve?name=<nome>&contextId=<ctx>` — devolve o
   valor em claro. `404` = inexistente; `410 Gone` = expirado (o valor nunca é
   devolvido depois da expiração). Exige a capability dedicada
-  `identity.vault.secrets.resolve` (separada de `read`/`manage` de propósito:
+  `identity.secrets.resolve` (separada de `read`/`manage` de propósito:
   metadados ≠ texto claro). Toda resolução — inclusive a recusa por expiração —
   é registrada na auditoria de management.
 - `PUT /api/vault/secrets/{nome}` agora aceita `expiresAtUtc` opcional; o
@@ -372,7 +372,7 @@ Superfície para consumidores remotos:
 
 Para autorizar um serviço (ex.: `example-service`): conceda o scope
 `identity.management` e as capabilities de vault via claims `permission`
-(`identity.vault.secrets.read`, `.manage`, `.resolve`). Atenção ao
+(`identity.secrets.read`, `.manage`, `.resolve`). Atenção ao
 `RequireMfa` do management: principais de serviço não carregam `amr`, então a
 implantação precisa de política compatível para esses clientes.
 

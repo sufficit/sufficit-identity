@@ -269,13 +269,13 @@ public static class ServiceCollectionExtensions
             {
                 policy.RequireAuthenticatedUser();
                 policy.Requirements.Add(new ManagementCapabilityRequirement(
-                    ManagementCapabilities.TrustedProxiesRead, ManagementResourceTypes.TrustedProxies));
+                    ManagementCapabilities.ProxiesRead, ManagementResourceTypes.TrustedProxies));
             });
             authorization.AddPolicy(ManagementUiPolicies.WriteTrustedProxies, policy =>
             {
                 policy.RequireAuthenticatedUser();
                 policy.Requirements.Add(new ManagementCapabilityRequirement(
-                    ManagementCapabilities.TrustedProxiesManage, ManagementResourceTypes.TrustedProxies));
+                    ManagementCapabilities.ProxiesManage, ManagementResourceTypes.TrustedProxies));
             });
             authorization.AddPolicy(ManagementUiPolicies.ManageMetrics, policy =>
             {
@@ -291,7 +291,7 @@ public static class ServiceCollectionExtensions
                     policy.RequireAuthenticatedUser();
                     policy.Requirements.Add(
                         new ManagementCapabilityRequirement(
-                            ManagementCapabilities.ManagementTokensRead,
+                            ManagementCapabilities.TokensRead,
                             ManagementResourceTypes.OperatorTokenCollection));
                 });
             authorization.AddPolicy(
@@ -301,7 +301,7 @@ public static class ServiceCollectionExtensions
                     policy.RequireAuthenticatedUser();
                     policy.Requirements.Add(
                         new ManagementCapabilityRequirement(
-                            ManagementCapabilities.ManagementTokensIssue,
+                            ManagementCapabilities.TokensIssue,
                             ManagementResourceTypes.OperatorTokenCollection));
                 });
             authorization.AddPolicy(
@@ -311,7 +311,7 @@ public static class ServiceCollectionExtensions
                     policy.RequireAuthenticatedUser();
                     policy.Requirements.Add(
                         new ManagementCapabilityRequirement(
-                            ManagementCapabilities.ManagementTokensRevoke,
+                            ManagementCapabilities.TokensRevoke,
                             ManagementResourceTypes.OperatorTokenCollection));
                 });
         });

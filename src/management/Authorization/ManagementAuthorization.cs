@@ -181,10 +181,14 @@ public sealed class ConfigurationManagementObjectAccessPolicy(
             ManagementCapabilities.UsersDisable,
             ManagementCapabilities.UsersDelete,
             ManagementCapabilities.UsersReset,
-            ManagementCapabilities.UsersResetMfa,
+            ManagementCapabilities.UsersMfaReset,
             ManagementCapabilities.ClaimsCreate,
             ManagementCapabilities.ClaimsUpdate,
             ManagementCapabilities.ClaimsDelete,
+            // Mutations made through the system-only qualifier still pass the
+            // protected-principal policy (callers attach SubjectId only on
+            // mutations, so reads are unaffected).
+            ManagementCapabilities.ClaimsSystem,
             ManagementCapabilities.SessionsRevoke,
             ManagementCapabilities.AuthorizationsRevoke,
         };
@@ -388,6 +392,9 @@ public sealed class CapabilityManagementAuthorizationEvaluator
                     capability));
         }
 
+        // A caller (UI requirement, query-string prefill) may still name a
+        // capability by a retired spelling; decide on the canonical one.
+        capability = ManagementCapabilities.Normalize(capability);
         if (!ManagementCapabilities.All.Contains(capability))
         {
             return ValueTask.FromResult(

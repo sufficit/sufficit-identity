@@ -28,16 +28,17 @@ public static class ManagementCapabilityPresentation
             [ManagementCapabilities.UsersDisable] = "Capability.Label.Disable",
             [ManagementCapabilities.UsersDelete] = "Capability.Label.Delete",
             [ManagementCapabilities.UsersReset] = "Capability.Label.ResetPassword",
-            [ManagementCapabilities.UsersResetMfa] = "Capability.Label.ResetMfa",
+            [ManagementCapabilities.UsersMfaReset] = "Capability.Label.ResetMfa",
             // F-8 (eval 2026-08-14): dedicated gate for the outbound
             // confirmation-email action (see UsersConfirmation).
             [ManagementCapabilities.UsersConfirmation] =
                 "Capability.Label.ResendConfirmation",
-            [ManagementCapabilities.SystemUsersManage] = "Capability.Label.Manage",
+            [ManagementCapabilities.UsersSystem] = "Capability.Label.SystemOnly",
             [ManagementCapabilities.ClaimsRead] = "Capability.Label.Read",
             [ManagementCapabilities.ClaimsCreate] = "Capability.Label.Create",
             [ManagementCapabilities.ClaimsUpdate] = "Capability.Label.Update",
             [ManagementCapabilities.ClaimsDelete] = "Capability.Label.Delete",
+            [ManagementCapabilities.ClaimsSystem] = "Capability.Label.SystemOnly",
             [ManagementCapabilities.ScopesRead] = "Capability.Label.Read",
             [ManagementCapabilities.ScopesCreate] = "Capability.Label.Create",
             [ManagementCapabilities.ScopesUpdate] = "Capability.Label.Update",
@@ -50,18 +51,18 @@ public static class ManagementCapabilityPresentation
             [ManagementCapabilities.MaintenanceRead] = "Capability.Label.Read",
             [ManagementCapabilities.MaintenanceManage] = "Capability.Label.Manage",
             [ManagementCapabilities.DatabaseRead] = "Capability.Label.Read",
-            [ManagementCapabilities.TrustedProxiesRead] = "Capability.Label.Read",
-            [ManagementCapabilities.TrustedProxiesManage] = "Capability.Label.Manage",
+            [ManagementCapabilities.ProxiesRead] = "Capability.Label.Read",
+            [ManagementCapabilities.ProxiesManage] = "Capability.Label.Manage",
             [ManagementCapabilities.MetricsRead] = "Capability.Label.Read",
             [ManagementCapabilities.MetricsManage] = "Capability.Label.Manage",
-            [ManagementCapabilities.VaultSecretsRead] = "Capability.Label.Read",
-            [ManagementCapabilities.VaultSecretsManage] = "Capability.Label.Manage",
-            [ManagementCapabilities.VaultSecretsResolve] = "Capability.Label.Resolve",
+            [ManagementCapabilities.SecretsRead] = "Capability.Label.Read",
+            [ManagementCapabilities.SecretsManage] = "Capability.Label.Manage",
+            [ManagementCapabilities.SecretsResolve] = "Capability.Label.Resolve",
             [ManagementCapabilities.ProvisioningPreview] = "Capability.Label.Preview",
             [ManagementCapabilities.ProvisioningApply] = "Capability.Label.Apply",
-            [ManagementCapabilities.ManagementTokensRead] = "Capability.Label.Read",
-            [ManagementCapabilities.ManagementTokensIssue] = "Capability.Label.Issue",
-            [ManagementCapabilities.ManagementTokensRevoke] = "Capability.Label.Revoke",
+            [ManagementCapabilities.TokensRead] = "Capability.Label.Read",
+            [ManagementCapabilities.TokensIssue] = "Capability.Label.Issue",
+            [ManagementCapabilities.TokensRevoke] = "Capability.Label.Revoke",
         };
 
     public static CapabilityCopy Get(
@@ -70,6 +71,9 @@ public static class ManagementCapabilityPresentation
     {
         ArgumentNullException.ThrowIfNull(localizer);
 
+        // A token issued before a rename still carries the retired spelling;
+        // present it under its canonical name.
+        capability = ManagementCapabilities.Normalize(capability);
         if (!LabelKeys.TryGetValue(capability, out var labelKey))
         {
             return new CapabilityCopy(

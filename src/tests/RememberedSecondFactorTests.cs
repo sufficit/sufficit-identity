@@ -93,7 +93,7 @@ public sealed class RememberedSecondFactorTests : IDisposable
         var refusal = await Assert.ThrowsAsync<ManagementAccessException>(() =>
             Guard().DemandAsync(
                 Context(Operator(remembered: true)),
-                ManagementCapabilities.ManagementTokensIssue,
+                ManagementCapabilities.TokensIssue,
                 new ManagementResource(ManagementResourceTypes.OperatorTokenCollection),
                 CancellationToken.None,
                 mintsCredential: true));
@@ -109,7 +109,7 @@ public sealed class RememberedSecondFactorTests : IDisposable
     {
         var decision = await Guard().DemandAsync(
             Context(Operator(remembered: false)),
-            ManagementCapabilities.ManagementTokensIssue,
+            ManagementCapabilities.TokensIssue,
             new ManagementResource(ManagementResourceTypes.OperatorTokenCollection),
             CancellationToken.None,
             mintsCredential: true);
@@ -124,7 +124,7 @@ public sealed class RememberedSecondFactorTests : IDisposable
         // would be stricter than the deployment asked to be.
         var decision = await Guard(requireMfa: false).DemandAsync(
             Context(Operator(remembered: true)),
-            ManagementCapabilities.ManagementTokensIssue,
+            ManagementCapabilities.TokensIssue,
             new ManagementResource(ManagementResourceTypes.OperatorTokenCollection),
             CancellationToken.None,
             mintsCredential: true);

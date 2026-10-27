@@ -159,17 +159,17 @@ public sealed class ManagementAuditVolumeTests
     /// the twelve hand-rolled copies did.
     /// </remarks>
     [Theory]
-    [InlineData("Vault/VaultSecretsManagementService.cs", "VaultSecretsResolve", true)]
-    [InlineData("Vault/VaultSecretsManagementService.cs", "VaultSecretsManage", true)]
-    [InlineData("Vault/VaultSecretsManagementService.cs", "VaultSecretsRead", false)]
+    [InlineData("Vault/VaultSecretsManagementService.cs", "SecretsResolve", true)]
+    [InlineData("Vault/VaultSecretsManagementService.cs", "SecretsManage", true)]
+    [InlineData("Vault/VaultSecretsManagementService.cs", "SecretsRead", false)]
     [InlineData("Claims/ClaimManagementService.cs", "ClaimsCreate", true)]
     [InlineData("Claims/ClaimManagementService.cs", "ClaimsDelete", true)]
     [InlineData("Claims/ClaimManagementService.cs", "ClaimsRead", false)]
     [InlineData("Scopes/ScopeManagementService.cs", "ScopesCreate", true)]
     [InlineData("Scopes/ScopeManagementService.cs", "ScopesDelete", true)]
     [InlineData("Scopes/ScopeManagementService.cs", "ScopesRead", false)]
-    [InlineData("OperatorTokens/OperatorTokenManagementService.cs", "ManagementTokensIssue", true)]
-    [InlineData("OperatorTokens/OperatorTokenManagementService.cs", "ManagementTokensRead", false)]
+    [InlineData("OperatorTokens/OperatorTokenManagementService.cs", "TokensIssue", true)]
+    [InlineData("OperatorTokens/OperatorTokenManagementService.cs", "TokensRead", false)]
     public void Refusals_are_audited_only_where_privilege_or_secrets_are_at_stake(
         string relativePath,
         string capability,
@@ -183,28 +183,35 @@ public sealed class ManagementAuditVolumeTests
         // appears in entitlement lists and non-delegable-capability checks,
         // which are not authorization demands and carry no audit decision.
         var marker = "ManagementCapabilities." + capability + ",";
+        // The claims service wraps the guard to honor the system-only
+        // qualifier; its wrappers carry the same per-call audit decision.
         var calls = new List<string>();
-        var cursor = 0;
-        while (true)
+        foreach (var entry in new[]
         {
-            var start = source.IndexOf(
-                "guard.DemandAsync(",
-                cursor,
-                StringComparison.Ordinal);
-            if (start < 0)
+            "guard.DemandAsync(",
+            "DemandClaimAccessAsync(",
+            "DemandSystemOwnerAsync(",
+        })
+        {
+            var cursor = 0;
+            while (true)
             {
-                break;
-            }
+                var start = source.IndexOf(entry, cursor, StringComparison.Ordinal);
+                if (start < 0)
+                {
+                    break;
+                }
 
-            var end = source.IndexOf(");", start, StringComparison.Ordinal);
-            Assert.True(end > start);
-            var call = source[start..end];
-            if (call.Contains(marker, StringComparison.Ordinal))
-            {
-                calls.Add(call);
-            }
+                var end = source.IndexOf(");", start, StringComparison.Ordinal);
+                Assert.True(end > start);
+                var call = source[start..end];
+                if (call.Contains(marker, StringComparison.Ordinal))
+                {
+                    calls.Add(call);
+                }
 
-            cursor = end;
+                cursor = end;
+            }
         }
 
         Assert.True(

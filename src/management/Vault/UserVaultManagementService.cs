@@ -28,7 +28,7 @@ public sealed class UserVaultManagementService(
         ArgumentNullException.ThrowIfNull(query);
         await guard.DemandAsync(
             context,
-            ManagementCapabilities.VaultSecretsRead,
+            ManagementCapabilities.SecretsRead,
             new ManagementResource(ManagementResourceTypes.VaultUserCollection),
             cancellationToken);
         EnsureEnabled();
@@ -125,7 +125,7 @@ public sealed class UserVaultManagementService(
         var owner = NormalizeOwner(ownerSubject);
         await guard.DemandAsync(
             context,
-            ManagementCapabilities.VaultSecretsRead,
+            ManagementCapabilities.SecretsRead,
             UserResource(owner),
             cancellationToken);
         EnsureEnabled();
@@ -199,7 +199,7 @@ public sealed class UserVaultManagementService(
         var storedName = UserVaultPersonalSecretService.ToStoredName(name);
         var decision = await guard.DemandAsync(
             context,
-            ManagementCapabilities.VaultSecretsManage,
+            ManagementCapabilities.SecretsManage,
             UserResource(owner),
             cancellationToken,
             auditDenial: true);
@@ -245,7 +245,7 @@ public sealed class UserVaultManagementService(
                 "Connected credential not found.");
         var decision = await guard.DemandAsync(
             context,
-            ManagementCapabilities.VaultSecretsManage,
+            ManagementCapabilities.SecretsManage,
             UserResource(owner),
             cancellationToken,
             auditDenial: true);
@@ -275,7 +275,7 @@ public sealed class UserVaultManagementService(
         var resource = UserResource(owner);
         var decision = await guard.DemandAsync(
             context,
-            ManagementCapabilities.VaultSecretsManage,
+            ManagementCapabilities.SecretsManage,
             resource,
             cancellationToken,
             auditDenial: true);
@@ -329,7 +329,7 @@ public sealed class UserVaultManagementService(
         database.ManagementAuditEvents.Add(
             ManagementAuditEventFactory.Create(
                 context,
-                ManagementCapabilities.VaultSecretsManage,
+                ManagementCapabilities.SecretsManage,
                 resource,
                 decision,
                 "succeeded",

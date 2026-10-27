@@ -1,6 +1,6 @@
 # Trusted proxies
 
-The `/management/settings/trusted-proxies` page and the `GET/PUT /api/trusted-proxies` API use the same administrative service. Reading requires `identity.trusted-proxies.read`; writing requires `identity.trusted-proxies.manage` plus the Management MFA policy. The HTTP prefix follows the module configuration.
+The `/management/settings/trusted-proxies` page and the `GET/PUT /api/trusted-proxies` API use the same administrative service. Reading requires `identity.proxies.read`; writing requires `identity.proxies.manage` plus the Management MFA policy. The HTTP prefix follows the module configuration.
 
 ## Merging and application
 

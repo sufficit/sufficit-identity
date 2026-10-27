@@ -209,12 +209,163 @@ public sealed class SystemUserManagementTests
         Assert.Equal(HttpStatusCode.Conflict, adoptPerson.StatusCode);
     }
 
+    [Fact]
+    public async Task Canonical_and_legacy_routes_both_serve_system_users()
+    {
+        using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        var operatorClient = factory.CreateClient();
+
+        using var created = await operatorClient.PostAsJsonAsync(
+            "/api/users/system", new { userName = "agent-canonical-route" });
+        Assert.Equal(HttpStatusCode.OK, created.StatusCode);
+        var userId = (await created.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("userId").GetString()!;
+
+        // GET api/users/system is the system-users list, not a user named "system".
+        foreach (var route in new[] { "/api/users/system", "/api/system-users" })
+        {
+            using var listed = await operatorClient.GetAsync(route);
+            Assert.Equal(HttpStatusCode.OK, listed.StatusCode);
+            var body = await listed.Content.ReadFromJsonAsync<JsonElement>();
+            Assert.Equal(JsonValueKind.Array, body.ValueKind);
+            Assert.Equal(userId, Assert.Single(body.EnumerateArray()).GetProperty("userId").GetString());
+        }
+
+        // The users API itself still answers under api/users.
+        using var person = await operatorClient.GetAsync($"/api/users/{userId}");
+        Assert.Equal(HttpStatusCode.OK, person.StatusCode);
+
+        // Entitlements live only on the legacy route.
+        using var legacyEntitlements = await operatorClient.GetAsync($"/api/system-users/entitlements?userId={userId}");
+        Assert.Equal(HttpStatusCode.OK, legacyEntitlements.StatusCode);
+        using var canonicalEntitlements = await operatorClient.GetAsync($"/api/users/system/entitlements?userId={userId}");
+        Assert.NotEqual(HttpStatusCode.OK, canonicalEntitlements.StatusCode);
+    }
+
+    [Fact]
+    public async Task Users_system_capability_works_on_the_canonical_route()
+    {
+        using var root = new ManagementTestFactory();
+        await ((IAsyncLifetime)root).InitializeAsync();
+        await RegisterAgentClientAsync(root);
+        using var factory = root.WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
+            services.AddSingleton<IManagementAuthorizationEvaluator, OnlySystemUsersEvaluator>()));
+        var provisioner = factory.CreateClient();
+
+        var agent = Guid.CreateVersion7();
+        using var created = await provisioner.PostAsJsonAsync(
+            "/api/users/system", new { userName = "agent-canonical", userId = agent });
+        Assert.Equal(HttpStatusCode.OK, created.StatusCode);
+
+        using var issued = await provisioner.PostAsJsonAsync(
+            $"/api/users/system/enrollments?userId={agent}", new { clientId = AgentClientId, label = "executor" });
+        Assert.Equal(HttpStatusCode.OK, issued.StatusCode);
+        var enrollments = await provisioner.GetFromJsonAsync<JsonElement>($"/api/users/system/enrollments?userId={agent}");
+        Assert.Single(enrollments.EnumerateArray());
+
+        using var disabled = await provisioner.PatchAsync($"/api/users/system/toggle?userId={agent}&enabled=false", null);
+        Assert.Equal(HttpStatusCode.OK, disabled.StatusCode);
+        var listed = await provisioner.GetFromJsonAsync<JsonElement>("/api/users/system");
+        Assert.True(Assert.Single(listed.EnumerateArray()).GetProperty("disabled").GetBoolean());
+
+        // Still nothing beyond system users.
+        using var users = await provisioner.GetAsync("/api/users");
+        Assert.Equal(HttpStatusCode.Forbidden, users.StatusCode);
+    }
+
+    [Fact]
+    public async Task Claims_system_capability_manages_claims_of_system_users_and_never_of_a_person()
+    {
+        using var root = new ManagementTestFactory();
+        await ((IAsyncLifetime)root).InitializeAsync();
+        using var factory = root.WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
+            services.AddSingleton<IManagementAuthorizationEvaluator, OnlySystemClaimsEvaluator>()));
+        var provisioner = factory.CreateClient();
+
+        string human, agent;
+        int personClaimId;
+        using (var scope = factory.Services.CreateScope())
+        {
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var person = new ApplicationUser { UserName = "claims-person", Email = "claims-person@example.test" };
+            Assert.True((await userManager.CreateAsync(person)).Succeeded);
+            human = person.Id;
+            Assert.True((await userManager.AddClaimAsync(person, new System.Security.Claims.Claim("entitlements", "seeded"))).Succeeded);
+            var system = new ApplicationUser { UserName = "claims-agent" };
+            Assert.True((await userManager.CreateAsync(system)).Succeeded);
+            agent = system.Id;
+            var database = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            personClaimId = (await database.UserClaims.SingleAsync(x => x.UserId == human && x.ClaimType == "entitlements")).Id;
+        }
+
+        // A system user's claims: create, read, delete.
+        using var created = await provisioner.PostAsJsonAsync(
+            "/api/claims", new { userId = agent, type = "entitlements", value = "aiuser" });
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var claimId = (await created.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+        var page = await provisioner.GetFromJsonAsync<JsonElement>($"/api/claims?userId={agent}");
+        Assert.Equal(claimId, Assert.Single(page.GetProperty("items").EnumerateArray()).GetProperty("id").GetInt32());
+        using var read = await provisioner.GetAsync($"/api/claims/{claimId}");
+        Assert.Equal(HttpStatusCode.OK, read.StatusCode);
+
+        // The unfiltered listing never shows a person's claim.
+        var all = await provisioner.GetFromJsonAsync<JsonElement>("/api/claims");
+        Assert.DoesNotContain(all.GetProperty("items").EnumerateArray(), item => item.GetProperty("userId").GetString() == human);
+
+        // Reserved claim types still apply.
+        using var reserved = await provisioner.PostAsJsonAsync(
+            "/api/claims", new { userId = agent, type = "permission", value = "identity.users.read" });
+        Assert.Equal(HttpStatusCode.BadRequest, reserved.StatusCode);
+
+        // A person is refused on every path, and the mutations are audited.
+        using var onPerson = await provisioner.PostAsJsonAsync(
+            "/api/claims", new { userId = human, type = "entitlements", value = "administrator" });
+        Assert.Equal(HttpStatusCode.Forbidden, onPerson.StatusCode);
+        using var deletePersonClaim = await provisioner.DeleteAsync($"/api/claims/{personClaimId}");
+        Assert.Equal(HttpStatusCode.Forbidden, deletePersonClaim.StatusCode);
+        using var updatePersonClaim = await provisioner.PutAsJsonAsync(
+            $"/api/claims/{personClaimId}", new { type = "entitlements", value = "administrator" });
+        Assert.Equal(HttpStatusCode.Forbidden, updatePersonClaim.StatusCode);
+        using var readPersonClaim = await provisioner.GetAsync($"/api/claims/{personClaimId}");
+        Assert.Equal(HttpStatusCode.Forbidden, readPersonClaim.StatusCode);
+        using var listPersonClaims = await provisioner.GetAsync($"/api/claims?userId={human}");
+        Assert.Equal(HttpStatusCode.Forbidden, listPersonClaims.StatusCode);
+
+        using var deleted = await provisioner.DeleteAsync($"/api/claims/{claimId}");
+        Assert.Equal(HttpStatusCode.NoContent, deleted.StatusCode);
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var database = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            Assert.False(await database.UserClaims.AnyAsync(x => x.UserId == agent));
+            Assert.True(await database.UserClaims.AnyAsync(x => x.Id == personClaimId && x.ClaimValue == "seeded"));
+            var refusals = await database.ManagementAuditEvents.AsNoTracking()
+                .Where(audit => audit.ReasonCode == "claim_owner_not_system_user")
+                .Select(audit => audit.Capability)
+                .ToListAsync();
+            Assert.Contains(ManagementCapabilities.ClaimsCreate, refusals);
+            Assert.Contains(ManagementCapabilities.ClaimsDelete, refusals);
+            Assert.Contains(ManagementCapabilities.ClaimsUpdate, refusals);
+            Assert.DoesNotContain(ManagementCapabilities.ClaimsRead, refusals);
+        }
+    }
+
+    private sealed class OnlySystemClaimsEvaluator : IManagementAuthorizationEvaluator
+    {
+        public ValueTask<ManagementAuthorizationDecision> EvaluateAsync(
+            System.Security.Claims.ClaimsPrincipal principal, string capability, ManagementResource resource,
+            CancellationToken cancellationToken = default) =>
+            ValueTask.FromResult(capability == ManagementCapabilities.ClaimsSystem
+                ? ManagementAuthorizationDecision.Allowed()
+                : ManagementAuthorizationDecision.Denied("capability_missing", capability));
+    }
+
     private sealed class OnlySystemUsersEvaluator : IManagementAuthorizationEvaluator
     {
         public ValueTask<ManagementAuthorizationDecision> EvaluateAsync(
             System.Security.Claims.ClaimsPrincipal principal, string capability, ManagementResource resource,
             CancellationToken cancellationToken = default) =>
-            ValueTask.FromResult(capability == ManagementCapabilities.SystemUsersManage
+            ValueTask.FromResult(capability == ManagementCapabilities.UsersSystem
                 ? ManagementAuthorizationDecision.Allowed()
                 : ManagementAuthorizationDecision.Denied("capability_missing", capability));
     }

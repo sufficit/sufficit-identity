@@ -79,7 +79,7 @@ public sealed partial class VaultMcpTools(
         McpToolCallContext context, JsonElement args, CancellationToken ct)
     {
         var vaultContext = await ResolveContextAsync(
-            context, args, ManagementCapabilities.VaultSecretsRead, ct);
+            context, args, ManagementCapabilities.SecretsRead, ct);
         EnsureEnabled();
         var now = DateTime.UtcNow;
         var items = await store.ListAsync(vaultContext, namespaces: null, ct);
@@ -102,7 +102,7 @@ public sealed partial class VaultMcpTools(
         McpToolCallContext context, JsonElement args, CancellationToken ct)
     {
         var vaultContext = await ResolveContextAsync(
-            context, args, ManagementCapabilities.VaultSecretsRead, ct);
+            context, args, ManagementCapabilities.SecretsRead, ct);
         EnsureEnabled();
         var name = NormalizeName(args);
         var items = await store.ListAsync(vaultContext, namespaces: null, ct);
@@ -125,7 +125,7 @@ public sealed partial class VaultMcpTools(
         McpToolCallContext context, JsonElement args, CancellationToken ct)
     {
         var vaultContext = await ResolveContextAsync(
-            context, args, ManagementCapabilities.VaultSecretsManage, ct);
+            context, args, ManagementCapabilities.SecretsManage, ct);
         EnsureEnabled();
         var name = NormalizeName(args);
         var value = IdentityMcpToolRegistry.RequireString(args, "value");
@@ -148,7 +148,7 @@ public sealed partial class VaultMcpTools(
         McpToolCallContext context, JsonElement args, CancellationToken ct)
     {
         var vaultContext = await ResolveContextAsync(
-            context, args, ManagementCapabilities.VaultSecretsManage, ct);
+            context, args, ManagementCapabilities.SecretsManage, ct);
         EnsureEnabled();
         var name = NormalizeName(args);
         if (!await store.DeleteAsync(name, vaultContext, ct))
@@ -164,7 +164,7 @@ public sealed partial class VaultMcpTools(
                 "confirmPlaintext must be true to return a secret value.");
 
         var vaultContext = await ResolveContextAsync(
-            context, args, ManagementCapabilities.VaultSecretsResolve, ct);
+            context, args, ManagementCapabilities.SecretsResolve, ct);
         EnsureEnabled();
         var name = NormalizeName(args);
         var resolution = await store.ResolveAsync(name, vaultContext, ct);
@@ -227,7 +227,7 @@ public sealed partial class VaultMcpTools(
         database.ManagementAuditEvents.Add(
             Audit.ManagementAuditEventFactory.Create(
                 context.AsManagementContext(),
-                ManagementCapabilities.VaultSecretsResolve,
+                ManagementCapabilities.SecretsResolve,
                 new ManagementResource(ManagementResourceTypes.VaultSecrets, name),
                 ManagementAuthorizationDecision.Allowed("mcp_self_service"),
                 "succeeded",

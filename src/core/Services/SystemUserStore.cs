@@ -46,7 +46,22 @@ public sealed class SystemUserStore(
         }
 
         await using var database = await databaseFactory.CreateDbContextAsync(cancellationToken);
-        return await WhereSystemUser(database).AnyAsync(user => user.Id == userId, cancellationToken);
+        return await IsSystemUserAsync(database, userId, cancellationToken);
+    }
+
+    /// <summary>
+    /// The same recognition as <see cref="WhereSystemUser"/>, on a context the
+    /// caller already holds (management services run on the request's scoped
+    /// context). A missing or empty id is never a system user.
+    /// </summary>
+    public static async Task<bool> IsSystemUserAsync(
+        AppDbContext database,
+        string? userId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(database);
+        return !string.IsNullOrEmpty(userId)
+            && await WhereSystemUser(database).AnyAsync(user => user.Id == userId, cancellationToken);
     }
 
     /// <summary>

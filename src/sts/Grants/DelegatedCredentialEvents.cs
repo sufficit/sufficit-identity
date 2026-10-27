@@ -23,7 +23,16 @@ public sealed class DelegatedCredentialEvents(
     IHttpContextAccessor httpContextAccessor,
     ILogger<DelegatedCredentialEvents> logger)
 {
-    public const string Capability = "token_exchange.delegated_credential";
+    /// <summary>
+    /// Audit label only — not a grantable management capability, so it is not
+    /// in <c>ManagementCapabilities.All</c>. Named after the capability rule
+    /// (<c>identity.&lt;resource&gt;.&lt;action&gt;</c>); rows written before
+    /// 2026-10-27 carry <see cref="LegacyCapability"/>.
+    /// </summary>
+    public const string Capability = "identity.credentials.delegate";
+
+    /// <summary>The label used before 2026-10-27; kept for reading old rows.</summary>
+    public const string LegacyCapability = "token_exchange.delegated_credential";
 
     public async Task RecordRefusalAsync(
         string actor,

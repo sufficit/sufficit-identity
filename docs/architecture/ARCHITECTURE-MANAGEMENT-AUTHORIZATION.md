@@ -134,41 +134,74 @@ on a target user.
 Neste modelo, **operador** é apenas o administrador autenticado que executa uma
 ação no Management. Não é um tipo de usuário, papel ou entidade persistida
 separadamente. Para que esse termo interno não vaze para o contrato público, as
-capabilities de administração de tokens usam o namespace
-`identity.management.tokens.*`.
+capabilities de administração de tokens usam o namespace `identity.tokens.*`.
 
-The generic management application evaluates stable capabilities such as:
+### Naming rule
 
-- `identity.clients.read`
-- `identity.clients.create`
-- `identity.clients.delete`
-- `identity.claims.read`
-- `identity.claims.create`
-- `identity.claims.update`
-- `identity.claims.delete`
-- `identity.scopes.read`
-- `identity.scopes.create`
-- `identity.scopes.update`
-- `identity.scopes.delete`
-- `identity.sessions.read`
-- `identity.sessions.revoke`
-- `identity.authorizations.read`
-- `identity.authorizations.revoke`
-- `identity.users.read`
-- `identity.users.create`
-- `identity.users.update`
-- `identity.users.disable`
-- `identity.users.delete`
-- `identity.users.reset`
-- `identity.audit.read`
-- `identity.management.tokens.read`
-- `identity.management.tokens.issue`
-- `identity.management.tokens.revoke`
+Every capability is `identity.<resource>.<action>` or
+`identity.<resource>.<qualifier>`, optionally followed by one more level
+(`identity.users.mfa.reset`). Every segment is **one lowercase word** — no
+hyphens, no compound words — so every name matches
+`^identity(\.[a-z]+){2,3}$` (pinned by `ManagementCapabilityNamingTests`).
 
-Durante a migração, os identificadores antigos
-`identity.users.reset-password` e `identity.operator-tokens.*` são aceitos na
-entrada e normalizados. Eles não fazem parte do catálogo e não são emitidos em
-novos tokens, respostas ou configurações geradas.
+The **`.system` qualifier** means "every action of that resource, but only on
+system users" (users with nothing to sign in with, recognized by
+`SystemUserStore.WhereSystemUser`):
+
+- `identity.users.system` satisfies users read/create/disable/reset in the
+  system-users API (`/api/users/system`) and nowhere else: every operation
+  creates a system user or resolves its target among system users first.
+- `identity.claims.system` satisfies claims read/create/update/delete on
+  `/api/claims` only when the claim's owner is a system user. For any other
+  owner it never does: the request is refused (`claim_owner_not_system_user`)
+  and mutations are audited like other refusals. The general capability is
+  tried first, so an operator holding both is unaffected. Reserved claim types
+  and the protected-principal policy still apply.
+
+The generic management application evaluates this catalog
+(`ManagementCapabilities.All`):
+
+| Resource | Capabilities |
+| --- | --- |
+| Clients | `identity.clients.read` `.create` `.update` `.delete` |
+| Branding | `identity.branding.read` `identity.branding.manage` |
+| Users | `identity.users.read` `.create` `.update` `.disable` `.delete` `.reset` `.confirmation` `.system`, `identity.users.mfa.reset` |
+| Claims | `identity.claims.read` `.create` `.update` `.delete` `.system` |
+| Scopes | `identity.scopes.read` `.create` `.update` `.delete` |
+| Sessions | `identity.sessions.read` `identity.sessions.revoke` |
+| Authorizations | `identity.authorizations.read` `identity.authorizations.revoke` |
+| Audit | `identity.audit.read` |
+| Database | `identity.database.read` |
+| Maintenance | `identity.maintenance.read` `identity.maintenance.manage` |
+| Proxies | `identity.proxies.read` `identity.proxies.manage` |
+| Metrics | `identity.metrics.read` `identity.metrics.manage` |
+| Secrets | `identity.secrets.read` `.manage` `.resolve` |
+| Provisioning | `identity.provisioning.preview` `identity.provisioning.apply` |
+| Tokens | `identity.tokens.read` `.issue` `.revoke` |
+
+Delegated credentials (RFC 8693) are audited under the audit-only label
+`identity.credentials.delegate`; it is not a grantable capability.
+
+### Retired names
+
+Retired spellings are accepted on input and normalized
+(`ManagementCapabilities.Normalize` / `LegacyNames`) wherever a capability
+enters: `permission` claims (including operator tokens already issued),
+`RoleCapabilities`, `ServicePrincipals` roles, operator-token issuance and
+listing, the service-account screen, query-string prefill and the evaluator
+itself. They are not in the catalog and are never emitted in new tokens,
+responses or generated configuration.
+
+| Retired | Canonical |
+| --- | --- |
+| `identity.users.reset-password` | `identity.users.reset` |
+| `identity.users.resend_confirmation` | `identity.users.confirmation` |
+| `identity.users.reset-mfa` | `identity.users.mfa.reset` |
+| `identity.system-users.manage` | `identity.users.system` |
+| `identity.trusted-proxies.read` / `.manage` | `identity.proxies.read` / `.manage` |
+| `identity.vault.secrets.read` / `.manage` / `.resolve` | `identity.secrets.read` / `.manage` / `.resolve` |
+| `identity.management.tokens.read` / `.issue` / `.revoke` | `identity.tokens.read` / `.issue` / `.revoke` |
+| `identity.operator-tokens.read` / `.issue` / `.revoke` | `identity.tokens.read` / `.issue` / `.revoke` |
 
 For an HTTP Management API, an access token must carry the management transport
 scope and the required operation capability. For the embedded UI, the host may

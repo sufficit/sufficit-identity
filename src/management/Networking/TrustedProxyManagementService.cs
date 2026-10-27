@@ -15,7 +15,7 @@ internal sealed class TrustedProxyManagementService(AppDbContext database,
     public async Task<ManagementTrustedProxies> GetAsync(ManagementRequestContext context,
         CancellationToken cancellationToken = default)
     {
-        await guard.DemandAsync(context, ManagementCapabilities.TrustedProxiesRead, Resource, cancellationToken);
+        await guard.DemandAsync(context, ManagementCapabilities.ProxiesRead, Resource, cancellationToken);
         // A management page may request a fresh read; forwarded HTTP requests never do.
         await snapshots.RefreshAsync(cancellationToken);
         return ToContract(snapshots.Current);
@@ -24,7 +24,7 @@ internal sealed class TrustedProxyManagementService(AppDbContext database,
     public async Task<ManagementTrustedProxies> SaveAsync(SaveTrustedProxies command,
         ManagementRequestContext context, CancellationToken cancellationToken = default)
     {
-        var decision = await guard.DemandAsync(context, ManagementCapabilities.TrustedProxiesManage,
+        var decision = await guard.DemandAsync(context, ManagementCapabilities.ProxiesManage,
             Resource, cancellationToken, auditDenial: true);
         ArgumentNullException.ThrowIfNull(command);
         string[] networks;
@@ -48,7 +48,7 @@ internal sealed class TrustedProxyManagementService(AppDbContext database,
             entity.ForwardLimit = command.ForwardLimit;
             entity.Revision = Guid.NewGuid().ToString("N");
             entity.UpdatedAtUtc = DateTime.UtcNow;
-            var audit = ManagementAuditEventFactory.Create(context, ManagementCapabilities.TrustedProxiesManage,
+            var audit = ManagementAuditEventFactory.Create(context, ManagementCapabilities.ProxiesManage,
                 Resource, decision, "succeeded", "trusted_proxies_updated");
             audit.BeforeJson = JsonSerializer.Serialize(new { Networks = JsonSerializer.Deserialize<string[]>(before), ForwardLimit = beforeLimit });
             audit.AfterJson = JsonSerializer.Serialize(new { Networks = networks, command.ForwardLimit });

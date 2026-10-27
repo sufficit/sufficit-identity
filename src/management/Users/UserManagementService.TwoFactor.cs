@@ -19,7 +19,7 @@ internal sealed partial class UserManagementService
             return ManagementAuthorizationDecision.Denied("user_self_mfa_reset_not_allowed");
 
         var decision = await authorization.EvaluateAsync(context.Operator,
-            ManagementCapabilities.UsersResetMfa,
+            ManagementCapabilities.UsersMfaReset,
             new ManagementResource(ManagementResourceTypes.User, id), cancellationToken);
         if (!decision.IsAllowed) return decision;
         var readDecision = await authorization.EvaluateAsync(context.Operator,
@@ -37,7 +37,7 @@ internal sealed partial class UserManagementService
                 NumberStyles.Integer, CultureInfo.InvariantCulture, out var authenticatedAt)
             || authenticatedAt > now + 60 || authenticatedAt < now - 15 * 60)
             return ManagementAuthorizationDecision.StepUpRequired(
-                "fresh_mfa_required", ManagementCapabilities.UsersResetMfa);
+                "fresh_mfa_required", ManagementCapabilities.UsersMfaReset);
 
         return decision;
     }
@@ -52,7 +52,7 @@ internal sealed partial class UserManagementService
         var decision = await EvaluateResetTwoFactorAsync(id, context, cancellationToken);
         if (!decision.IsAllowed)
         {
-            await TryWriteAuditAsync(context, ManagementCapabilities.UsersResetMfa,
+            await TryWriteAuditAsync(context, ManagementCapabilities.UsersMfaReset,
                 resource, decision, "denied", decision.ReasonCode, cancellationToken);
             throw new ManagementAccessException(decision);
         }
@@ -92,7 +92,7 @@ internal sealed partial class UserManagementService
             EnsureMfaResetSucceeded(await userManager.UpdateSecurityStampAsync(user));
             var revoked = await sessionRevoker.RevokeAsync(id, cancellationToken);
             var audit = ManagementAuditEventFactory.Create(context,
-                ManagementCapabilities.UsersResetMfa, resource, decision,
+                ManagementCapabilities.UsersMfaReset, resource, decision,
                 "succeeded", "user_mfa_reset");
             audit.BeforeJson = JsonSerializer.Serialize(new { TwoFactorEnabled = true });
             audit.AfterJson = JsonSerializer.Serialize(new
@@ -113,7 +113,7 @@ internal sealed partial class UserManagementService
             database.ChangeTracker.Clear();
             logger.LogError(exception, "Administrative MFA reset failed. User={UserId}; Correlation={CorrelationId}", id.Replace("\r", string.Empty).Replace("\n", string.Empty),
                 context.CorrelationId.Replace("\r", string.Empty).Replace("\n", string.Empty));
-            await TryWriteAuditAsync(context, ManagementCapabilities.UsersResetMfa,
+            await TryWriteAuditAsync(context, ManagementCapabilities.UsersMfaReset,
                 resource, decision, "failed", "user_mfa_reset_failed", CancellationToken.None);
             throw new ManagementConflictException("user_mfa_reset_failed",
                 "Não foi possível redefinir a autenticação. Nenhuma alteração foi confirmada.");
@@ -140,7 +140,7 @@ internal sealed partial class UserManagementService
                 context.CorrelationId.Replace("\r", string.Empty).Replace("\n", string.Empty));
             }
         }
-        await TryWriteAuditAsync(context, ManagementCapabilities.UsersResetMfa, resource,
+        await TryWriteAuditAsync(context, ManagementCapabilities.UsersMfaReset, resource,
             decision, notificationQueued ? "succeeded" : "failed",
             notificationQueued ? "user_mfa_reset_notification_queued" : "user_mfa_reset_notification_failed",
             CancellationToken.None);

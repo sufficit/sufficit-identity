@@ -211,13 +211,17 @@
 
     private void ClearSearch() => search = string.Empty;
 
+    // Rows written before a capability rename keep the retired spelling;
+    // show them under the canonical name.
     private string CapabilityLabel(string capability) =>
-        capability switch
+        ManagementCapabilities.Normalize(capability) switch
         {
             "identity.clients.create" => L["Audit.Capability.ClientsCreate"].Value,
             "identity.clients.delete" => L["Audit.Capability.ClientsDelete"].Value,
             "identity.clients.read" => L["Audit.Capability.ClientsRead"].Value,
-            _ => capability
+            // Audit-only label of delegated credentials, renamed 2026-10-27.
+            "token_exchange.delegated_credential" => "identity.credentials.delegate",
+            var canonical => canonical
         };
 
     private string OutcomeLabel(string outcome) =>

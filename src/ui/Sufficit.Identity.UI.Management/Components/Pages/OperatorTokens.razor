@@ -215,7 +215,7 @@
                         </SUILoadingButton>
                     </Authorized>
                     <NotAuthorized>
-                        <span class="operator-token-unauthorized">@L["OperatorTokens.Issue.MissingCapability"].Value <code>identity.management.tokens.issue</code>.</span>
+                        <span class="operator-token-unauthorized">@L["OperatorTokens.Issue.MissingCapability"].Value <code>@ManagementCapabilities.TokensIssue</code>.</span>
                     </NotAuthorized>
                 </AuthorizeView>
             </footer>
@@ -449,6 +449,8 @@
             .Concat((RequestedCapabilitiesCsv ?? "")
                 .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
             .Where(value => !string.IsNullOrWhiteSpace(value))
+            // A link prepared before a capability rename still works.
+            .Select(ManagementCapabilities.Normalize)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
         foreach (var capability in requestedCapabilities)

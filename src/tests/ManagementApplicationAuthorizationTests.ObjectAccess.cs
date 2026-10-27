@@ -116,7 +116,7 @@ public sealed partial class ManagementApplicationAuthorizationTests
 
         var missingVaultSecretId = await policy.EvaluateAsync(
             PrincipalWithClaims(new Claim("sub", "operator-a")),
-            ManagementCapabilities.VaultSecretsRead,
+            ManagementCapabilities.SecretsRead,
             new ManagementResource(ManagementResourceTypes.VaultSecrets));
         Assert.Equal("resource_id_required", missingVaultSecretId.ReasonCode);
 

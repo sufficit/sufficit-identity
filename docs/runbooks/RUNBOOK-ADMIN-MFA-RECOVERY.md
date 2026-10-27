@@ -15,7 +15,7 @@ conhecer a senha ou enviar um pedido por e-mail não comprova sozinho a titulari
 4. Confirme a redefinição. Oriente o titular a entrar pelo endereço habitual, ler o
    novo QR code, confirmar um código e guardar os novos códigos de recuperação.
 
-É necessária a permissão `identity.users.reset-mfa`, além de `identity.users.read`.
+É necessária a permissão `identity.users.mfa.reset`, além de `identity.users.read`.
 Administradores completos recebem a nova capacidade pelo catálogo; perfis granulares
 precisam de concessão explícita. A proteção de titulares privilegiados continua
 valendo. O gestor não pode usar esta operação na própria conta.

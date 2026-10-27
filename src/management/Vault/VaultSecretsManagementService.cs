@@ -28,7 +28,7 @@ public sealed class VaultSecretsManagementService(
             ManagementResourceTypes.VaultSecretCollection);
         var objectDecision = await guard.DemandAsync(
             context,
-            ManagementCapabilities.VaultSecretsRead,
+            ManagementCapabilities.SecretsRead,
             resource,
             cancellationToken);
         EnsureEnabled();
@@ -56,7 +56,7 @@ public sealed class VaultSecretsManagementService(
         var resource = ItemResource(normalized);
         var objectDecision = await guard.DemandAsync(
             context,
-            ManagementCapabilities.VaultSecretsRead,
+            ManagementCapabilities.SecretsRead,
             resource,
             cancellationToken);
         EnsureEnabled();
@@ -88,7 +88,7 @@ public sealed class VaultSecretsManagementService(
         var resource = ItemResource(normalized);
         var objectDecision = await guard.DemandAsync(
             context,
-            ManagementCapabilities.VaultSecretsManage,
+            ManagementCapabilities.SecretsManage,
             resource,
             cancellationToken,
             auditDenial: true);
@@ -114,7 +114,7 @@ public sealed class VaultSecretsManagementService(
         database.ManagementAuditEvents.Add(
             Sufficit.Identity.Management.Audit.ManagementAuditEventFactory.Create(
                 context,
-                ManagementCapabilities.VaultSecretsManage,
+                ManagementCapabilities.SecretsManage,
                 resource,
                 decision,
                 "succeeded",
@@ -137,7 +137,7 @@ public sealed class VaultSecretsManagementService(
         var resource = ItemResource(normalized);
         var objectDecision = await guard.DemandAsync(
             context,
-            ManagementCapabilities.VaultSecretsResolve,
+            ManagementCapabilities.SecretsResolve,
             resource,
             cancellationToken,
             auditDenial: true);
@@ -155,7 +155,7 @@ public sealed class VaultSecretsManagementService(
         database.ManagementAuditEvents.Add(
             Sufficit.Identity.Management.Audit.ManagementAuditEventFactory.Create(
                 context,
-                ManagementCapabilities.VaultSecretsResolve,
+                ManagementCapabilities.SecretsResolve,
                 resource,
                 decision,
                 "succeeded",
@@ -189,7 +189,7 @@ public sealed class VaultSecretsManagementService(
         var resource = ItemResource(normalized);
         var objectDecision = await guard.DemandAsync(
             context,
-            ManagementCapabilities.VaultSecretsManage,
+            ManagementCapabilities.SecretsManage,
             resource,
             cancellationToken,
             auditDenial: true);
@@ -204,7 +204,7 @@ public sealed class VaultSecretsManagementService(
         database.ManagementAuditEvents.Add(
             Sufficit.Identity.Management.Audit.ManagementAuditEventFactory.Create(
                 context,
-                ManagementCapabilities.VaultSecretsManage,
+                ManagementCapabilities.SecretsManage,
                 resource,
                 decision,
                 "succeeded",
@@ -248,7 +248,7 @@ public sealed class VaultSecretsManagementService(
         database.ManagementAuditEvents.Add(
             Sufficit.Identity.Management.Audit.ManagementAuditEventFactory.Create(
                 context,
-                ManagementCapabilities.VaultSecretsRead,
+                ManagementCapabilities.SecretsRead,
                 resource,
                 decision,
                 "succeeded",

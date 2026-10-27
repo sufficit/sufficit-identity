@@ -77,7 +77,7 @@ public sealed class TrustedProxyTests
         Assert.Equal(saved.Revision, factory.Services.GetRequiredService<TrustedProxySnapshotStore>().Current.Revision);
         await using var scope = factory.Services.CreateAsyncScope();
         var database = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var audit = await database.ManagementAuditEvents.SingleAsync(x => x.Capability == ManagementCapabilities.TrustedProxiesManage);
+        var audit = await database.ManagementAuditEvents.SingleAsync(x => x.Capability == ManagementCapabilities.ProxiesManage);
         Assert.Equal("succeeded", audit.OperationOutcome);
         Assert.Contains("\"Networks\":[]", audit.BeforeJson);
         Assert.Contains("192.0.2.7/32", audit.AfterJson);
@@ -177,13 +177,13 @@ public sealed class TrustedProxyTests
         static ClaimsPrincipal Operator(string capability, bool mfa) => new(new ClaimsIdentity(
             new[] { new Claim("sub", "proxy-admin"), new Claim("permission", capability) }
                 .Concat(mfa ? [new Claim("amr", "mfa")] : []), "test"));
-        var reader = new ManagementRequestContext(Operator(ManagementCapabilities.TrustedProxiesRead, true), "read-only");
+        var reader = new ManagementRequestContext(Operator(ManagementCapabilities.ProxiesRead, true), "read-only");
         var original = await service.GetAsync(reader);
         await Assert.ThrowsAsync<ManagementAccessException>(() => service.SaveAsync(new([], 3, original.Revision), reader));
-        var writer = new ManagementRequestContext(Operator(ManagementCapabilities.TrustedProxiesManage, false), "mfa-required");
+        var writer = new ManagementRequestContext(Operator(ManagementCapabilities.ProxiesManage, false), "mfa-required");
         var missingMfa = await Assert.ThrowsAsync<ManagementAccessException>(() => service.SaveAsync(new([], 3, original.Revision), writer));
         Assert.Equal(ManagementAuthorizationOutcome.StepUpRequired, missingMfa.Decision.Outcome);
-        var approved = writer with { Operator = Operator(ManagementCapabilities.TrustedProxiesManage, true) };
+        var approved = writer with { Operator = Operator(ManagementCapabilities.ProxiesManage, true) };
         await service.SaveAsync(new([], 3, original.Revision), approved);
         var database = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var audit = await database.ManagementAuditEvents.SingleAsync(x => x.OperationOutcome == "succeeded");

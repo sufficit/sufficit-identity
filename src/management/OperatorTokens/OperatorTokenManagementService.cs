@@ -53,8 +53,8 @@ internal sealed partial class OperatorTokenManagementService(
     private static readonly HashSet<string> NonDelegableCapabilities =
         new(StringComparer.Ordinal)
         {
-            ManagementCapabilities.ManagementTokensIssue,
-            ManagementCapabilities.ManagementTokensRevoke,
+            ManagementCapabilities.TokensIssue,
+            ManagementCapabilities.TokensRevoke,
         };
 
     public async Task<OperatorTokenWorkspace> GetWorkspaceAsync(
@@ -64,7 +64,7 @@ internal sealed partial class OperatorTokenManagementService(
         ArgumentNullException.ThrowIfNull(context);
         await guard.DemandAsync(
             context,
-            ManagementCapabilities.ManagementTokensRead,
+            ManagementCapabilities.TokensRead,
             CollectionResource,
             cancellationToken);
 
@@ -109,7 +109,7 @@ internal sealed partial class OperatorTokenManagementService(
 
         var issueDecision = await guard.DemandAsync(
             context,
-            ManagementCapabilities.ManagementTokensIssue,
+            ManagementCapabilities.TokensIssue,
             CollectionResource,
             cancellationToken,
             auditDenial: true,
@@ -123,7 +123,7 @@ internal sealed partial class OperatorTokenManagementService(
                 "temporary_token_cannot_mint");
             await TryWriteAuditAsync(
                 context,
-                ManagementCapabilities.ManagementTokensIssue,
+                ManagementCapabilities.TokensIssue,
                 CollectionResource,
                 nested,
                 "denied",
@@ -250,7 +250,7 @@ internal sealed partial class OperatorTokenManagementService(
             database.ManagementAuditEvents.Add(
                 ManagementAuditEventFactory.Create(
                     context,
-                    ManagementCapabilities.ManagementTokensIssue,
+                    ManagementCapabilities.TokensIssue,
                     resource,
                     issueDecision,
                     "succeeded",
@@ -298,7 +298,7 @@ internal sealed partial class OperatorTokenManagementService(
                 context.CorrelationId);
             await TryWriteAuditAsync(
                 context,
-                ManagementCapabilities.ManagementTokensIssue,
+                ManagementCapabilities.TokensIssue,
                 CollectionResource,
                 issueDecision,
                 "failed",
@@ -328,7 +328,7 @@ internal sealed partial class OperatorTokenManagementService(
             normalizedId);
         var decision = await guard.DemandAsync(
             context,
-            ManagementCapabilities.ManagementTokensRevoke,
+            ManagementCapabilities.TokensRevoke,
             resource,
             cancellationToken,
             auditDenial: true);
@@ -357,7 +357,7 @@ internal sealed partial class OperatorTokenManagementService(
             database.ManagementAuditEvents.Add(
                 ManagementAuditEventFactory.Create(
                     context,
-                    ManagementCapabilities.ManagementTokensRevoke,
+                    ManagementCapabilities.TokensRevoke,
                     resource,
                     decision,
                     "succeeded",
@@ -431,7 +431,13 @@ internal sealed partial class OperatorTokenManagementService(
                     cancellationToken) ?? DateTimeOffset.MinValue,
                 expiration.Value,
                 status,
-                GetStringArrayProperty(properties, CapabilitiesProperty)));
+                // Tokens issued before a capability rename store the retired
+                // spelling; list them under the canonical name.
+                GetStringArrayProperty(properties, CapabilitiesProperty)
+                    .Select(ManagementCapabilities.Normalize)
+                    .Distinct(StringComparer.Ordinal)
+                    .Order(StringComparer.Ordinal)
+                    .ToArray()));
         }
 
         return result

@@ -32,9 +32,13 @@ Management → **Usuários de sistema** → *Novo usuário de sistema* (nome de
 usuário e, opcionalmente, nome de exibição). Ou pela API:
 
 ```http
-POST /api/system-users
+POST /api/users/system
 { "userName": "agent-github-engineer", "displayName": "GitHub engineer" }
 ```
+
+Rota canônica: `/api/users/system` (listar `GET`, criar `POST`,
+`PATCH …/toggle`, `…/enrollments`). `/api/system-users` continua respondendo
+como alias, com os mesmos parâmetros de query string (`userId=…`).
 
 `userId` (UUID) é opcional: permite reaproveitar um id que o chamador já usa
 (por exemplo, o id do agente). Se já existir usuário com esse id, a resposta é
@@ -48,16 +52,37 @@ usuário). A criação fica auditada com o operador.
 
 Capacidades: listar `identity.users.read`, criar `identity.users.create`,
 desativar `identity.users.disable`, emitir e revogar credencial
-`identity.users.reset`, entitlements `identity.claims.read`/`identity.claims.create`.
+`identity.users.reset`; entitlements (claims) `identity.claims.*`.
 
-**Serviço de provisionamento.** `identity.system-users.manage` cobre todas essas
-operações, **só** sobre usuários de sistema: criar, ativar/desativar, emitir e
-revogar códigos e definir entitlements. Um usuário humano não é alcançado (404
-nas rotas de usuário de sistema; as demais rotas exigem as capacidades gerais).
+**Serviço de provisionamento.** O qualificador `.system` quer dizer "toda ação
+do recurso, mas só em usuários de sistema":
+
+- `identity.users.system` cobre criar, ativar/desativar, listar e emitir e
+  revogar códigos, **só** sobre usuários de sistema. Um usuário humano não é
+  alcançado (404 nas rotas de usuário de sistema; as demais rotas exigem as
+  capacidades gerais).
+- `identity.claims.system` cobre consultar, atribuir, editar e remover claims
+  em `/api/claims`, **só** quando o dono da claim é usuário de sistema. Em
+  qualquer outra conta é recusado (403, auditado nas alterações). Tipos de
+  claim reservados (`permission`, `scope`, …) continuam proibidos.
+
 Dê a uma conta de serviço (`identity:client:roles`) um papel mapeado só para
-ela em `RoleCapabilities`, por exemplo `"systemusers": ["identity.system-users.manage"]`.
+ela em `RoleCapabilities`, por exemplo
+`"systemusers": ["identity.users.system", "identity.claims.system"]`.
+O nome antigo `identity.system-users.manage` ainda é aceito e normalizado para
+`identity.users.system`.
 
-**Entitlements:**
+**Entitlements** são claims `entitlements` comuns, uma por valor:
+
+```http
+POST /api/claims
+{ "userId": "<id>", "type": "entitlements", "value": "aiuser:<contexto compacto>" }
+
+GET    /api/claims?userId=<id>
+DELETE /api/claims/<claimId>
+```
+
+**Rota legada (obsoleta, só durante a transição):**
 
 ```http
 PUT /api/system-users/entitlements?userId=<id>
@@ -66,6 +91,8 @@ PUT /api/system-users/entitlements?userId=<id>
 
 Substitui o conjunto inteiro (o que não estiver na lista sai). Contexto em
 qualquer grafia de UUID é gravado compacto (32 hex). `GET` na mesma rota lista.
+Existe só em `/api/system-users` (não em `/api/users/system`) e ainda aceita
+`identity.users.system`; migre para `/api/claims` com `identity.claims.system`.
 
 ## 3. Emitir o código de habilitação
 
@@ -73,7 +100,7 @@ Na página, *Credenciais* → cliente, rótulo (onde a credencial vai morar) e
 validade do código (1 hora a 7 dias). O código aparece **uma única vez**. Ou:
 
 ```http
-POST /api/system-users/enrollments?userId=<id>
+POST /api/users/system/enrollments?userId=<id>
 { "clientId": "<client_id do software>", "label": "pod github-engineer", "lifetimeHours": 24 }
 ```
 
@@ -111,9 +138,9 @@ padrão 365) que o refresh não estende; perto do fim, emita um novo código.
 ## 5. Revogar e desativar
 
 - **Revogar** um código ou credencial: *Credenciais* → *Revogar*, ou
-  `DELETE /api/system-users/enrollments?userId=<id>&id=<enrollmentId>`.
+  `DELETE /api/users/system/enrollments?userId=<id>&id=<enrollmentId>`.
 - **Desativar** o usuário: *Desativar*, ou
-  `PATCH /api/system-users/toggle?userId=<id>&enabled=false` (`enabled` vazio
+  `PATCH /api/users/system/toggle?userId=<id>&enabled=false` (`enabled` vazio
   inverte o estado). Desativar é o **lockout comum** de qualquer usuário;
   revoga todas as credenciais e impede novas. Ao reativar, emita um novo código.
 
