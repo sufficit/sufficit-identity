@@ -58,3 +58,34 @@ nos três nós. Cópia das linhas em
 
 Pendente: desativar os ids antigos depois que pararem de emitir token, com o
 aval do titular.
+
+## Escopos com ponto (27/10)
+
+Escopos usam ponto como separador. Os sucessores já existiam no banco desde
+02/09 (`network.control`, `background.jobs`, `ai.bridge`,
+`personal.tokens.manage`); faltava mover os consumidores.
+
+- `sufficit_fleet_beta` apagado (último uso 10/09, 1 autorização antiga;
+  cópia em `/root/applications-fleet-beta-20261027.tsv`).
+- **background:** API aceita `background.jobs` e `sufficit_background`, e as
+  audiências `sufficit-background` e `sufficit_background_api` (background
+  `eaf0f7a`, no ar no eveo). `background.jobs` passou a declarar as duas
+  audiências; o cliente `sufficit-background` ganhou o escopo e o login já o
+  pede.
+- **network-control:** cliente ganhou `network.control`; código pede só ele
+  (`8ec2bc4`), mas a Web em produção pede os dois até o próximo deploy dela:
+  o binder anexa o config ao array default do `WebOptions`. O deploy traria
+  também a SUI 2.* de setembro, por isso ficou para depois.
+- **landing pages:** `personal_tokens.manage` é morto (o Identity só conhece
+  `personal.tokens.manage`). Código parou de pedir (`ff13836`). Apagar o
+  escopo derrubou o login do landing por ~5 min (`invalid_scope`): o binário
+  em produção ainda pede pelo default do código. Escopo e permissão
+  restaurados; removem-se depois do deploy do landing.
+- **`sufficit_ai_openai_bridge`:** fica. Cinco autorizações do Genius de
+  agosto ainda renovam token (uma hoje) e o executor herda o escopo por
+  delegação; tirar a permissão derrubaria esses dispositivos.
+
+Pendentes: deploy do landing e da Web do network-control; depois remover
+`personal_tokens.manage`, `sufficit_network_control` e `sufficit_background`
+(escopo, permissões e audiência `sufficit_background_api`), e desativar os
+client ids antigos.
