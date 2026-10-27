@@ -72,6 +72,7 @@ public static class IdentityDatabaseSchema
     /// <summary>Client credentials stop carrying a fingerprint derived from the secret (plan E2).</summary>
     public const string DropClientCredentialSecretHintMigrationId = "20261022170606_DropClientCredentialSecretHint";
     /// <summary>One account per normalized email (plan F9).</summary>
+    public const string TokenMaintenanceMigrationId = "20261024204655_AddTokenMaintenance";
     public const string UniqueNormalizedEmailMigrationId = "20261023124342_UniqueNormalizedEmail";
 
     public const string SystemUsersAsOrdinaryUsersMigrationId = "20261022140929_SystemUsersAsOrdinaryUsers";

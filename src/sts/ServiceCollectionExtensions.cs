@@ -301,7 +301,7 @@ public static partial class ServiceCollectionExtensions
         {
             services.AddHostedService<IdentityUsageMetricsWorker>();
             // Prunes dead OpenIddict tokens/orphaned authorizations past
-            // Sufficit:Identity:TokenPruning:RetentionDays. Registered only
+            // the database-managed policy. Registered only
             // for real connection strings for the same reason as the metrics
             // writer above: the shared in-memory SQLite connection used by
             // integration hosts races background writers.

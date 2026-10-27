@@ -2247,4 +2247,42 @@
   <data name="Error.system_user_enrollment_client_not_allowed" xml:space="preserve"><value>The client must exist and allow the system-user enrollment grant and refresh tokens.</value></data>
   <data name="Error.system_user_enrollment_label_required" xml:space="preserve"><value>Say where the credential will live.</value></data>
   <data name="Layout.Reconnecting" xml:space="preserve"><value>Reconnecting to the dashboard…</value></data>
+  <data name="Maintenance.Title" xml:space="preserve"><value>Token maintenance</value></data>
+  <data name="Maintenance.Description" xml:space="preserve"><value>Clean up expired tokens and unused temporary authorizations. Active sessions are preserved.</value></data>
+  <data name="Maintenance.LoadError" xml:space="preserve"><value>Could not load maintenance</value></data>
+  <data name="Maintenance.Policy" xml:space="preserve"><value>Cleanup policy</value></data>
+  <data name="Maintenance.Enabled" xml:space="preserve"><value>Enabled</value></data>
+  <data name="Maintenance.Disabled" xml:space="preserve"><value>Disabled</value></data>
+  <data name="Maintenance.NextRun" xml:space="preserve"><value>Next scheduled run</value></data>
+  <data name="Maintenance.Request" xml:space="preserve"><value>Manual request</value></data>
+  <data name="Maintenance.Pending" xml:space="preserve"><value>Pending</value></data>
+  <data name="Maintenance.NoRequest" xml:space="preserve"><value>None</value></data>
+  <data name="Maintenance.Enable" xml:space="preserve"><value>Enable scheduled cleanup</value></data>
+  <data name="Maintenance.Retention" xml:space="preserve"><value>Retention (days)</value></data>
+  <data name="Maintenance.Interval" xml:space="preserve"><value>Interval (minutes)</value></data>
+  <data name="Maintenance.Save" xml:space="preserve"><value>Save policy</value></data>
+  <data name="Maintenance.Run" xml:space="preserve"><value>Request execution</value></data>
+  <data name="Maintenance.ReadOnly" xml:space="preserve"><value>You can view this policy. Editing requires maintenance permission.</value></data>
+  <data name="Maintenance.Reload" xml:space="preserve"><value>Refresh</value></data>
+  <data name="Maintenance.History" xml:space="preserve"><value>Recent executions</value></data>
+  <data name="Maintenance.Empty" xml:space="preserve"><value>No executions recorded yet.</value></data>
+  <data name="Maintenance.Start" xml:space="preserve"><value>Started</value></data>
+  <data name="Maintenance.End" xml:space="preserve"><value>Finished</value></data>
+  <data name="Maintenance.Status" xml:space="preserve"><value>Status</value></data>
+  <data name="Maintenance.Tokens" xml:space="preserve"><value>Tokens removed</value></data>
+  <data name="Maintenance.Authorizations" xml:space="preserve"><value>Authorizations removed</value></data>
+  <data name="Maintenance.Status.running" xml:space="preserve"><value>Running</value></data>
+  <data name="Maintenance.Status.succeeded" xml:space="preserve"><value>Completed</value></data>
+  <data name="Maintenance.Status.failed" xml:space="preserve"><value>Failed</value></data>
+  <data name="Maintenance.Status.interrupted" xml:space="preserve"><value>Interrupted</value></data>
+  <data name="Maintenance.Due" xml:space="preserve"><value>Due now</value></data>
+  <data name="Maintenance.Requested" xml:space="preserve"><value>Execution requested. It will start when a worker is available.</value></data>
+  <data name="Maintenance.Saved" xml:space="preserve"><value>Policy saved.</value></data>
+  <data name="Error.maintenance_conflict" xml:space="preserve"><value>Maintenance changed. Reload before saving.</value></data>
+  <data name="Error.maintenance_disabled" xml:space="preserve"><value>Enable maintenance first.</value></data>
+  <data name="Error.invalid_maintenance_configuration" xml:space="preserve"><value>Retention must be 1–3650 days and interval 5–10080 minutes.</value></data>
+  <data name="Capability.identity.maintenance.read.Title" xml:space="preserve"><value>View token maintenance</value></data>
+  <data name="Capability.identity.maintenance.read.Description" xml:space="preserve"><value>Allows viewing the cleanup policy, next scheduled run, pending requests and recent execution results. It does not allow changing retention or requesting cleanup.</value></data>
+  <data name="Capability.identity.maintenance.manage.Title" xml:space="preserve"><value>Manage token maintenance</value></data>
+  <data name="Capability.identity.maintenance.manage.Description" xml:space="preserve"><value>Allows enabling or pausing token cleanup, changing retention and frequency, and requesting an execution. Changes are audited; valid active sessions remain protected.</value></data>
 </root>

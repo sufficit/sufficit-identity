@@ -27,7 +27,8 @@ public static partial class ServiceCollectionExtensions
             core.UseEntityFrameworkCore().UseDbContext<AppDbContext>();
             core.ReplaceTokenStore<OpenIddictEntityFrameworkCoreToken, SufficitOpenIddictTokenStore>();
         });
-        // MariaDB does not support OpenIddict's bulk DELETE with LIMIT in a subquery.
+        // Preserve compatibility for other OpenIddict store operations on MariaDB.
+        // Maintenance pruning uses its own bounded parent/child transactions.
         services.Configure<OpenIddictEntityFrameworkCoreOptions>(o => o.DisableBulkOperations = true);
         services.AddSingleton<OpenIddictPruningService>();
         return services;

@@ -154,6 +154,7 @@ public sealed class AppDbContext
         VaultSecretMapping.Apply(builder);
         IdentityMetricsMapping.Apply(builder);
         TrustedProxyMapping.Apply(builder);
+        TokenMaintenanceMapping.Apply(builder);
         ProtocolSecurityStateMapping.Apply(builder);
         OAuthClientCredentialMapping.Apply(builder);
         DcrInitialAccessTokenMapping.Apply(builder);

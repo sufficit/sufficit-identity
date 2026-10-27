@@ -1,7 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using OpenIddict.Abstractions;
+using Microsoft.EntityFrameworkCore;
+using Sufficit.Identity.Core.Data;
+using Sufficit.Identity.Core.Entities;
+using Sufficit.Identity.Core.Maintenance;
 
 namespace Sufficit.Identity.STS.Tokens;
 
@@ -17,17 +20,16 @@ namespace Sufficit.Identity.STS.Tokens;
 /// of mostly-dead single-use codes embedded in the database multimaster
 /// replication carries between nodes.
 /// <para>
-/// Pruning uses OpenIddict's supported mechanism:
-/// <see cref="IOpenIddictTokenManager.PruneAsync(DateTimeOffset, CancellationToken)"/>
-/// only removes entries created before the threshold that are ALREADY dead —
-/// status revoked/rejected/inactive, or bound to an authorization that is no
-/// longer valid, or past their expiration. A valid, unexpired refresh token
-/// created before the threshold is never touched.
+/// Pruning retains OpenIddict 7.7.2's eligibility rules and commits bounded
+/// token/authorization batches atomically. A valid, unexpired token on a valid
+/// authorization is protected regardless of age. Keeping the last child and
+/// its eligible parent in one transaction also preserves their application
+/// order on a parallel replication receiver.
 /// </para>
 /// <para>
-/// Deployments sharing a replicated database should disable this worker on
-/// every API replica and schedule the maintenance command on one owner.
-/// Pruning remains idempotent to tolerate scheduler retries.
+/// The database owns the schedule and a renewable execution lease. Every batch
+/// fences its writes against that lease; replicas may all run this worker.
+/// RunInWebHost remains the deployment kill switch during migration.
 /// </para>
 /// </remarks>
 internal sealed class OpenIddictPruningWorker(
@@ -35,7 +37,8 @@ internal sealed class OpenIddictPruningWorker(
     IServiceProvider services,
     ILogger<OpenIddictPruningWorker> logger) : BackgroundService
 {
-    private static readonly TimeSpan Interval = TimeSpan.FromHours(6);
+    private static readonly TimeSpan Interval = TimeSpan.FromSeconds(30);
+    private readonly string owner = $"{Environment.MachineName[..Math.Min(Environment.MachineName.Length, 80)]}:{Guid.NewGuid():N}";
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -43,7 +46,7 @@ internal sealed class OpenIddictPruningWorker(
         {
             try
             {
-                await PruneAsync(stoppingToken);
+                await RunScheduledAsync(stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -64,6 +67,32 @@ internal sealed class OpenIddictPruningWorker(
             {
                 return;
             }
+        }
+    }
+
+    internal async Task RunScheduledAsync(CancellationToken cancellationToken)
+    {
+        await using var scope = services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var run = await TokenMaintenanceCoordinator.TryAcquireAsync(db, owner, cancellationToken);
+        if (run == null) return;
+        var retention = await db.Set<TokenMaintenance>().Select(x => x.RetentionDays).SingleAsync(cancellationToken);
+        var status = "failed";
+        try
+        {
+            using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            deadline.CancelAfter(TimeSpan.FromMinutes(Math.Clamp(options.TimeoutMinutes, 1, 120)));
+            await new OpenIddictPruningService(services).PruneScheduledAsync(retention, run.Id, deadline.Token);
+            status = "succeeded";
+        }
+        finally
+        {
+            // Cleanup gets a bounded independent deadline on host shutdown.
+            // If unavailable, lease expiry permits a successor to recover.
+            using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            await using var finishScope = services.CreateAsyncScope();
+            var finishDb = finishScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            await TokenMaintenanceCoordinator.CompleteAsync(finishDb, run.Id, status, cleanup.Token);
         }
     }
 

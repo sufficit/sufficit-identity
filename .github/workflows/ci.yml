@@ -334,6 +334,8 @@ jobs:
           export IDENTITY_TOKEN_DIALOG_BROWSER_SCRIPT="${PWD}/scripts/check-one-time-token-dialog.mjs"
           export IDENTITY_VALIDATION_BROWSER_SCRIPT="${PWD}/scripts/check-inline-validation.mjs"
           export IDENTITY_SYSTEM_USERS_BROWSER_SCRIPT="${PWD}/scripts/check-system-users.mjs"
+          export IDENTITY_MAINTENANCE_BROWSER_SCRIPT="${PWD}/scripts/check-token-maintenance.mjs"
+          export IDENTITY_MAINTENANCE_SCREENSHOTS="${shots}/maintenance"
           export IDENTITY_SYSTEM_USERS_SCREENSHOTS="${shots}/system-users"
           export IDENTITY_AUDIENCE_SCREENSHOTS="${shots}/audiences"
           export IDENTITY_MFA_SCREENSHOTS="${shots}/mfa-reset"

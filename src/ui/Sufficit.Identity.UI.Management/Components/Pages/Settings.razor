@@ -13,6 +13,10 @@
     <a class="button button--secondary" href="settings/trusted-proxies">@L["Settings.ConfigureTrustedProxies"]</a>
 </AuthorizeView>
 
+<AuthorizeView Policy="@ManagementUiPolicies.ReadMaintenance">
+    <a class="button button--secondary" href="settings/token-maintenance">@L["Maintenance.Title"]</a>
+</AuthorizeView>
+
 <ManagementDataView Result="result"
                     Loading="loading"
                     OnRetry="RefreshAsync"

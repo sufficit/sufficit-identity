@@ -1,0 +1,46 @@
+// Isolated fixture host only; exercises UI, never production deletion.
+import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
+import { mkdir } from 'node:fs/promises';
+const require = createRequire(process.env.IDENTITY_PLAYWRIGHT_PACKAGE || import.meta.url);
+const { chromium } = require('playwright');
+const origin = process.argv[2];
+assert.equal(new URL(origin).hostname, '127.0.0.1');
+const output = process.env.IDENTITY_MAINTENANCE_SCREENSHOTS || '/tmp/identity-maintenance-screenshots';
+await mkdir(output, { recursive: true });
+const browser = await chromium.launch({ headless: true });
+try {
+  const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+  await context.request.get(`${origin}/test-signin/administrator`);
+  const page = await context.newPage();
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  page.setDefaultTimeout(15000);
+  await page.goto(`${origin}/management/settings`);
+  await page.getByRole('link', { name: 'Manutenção de tokens' }).click();
+  await page.waitForLoadState('networkidle');
+  await page.getByText('Nenhuma execução registrada ainda.').waitFor();
+  const run = page.getByRole('button', { name: 'Solicitar execução' });
+  assert.equal(await run.isDisabled(), true);
+  await page.getByText('Ativar limpeza agendada', { exact: true }).click();
+  assert.equal(await page.getByLabel('Ativar limpeza agendada').isChecked(), true);
+  await page.getByLabel('Retenção (dias)').fill('20');
+  await page.getByLabel('Intervalo (minutos)').fill('60');
+  await page.getByRole('button', { name: 'Salvar política' }).click();
+  await page.getByText('Política salva.').waitFor();
+  await run.click();
+  await page.getByText('Execução solicitada. Ela começará quando houver um executor disponível.').waitFor();
+  assert.equal(await run.isDisabled(), true);
+  await page.getByRole('cell', { name: '251', exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Atualizar', exact: true }).click();
+  assert.equal(await page.getByLabel('Retenção (dias)').inputValue(), '20');
+  await page.screenshot({ path: `${output}/desktop.png`, fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+  await page.waitForLoadState('networkidle');
+  await page.screenshot({ path: `${output}/mobile.png`, fullPage: true });
+  assert.notEqual(await page.locator('.maintenance-history td').first().evaluate(el => getComputedStyle(el, '::before').content), 'none');
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), 'mobile overflow');
+  await page.keyboard.press('Tab');
+  assert.deepEqual(errors, []);
+} finally { await browser.close(); }
