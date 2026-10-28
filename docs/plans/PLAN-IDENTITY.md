@@ -37,6 +37,22 @@ its security invariant stays disabled rather than advertising partial
 assurance. No production feature, grant, endpoint, client type or user journey
 may be removed as a shortcut to closing an item.
 
+## Operational calendar
+
+Dated production actions, earliest first. Each links to the section that owns
+it; tick it there, then drop the line here.
+
+| When | Action | Owner |
+|---|---|---|
+| now | Configure the privileged-scope list in `Observe` | A2 |
+| ~2026-11-03 | Delete the 10 disabled underscore client ids if they issued no token since 2026-10-27 | [`202610271500`](../activities/202610271500-hyphenated-client-ids.md) |
+| ~2026-11-04 | Read the observed scope-grant rows; set `ClientScopeGrants:Mode=Enforce` | A2 |
+| after the client-id cleanup | Remove the legacy client/scope acceptance in endpoints (`LegacyClientId`) and background (`Legacy*`) | [`202610271500`](../activities/202610271500-hyphenated-client-ids.md) |
+| from 2026-11-20 | Drop `certificate.pfx` and `certificate-old.pfx` from `EncryptionPaths` | C2 |
+| when the August agent authorizations stop refreshing | Remove the `sufficit_ai_openai_bridge` scope and permission | [`202610271500`](../activities/202610271500-hyphenated-client-ids.md) |
+| before 2027-04-30 | Migrate every `client_secret_plaintext_deprecated` caller to `secretReference`; the adapter refuses after that date | A2 |
+| open | Inventory the production provisioning manifests and adopt existing clients explicitly | A2 |
+
 Every enforcement change follows the same sequence: add the abstraction and
 telemetry without changing the decision; inventory what would be affected;
 provide a compatibility adapter or backfill; enable by bounded cohort; retain
@@ -96,6 +112,33 @@ anything belonging to a principal of equal or higher tier without break-glass.
 - [ ] **(operational)** Inventory the real production manifests and adopt
   existing managed clients explicitly before enabling client-definition
   enforcement
+
+**Proposed production list (2026-10-28, not yet configured).** Rule: a scope
+is privileged when its holder acts beyond the signed-in user's own data —
+another user's or the whole tenant's data, money, infrastructure, delegation or
+publication. Scopes that only release claims or act for the signed-in user stay
+open. A client keeps whatever it already holds, so declaring the list only
+gates new grants.
+
+| Privileged | Why |
+|---|---|
+| `identity.scim`, `identity.tokens`, `identity.vault`, `identity.mcp` | identity administration, token minting, secrets |
+| `personal.tokens.manage`, `genius.executor.delegate` | creates credentials or delegates the user's authority |
+| `provisioning.manage`, `provisioning.installation` | device and account provisioning |
+| `network.control`, `background.jobs` | infrastructure and job control |
+| `telephony.billing`, `endpoints.invoices`, `sufficit.endpoints.n8n.asaas-invoices`, `policies` | money and tenant-wide policy |
+| `sufficit.landing.publish` | public publication |
+| `fleet.api`, `ai.bridge`, `sufficit_ai_openai_bridge` | agent orchestration and model access paid by the tenant |
+
+Open: `openid`, `profile`, `email`, `address`, `roles`, `offline_access`,
+`directives`, `entitlements`, `ai.user`, `chrome.phone`, `endpoints.phone`,
+`endpoints.webcallback`. `identity.management` and `scim` are already the
+reserved floor. All privileged entries use the default capability
+`identity.scopes.grant`; split a capability out only when someone other than a
+full administrator must grant one scope.
+
+Sequence: configure the list in `Observe` on the three nodes, read the
+observed rows after seven days, then `Enforce`.
 
 Operator dimension, privileged scopes, `secretReference` and the plaintext
 adapter delivered 2026-10-28 —
