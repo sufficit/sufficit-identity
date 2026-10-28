@@ -7,7 +7,7 @@
 @* Initial access tokens for dynamic client registration: issued here, one per
    registrant, and shown only once. *@
 <section class="table-card registration-tokens" aria-labelledby="registration-tokens-heading">
-    <div class="table-card__body">
+    <SUIStack Spacing="4" Class="table-card__body">
         <header class="registration-tokens__header">
             <h2 id="registration-tokens-heading">@L["Clients.RegistrationTokens.Title"]</h2>
             <p>@L["Clients.RegistrationTokens.Description"]</p>
@@ -23,7 +23,7 @@
             </SUIAlert>
         }
 
-        <div class="operator-token-fields" data-sui-align-row>
+        <SUIFormGrid Columns="2">
             <IdentityTextField T="string"
                           id="registration-token-label"
                           aria-label="@L["Clients.RegistrationTokens.LabelField"].Value"
@@ -49,9 +49,9 @@
                     <SUISelectItem Value="@hours">@L[$"Clients.RegistrationTokens.Lifetime.{hours}"]</SUISelectItem>
                 }
             </IdentitySelect>
-        </div>
+        </SUIFormGrid>
 
-        <div class="operator-token-fields" data-sui-align-row>
+        <SUIFormGrid Columns="2">
             <IdentityTextField T="string"
                           id="registration-token-grants"
                           aria-label="@L["Clients.RegistrationTokens.GrantsField"].Value"
@@ -75,16 +75,13 @@
                           Value="@scopesText"
                           ValueChanged="@((string value) => scopesText = value)"
                           autocomplete="off" />
-        </div>
+        </SUIFormGrid>
 
-        <div class="registration-tokens__issue">
-            <label class="registration-tokens__single-use">
-                <input type="checkbox"
-                       checked="@singleUse"
-                       disabled="@issuing"
-                       @onchange="eventArgs => singleUse = eventArgs.Value is true" />
-                <span>@L["Clients.RegistrationTokens.SingleUse"]</span>
-            </label>
+        <SUIStack Row="true" Wrap="true" AlignItems="Center" Justify="Between" Spacing="3">
+            <SUICheckbox Label="@L["Clients.RegistrationTokens.SingleUse"].Value"
+                         Value="@singleUse"
+                         ValueChanged="@((bool value) => singleUse = value)"
+                         Disabled="@issuing" />
             <SUILoadingButton IsLoading="@issuing"
                               Disabled="@(!CanIssue)"
                               ColorValue="SUIColor.Primary"
@@ -93,8 +90,7 @@
                 <SUIIcon Name="key" Size="17" />
                 <span>@L["Clients.RegistrationTokens.IssueButton"]</span>
             </SUILoadingButton>
-        </div>
-
+        </SUIStack>
 
         @if (!string.IsNullOrWhiteSpace(revokeError))
         {
@@ -116,87 +112,84 @@
         }
         else
         {
-            <div class="table-scroll">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th scope="col">@L["Clients.RegistrationTokens.ColumnRegistrant"]</th>
-                            <th scope="col">@L["Clients.RegistrationTokens.ColumnFingerprint"]</th>
-                            <th scope="col">@L["Clients.RegistrationTokens.ColumnIssuedBy"]</th>
-                            <th scope="col">@L["Clients.RegistrationTokens.ColumnExpires"]</th>
-                            <th scope="col">@L["Clients.RegistrationTokens.ColumnRegistrations"]</th>
-                            <th scope="col">@L["Clients.RegistrationTokens.ColumnStatus"]</th>
-                            <th scope="col"><span class="visually-hidden">@L["Clients.RegistrationTokens.ColumnActions"]</span></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var token in items)
+            <SUITable TItem="DcrInitialAccessTokenSummary"
+                      Items="items"
+                      RowKey="token => token.Id"
+                      StackOnMobile="true"
+                      ColumnCount="7">
+                <HeaderContent>
+                    <SUITh>@L["Clients.RegistrationTokens.ColumnRegistrant"]</SUITh>
+                    <SUITh>@L["Clients.RegistrationTokens.ColumnFingerprint"]</SUITh>
+                    <SUITh>@L["Clients.RegistrationTokens.ColumnIssuedBy"]</SUITh>
+                    <SUITh>@L["Clients.RegistrationTokens.ColumnExpires"]</SUITh>
+                    <SUITh>@L["Clients.RegistrationTokens.ColumnRegistrations"]</SUITh>
+                    <SUITh>@L["Clients.RegistrationTokens.ColumnStatus"]</SUITh>
+                    <SUITh><span class="visually-hidden">@L["Clients.RegistrationTokens.ColumnActions"]</span></SUITh>
+                </HeaderContent>
+                <RowTemplate Context="token">
+                    <SUITd DataLabel="@L["Clients.RegistrationTokens.ColumnRegistrant"].Value">
+                        @token.Label
+                        @if (token.AllowedGrantTypes is { Count: > 0 } grants)
                         {
-                            <tr>
-                                <td data-label="@L["Clients.RegistrationTokens.ColumnRegistrant"].Value">
-                                    @token.Label
-                                    @if (token.AllowedGrantTypes is { Count: > 0 } grants)
-                                    {
-                                        <span class="registration-hint">@L["Clients.RegistrationTokens.PolicyGrants", string.Join(' ', grants)]</span>
-                                    }
-                                    @if (token.AllowedScopes is { Count: > 0 } scopes)
-                                    {
-                                        <span class="registration-hint">@L["Clients.RegistrationTokens.PolicyScopes", string.Join(' ', scopes)]</span>
-                                    }
-                                </td>
-                                <td data-label="@L["Clients.RegistrationTokens.ColumnFingerprint"].Value"><code>@token.TokenHint</code></td>
-                                <td data-label="@L["Clients.RegistrationTokens.ColumnIssuedBy"].Value"><code>@token.IssuedBy</code></td>
-                                <td data-label="@L["Clients.RegistrationTokens.ColumnExpires"].Value">@FormatInstant(token.ExpiresAtUtc)</td>
-                                <td data-label="@L["Clients.RegistrationTokens.ColumnRegistrations"].Value">
-                                    @token.RegistrationCount
-                                    <span class="registration-hint">
-                                        @(token.SingleUse ? L["Clients.RegistrationTokens.SingleUseBadge"] : L["Clients.RegistrationTokens.ReusableBadge"])
-                                    </span>
-                                </td>
-                                <td data-label="@L["Clients.RegistrationTokens.ColumnStatus"].Value">
-                                    <SUIStatusBadge ToneValue="@StatusTone(token.Status)">@L[$"Clients.RegistrationTokens.Status.{token.Status}"]</SUIStatusBadge>
-                                </td>
-                                <td data-label="@L["Clients.RegistrationTokens.ColumnActions"].Value">
-                                    @if (token.RevokedAtUtc is null)
-                                    {
-                                        @if (pendingRevokeId == token.Id)
-                                        {
-                                            <span>@L["Clients.RegistrationTokens.RevokeConfirmPrompt"]</span>
-                                            <SUILoadingButton IsLoading="@revoking"
-                                                              Disabled="@revoking"
-                                                              SizeValue="SUISize.Small"
-                                                              ColorValue="SUIColor.Error"
-                                                              OnClick="async _ => await RevokeAsync(token.Id)">
-                                                @L["Clients.RegistrationTokens.RevokeConfirm"]
-                                            </SUILoadingButton>
-                                            <SUIButton VariantValue="SUIVariant.Text"
-                                                       ColorValue="SUIColor.Default"
-                                                       SizeValue="SUISize.Small"
-                                                       Disabled="@revoking"
-                                                       OnClick="_ => pendingRevokeId = null">
-                                                @L["Clients.RegistrationTokens.RevokeCancel"]
-                                            </SUIButton>
-                                        }
-                                        else
-                                        {
-                                            <SUIButton VariantValue="SUIVariant.Text"
-                                                       ColorValue="SUIColor.Error"
-                                                       SizeValue="SUISize.Small"
-                                                       OnClick="_ => pendingRevokeId = token.Id">
-                                                @L["Clients.RegistrationTokens.Revoke"]
-                                            </SUIButton>
-                                        }
-                                    }
-                                </td>
-                            </tr>
+                            <span class="registration-hint">@L["Clients.RegistrationTokens.PolicyGrants", string.Join(' ', grants)]</span>
                         }
-                    </tbody>
-                </table>
-            </div>
+                        @if (token.AllowedScopes is { Count: > 0 } scopes)
+                        {
+                            <span class="registration-hint">@L["Clients.RegistrationTokens.PolicyScopes", string.Join(' ', scopes)]</span>
+                        }
+                    </SUITd>
+                    <SUITd DataLabel="@L["Clients.RegistrationTokens.ColumnFingerprint"].Value"><code>@token.TokenHint</code></SUITd>
+                    <SUITd DataLabel="@L["Clients.RegistrationTokens.ColumnIssuedBy"].Value"><code>@token.IssuedBy</code></SUITd>
+                    <SUITd DataLabel="@L["Clients.RegistrationTokens.ColumnExpires"].Value">@FormatInstant(token.ExpiresAtUtc)</SUITd>
+                    <SUITd DataLabel="@L["Clients.RegistrationTokens.ColumnRegistrations"].Value">
+                        @token.RegistrationCount
+                        <span class="registration-hint">
+                            @(token.SingleUse ? L["Clients.RegistrationTokens.SingleUseBadge"] : L["Clients.RegistrationTokens.ReusableBadge"])
+                        </span>
+                    </SUITd>
+                    <SUITd DataLabel="@L["Clients.RegistrationTokens.ColumnStatus"].Value">
+                        <SUIStatusBadge ToneValue="@StatusTone(token.Status)">@L[$"Clients.RegistrationTokens.Status.{token.Status}"]</SUIStatusBadge>
+                    </SUITd>
+                    <SUITd DataLabel="@L["Clients.RegistrationTokens.ColumnActions"].Value">
+                        @if (token.RevokedAtUtc is null)
+                        {
+                            <SUIStack Row="true" Wrap="true" AlignItems="Center" Justify="End" Spacing="2">
+                                @if (pendingRevokeId == token.Id)
+                                {
+                                    <span>@L["Clients.RegistrationTokens.RevokeConfirmPrompt"]</span>
+                                    <SUILoadingButton IsLoading="@revoking"
+                                                      Disabled="@revoking"
+                                                      SizeValue="SUISize.Small"
+                                                      ColorValue="SUIColor.Error"
+                                                      OnClick="async _ => await RevokeAsync(token.Id)">
+                                        @L["Clients.RegistrationTokens.RevokeConfirm"]
+                                    </SUILoadingButton>
+                                    <SUIButton VariantValue="SUIVariant.Text"
+                                               ColorValue="SUIColor.Default"
+                                               SizeValue="SUISize.Small"
+                                               Disabled="@revoking"
+                                               OnClick="_ => pendingRevokeId = null">
+                                        @L["Clients.RegistrationTokens.RevokeCancel"]
+                                    </SUIButton>
+                                }
+                                else
+                                {
+                                    <SUIButton VariantValue="SUIVariant.Text"
+                                               ColorValue="SUIColor.Error"
+                                               SizeValue="SUISize.Small"
+                                               OnClick="_ => pendingRevokeId = token.Id">
+                                        @L["Clients.RegistrationTokens.Revoke"]
+                                    </SUIButton>
+                                }
+                            </SUIStack>
+                        }
+                    </SUITd>
+                </RowTemplate>
+            </SUITable>
         }
             </Success>
         </ManagementDataView>
-    </div>
+    </SUIStack>
 </section>
 
 @code {

@@ -514,6 +514,9 @@
   <data name="Clients.Draft.OperationErrorTitle" xml:space="preserve"><value>Could not complete the operation</value></data>
   <data name="Clients.Draft.StepsAriaLabel" xml:space="preserve"><value>Configuration steps</value></data>
   <data name="Clients.Draft.StepProgress" xml:space="preserve"><value>Step {0} of {1}</value></data>
+  <data name="Clients.Draft.StepStatus.Completed" xml:space="preserve"><value>completed</value></data>
+  <data name="Clients.Draft.StepStatus.Current" xml:space="preserve"><value>current</value></data>
+  <data name="Clients.Draft.StepStatus.Pending" xml:space="preserve"><value>not started</value></data>
   <data name="Clients.Draft.Saving" xml:space="preserve"><value>Saving…</value></data>
   <data name="Clients.Draft.SavedAt" xml:space="preserve"><value>Saved at {0}</value></data>
   <data name="Clients.Draft.ProtectedDraft" xml:space="preserve"><value>Protected draft</value></data>

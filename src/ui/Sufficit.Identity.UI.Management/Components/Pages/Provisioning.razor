@@ -22,7 +22,7 @@
 <AuthorizeView Policy="@ManagementUiPolicies.ManageProvisioningToken">
     <Authorized>
         <section class="temporary-token-panel" aria-labelledby="temporary-token-heading">
-            <div class="temporary-token-panel__copy">
+            <SUIStack Row="true" Wrap="true" AlignItems="Center" Justify="Between" Spacing="4">
                 <div class="temporary-token-panel__heading">
                     <span class="temporary-token-panel__icon">
                         <SUIIcon Name="key" Size="20" />
@@ -32,7 +32,7 @@
                         <p>@L["Provisioning.TemporaryToken.Description"]</p>
                     </div>
                 </div>
-                <div class="temporary-token-panel__controls" data-sui-align-row>
+                <SUIStack Row="true" Wrap="true" AlignItems="End" Spacing="3" data-sui-align-row>
                     <IdentitySelect T="int"
                                id="provisioning-token-lifetime"
                                aria-label="@L["Provisioning.TemporaryToken.LifetimeLabel"].Value"
@@ -55,28 +55,26 @@
                         <SUIIcon Name="key" Size="17" />
                         <span>@L["Provisioning.TemporaryToken.GenerateButton"]</span>
                     </SUILoadingButton>
-                </div>
-            </div>
+                </SUIStack>
+            </SUIStack>
 
             @if (tokenResult?.IsSuccess is true && !tokenDialogOpen)
             {
-                <div class="inline-notice inline-notice--success" role="status">
-                    <SUIIcon Name="check" Size="19" />
+                <SUIAlert ToneValue="SUITone.Success" Icon="check" role="status">
                     <div>
                         <strong>@L["Provisioning.TemporaryToken.HiddenTitle"]</strong>
                         <span>@L["Provisioning.TemporaryToken.HiddenDescription"]</span>
                     </div>
-                </div>
+                </SUIAlert>
             }
             else if (tokenResult?.IsSuccess is false)
             {
-                <div class="inline-notice inline-notice--danger" role="alert">
-                    <SUIIcon Name="alert" Size="19" />
+                <SUIAlert ToneValue="SUITone.Danger" Icon="alert">
                     <div>
                         <strong>@TokenErrorTitle</strong>
                         <span>@tokenResult.ErrorMessage</span>
                     </div>
-                </div>
+                </SUIAlert>
             }
         </section>
     </Authorized>
@@ -101,8 +99,7 @@
 
 @if (OperationResult?.IsSuccess is false)
 {
-    <div class="inline-notice inline-notice--danger" role="alert">
-        <SUIIcon Name="alert" Size="19" />
+    <SUIAlert ToneValue="SUITone.Danger" Icon="alert">
         <div>
             <strong>@ErrorTitle</strong>
             <span>@OperationResult.ErrorMessage</span>
@@ -116,17 +113,16 @@
                 </ul>
             }
         </div>
-    </div>
+    </SUIAlert>
 }
 else if (applyResult?.IsSuccess is true)
 {
-    <div class="inline-notice inline-notice--success" role="status">
-        <SUIIcon Name="check" Size="19" />
+    <SUIAlert ToneValue="SUITone.Success" Icon="check" role="status">
         <div>
             <strong>@L["Provisioning.Applied.Title"]</strong>
             <span>@L["Provisioning.Applied.Description"]</span>
         </div>
-    </div>
+    </SUIAlert>
 }
 
 <div class="provisioning-grid">
@@ -138,29 +134,30 @@ else if (applyResult?.IsSuccess is true)
             </div>
             <SUIStatusBadge ToneValue="SUITone.Neutral">@L["Provisioning.Manifest.SchemaBadge"]</SUIStatusBadge>
         </div>
-        <label class="manifest-editor">
-            <span class="visually-hidden">@L["Provisioning.Manifest.VisuallyHidden"]</span>
-            <textarea spellcheck="false"
-                      autocomplete="off"
-                      maxlength="@ManagementProvisioningDataSource.MaxManifestLength"
-                      aria-describedby="manifest-guidance manifest-count"
-                      @bind="ManifestJson"
-                      @bind:event="oninput"></textarea>
-        </label>
-        <footer class="manifest-actions">
-            <div>
-                <span id="manifest-guidance">@L["Provisioning.Manifest.Guidance"]</span>
-                <span id="manifest-count">@L["Provisioning.Manifest.CountFormat", ManifestJson.Length.ToString("N0"), ManagementProvisioningDataSource.MaxManifestLength.ToString("N0")]</span>
-            </div>
-            <SUILoadingButton IsLoading="@previewing"
-                              Disabled="@IsBusy"
-                              ColorValue="SUIColor.Primary"
-                              OnClick="PreviewAsync"
-                              aria-busy="@previewing">
-                <SUIIcon Name="search" Size="17" />
-                <span>@L["Capability.Label.Preview"]</span>
-            </SUILoadingButton>
-        </footer>
+        <SUIStack Spacing="3" Class="manifest-body">
+            <IdentityTextField T="string"
+                               Id="provisioning-manifest"
+                               Multiline="true"
+                               Rows="16"
+                               Immediate="true"
+                               MaxLength="@ManagementProvisioningDataSource.MaxManifestLength"
+                               HelperText="@ManifestHelp"
+                               Value="@ManifestJson"
+                               ValueChanged="@((string? value) => ManifestJson = value ?? string.Empty)"
+                               aria-label="@L["Provisioning.Manifest.VisuallyHidden"].Value"
+                               spellcheck="false"
+                               autocomplete="off" />
+            <SUIStack Row="true" Justify="End">
+                <SUILoadingButton IsLoading="@previewing"
+                                  Disabled="@IsBusy"
+                                  ColorValue="SUIColor.Primary"
+                                  OnClick="PreviewAsync"
+                                  aria-busy="@previewing">
+                    <SUIIcon Name="search" Size="17" />
+                    <span>@L["Capability.Label.Preview"]</span>
+                </SUILoadingButton>
+            </SUIStack>
+        </SUIStack>
     </div>
 
     <aside class="safety-panel" aria-labelledby="safety-heading">
@@ -199,63 +196,56 @@ else if (applyResult?.IsSuccess is true)
         }
         else
         {
-            <div class="table-scroll">
-                <table class="data-table data-table--provisioning">
-                    <thead>
-                        <tr>
-                            <th scope="col">@L["Provisioning.Plan.Table.Resource"]</th>
-                            <th scope="col">@L["Provisioning.Plan.Table.Identifier"]</th>
-                            <th scope="col">@L["Provisioning.Plan.Table.Result"]</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var change in Plan.Changes)
-                        {
-                            <tr>
-                                <td data-label="@L["Provisioning.Plan.Table.Resource"].Value">@ResourceLabel(change.ResourceType)</td>
-                                <td data-label="@L["Provisioning.Plan.Table.Identifier"].Value"><code>@change.Identifier</code></td>
-                                <td data-label="@L["Provisioning.Plan.Table.Result"].Value">
-                                    <SUIStatusBadge ToneValue="@IdentitySuiTone.From(ChangeTone(change.Kind))">
-                                        @ChangeLabel(change.Kind)
-                                    </SUIStatusBadge>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
+            <SUITable TItem="IdentityManifestChange"
+                      Items="Plan.Changes"
+                      StackOnMobile="true"
+                      ColumnCount="3">
+                <HeaderContent>
+                    <SUITh>@L["Provisioning.Plan.Table.Resource"]</SUITh>
+                    <SUITh>@L["Provisioning.Plan.Table.Identifier"]</SUITh>
+                    <SUITh>@L["Provisioning.Plan.Table.Result"]</SUITh>
+                </HeaderContent>
+                <RowTemplate Context="change">
+                    <SUITd DataLabel="@L["Provisioning.Plan.Table.Resource"].Value">@ResourceLabel(change.ResourceType)</SUITd>
+                    <SUITd DataLabel="@L["Provisioning.Plan.Table.Identifier"].Value"><code>@change.Identifier</code></SUITd>
+                    <SUITd DataLabel="@L["Provisioning.Plan.Table.Result"].Value">
+                        <SUIStatusBadge ToneValue="@IdentitySuiTone.From(ChangeTone(change.Kind))">
+                            @ChangeLabel(change.Kind)
+                        </SUIStatusBadge>
+                    </SUITd>
+                </RowTemplate>
+            </SUITable>
         }
 
         @if (applyResult?.IsSuccess is not true)
         {
             <footer class="provisioning-apply">
-                @if (Plan.HasChanges)
-                {
-                    <label class="provisioning-confirmation">
-                        <input type="checkbox"
-                               disabled="@IsBusy"
-                               @bind="confirmed" />
-                        <span>
-                            <strong>@L["Provisioning.Plan.ConfirmLabel"]</strong>
-                            <small>@L["Provisioning.Plan.ConfirmHint"]</small>
+                <SUIStack Row="true" Wrap="true" AlignItems="Center" Justify="Between" Spacing="4">
+                    @if (Plan.HasChanges)
+                    {
+                        <SUISwitch Id="provisioning-confirmation"
+                                   Label="@L["Provisioning.Plan.ConfirmLabel"].Value"
+                                   HelperText="@L["Provisioning.Plan.ConfirmHint"].Value"
+                                   Disabled="@IsBusy"
+                                   Value="@confirmed"
+                                   ValueChanged="@((bool value) => confirmed = value)" />
+                        <SUILoadingButton IsLoading="@applying"
+                                          Disabled="@(!CanApply)"
+                                          ColorValue="SUIColor.Error"
+                                          OnClick="ApplyAsync"
+                                          aria-busy="@applying">
+                            <SUIIcon Name="workflow" Size="17" />
+                            <span>@L["Provisioning.Plan.ApplyButton"]</span>
+                        </SUILoadingButton>
+                    }
+                    else
+                    {
+                        <span class="provisioning-current">
+                            <SUIIcon Name="check" Size="18" />
+                            @L["Provisioning.Plan.AlreadyCurrent"]
                         </span>
-                    </label>
-                    <SUILoadingButton IsLoading="@applying"
-                                      Disabled="@(!CanApply)"
-                                      ColorValue="SUIColor.Error"
-                                      OnClick="ApplyAsync"
-                                      aria-busy="@applying">
-                        <SUIIcon Name="workflow" Size="17" />
-                        <span>@L["Provisioning.Plan.ApplyButton"]</span>
-                    </SUILoadingButton>
-                }
-                else
-                {
-                    <span class="provisioning-current">
-                        <SUIIcon Name="check" Size="18" />
-                        @L["Provisioning.Plan.AlreadyCurrent"]
-                    </span>
-                }
+                    }
+                </SUIStack>
             </footer>
         }
     </div>
@@ -306,6 +296,11 @@ else if (applyResult?.IsSuccess is true)
     }
 
     private bool IsBusy => previewing || applying || tokenIssuing;
+
+    private string ManifestHelp =>
+        L["Provisioning.Manifest.Guidance"].Value
+        + " "
+        + L["Provisioning.Manifest.CountFormat", manifestJson.Length.ToString("N0"), ManagementProvisioningDataSource.MaxManifestLength.ToString("N0")].Value;
 
     private string TokenExpirationLabel(DateTimeOffset? expiresAt) =>
         Time.Format(expiresAt, TimeStyle.DateTimeSeconds)

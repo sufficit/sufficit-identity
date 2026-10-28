@@ -514,6 +514,9 @@
   <data name="Clients.Draft.OperationErrorTitle" xml:space="preserve"><value>Não foi possível concluir a operação</value></data>
   <data name="Clients.Draft.StepsAriaLabel" xml:space="preserve"><value>Etapas da configuração</value></data>
   <data name="Clients.Draft.StepProgress" xml:space="preserve"><value>Etapa {0} de {1}</value></data>
+  <data name="Clients.Draft.StepStatus.Completed" xml:space="preserve"><value>concluída</value></data>
+  <data name="Clients.Draft.StepStatus.Current" xml:space="preserve"><value>atual</value></data>
+  <data name="Clients.Draft.StepStatus.Pending" xml:space="preserve"><value>não iniciada</value></data>
   <data name="Clients.Draft.Saving" xml:space="preserve"><value>Salvando…</value></data>
   <data name="Clients.Draft.SavedAt" xml:space="preserve"><value>Salvo às {0}</value></data>
   <data name="Clients.Draft.ProtectedDraft" xml:space="preserve"><value>Rascunho protegido</value></data>

@@ -30,37 +30,14 @@
     background: var(--line);
 }
 
+.manifest-panel ::deep .manifest-body {
+    padding: 18px;
+}
+
 .provisioning-grid {
     display: grid;
     grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.65fr);
     gap: 20px;
-}
-
-.manifest-editor {
-    display: block;
-    padding: 18px;
-}
-
-.manifest-editor textarea {
-    width: 100%;
-    min-height: 340px;
-    resize: vertical;
-    padding: 18px;
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    outline: none;
-    background: #201e1f;
-    color: #f4f3f4;
-    font-family: var(--font-mono);
-    font-size: 12px;
-    line-height: 1.65;
-    opacity: 1;
-    -webkit-text-fill-color: #f4f3f4;
-}
-
-.manifest-editor textarea:focus-visible {
-    border-color: #f4f3f4;
-    box-shadow: 0 0 0 3px rgba(244, 243, 244, 0.18);
 }
 
 .safety-panel {
@@ -114,17 +91,10 @@
     background: var(--info-soft);
 }
 
-.temporary-token-panel__copy,
 .temporary-token-panel__heading {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-}
-
-.temporary-token-panel__heading {
     align-items: flex-start;
-    justify-content: flex-start;
+    gap: 16px;
 }
 
 .temporary-token-panel__icon {
@@ -150,12 +120,6 @@
     color: #3f5e8e;
     font-size: 11px;
     line-height: 1.55;
-}
-
-.temporary-token-panel__controls {
-    display: flex;
-    align-items: flex-end;
-    gap: 10px;
 }
 
 .provisioning-errors {
@@ -202,45 +166,9 @@
 }
 
 .provisioning-apply {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 20px;
     padding: 18px 20px;
     border-top: 1px solid var(--line);
     background: var(--surface-subtle);
-}
-
-.provisioning-confirmation {
-    display: flex;
-    max-width: 620px;
-    align-items: flex-start;
-    gap: 11px;
-    cursor: pointer;
-}
-
-.provisioning-confirmation input {
-    width: 17px;
-    height: 17px;
-    flex: 0 0 17px;
-    margin-top: 2px;
-    accent-color: var(--brand);
-}
-
-.provisioning-confirmation span {
-    display: grid;
-    gap: 3px;
-}
-
-.provisioning-confirmation strong {
-    color: var(--ink-strong);
-    font-size: 12px;
-}
-
-.provisioning-confirmation small {
-    color: var(--ink-muted);
-    font-size: 11px;
-    line-height: 1.45;
 }
 
 .provisioning-current {
@@ -266,34 +194,6 @@
 
     .provisioning-grid { grid-template-columns: minmax(0, 1fr); }
 
-    .temporary-token-panel__copy {
-            align-items: stretch;
-            flex-direction: column;
-    }
-
-    .temporary-token-panel__controls {
-            align-items: stretch;
-            flex-direction: column;
-    }
-
-    .temporary-token-panel__controls ::deep .sui-btn { width: 100%; }
-
-    .manifest-editor { padding: 12px; }
-
-    .manifest-editor textarea {
-            min-height: 280px;
-            padding: 14px;
-            font-size: 11px;
-    }
-
-    .provisioning-apply ::deep > .sui-btn { width: 100%; }
-
-    .provisioning-plan .data-toolbar,
-    .provisioning-apply {
-            align-items: stretch;
-            flex-direction: column;
-    }
-
     .provisioning-plan__counts {
             display: grid;
             grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -301,5 +201,8 @@
 
     .provisioning-plan__counts span { justify-content: center; }
 
-    .provisioning-apply ::deep .button { width: 100%; }
+    .provisioning-plan .data-toolbar {
+            align-items: stretch;
+            flex-direction: column;
+    }
 }

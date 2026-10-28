@@ -15,7 +15,7 @@ public sealed partial class ManagementUiArchitectureTests
     [InlineData("Sufficit.Identity.UI", "wwwroot/css/site.css")]
     [InlineData("Sufficit.Identity.UI.Management", "Components/Pages/OperatorTokens.razor.css")]
     [InlineData("Sufficit.Identity.UI.Management", "Components/Pages/Provisioning.razor.css")]
-    [InlineData("Sufficit.Identity.UI.Management", "Components/RegistrationTokenPanel.razor.css")]
+    [InlineData("Sufficit.Identity.UI.Management", "Components/Pages/ClientDraft.razor.css")]
     [InlineData("Sufficit.Identity.UI.Management", "Components/OneTimeTokenDialog.razor.css")]
     public void Stylesheet_selector_lists_are_not_split(string project, string file)
     {

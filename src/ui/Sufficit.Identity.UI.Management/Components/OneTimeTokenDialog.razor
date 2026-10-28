@@ -17,26 +17,32 @@
     {
         <SUIStatusBadge ToneValue="SUITone.Warning">@Request.ExpiresLabel</SUIStatusBadge>
     }
-    <textarea class="operator-token-value one-time-token-dialog__value"
-              aria-label="@Request.AriaLabel"
-              readonly
-              spellcheck="false"
-              autocomplete="off">@Request.Token</textarea>
+    <IdentityTextField T="string"
+                       Class="one-time-token-dialog__value"
+                       Multiline="true"
+                       Rows="4"
+                       Value="@Request.Token"
+                       aria-label="@Request.AriaLabel"
+                       readonly
+                       spellcheck="false"
+                       autocomplete="off" />
     @if (!string.IsNullOrEmpty(Request.Detail))
     {
         <p class="one-time-token-dialog__detail">@Request.Detail</p>
     }
     @if (clipboardUnavailable)
     {
-        <p class="operator-token-clipboard-note" role="alert">@L["OneTimeToken.ClipboardBlocked"]</p>
+        <SUIAlert ToneValue="SUITone.Warning" Icon="warning" Class="one-time-token-dialog__notice">
+            @L["OneTimeToken.ClipboardBlocked"]
+        </SUIAlert>
     }
     @if (confirmingDiscard)
     {
-        <div class="one-time-token-dialog__discard" role="alert">
+        <SUIAlert ToneValue="SUITone.Warning" Icon="warning" Class="one-time-token-dialog__notice">
             <strong>@L["OneTimeToken.DiscardTitle"]</strong>
             <span>@L["OneTimeToken.DiscardMessage"]</span>
-        </div>
-        <footer class="sui-dialog__actions">
+        </SUIAlert>
+        <SUIStack Row="true" Wrap="true" Justify="End" Spacing="2" Class="one-time-token-dialog__actions">
             <SUIButton VariantValue="SUIVariant.Text"
                        ColorValue="SUIColor.Error"
                        OnClick="Discard">
@@ -44,15 +50,15 @@
             </SUIButton>
             <SUIButton VariantValue="SUIVariant.Filled"
                        ColorValue="SUIColor.Primary"
+                       StartIcon="@SUIIcons.Copy"
                        OnClick="CopyAsync">
-                <SUIIcon Name="@SUIIcons.Copy" Size="17" />
                 @(Request.CopyLabel ?? L["OneTimeToken.Copy"])
             </SUIButton>
-        </footer>
+        </SUIStack>
     }
     else
     {
-        <footer class="sui-dialog__actions">
+        <SUIStack Row="true" Wrap="true" Justify="End" Spacing="2" Class="one-time-token-dialog__actions">
             <SUIButton VariantValue="SUIVariant.Text"
                        ColorValue="SUIColor.Default"
                        OnClick="RequestClose">
@@ -60,11 +66,11 @@
             </SUIButton>
             <SUIButton VariantValue="SUIVariant.Filled"
                        ColorValue="SUIColor.Primary"
+                       StartIcon="@SUIIcons.Copy"
                        OnClick="CopyAsync">
-                <SUIIcon Name="@SUIIcons.Copy" Size="17" />
                 @(copied ? L["OneTimeToken.Copied"] : Request.CopyLabel ?? L["OneTimeToken.Copy"])
             </SUIButton>
-        </footer>
+        </SUIStack>
     }
 </div>
 

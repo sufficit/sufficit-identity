@@ -9,33 +9,30 @@
 <SUIPageHeader Title="@L["Clients.Registrations.Title"].Value"
             Description="@L["Clients.Registrations.Description"].Value">
     <Actions>
-        <a class="button button--secondary" href="clients">
-            <SUIIcon Name="key" Size="17" />
+        <SUIButton Href="clients" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" StartIcon="key">
             @L["Clients.Registrations.AllApplications"]
-        </a>
+        </SUIButton>
     </Actions>
 </SUIPageHeader>
 
 @if (!string.IsNullOrWhiteSpace(RevokedClientId))
 {
-    <div class="inline-notice inline-notice--success" role="status">
-        <SUIIcon Name="check" Size="19" />
+    <SUIAlert ToneValue="SUITone.Success" Icon="check" role="status">
         <div>
             <strong>@L["Clients.Registrations.RevokedTitle"]</strong>
             <span>@L["Clients.Registrations.RevokedMessagePrefix"] <code>@RevokedClientId</code> @L["Clients.Registrations.RevokedMessageSuffix"]</span>
         </div>
-    </div>
+    </SUIAlert>
 }
 
 @if (!string.IsNullOrWhiteSpace(RevokeError))
 {
-    <div class="inline-notice inline-notice--danger" role="alert">
-        <SUIIcon Name="alert-triangle" Size="19" />
+    <SUIAlert ToneValue="SUITone.Danger" Icon="warning">
         <div>
             <strong>@L["Clients.Registrations.RevokeErrorTitle"]</strong>
             <span>@RevokeError</span>
         </div>
-    </div>
+    </SUIAlert>
 }
 
 <RegistrationTokenPanel />
@@ -54,77 +51,78 @@
         }
         else
         {
-            <div class="table-scroll">
-                <table class="data-table data-table--clients">
-                    <thead>
-                        <tr>
-                            <th scope="col">@L["Clients.Registrations.ColumnApplication"]</th>
-                            <th scope="col">Client ID</th>
-                            <th scope="col">@L["Clients.Registrations.ColumnRegisteredAt"]</th>
-                            <th scope="col">@L["Clients.Registrations.ColumnOrigin"]</th>
-                            <th scope="col">Gate</th>
-                            <th scope="col"><span class="visually-hidden">@L["Clients.Registrations.ColumnActions"]</span></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var client in loadedPage.Items)
+            <SUITable TItem="ManagementClientSummary"
+                      Items="loadedPage.Items"
+                      RowKey="client => client.Id"
+                      StackOnMobile="true"
+                      ColumnCount="6">
+                <HeaderContent>
+                    <SUITh>@L["Clients.Registrations.ColumnApplication"]</SUITh>
+                    <SUITh>Client ID</SUITh>
+                    <SUITh>@L["Clients.Registrations.ColumnRegisteredAt"]</SUITh>
+                    <SUITh>@L["Clients.Registrations.ColumnOrigin"]</SUITh>
+                    <SUITh>Gate</SUITh>
+                    <SUITh><span class="visually-hidden">@L["Clients.Registrations.ColumnActions"]</span></SUITh>
+                </HeaderContent>
+                <RowTemplate Context="client">
+                    <SUITd DataLabel="@L["Clients.Registrations.ColumnApplication"].Value">
+                        <a class="client-name client-link" href="@ClientHref(client.Id)">
+                            @(string.IsNullOrWhiteSpace(client.DisplayName)
+                                ? client.ClientId
+                                : client.DisplayName)
+                        </a>
+                        @if (client.Status == "disabled")
                         {
-                            <tr>
-                                <td data-label="@L["Clients.Registrations.ColumnApplication"].Value">
-                                    <a class="client-name client-link" href="@ClientHref(client.Id)">
-                                        @(string.IsNullOrWhiteSpace(client.DisplayName)
-                                            ? client.ClientId
-                                            : client.DisplayName)
-                                    </a>
-                                    @if (client.Status == "disabled")
-                                    {
-                                        <SUIStatusBadge ToneValue="SUITone.Danger">@L["Clients.State.Disabled"]</SUIStatusBadge>
-                                    }
-                                </td>
-                                <td data-label="Client ID">
-                                    <code class="client-id">@client.ClientId</code>
-                                </td>
-                                <td data-label="@L["Clients.Registrations.ColumnRegisteredAt"].Value">
-                                    @(client.RegisteredAtUtc is { } instant
-                                        ? Time.Format(instant)
-                                        : "—")
-                                </td>
-                                <td data-label="@L["Clients.Registrations.ColumnOrigin"].Value">
-                                    <span class="registration-state">
-                                        <code>@(client.RegisteredFromAddress ?? "—")</code>
-                                    </span>
-                                    @if (!string.IsNullOrWhiteSpace(client.RegisteredUserAgent))
-                                    {
-                                        <span class="registration-hint" title="@client.RegisteredUserAgent">
-                                            @Truncate(client.RegisteredUserAgent!, 48)
-                                        </span>
-                                    }
-                                </td>
-                                <td data-label="Gate">
-                                    <SUIStatusBadge ToneValue="@IdentitySuiTone.From(
-                                        client.RegisteredAnonymously ? "warning" : "success")">
-                                        @(client.RegisteredAnonymously
-                                            ? L["Clients.Registrations.AnonymousMcpProfile"]
-                                            : L["Clients.Registrations.InitialToken"])
-                                    </SUIStatusBadge>
-                                </td>
-                                <td data-label="@L["Clients.Registrations.ColumnActions"].Value">
-                                    <a class="row-action" href="@ClientHref(client.Id)">
-                                        @L["Clients.Registrations.Details"]
-                                        <SUIIcon Name="arrow-right" Size="15" />
-                                    </a>
-                                    <button class="row-action row-action--danger"
-                                            type="button"
-                                            disabled="@(RevokingClientId == client.ClientId)"
-                                            @onclick="() => RevokeAsync(client.ClientId)">
-                                        @(RevokingClientId == client.ClientId ? L["Clients.Registrations.Revoking"] : L["Clients.Registrations.Revoke"])
-                                    </button>
-                                </td>
-                            </tr>
+                            <SUIStatusBadge ToneValue="SUITone.Danger">@L["Clients.State.Disabled"]</SUIStatusBadge>
                         }
-                    </tbody>
-                </table>
-            </div>
+                    </SUITd>
+                    <SUITd DataLabel="Client ID">
+                        <code class="client-id">@client.ClientId</code>
+                    </SUITd>
+                    <SUITd DataLabel="@L["Clients.Registrations.ColumnRegisteredAt"].Value">
+                        @(client.RegisteredAtUtc is { } instant
+                            ? Time.Format(instant)
+                            : "—")
+                    </SUITd>
+                    <SUITd DataLabel="@L["Clients.Registrations.ColumnOrigin"].Value">
+                        <span class="registration-state">
+                            <code>@(client.RegisteredFromAddress ?? "—")</code>
+                        </span>
+                        @if (!string.IsNullOrWhiteSpace(client.RegisteredUserAgent))
+                        {
+                            <span class="registration-hint" title="@client.RegisteredUserAgent">
+                                @Truncate(client.RegisteredUserAgent!, 48)
+                            </span>
+                        }
+                    </SUITd>
+                    <SUITd DataLabel="Gate">
+                        <SUIStatusBadge ToneValue="@IdentitySuiTone.From(
+                            client.RegisteredAnonymously ? "warning" : "success")">
+                            @(client.RegisteredAnonymously
+                                ? L["Clients.Registrations.AnonymousMcpProfile"]
+                                : L["Clients.Registrations.InitialToken"])
+                        </SUIStatusBadge>
+                    </SUITd>
+                    <SUITd DataLabel="@L["Clients.Registrations.ColumnActions"].Value">
+                        <SUIStack Row="true" AlignItems="Center" Justify="End" Spacing="2" Wrap="false">
+                            <SUIButton Href="@ClientHref(client.Id)"
+                                       VariantValue="SUIVariant.Text"
+                                       SizeValue="SUISize.Small"
+                                       EndIcon="arrow-right">
+                                @L["Clients.Registrations.Details"]
+                            </SUIButton>
+                            <SUILoadingButton VariantValue="SUIVariant.Text"
+                                              ColorValue="SUIColor.Error"
+                                              SizeValue="SUISize.Small"
+                                              IsLoading="@(RevokingClientId == client.ClientId)"
+                                              Disabled="@(RevokingClientId == client.ClientId)"
+                                              OnClick="() => RevokeAsync(client.ClientId)">
+                                @(RevokingClientId == client.ClientId ? L["Clients.Registrations.Revoking"] : L["Clients.Registrations.Revoke"])
+                            </SUILoadingButton>
+                        </SUIStack>
+                    </SUITd>
+                </RowTemplate>
+            </SUITable>
         }
             </Success>
         </ManagementDataView>
@@ -134,21 +132,21 @@
         <span aria-live="polite" aria-atomic="true">@ResultCountLabel</span>
         @if (Page is { PageCount: > 1 })
         {
-            <div class="pagination">
-                <button class="button button--ghost"
-                        type="button"
-                        disabled="@(CurrentPage <= 1)"
-                        @onclick="() => GoToPageAsync(CurrentPage - 1)">
+            <SUIStack Row="true" AlignItems="Center" Spacing="2" Wrap="false">
+                <SUIButton VariantValue="SUIVariant.Text"
+                           ColorValue="SUIColor.Default"
+                           Disabled="@(CurrentPage <= 1)"
+                           OnClick="() => GoToPageAsync(CurrentPage - 1)">
                     @L["Clients.Registrations.Previous"]
-                </button>
+                </SUIButton>
                 <span>@L["Clients.Registrations.PageOf", Page.Page, Page.PageCount]</span>
-                <button class="button button--ghost"
-                        type="button"
-                        disabled="@(CurrentPage >= Page.PageCount)"
-                        @onclick="() => GoToPageAsync(CurrentPage + 1)">
+                <SUIButton VariantValue="SUIVariant.Text"
+                           ColorValue="SUIColor.Default"
+                           Disabled="@(CurrentPage >= Page.PageCount)"
+                           OnClick="() => GoToPageAsync(CurrentPage + 1)">
                     @L["Clients.Registrations.Next"]
-                </button>
-            </div>
+                </SUIButton>
+            </SUIStack>
         }
     </footer>
 </section>

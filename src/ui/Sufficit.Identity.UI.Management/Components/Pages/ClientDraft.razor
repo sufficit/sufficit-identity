@@ -23,13 +23,13 @@
                     UnavailableTitle="@L["Clients.Draft.OpenErrorTitle"].Value">
     <LoadingContent>
         <div class="wizard-loading" aria-label="@L["Clients.Draft.LoadingAriaLabel"].Value">
-            <span class="button-spinner" aria-hidden="true"></span>
+            <SUIProgressCircular Indeterminate="true" AriaLabel="@L["Clients.Draft.LoadingAriaLabel"].Value" />
             <p>@L["Clients.Draft.RecoveringDraft"]</p>
         </div>
     </LoadingContent>
     <FailureActions>
-        <a class="button button--primary" href="clients/new">@L["Clients.Draft.StartNewApplication"]</a>
-        <a class="button button--secondary" href="clients">@L["Clients.Create.Back"]</a>
+        <SUIButton Href="clients/new" ColorValue="SUIColor.Primary">@L["Clients.Draft.StartNewApplication"]</SUIButton>
+        <SUIButton Href="clients" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">@L["Clients.Create.Back"]</SUIButton>
     </FailureActions>
     <Success Context="_">
 @if (completion is not null)
@@ -44,10 +44,10 @@
             <h2 id="completion-heading">@completion.Client.DisplayName</h2>
             <p>Client ID: <code>@completion.Client.ClientId</code></p>
         </div>
-        <div class="wizard-actions wizard-actions--complete">
-            <a class="button button--primary" href="@ClientHref(completion.Client.Id)">@L["Clients.Draft.OpenApplication"]</a>
-            <a class="button button--secondary" href="clients">@L["Clients.Create.Back"]</a>
-        </div>
+        <SUIStack Row="true" Wrap="true" Spacing="2">
+            <SUIButton Href="@ClientHref(completion.Client.Id)" ColorValue="SUIColor.Primary">@L["Clients.Draft.OpenApplication"]</SUIButton>
+            <SUIButton Href="clients" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">@L["Clients.Create.Back"]</SUIButton>
+        </SUIStack>
     </div>
 }
 else
@@ -56,41 +56,35 @@ else
     <SUIPageHeader Title="@L["Clients.Draft.PageTitle"].Value"
                 Description="@L["Clients.Draft.WizardDescription"].Value">
         <Actions>
-            <a class="button button--secondary" href="clients">@L["Clients.Draft.SaveAndExit"]</a>
+            <SUIButton Href="clients" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">@L["Clients.Draft.SaveAndExit"]</SUIButton>
         </Actions>
     </SUIPageHeader>
 
     @if (!string.IsNullOrWhiteSpace(errorMessage))
     {
-        <div class="inline-notice inline-notice--danger" role="alert">
-            <SUIIcon Name="alert" Size="19" />
-            <div><strong>@L["Clients.Draft.OperationErrorTitle"]</strong><span>@errorMessage</span></div>
-        </div>
+        <SUIAlert ToneValue="SUITone.Danger" Icon="alert">
+            <div><strong>@L["Clients.Draft.OperationErrorTitle"]</strong> <span>@errorMessage</span></div>
+        </SUIAlert>
     }
 
     <div class="wizard-shell">
-        <nav class="wizard-progress" aria-label="@L["Clients.Draft.StepsAriaLabel"].Value">
+        <div class="draft-progress">
             <div class="wizard-progress__summary">
                 <span>@L["Clients.Draft.StepProgress", CurrentStepIndex + 1, Steps.Length]</span>
                 <strong>@CurrentStep.Label</strong>
             </div>
-            <ol>
-                @foreach (var step in Steps.Select((item, index) => (item, index)))
-                {
-                    <li class="@(step.index == CurrentStepIndex ? "is-current" : step.index < CurrentStepIndex ? "is-complete" : null)">
-                        <button type="button"
-                                aria-current="@(step.index == CurrentStepIndex ? "step" : null)"
-                                @onclick="() => GoToStepAsync(step.item.Id)">
-                            <span>@(step.index + 1)</span>
-                            <strong>@step.item.ShortLabel</strong>
-                        </button>
-                    </li>
-                }
-            </ol>
+            <SUIProgressSteps Steps="StepLabels"
+                              ActiveIndex="CurrentStepIndex"
+                              MaxReachableIndex="@(Steps.Length - 1)"
+                              ActiveIndexChanged="StepSelectedAsync"
+                              AriaLabel="@L["Clients.Draft.StepsAriaLabel"].Value"
+                              CompletedStatusLabel="@L["Clients.Draft.StepStatus.Completed"].Value"
+                              CurrentStatusLabel="@L["Clients.Draft.StepStatus.Current"].Value"
+                              PendingStatusLabel="@L["Clients.Draft.StepStatus.Pending"].Value" />
             <div class="wizard-save-state" aria-live="polite">
                 @if (saving)
                 {
-                    <span class="button-spinner" aria-hidden="true"></span>
+                    <SUIProgressCircular Indeterminate="true" SizeValue="SUISize.Small" />
                     <span>@L["Clients.Draft.Saving"]</span>
                 }
                 else if (savedAt is not null)
@@ -104,7 +98,7 @@ else
                     <span>@L["Clients.Draft.ProtectedDraft"]</span>
                 }
             </div>
-        </nav>
+        </div>
 
         <main class="wizard-stage" aria-labelledby="wizard-stage-heading">
             <header class="wizard-stage__heading">
@@ -115,30 +109,29 @@ else
 
             @if (CurrentStep.Id == ManagementClientDraftSteps.Identity)
             {
-                <div class="form-grid form-grid--two">
-                    <div class="field-group">
-                        <label for="client-display-name">@L["Clients.Draft.AppNameLabel"]</label>
-                        <input id="client-display-name" name="displayName" class="form-control"
-                               autocomplete="organization" value="@draft!.Values.DisplayName"
-                               @oninput="DisplayNameChangedAsync" />
-                        <span class="field-hint">@L["Clients.Draft.AppNameHint"]</span>
-                        @foreach (var issue in IssuesFor("displayName"))
-                        {
-                            <span class="field-feedback field-feedback--@IssueTone(issue)">@issue.Message</span>
-                        }
-                    </div>
-                    <div class="field-group">
-                        <label for="client-id">Client ID</label>
-                        <input id="client-id" name="clientId" class="form-control technical-value"
-                               autocomplete="off" spellcheck="false" value="@draft.Values.ClientId"
-                               @oninput="ClientIdChangedAsync" />
-                        <span class="field-hint">@L["Clients.Draft.ClientIdHintPrefix"] <code>portal_web</code>.</span>
-                        @foreach (var issue in IssuesFor("clientId"))
-                        {
-                            <span class="field-feedback field-feedback--@IssueTone(issue)">@issue.Message</span>
-                        }
-                    </div>
-                </div>
+                <SUIFormGrid Columns="2">
+                    <IdentityTextField T="string"
+                                       Id="client-display-name"
+                                       Name="displayName"
+                                       Label="@L["Clients.Draft.AppNameLabel"].Value"
+                                       HelperText="@FieldHelp(L["Clients.Draft.AppNameHint"].Value, "displayName")"
+                                       ErrorText="@FieldErrors("displayName")"
+                                       Immediate="true"
+                                       Value="@draft!.Values.DisplayName"
+                                       ValueChanged="DisplayNameChangedAsync"
+                                       autocomplete="organization" />
+                    <IdentityTextField T="string"
+                                       Id="client-id"
+                                       Name="clientId"
+                                       Label="Client ID"
+                                       HelperText="@FieldHelp(L["Clients.Draft.ClientIdHintPrefix"].Value + " portal_web.", "clientId")"
+                                       ErrorText="@FieldErrors("clientId")"
+                                       Immediate="true"
+                                       Value="@draft.Values.ClientId"
+                                       ValueChanged="ClientIdChangedAsync"
+                                       autocomplete="off"
+                                       spellcheck="false" />
+                </SUIFormGrid>
                 <div class="profile-context">
                     <SUIIcon Name="shield" Size="21" />
                     <div><strong>@ProfileName</strong><span>@ProfileOutcome</span></div>
@@ -148,157 +141,211 @@ else
             {
                 <fieldset class="choice-fieldset">
                     <legend>@L["Clients.Draft.ClientTypeLegend"]</legend>
-                    <div class="choice-grid choice-grid--two">
-                        <label class="choice-control">
-                            <input name="client-type" type="radio" value="public"
-                                   checked="@(draft!.Values.ClientType == "public")"
-                                   @onchange='() => SetClientTypeAsync("public")' />
-                            <span><strong>@L["Clients.Detail.TypePublic"]</strong><small>@L["Clients.Draft.PublicClientHint"]</small></span>
-                        </label>
-                        <label class="choice-control">
-                            <input name="client-type" type="radio" value="confidential"
-                                   checked="@(draft.Values.ClientType == "confidential")"
-                                   @onchange='() => SetClientTypeAsync("confidential")' />
-                            <span><strong>@L["Clients.Detail.TypeConfidential"]</strong><small>@L["Clients.Draft.ConfidentialClientHint"]</small></span>
-                        </label>
-                    </div>
+                    <SUIFormGrid Columns="2">
+                        <SUIChoiceCard TValue="string"
+                                       Name="client-type"
+                                       Value="@("public")"
+                                       SelectedValue="@draft!.Values.ClientType"
+                                       SelectedValueChanged="SetClientTypeAsync"
+                                       Title="@L["Clients.Detail.TypePublic"].Value"
+                                       Description="@L["Clients.Draft.PublicClientHint"].Value" />
+                        <SUIChoiceCard TValue="string"
+                                       Name="client-type"
+                                       Value="@("confidential")"
+                                       SelectedValue="@draft.Values.ClientType"
+                                       SelectedValueChanged="SetClientTypeAsync"
+                                       Title="@L["Clients.Detail.TypeConfidential"].Value"
+                                       Description="@L["Clients.Draft.ConfidentialClientHint"].Value" />
+                    </SUIFormGrid>
                 </fieldset>
                 <fieldset class="choice-fieldset">
                     <legend>@L["Clients.Draft.GrantTypesLegend"]</legend>
-                    <div class="choice-grid">
-                        <label class="choice-control">
-                            <input id="grant-authorization-code" name="grantTypes" type="checkbox" checked="@draft.Values.AuthorizationCode" @onchange="AuthorizationCodeChangedAsync" />
-                            <span><strong>Authorization Code + PKCE</strong><small>@L["Clients.Draft.AuthCodeHint"]</small></span>
-                        </label>
-                        <label class="choice-control">
-                            <input id="grant-refresh-token" name="grantTypes" type="checkbox" checked="@draft.Values.RefreshToken" @onchange="RefreshTokenChangedAsync" />
-                            <span><strong>Refresh Token</strong><small>@L["Clients.Draft.RefreshTokenHint"]</small></span>
-                        </label>
-                        <label class="choice-control">
-                            <input id="grant-client-credentials" name="grantTypes" type="checkbox" checked="@draft.Values.ClientCredentials" @onchange="ClientCredentialsChangedAsync" />
-                            <span><strong>Client Credentials</strong><small>@L["Clients.Draft.ClientCredentialsHint"]</small></span>
-                        </label>
-                        <label class="choice-control">
-                            <input id="grant-device-code" name="grantTypes" type="checkbox" checked="@draft.Values.DeviceCode" @onchange="DeviceCodeChangedAsync" />
-                            <span><strong>Device Code</strong><small>@L["Clients.Draft.DeviceCodeHint"]</small></span>
-                        </label>
-                    </div>
+                    <SUIFormGrid Columns="2">
+                        <SUISwitch Id="grant-authorization-code" Name="grantTypes" FormValue="authorization_code"
+                                   Label="Authorization Code + PKCE" HelperText="@L["Clients.Draft.AuthCodeHint"].Value"
+                                   Value="@draft!.Values.AuthorizationCode" ValueChanged="AuthorizationCodeChangedAsync" />
+                        <SUISwitch Id="grant-refresh-token" Name="grantTypes" FormValue="refresh_token"
+                                   Label="Refresh Token" HelperText="@L["Clients.Draft.RefreshTokenHint"].Value"
+                                   Value="@draft.Values.RefreshToken" ValueChanged="RefreshTokenChangedAsync" />
+                        <SUISwitch Id="grant-client-credentials" Name="grantTypes" FormValue="client_credentials"
+                                   Label="Client Credentials" HelperText="@L["Clients.Draft.ClientCredentialsHint"].Value"
+                                   Value="@draft.Values.ClientCredentials" ValueChanged="ClientCredentialsChangedAsync" />
+                        <SUISwitch Id="grant-device-code" Name="grantTypes" FormValue="device_code"
+                                   Label="Device Code" HelperText="@L["Clients.Draft.DeviceCodeHint"].Value"
+                                   Value="@draft.Values.DeviceCode" ValueChanged="DeviceCodeChangedAsync" />
+                    </SUIFormGrid>
                     @foreach (var issue in IssuesFor("grantTypes"))
                     {
-                        <span class="field-feedback field-feedback--@IssueTone(issue)">@issue.Message</span>
+                        <SUIAlert ToneValue="@IssueTone(issue)">@issue.Message</SUIAlert>
                     }
                 </fieldset>
-                <div class="form-grid form-grid--two">
-                    <div class="field-group">
-                        <label for="consent-type">@L["Clients.Detail.ConsentLabel"]</label>
-                        <select id="consent-type" name="consentType" class="form-control"
-                                value="@draft.Values.ConsentType" @onchange="ConsentChangedAsync">
-                            <option value="explicit">@L["Clients.Draft.ConsentExplicitOption"]</option>
-                            <option value="implicit">@L["Clients.Draft.ConsentImplicitOption"]</option>
-                            <option value="external">@L["Clients.Draft.ConsentExternalOption"]</option>
-                            <option value="systematic">@L["Clients.Draft.ConsentSystematicOption"]</option>
-                        </select>
-                    </div>
-                    <label class="choice-control choice-control--single">
-                        <input id="require-par" name="requirePar" type="checkbox"
-                               checked="@draft.Values.RequirePar" @onchange="RequireParChangedAsync" />
-                        <span><strong>@L["Clients.Draft.RequireParLabel"]</strong><small>@L["Clients.Draft.RequireParHint"]</small></span>
-                    </label>
-                </div>
-                <div class="field-group token-lifetime-editor">
-                    <div class="field-group__heading">
-                        <label>@L["Clients.Detail.TokenValidityHeading"]</label>
-                        <span class="field-hint">@L["Clients.Draft.TokenLifetimeHint"]</span>
-                    </div>
-                    <div class="form-grid form-grid--three">
-                        <div class="field-group">
-                            <label for="draft-access-token-lifetime">@L["Clients.Draft.AccessTokenLifetimeLabel"]</label>
-                            <input id="draft-access-token-lifetime" name="accessTokenLifetimeMinutes" type="number" min="1" max="@TokenLifetimeLimits.MaximumAccessTokenLifetimeMinutes" class="form-control" value="@draft.Values.AccessTokenLifetimeMinutes" @oninput="AccessTokenLifetimeChangedAsync" />
-                        </div>
-                        <div class="field-group">
-                            <label for="draft-identity-token-lifetime">@L["Clients.Draft.IdTokenLifetimeLabel"]</label>
-                            <input id="draft-identity-token-lifetime" name="identityTokenLifetimeMinutes" type="number" min="1" max="120" class="form-control" value="@draft.Values.IdentityTokenLifetimeMinutes" @oninput="IdentityTokenLifetimeChangedAsync" />
-                        </div>
-                        <div class="field-group">
-                            <label for="draft-refresh-token-lifetime">@L["Clients.Draft.RefreshTokenLifetimeLabel"]</label>
-                            <input id="draft-refresh-token-lifetime" name="refreshTokenLifetimeDays" type="number" min="1" max="365" class="form-control" value="@draft.Values.RefreshTokenLifetimeDays" @oninput="RefreshTokenLifetimeChangedAsync" />
-                        </div>
-                    </div>
-                </div>
+                <SUIFormGrid Columns="2">
+                    <IdentitySelect T="string"
+                                    Id="consent-type"
+                                    Name="consentType"
+                                    Label="@L["Clients.Detail.ConsentLabel"].Value"
+                                    Value="@draft!.Values.ConsentType"
+                                    ValueChanged="ConsentChangedAsync">
+                        <SUISelectItem Value="@("explicit")">@L["Clients.Draft.ConsentExplicitOption"]</SUISelectItem>
+                        <SUISelectItem Value="@("implicit")">@L["Clients.Draft.ConsentImplicitOption"]</SUISelectItem>
+                        <SUISelectItem Value="@("external")">@L["Clients.Draft.ConsentExternalOption"]</SUISelectItem>
+                        <SUISelectItem Value="@("systematic")">@L["Clients.Draft.ConsentSystematicOption"]</SUISelectItem>
+                    </IdentitySelect>
+                    <SUISwitch Id="require-par" Name="requirePar"
+                               Label="@L["Clients.Draft.RequireParLabel"].Value" HelperText="@L["Clients.Draft.RequireParHint"].Value"
+                               Value="@draft.Values.RequirePar" ValueChanged="RequireParChangedAsync" />
+                </SUIFormGrid>
+                <fieldset class="choice-fieldset">
+                    <legend>@L["Clients.Detail.TokenValidityHeading"]</legend>
+                    <span class="field-hint">@L["Clients.Draft.TokenLifetimeHint"]</span>
+                    <SUIFormGrid Columns="3">
+                        <IdentityNumericField T="int?"
+                                              Id="draft-access-token-lifetime"
+                                              Name="accessTokenLifetimeMinutes"
+                                              Label="@L["Clients.Draft.AccessTokenLifetimeLabel"].Value"
+                                              Min="1"
+                                              Max="@TokenLifetimeLimits.MaximumAccessTokenLifetimeMinutes"
+                                              Immediate="true"
+                                              Value="@draft!.Values.AccessTokenLifetimeMinutes"
+                                              ValueChanged="AccessTokenLifetimeChangedAsync" />
+                        <IdentityNumericField T="int?"
+                                              Id="draft-identity-token-lifetime"
+                                              Name="identityTokenLifetimeMinutes"
+                                              Label="@L["Clients.Draft.IdTokenLifetimeLabel"].Value"
+                                              Min="1"
+                                              Max="120"
+                                              Immediate="true"
+                                              Value="@draft.Values.IdentityTokenLifetimeMinutes"
+                                              ValueChanged="IdentityTokenLifetimeChangedAsync" />
+                        <IdentityNumericField T="int?"
+                                              Id="draft-refresh-token-lifetime"
+                                              Name="refreshTokenLifetimeDays"
+                                              Label="@L["Clients.Draft.RefreshTokenLifetimeLabel"].Value"
+                                              Min="1"
+                                              Max="365"
+                                              Immediate="true"
+                                              Value="@draft.Values.RefreshTokenLifetimeDays"
+                                              ValueChanged="RefreshTokenLifetimeChangedAsync" />
+                    </SUIFormGrid>
+                </fieldset>
             }
             else if (CurrentStep.Id == ManagementClientDraftSteps.Permissions)
             {
-                <label class="search-field scope-search">
-                    <span class="visually-hidden">@L["Clients.Draft.SearchPermissionsLabel"]</span>
-                    <SUIIcon Name="search" Size="18" />
-                    <input id="scope-search" name="scopeSearch" type="search" placeholder="@L["Clients.Draft.SearchScopesPlaceholder"].Value"
-                           autocomplete="off" @bind="scopeSearch" @bind:event="oninput" />
-                </label>
-                <div class="scope-picker">
+                <SUIStack Spacing="2">
+                    <IdentityTextField T="string"
+                                       Id="scope-search"
+                                       Name="scopeSearch"
+                                       InputType="search"
+                                       AdornmentIcon="search"
+                                       Placeholder="@L["Clients.Draft.SearchScopesPlaceholder"].Value"
+                                       Immediate="true"
+                                       Value="@scopeSearch"
+                                       ValueChanged="@((string? value) => scopeSearch = value ?? string.Empty)"
+                                       aria-label="@L["Clients.Draft.SearchPermissionsLabel"].Value"
+                                       autocomplete="off" />
                     @foreach (var scope in FilteredScopes)
                     {
-                        <label class="scope-option">
-                            <input name="selectedScopes" type="checkbox" value="@scope.Name"
-                                   checked="@draft!.Values.Scopes.Contains(scope.Name, StringComparer.Ordinal)"
-                                   @onchange="args => ScopeChangedAsync(scope.Name, args)" />
-                            <span><strong>@scope.DisplayName</strong><code>@scope.Name</code><small>@scope.Description</small></span>
+                        <SUIStack Row="true" AlignItems="Center" Justify="Between" Spacing="3" @key="scope.Name">
+                            <SUISwitch Name="selectedScopes"
+                                       FormValue="@scope.Name"
+                                       Label="@scope.DisplayName"
+                                       HelperText="@ScopeHelp(scope)"
+                                       Value="@draft!.Values.Scopes.Contains(scope.Name, StringComparer.Ordinal)"
+                                       ValueChanged="value => ScopeChangedAsync(scope.Name, value)" />
                             @if (scope.IsProtocolScope)
                             {
                                 <SUIStatusBadge ToneValue="SUITone.Neutral">@L["Clients.Draft.DefaultScopeBadge"]</SUIStatusBadge>
                             }
-                        </label>
+                        </SUIStack>
                     }
-                </div>
-                @foreach (var issue in IssuesFor("scopes"))
-                {
-                    <span class="field-feedback field-feedback--@IssueTone(issue)">@issue.Message</span>
-                }
+                    @foreach (var issue in IssuesFor("scopes"))
+                    {
+                        <SUIAlert ToneValue="@IssueTone(issue)">@issue.Message</SUIAlert>
+                    }
+                </SUIStack>
             }
             else if (CurrentStep.Id == ManagementClientDraftSteps.Uris)
             {
                 <div class="uri-editor">
-                    <div class="uri-editor__heading"><div><h3>Redirect URIs</h3><p>@L["Clients.Draft.RedirectUrisHint"]</p></div><button class="button button--secondary button--compact" type="button" @onclick="AddRedirectAsync"><SUIIcon Name="plus" Size="16" />@L["Clients.Draft.AddAction"]</button></div>
-                    @if (draft!.Values.RedirectUris.Count == 0)
-                    {
-                        <p class="uri-editor__empty">@L["Clients.Draft.NoUriAdded"]</p>
-                    }
-                    @foreach (var uri in draft.Values.RedirectUris.Select((value, index) => (value, index)))
-                    {
-                        <div class="uri-row">
-                            <input id="redirect-uri-@uri.index" name="redirectUris" class="form-control technical-value"
-                                   aria-label="Redirect URI @(uri.index + 1)" value="@uri.value"
-                                   @oninput="args => RedirectChangedAsync(uri.index, args)" />
-                            <button type="button" class="icon-button" aria-label="@L["Clients.Draft.RemoveRedirectUriAriaLabel", uri.index + 1].Value" @onclick="() => RemoveRedirectAsync(uri.index)"><SUIIcon Name="trash" Size="17" /></button>
-                        </div>
-                    }
-                    @foreach (var issue in IssuesFor("redirectUris"))
-                    {
-                        <span class="field-feedback field-feedback--@IssueTone(issue)">@issue.Message</span>
-                    }
+                    <SUIStack Spacing="2">
+                        <SUIStack Row="true" AlignItems="Start" Justify="Between" Spacing="3">
+                            <div><h3>Redirect URIs</h3><p>@L["Clients.Draft.RedirectUrisHint"]</p></div>
+                            <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" SizeValue="SUISize.Small" StartIcon="plus" OnClick="AddRedirectAsync">@L["Clients.Draft.AddAction"]</SUIButton>
+                        </SUIStack>
+                        @if (draft!.Values.RedirectUris.Count == 0)
+                        {
+                            <p>@L["Clients.Draft.NoUriAdded"]</p>
+                        }
+                        @foreach (var uri in draft.Values.RedirectUris.Select((value, index) => (value, index)))
+                        {
+                            <SUIStack Row="true" AlignItems="Center" Spacing="2">
+                                <IdentityTextField T="string"
+                                                   Id="@($"redirect-uri-{uri.index}")"
+                                                   Name="redirectUris"
+                                                   Class="uri-editor__field"
+                                                   Immediate="true"
+                                                   Value="@uri.value"
+                                                   ValueChanged="value => RedirectChangedAsync(uri.index, value)"
+                                                   aria-label="@($"Redirect URI {uri.index + 1}")" />
+                                <SUIIconButton Icon="trash"
+                                               Title="@L["Clients.Draft.RemoveRedirectUriAriaLabel", uri.index + 1].Value"
+                                               VariantValue="SUIVariant.Outlined"
+                                               ColorValue="SUIColor.Error"
+                                               OnClick="() => RemoveRedirectAsync(uri.index)" />
+                            </SUIStack>
+                        }
+                        @foreach (var issue in IssuesFor("redirectUris"))
+                        {
+                            <SUIAlert ToneValue="@IssueTone(issue)">@issue.Message</SUIAlert>
+                        }
+                    </SUIStack>
                 </div>
                 <div class="uri-editor">
-                    <div class="uri-editor__heading"><div><h3>Post logout redirect URIs</h3><p>@L["Clients.Draft.PostLogoutUrisHint"]</p></div><button class="button button--secondary button--compact" type="button" @onclick="AddLogoutRedirectAsync"><SUIIcon Name="plus" Size="16" />@L["Clients.Draft.AddAction"]</button></div>
-                    @foreach (var uri in draft.Values.PostLogoutRedirectUris.Select((value, index) => (value, index)))
-                    {
-                        <div class="uri-row">
-                            <input id="logout-redirect-uri-@uri.index" name="postLogoutRedirectUris" class="form-control technical-value"
-                                   aria-label="Post logout redirect URI @(uri.index + 1)" value="@uri.value"
-                                   @oninput="args => LogoutRedirectChangedAsync(uri.index, args)" />
-                            <button type="button" class="icon-button" aria-label="@L["Clients.Draft.RemovePostLogoutUriAriaLabel", uri.index + 1].Value" @onclick="() => RemoveLogoutRedirectAsync(uri.index)"><SUIIcon Name="trash" Size="17" /></button>
-                        </div>
-                    }
+                    <SUIStack Spacing="2">
+                        <SUIStack Row="true" AlignItems="Start" Justify="Between" Spacing="3">
+                            <div><h3>Post logout redirect URIs</h3><p>@L["Clients.Draft.PostLogoutUrisHint"]</p></div>
+                            <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" SizeValue="SUISize.Small" StartIcon="plus" OnClick="AddLogoutRedirectAsync">@L["Clients.Draft.AddAction"]</SUIButton>
+                        </SUIStack>
+                        @foreach (var uri in draft!.Values.PostLogoutRedirectUris.Select((value, index) => (value, index)))
+                        {
+                            <SUIStack Row="true" AlignItems="Center" Spacing="2">
+                                <IdentityTextField T="string"
+                                                   Id="@($"logout-redirect-uri-{uri.index}")"
+                                                   Name="postLogoutRedirectUris"
+                                                   Class="uri-editor__field"
+                                                   Immediate="true"
+                                                   Value="@uri.value"
+                                                   ValueChanged="value => LogoutRedirectChangedAsync(uri.index, value)"
+                                                   aria-label="@($"Post logout redirect URI {uri.index + 1}")" />
+                                <SUIIconButton Icon="trash"
+                                               Title="@L["Clients.Draft.RemovePostLogoutUriAriaLabel", uri.index + 1].Value"
+                                               VariantValue="SUIVariant.Outlined"
+                                               ColorValue="SUIColor.Error"
+                                               OnClick="() => RemoveLogoutRedirectAsync(uri.index)" />
+                            </SUIStack>
+                        }
+                    </SUIStack>
                 </div>
-                <details class="advanced-disclosure">
-                    <summary>@L["Clients.Draft.AdvancedLogoutSummary"]</summary>
-                    <div class="form-grid form-grid--two">
-                        <div class="field-group"><label for="frontchannel-uri">Front-channel logout URI</label><input id="frontchannel-uri" name="frontchannelLogoutUri" class="form-control technical-value" value="@draft.Values.FrontchannelLogoutUri" @oninput="FrontchannelChangedAsync" /></div>
-                        <div class="field-group"><label for="backchannel-uri">Back-channel logout URI</label><input id="backchannel-uri" name="backchannelLogoutUri" class="form-control technical-value" value="@draft.Values.BackchannelLogoutUri" @oninput="BackchannelChangedAsync" /></div>
-                    </div>
-                    <div class="choice-grid choice-grid--two">
-                        <label class="choice-control"><input name="frontchannelSessionRequired" type="checkbox" checked="@draft.Values.FrontchannelLogoutSessionRequired" @onchange="FrontchannelSessionChangedAsync" /><span><strong>@L["Clients.Draft.FrontchannelSessionLabel"]</strong><small>@L["Clients.Draft.SessionRequiredHint"]</small></span></label>
-                        <label class="choice-control"><input name="backchannelSessionRequired" type="checkbox" checked="@draft.Values.BackchannelLogoutSessionRequired" @onchange="BackchannelSessionChangedAsync" /><span><strong>@L["Clients.Draft.BackchannelSessionLabel"]</strong><small>@L["Clients.Draft.SessionRequiredHint"]</small></span></label>
-                    </div>
-                </details>
+                <SUIExpansionPanel Title="@L["Clients.Draft.AdvancedLogoutSummary"].Value" Class="advanced-disclosure">
+                    <SUIStack Spacing="4">
+                        <SUIFormGrid Columns="2">
+                            <IdentityTextField T="string" Id="frontchannel-uri" Name="frontchannelLogoutUri"
+                                               Label="Front-channel logout URI" Immediate="true"
+                                               Value="@draft!.Values.FrontchannelLogoutUri" ValueChanged="FrontchannelChangedAsync" />
+                            <IdentityTextField T="string" Id="backchannel-uri" Name="backchannelLogoutUri"
+                                               Label="Back-channel logout URI" Immediate="true"
+                                               Value="@draft.Values.BackchannelLogoutUri" ValueChanged="BackchannelChangedAsync" />
+                        </SUIFormGrid>
+                        <SUIFormGrid Columns="2">
+                            <SUISwitch Name="frontchannelSessionRequired"
+                                       Label="@L["Clients.Draft.FrontchannelSessionLabel"].Value" HelperText="@L["Clients.Draft.SessionRequiredHint"].Value"
+                                       Value="@draft!.Values.FrontchannelLogoutSessionRequired" ValueChanged="FrontchannelSessionChangedAsync" />
+                            <SUISwitch Name="backchannelSessionRequired"
+                                       Label="@L["Clients.Draft.BackchannelSessionLabel"].Value" HelperText="@L["Clients.Draft.SessionRequiredHint"].Value"
+                                       Value="@draft.Values.BackchannelLogoutSessionRequired" ValueChanged="BackchannelSessionChangedAsync" />
+                        </SUIFormGrid>
+                    </SUIStack>
+                </SUIExpansionPanel>
             }
             else if (CurrentStep.Id == ManagementClientDraftSteps.Credentials)
             {
@@ -317,31 +364,31 @@ else
             }
             else
             {
-                <div class="review-status review-status--@(draft!.Validation.IsReady ? "ready" : "blocked")">
-                    <SUIIcon Name="@(draft.Validation.IsReady ? "check" : "alert")" Size="22" />
-                    <div><strong>@(draft.Validation.IsReady ? L["Clients.Draft.ReadyTitle"] : L["Clients.Draft.NotReadyTitle"])</strong><span>@(draft.Validation.IsReady ? L["Clients.Draft.ReadyMessage"] : L["Clients.Draft.NotReadyMessage"])</span></div>
-                </div>
-                @if (draft.Validation.Issues.Count > 0)
-                {
-                    <div class="review-issues">
-                        @foreach (var issue in draft.Validation.Issues)
-                        {
-                            <button type="button" class="review-issue review-issue--@IssueTone(issue)" @onclick="() => GoToStepAsync(issue.Step)">
-                                <SUIIcon Name="@(issue.Severity == ClientValidationSeverity.Error ? "alert" : "info")" Size="18" />
-                                <span>
-                                    <strong>@issue.Message</strong>
-                                    @if (!string.IsNullOrWhiteSpace(issue.Remediation))
-                                    {
-                                        <small>@issue.Remediation</small>
-                                    }
-                                </span>
-                                <SUIIcon Name="arrow-right" Size="16" />
-                            </button>
-                        }
-                    </div>
-                }
+                <SUIStack Spacing="2">
+                    <SUIAlert ToneValue="@(draft!.Validation.IsReady ? SUITone.Success : SUITone.Warning)"
+                              Icon="@(draft.Validation.IsReady ? "check" : "alert")">
+                        <div><strong>@(draft.Validation.IsReady ? L["Clients.Draft.ReadyTitle"] : L["Clients.Draft.NotReadyTitle"])</strong> <span>@(draft.Validation.IsReady ? L["Clients.Draft.ReadyMessage"] : L["Clients.Draft.NotReadyMessage"])</span></div>
+                    </SUIAlert>
+                    @foreach (var issue in draft.Validation.Issues)
+                    {
+                        <SUIButton VariantValue="SUIVariant.Outlined"
+                                   ColorValue="SUIColor.Default"
+                                   IconColorValue="@(issue.Severity == ClientValidationSeverity.Error ? SUIColor.Error : SUIColor.Warning)"
+                                   StartIcon="@(issue.Severity == ClientValidationSeverity.Error ? "alert" : "info")"
+                                   EndIcon="arrow-right"
+                                   FullWidth="true"
+                                   Style="justify-content:space-between;text-align:start"
+                                   OnClick="() => GoToStepAsync(issue.Step)">
+                            <strong>@issue.Message</strong>
+                            @if (!string.IsNullOrWhiteSpace(issue.Remediation))
+                            {
+                                <small>@issue.Remediation</small>
+                            }
+                        </SUIButton>
+                    }
+                </SUIStack>
                 <div class="review-grid">
-                    <div><h3>@L["Clients.Draft.Step.Identity"]</h3><dl><div><dt>@L["Clients.Draft.NameLabel"]</dt><dd>@ValueOrDash(draft.Values.DisplayName)</dd></div><div><dt>Client ID</dt><dd><code>@ValueOrDash(draft.Values.ClientId)</code></dd></div><div><dt>@L["Clients.Detail.TypeLabel"]</dt><dd>@draft.Values.ClientType</dd></div></dl></div>
+                    <div><h3>@L["Clients.Draft.Step.Identity"]</h3><dl><div><dt>@L["Clients.Draft.NameLabel"]</dt><dd>@ValueOrDash(draft!.Values.DisplayName)</dd></div><div><dt>Client ID</dt><dd><code>@ValueOrDash(draft.Values.ClientId)</code></dd></div><div><dt>@L["Clients.Detail.TypeLabel"]</dt><dd>@draft.Values.ClientType</dd></div></dl></div>
                     <div><h3>@L["Clients.Draft.Step.Protocol"]</h3><dl><div><dt>@L["Clients.Draft.FlowsLabel"]</dt><dd>@GrantSummary</dd></div><div><dt>@L["Clients.Detail.ConsentLabel"]</dt><dd>@draft.Values.ConsentType</dd></div><div><dt>PAR</dt><dd>@(draft.Values.RequirePar ? L["Clients.Draft.RequiredLabel"] : L["Clients.Draft.OptionalLabel"])</dd></div><div><dt>@L["Clients.Draft.TokensLabel"]</dt><dd>@TokenLifetimeSummary</dd></div></dl></div>
                     <div><h3>@L["Clients.Draft.Step.Permissions"]</h3><p>@(draft.Values.Scopes.Count == 0 ? L["Clients.Draft.NoScopeSelected"].Value : string.Join(", ", draft.Values.Scopes))</p></div>
                     <div><h3>@L["Clients.Draft.ReturnsHeading"]</h3><p>@L["Clients.Draft.ReturnsSummary", draft.Values.RedirectUris.Count, draft.Values.PostLogoutRedirectUris.Count]</p></div>
@@ -349,46 +396,42 @@ else
             }
 
             <footer class="wizard-actions">
-                <div>
-                    @if (CurrentStepIndex > 0)
-                    {
-                        <button class="button button--secondary" type="button" disabled="@busy" @onclick="PreviousAsync"><SUIIcon Name="arrow-left" Size="17" />@L["Clients.Registrations.Previous"]</button>
-                    }
-                    else
-                    {
-                        <a class="button button--secondary" href="clients/new">@L["Clients.Draft.SwitchProfile"]</a>
-                    }
-                </div>
-                <div>
-                    @if (CurrentStepIndex < Steps.Length - 1)
-                    {
-                        <button class="button button--primary" type="button" disabled="@busy" @onclick="NextAsync">@L["Clients.Draft.Continue"]<SUIIcon Name="arrow-right" Size="17" /></button>
-                    }
-                    else
-                    {
-                        <button class="button button--primary" type="button" disabled="@(busy || !draft!.Validation.IsReady)" @onclick="CompleteAsync">
-                            @if (busy)
-                            {
-                                <span class="button-spinner" aria-hidden="true"></span>
-                            }
-                            <span>@L["Clients.Draft.CreateApplication"]</span>
-                        </button>
-                    }
-                </div>
-            </footer>
-
-            <div class="abandon-zone">
-                @if (confirmAbandon)
+                @if (CurrentStepIndex > 0)
                 {
-                    <span>@L["Clients.Draft.ConfirmAbandonMessage"]</span>
-                    <button class="button button--danger button--compact" type="button" disabled="@busy" @onclick="AbandonAsync">@L["Clients.Draft.ConfirmAbandonYes"]</button>
-                    <button class="button button--secondary button--compact" type="button" @onclick="() => confirmAbandon = false">@L["Clients.Detail.Cancel"]</button>
+                    <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" StartIcon="arrow-left" Disabled="@busy" OnClick="PreviousAsync">@L["Clients.Registrations.Previous"]</SUIButton>
                 }
                 else
                 {
-                    <button class="text-action text-action--danger" type="button" @onclick="() => confirmAbandon = true">@L["Clients.Draft.AbandonDraft"]</button>
+                    <SUIButton Href="clients/new" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">@L["Clients.Draft.SwitchProfile"]</SUIButton>
                 }
-            </div>
+                @if (CurrentStepIndex < Steps.Length - 1)
+                {
+                    <SUIButton ColorValue="SUIColor.Primary" EndIcon="arrow-right" Disabled="@busy" OnClick="NextAsync">@L["Clients.Draft.Continue"]</SUIButton>
+                }
+                else
+                {
+                    <SUILoadingButton ColorValue="SUIColor.Primary"
+                                      IsLoading="@busy"
+                                      Disabled="@(busy || !draft!.Validation.IsReady)"
+                                      OnClick="CompleteAsync"
+                                      aria-busy="@busy">
+                        @L["Clients.Draft.CreateApplication"]
+                    </SUILoadingButton>
+                }
+            </footer>
+
+            <SUIStack Row="true" Wrap="true" AlignItems="Center" Justify="Center" Spacing="2" Class="abandon-zone">
+                @if (confirmAbandon)
+                {
+                    <span>@L["Clients.Draft.ConfirmAbandonMessage"]</span>
+                    <SUIButton ColorValue="SUIColor.Error" SizeValue="SUISize.Small" Disabled="@busy" OnClick="AbandonAsync">@L["Clients.Draft.ConfirmAbandonYes"]</SUIButton>
+                    <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" SizeValue="SUISize.Small" OnClick="() => confirmAbandon = false">@L["Clients.Detail.Cancel"]</SUIButton>
+                }
+                else
+                {
+                    <SUIButton VariantValue="SUIVariant.Text" ColorValue="SUIColor.Error" SizeValue="SUISize.Small" OnClick="() => confirmAbandon = true">@L["Clients.Draft.AbandonDraft"]</SUIButton>
+                }
+            </SUIStack>
         </main>
     </div>
     </div>
@@ -432,6 +475,7 @@ else
 
     private int CurrentStepIndex => Math.Max(0, Array.FindIndex(Steps, item => item.Id == NormalizeStep(Step)));
     private WizardStep CurrentStep => Steps[CurrentStepIndex];
+    private IReadOnlyList<string> StepLabels => Steps.Select(item => item.ShortLabel).ToArray();
     private ManagementClientProfile? Profile => profiles.FirstOrDefault(item => item.Id == draft?.Profile);
     private string ProfileName => Profile?.DisplayName ?? draft?.Profile ?? L["Clients.Draft.CustomConfigLabel"].Value;
     private string ProfileOutcome => Profile?.Outcome ?? L["Clients.Draft.ValidationPendingMessage"].Value;
@@ -489,11 +533,11 @@ else
         }
     }
 
-    private async Task DisplayNameChangedAsync(ChangeEventArgs args)
+    private async Task DisplayNameChangedAsync(string? value)
     {
         if (draft is null) return;
         var oldSlug = Slugify(draft.Values.DisplayName);
-        draft.Values.DisplayName = args.Value?.ToString() ?? string.Empty;
+        draft.Values.DisplayName = value ?? string.Empty;
         if (string.IsNullOrWhiteSpace(draft.Values.ClientId) || draft.Values.ClientId == oldSlug)
         {
             draft.Values.ClientId = Slugify(draft.Values.DisplayName);
@@ -501,28 +545,28 @@ else
         await QueueSaveAsync();
     }
 
-    private async Task ClientIdChangedAsync(ChangeEventArgs args) { if (draft is null) return; draft.Values.ClientId = args.Value?.ToString() ?? string.Empty; await QueueSaveAsync(); }
+    private async Task ClientIdChangedAsync(string? value) { if (draft is null) return; draft.Values.ClientId = value ?? string.Empty; await QueueSaveAsync(); }
     private async Task SetClientTypeAsync(string value) { if (draft is null) return; draft.Values.ClientType = value; await QueueSaveAsync(); }
-    private async Task ConsentChangedAsync(ChangeEventArgs args) { if (draft is null) return; draft.Values.ConsentType = args.Value?.ToString() ?? "explicit"; await QueueSaveAsync(); }
-    private async Task RequireParChangedAsync(ChangeEventArgs args) { if (draft is null) return; draft.Values.RequirePar = IsChecked(args); await QueueSaveAsync(); }
-    private async Task AuthorizationCodeChangedAsync(ChangeEventArgs args) { if (draft is null) return; draft.Values.AuthorizationCode = IsChecked(args); await QueueSaveAsync(); }
-    private async Task RefreshTokenChangedAsync(ChangeEventArgs args) { if (draft is null) return; draft.Values.RefreshToken = IsChecked(args); await QueueSaveAsync(); }
-    private async Task ClientCredentialsChangedAsync(ChangeEventArgs args) { if (draft is null) return; draft.Values.ClientCredentials = IsChecked(args); await QueueSaveAsync(); }
-    private async Task DeviceCodeChangedAsync(ChangeEventArgs args) { if (draft is null) return; draft.Values.DeviceCode = IsChecked(args); await QueueSaveAsync(); }
-    private async Task AccessTokenLifetimeChangedAsync(ChangeEventArgs args) { if (draft is null) return; draft.Values.AccessTokenLifetimeMinutes = ParseOptionalInt(args); await QueueSaveAsync(); }
-    private async Task IdentityTokenLifetimeChangedAsync(ChangeEventArgs args) { if (draft is null) return; draft.Values.IdentityTokenLifetimeMinutes = ParseOptionalInt(args); await QueueSaveAsync(); }
-    private async Task RefreshTokenLifetimeChangedAsync(ChangeEventArgs args) { if (draft is null) return; draft.Values.RefreshTokenLifetimeDays = ParseOptionalInt(args); await QueueSaveAsync(); }
-    private async Task ScopeChangedAsync(string scope, ChangeEventArgs args) { if (draft is null) return; if (IsChecked(args)) { if (!draft.Values.Scopes.Contains(scope, StringComparer.Ordinal)) draft.Values.Scopes.Add(scope); } else draft.Values.Scopes.Remove(scope); await QueueSaveAsync(); }
+    private async Task ConsentChangedAsync(string? value) { if (draft is null) return; draft.Values.ConsentType = value ?? "explicit"; await QueueSaveAsync(); }
+    private async Task RequireParChangedAsync(bool value) { if (draft is null) return; draft.Values.RequirePar = value; await QueueSaveAsync(); }
+    private async Task AuthorizationCodeChangedAsync(bool value) { if (draft is null) return; draft.Values.AuthorizationCode = value; await QueueSaveAsync(); }
+    private async Task RefreshTokenChangedAsync(bool value) { if (draft is null) return; draft.Values.RefreshToken = value; await QueueSaveAsync(); }
+    private async Task ClientCredentialsChangedAsync(bool value) { if (draft is null) return; draft.Values.ClientCredentials = value; await QueueSaveAsync(); }
+    private async Task DeviceCodeChangedAsync(bool value) { if (draft is null) return; draft.Values.DeviceCode = value; await QueueSaveAsync(); }
+    private async Task AccessTokenLifetimeChangedAsync(int? value) { if (draft is null) return; draft.Values.AccessTokenLifetimeMinutes = value; await QueueSaveAsync(); }
+    private async Task IdentityTokenLifetimeChangedAsync(int? value) { if (draft is null) return; draft.Values.IdentityTokenLifetimeMinutes = value; await QueueSaveAsync(); }
+    private async Task RefreshTokenLifetimeChangedAsync(int? value) { if (draft is null) return; draft.Values.RefreshTokenLifetimeDays = value; await QueueSaveAsync(); }
+    private async Task ScopeChangedAsync(string scope, bool selected) { if (draft is null) return; if (selected) { if (!draft.Values.Scopes.Contains(scope, StringComparer.Ordinal)) draft.Values.Scopes.Add(scope); } else draft.Values.Scopes.Remove(scope); await QueueSaveAsync(); }
     private async Task AddRedirectAsync() { if (draft is null) return; draft.Values.RedirectUris.Add(string.Empty); await QueueSaveAsync(); }
     private async Task RemoveRedirectAsync(int index) { if (draft is null || index >= draft.Values.RedirectUris.Count) return; draft.Values.RedirectUris.RemoveAt(index); await QueueSaveAsync(); }
-    private async Task RedirectChangedAsync(int index, ChangeEventArgs args) { if (draft is null || index >= draft.Values.RedirectUris.Count) return; draft.Values.RedirectUris[index] = args.Value?.ToString() ?? string.Empty; await QueueSaveAsync(); }
+    private async Task RedirectChangedAsync(int index, string? value) { if (draft is null || index >= draft.Values.RedirectUris.Count) return; draft.Values.RedirectUris[index] = value ?? string.Empty; await QueueSaveAsync(); }
     private async Task AddLogoutRedirectAsync() { if (draft is null) return; draft.Values.PostLogoutRedirectUris.Add(string.Empty); await QueueSaveAsync(); }
     private async Task RemoveLogoutRedirectAsync(int index) { if (draft is null || index >= draft.Values.PostLogoutRedirectUris.Count) return; draft.Values.PostLogoutRedirectUris.RemoveAt(index); await QueueSaveAsync(); }
-    private async Task LogoutRedirectChangedAsync(int index, ChangeEventArgs args) { if (draft is null || index >= draft.Values.PostLogoutRedirectUris.Count) return; draft.Values.PostLogoutRedirectUris[index] = args.Value?.ToString() ?? string.Empty; await QueueSaveAsync(); }
-    private async Task FrontchannelChangedAsync(ChangeEventArgs args) { if (draft is null) return; draft.Values.FrontchannelLogoutUri = args.Value?.ToString(); await QueueSaveAsync(); }
-    private async Task BackchannelChangedAsync(ChangeEventArgs args) { if (draft is null) return; draft.Values.BackchannelLogoutUri = args.Value?.ToString(); await QueueSaveAsync(); }
-    private async Task FrontchannelSessionChangedAsync(ChangeEventArgs args) { if (draft is null) return; draft.Values.FrontchannelLogoutSessionRequired = IsChecked(args); await QueueSaveAsync(); }
-    private async Task BackchannelSessionChangedAsync(ChangeEventArgs args) { if (draft is null) return; draft.Values.BackchannelLogoutSessionRequired = IsChecked(args); await QueueSaveAsync(); }
+    private async Task LogoutRedirectChangedAsync(int index, string? value) { if (draft is null || index >= draft.Values.PostLogoutRedirectUris.Count) return; draft.Values.PostLogoutRedirectUris[index] = value ?? string.Empty; await QueueSaveAsync(); }
+    private async Task FrontchannelChangedAsync(string? value) { if (draft is null) return; draft.Values.FrontchannelLogoutUri = value; await QueueSaveAsync(); }
+    private async Task BackchannelChangedAsync(string? value) { if (draft is null) return; draft.Values.BackchannelLogoutUri = value; await QueueSaveAsync(); }
+    private async Task FrontchannelSessionChangedAsync(bool value) { if (draft is null) return; draft.Values.FrontchannelLogoutSessionRequired = value; await QueueSaveAsync(); }
+    private async Task BackchannelSessionChangedAsync(bool value) { if (draft is null) return; draft.Values.BackchannelLogoutSessionRequired = value; await QueueSaveAsync(); }
 
     private async Task QueueSaveAsync()
     {
@@ -570,6 +614,7 @@ else
         saveDebounce?.Cancel();
         if (await SaveAsync(step)) Navigation.NavigateTo(DraftHref(step));
     }
+    private Task StepSelectedAsync(int index) => GoToStepAsync(Steps[Math.Clamp(index, 0, Steps.Length - 1)].Id);
     private Task PreviousAsync() => GoToStepAsync(Steps[Math.Max(0, CurrentStepIndex - 1)].Id);
     private Task NextAsync() => GoToStepAsync(Steps[Math.Min(Steps.Length - 1, CurrentStepIndex + 1)].Id);
 
@@ -616,10 +661,15 @@ else
     private string DraftHref(string step) => $"clients/drafts/{Id:D}/{step}";
     private static string ClientHref(string id) => $"clients/{Uri.EscapeDataString(id)}?created=1";
     private static string NormalizeStep(string? step) => ManagementClientDraftSteps.All.FirstOrDefault(item => string.Equals(item, step, StringComparison.OrdinalIgnoreCase)) ?? ManagementClientDraftSteps.Identity;
-    private static string IssueTone(ClientValidationIssue issue) => issue.Severity == ClientValidationSeverity.Error ? "danger" : "warning";
+    private static SUITone IssueTone(ClientValidationIssue issue) => issue.Severity == ClientValidationSeverity.Error ? SUITone.Danger : SUITone.Warning;
+
+    // Errors go to the field's ErrorText; warnings ride along with the hint,
+    // because SUI fields carry no separate warning message.
+    private string? FieldErrors(string field) => JoinMessages(IssuesFor(field).Where(issue => issue.Severity == ClientValidationSeverity.Error));
+    private string FieldHelp(string hint, string field) => JoinMessages(IssuesFor(field).Where(issue => issue.Severity != ClientValidationSeverity.Error)) is { } warnings ? $"{hint} {warnings}" : hint;
+    private static string? JoinMessages(IEnumerable<ClientValidationIssue> issues) => string.Join(" ", issues.Select(issue => issue.Message)) is { Length: > 0 } text ? text : null;
+    private static string ScopeHelp(ManagementClientAvailableScope scope) => string.IsNullOrWhiteSpace(scope.Description) ? scope.Name : $"{scope.Name} — {scope.Description}";
     private static string ValueOrDash(string? value) => string.IsNullOrWhiteSpace(value) ? "—" : value;
-    private static bool IsChecked(ChangeEventArgs args) => args.Value is true || string.Equals(args.Value?.ToString(), "true", StringComparison.OrdinalIgnoreCase);
-    private static int? ParseOptionalInt(ChangeEventArgs args) => int.TryParse(args.Value?.ToString(), out var value) ? value : null;
     private static string Slugify(string? value) => string.Join("-", (value ?? string.Empty).Trim().ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries)).Where(character => char.IsLetterOrDigit(character) || character is '-' or '_' or '.').Aggregate(string.Empty, (current, character) => current + character).Trim('-');
 
     public async ValueTask DisposeAsync()
