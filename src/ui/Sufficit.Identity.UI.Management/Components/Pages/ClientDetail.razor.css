@@ -1,8 +1,5 @@
-/* Summary and the two danger zones share one width; SUIStack spaces them. */
-.client-detail-page {
-    width: min(100%, 1180px);
-}
-
+/* Summary and the two danger zones span the page like the header above
+   them (its actions end at the right edge); SUIStack spaces them. */
 .client-detail-page .detail-shell {
     margin-bottom: 0;
 }
