@@ -5,8 +5,8 @@
       "Sufficit.Blazor.UI": {
         "type": "Direct",
         "requested": "[2.*, )",
-        "resolved": "2.26.1023.2034",
-        "contentHash": "JvIfDIl+Fw1ReLIP6H1Yc3pn2p5ihMjwrVFE0OXNbc4wW6pxXjnDvfVLlYMpWvfJiZSd0RxjF34YJJxXfdEMeg=="
+        "resolved": "2.26.1028.1407",
+        "contentHash": "YMfIQBuvHIxjCQ4/NpcqBb4ARNyLHqP+Q8/Z+qJhLoYeEVVdw0W0j0yGNsGtzN2zAKLTCkbL/lItgo+5Uf+lMA=="
       },
       "sufficit.identity.application.abstractions": {
         "type": "Project"

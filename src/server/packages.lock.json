@@ -71,8 +71,8 @@
       "Sufficit.Blazor.UI": {
         "type": "Direct",
         "requested": "[2.*, )",
-        "resolved": "2.26.1025.1603",
-        "contentHash": "mrHfn7SOw896SqDhu3MUwHMHjmbeuEbd66jff7wUZhTJTgpf/DfgNkFCI6Too+h4lQQUwfrD6/ItGyNAxoqAqQ=="
+        "resolved": "2.26.1028.1407",
+        "contentHash": "YMfIQBuvHIxjCQ4/NpcqBb4ARNyLHqP+Q8/Z+qJhLoYeEVVdw0W0j0yGNsGtzN2zAKLTCkbL/lItgo+5Uf+lMA=="
       },
       "Swashbuckle.AspNetCore": {
         "type": "Direct",
