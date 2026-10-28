@@ -44,7 +44,6 @@ it; tick it there, then drop the line here.
 
 | When | Action | Owner |
 |---|---|---|
-| now | Configure the privileged-scope list in `Observe` | A2 |
 | ~2026-11-03 | Delete the 10 disabled underscore client ids if they issued no token since 2026-10-27 | [`202610271500`](../activities/202610271500-hyphenated-client-ids.md) |
 | ~2026-11-04 | Read the observed scope-grant rows; set `ClientScopeGrants:Mode=Enforce` | A2 |
 | after the client-id cleanup | Remove the legacy client/scope acceptance in endpoints (`LegacyClientId`) and background (`Legacy*`) | [`202610271500`](../activities/202610271500-hyphenated-client-ids.md) |
@@ -113,7 +112,7 @@ anything belonging to a principal of equal or higher tier without break-glass.
   existing managed clients explicitly before enabling client-definition
   enforcement
 
-**Proposed production list (2026-10-28, not yet configured).** Rule: a scope
+**Production list (configured in `Observe` on the three nodes 2026-10-28, `appsettings.Production.json`, backup `*.bak-20261028-scopegrants`).** Rule: a scope
 is privileged when its holder acts beyond the signed-in user's own data —
 another user's or the whole tenant's data, money, infrastructure, delegation or
 publication. Scopes that only release claims or act for the signed-in user stay
