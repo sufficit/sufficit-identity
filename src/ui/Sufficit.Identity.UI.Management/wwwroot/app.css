@@ -1783,6 +1783,33 @@ h3 {
     gap: 8px;
 }
 
+/* Filter row of a list toolbar: it takes the room next to the heading and
+   keeps its fields on one line (SUI fields are 100% wide, so a wrapping row
+   would stack every field on its own line). */
+.data-toolbar__actions {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.data-toolbar__actions > form,
+.data-toolbar__actions > .toolbar-filters {
+    flex: 0 1 46rem;
+    min-width: 0;
+}
+
+.toolbar-filters {
+    width: 100%;
+}
+
+.toolbar-filters > .sui-field {
+    flex: 1 1 12rem;
+    min-width: 0;
+}
+
+.toolbar-filters > .sui-btn {
+    flex: 0 0 auto;
+}
+
 .data-toolbar--users {
     align-items: flex-end;
 }
@@ -4703,6 +4730,19 @@ h3 {
     .data-toolbar__actions {
         align-items: stretch;
         flex-direction: column;
+    }
+
+    .data-toolbar__actions > form,
+    .data-toolbar__actions > .toolbar-filters {
+        flex-basis: auto;
+    }
+
+    .toolbar-filters {
+        flex-wrap: wrap;
+    }
+
+    .toolbar-filters > .sui-field {
+        flex-basis: 100%;
     }
     .clients-filters {
         grid-template-columns: repeat(3, minmax(0, 1fr));

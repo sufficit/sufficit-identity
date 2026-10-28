@@ -37,8 +37,8 @@
 
 <RegistrationTokenPanel />
 
-<section class="table-card">
-    <div class="table-card__body">
+<SUISection Title="@L["Clients.Registrations.ListTitle"].Value">
+    <div>
         <ManagementDataView Result="result"
                             OnRetry="LoadAsync"
                             LoadingLabel="@L["Clients.Registrations.LoadingRegistrations"].Value">
@@ -143,7 +143,7 @@
                            EmptyText="@L["Clients.Registrations.EmptyTitle"].Value" />
         </footer>
     }
-</section>
+</SUISection>
 
 @code {
     // The reader's zone once the browser answers (BrowserTimeProvider in the layout).

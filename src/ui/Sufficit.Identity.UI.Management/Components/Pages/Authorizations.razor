@@ -33,7 +33,7 @@
         </div>
         <div class="data-toolbar__actions">
             <form @onsubmit="SearchAsync" @onsubmit:preventDefault>
-                <SUIStack Row Wrap AlignItems="End" Spacing="2">
+                <SUIStack Row AlignItems="End" Spacing="2" Class="toolbar-filters">
                     <IdentityTextField T="string"
                                        Id="authorization-search"
                                        InputType="search"

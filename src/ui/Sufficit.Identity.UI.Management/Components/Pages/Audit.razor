@@ -24,6 +24,7 @@
             <p>@L["Audit.List.Description"]</p>
         </div>
         <div class="data-toolbar__actions">
+            <SUIStack Row AlignItems="Center" Spacing="2" Class="toolbar-filters">
             @if (CanFilter)
             {
                 <IdentityTextField T="string"
@@ -42,6 +43,7 @@
                        OnClick="LoadAsync">
                 @L["Audit.Refresh"]
             </SUIButton>
+            </SUIStack>
         </div>
     </div>
 

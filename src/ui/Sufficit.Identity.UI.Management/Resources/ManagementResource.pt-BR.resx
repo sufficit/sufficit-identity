@@ -216,6 +216,7 @@
   <data name="Clients.Detail.CreatedMessage" xml:space="preserve"><value>O registro foi persistido com padrões seguros e o evento está disponível na auditoria.</value></data>
   <data name="Clients.Detail.LoadingAriaLabel" xml:space="preserve"><value>Carregando detalhes do cliente</value></data>
   <data name="Clients.Registrations.Title" xml:space="preserve"><value>Registros automáticos</value></data>
+  <data name="Clients.Registrations.ListTitle" xml:space="preserve"><value>Aplicações registradas</value></data>
   <data name="Clients.Registrations.Description" xml:space="preserve"><value>Aplicações que se registraram sozinhas via Dynamic Client Registration (RFC 7591). Registros anônimos ficam limitados ao perfil de login interativo — sem escopos de API.</value></data>
   <data name="Clients.Registrations.AllApplications" xml:space="preserve"><value>Todas as aplicações</value></data>
   <data name="Clients.Registrations.RevokedTitle" xml:space="preserve"><value>Registro revogado</value></data>

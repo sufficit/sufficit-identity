@@ -412,7 +412,8 @@ public sealed partial class ManagementUiArchitectureTests
             "Components",
             "Pages",
             "Authorizations.razor"));
-        Assert.Contains("<SUIStack Row Wrap AlignItems=\"End\"", page, StringComparison.Ordinal);
+        // One row: SUI fields are 100% wide, so a wrapping row stacks them.
+        Assert.Contains("<SUIStack Row AlignItems=\"End\" Spacing=\"2\" Class=\"toolbar-filters\"", page, StringComparison.Ordinal);
         Assert.Contains("Id=\"authorization-state-filter\"", page, StringComparison.Ordinal);
         Assert.Contains("Label=\"@L[\"Authorizations.Filter.StateLabel\"].Value\"", page, StringComparison.Ordinal);
         Assert.DoesNotContain("class=\"user-search\"", page, StringComparison.Ordinal);

@@ -6,12 +6,10 @@
 
 @* Initial access tokens for dynamic client registration: issued here, one per
    registrant, and shown only once. *@
-<section class="table-card registration-tokens" aria-labelledby="registration-tokens-heading">
-    <SUIStack Spacing="4" Class="table-card__body">
-        <header class="registration-tokens__header">
-            <h2 id="registration-tokens-heading">@L["Clients.RegistrationTokens.Title"]</h2>
-            <p>@L["Clients.RegistrationTokens.Description"]</p>
-        </header>
+<SUISection Icon="key"
+            Title="@L["Clients.RegistrationTokens.Title"].Value"
+            Description="@L["Clients.RegistrationTokens.Description"].Value"
+            Class="registration-tokens">
 
         @if (!string.IsNullOrWhiteSpace(issueError))
         {
@@ -198,8 +196,7 @@
         }
             </Success>
         </ManagementDataView>
-    </SUIStack>
-</section>
+</SUISection>
 
 @code {
     // The reader's zone once the browser answers (BrowserTimeProvider in the layout).

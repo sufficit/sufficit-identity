@@ -216,6 +216,7 @@
   <data name="Clients.Detail.CreatedMessage" xml:space="preserve"><value>The registration was persisted with secure defaults and the event is available in the audit log.</value></data>
   <data name="Clients.Detail.LoadingAriaLabel" xml:space="preserve"><value>Loading client details</value></data>
   <data name="Clients.Registrations.Title" xml:space="preserve"><value>Automatic registrations</value></data>
+  <data name="Clients.Registrations.ListTitle" xml:space="preserve"><value>Registered applications</value></data>
   <data name="Clients.Registrations.Description" xml:space="preserve"><value>Applications that registered themselves through Dynamic Client Registration (RFC 7591). Anonymous registrations are limited to the interactive sign-in profile, with no API scopes.</value></data>
   <data name="Clients.Registrations.AllApplications" xml:space="preserve"><value>All applications</value></data>
   <data name="Clients.Registrations.RevokedTitle" xml:space="preserve"><value>Registration revoked</value></data>
