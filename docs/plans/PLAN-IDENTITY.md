@@ -338,9 +338,9 @@ token-exchange provenance, credential-mutation step-up) are reported by it.
 
 ### D5 — Real shared cache
 
-- [ ] **(operational)** Rehearse revocation across replicas: revoke on one
-  node, consume on the others. Needs a temporary client with the revocation
-  endpoint permission, which the Management create contract does not expose
+- [x] **(operational)** Rehearse revocation across replicas: revoke on one
+  node, consume on the others — done 2026-10-28, all six issuer/revoker pairs
+  ([`202610281700`](../activities/202610281700-replica-revocation.md))
 
 Issuance, consumption and DPoP replay across the three production replicas
 rehearsed 2026-10-24 —
