@@ -37,6 +37,17 @@ public sealed partial class VaultSnapshotCache
     private readonly ConcurrentDictionary<string, CacheEntry<IReadOnlyList<VaultSecretMetadata>>> _metadata = new(StringComparer.Ordinal);
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
 
+    // Bumped by every signing invalidation (local, remote or flush). A load
+    // that started before a bump may hold the pre-rotation key list; caching
+    // it after the invalidation would hide the new version until the entry
+    // expires, so such a result is returned but not stored.
+    private long _signingGeneration;
+
+    // Set while this flow runs a signing loader: an invalidation the loader
+    // causes itself (creating v1 on first use) is already reflected in its
+    // own result and must not discard it.
+    private static readonly AsyncLocal<bool> LoadingSigningKeys = new();
+
     public VaultSnapshotCache(
         IDbContextFactory<AppDbContext> databaseFactory,
         VaultSnapshotOptions options,
@@ -88,7 +99,23 @@ public sealed partial class VaultSnapshotCache
             return value;
         }
 
-        var loaded = await loader(cancellationToken);
+        var generation = Interlocked.Read(ref _signingGeneration);
+        IReadOnlyList<VaultSigningKey> loaded;
+        LoadingSigningKeys.Value = true;
+        try
+        {
+            loaded = await loader(cancellationToken);
+        }
+        finally
+        {
+            LoadingSigningKeys.Value = false;
+        }
+        // An empty list is transient (first key not created yet); never pin it.
+        if (loaded.Count == 0 || generation != Interlocked.Read(ref _signingGeneration))
+        {
+            return loaded;
+        }
+
         SetLocal(_signing, keyName, new CacheEntry<IReadOnlyList<VaultSigningKey>>(
             loaded, DateTimeOffset.UtcNow));
         await TryWriteDistributedAsync(
@@ -254,6 +281,10 @@ public sealed partial class VaultSnapshotCache
         string keyName,
         CancellationToken cancellationToken = default)
     {
+        if (!LoadingSigningKeys.Value)
+        {
+            Interlocked.Increment(ref _signingGeneration);
+        }
         _signing.TryRemove(keyName, out _);
         foreach (var key in _signingMaterials.Keys.Where(
                      key => string.Equals(key.KeyName, keyName, StringComparison.Ordinal)))
@@ -304,6 +335,7 @@ public sealed partial class VaultSnapshotCache
 
     internal void Flush()
     {
+        Interlocked.Increment(ref _signingGeneration);
         _signing.Clear();
         _signingMaterials.Clear();
         _symmetric.Clear();
@@ -321,6 +353,7 @@ public sealed partial class VaultSnapshotCache
         switch (invalidation.Kind)
         {
             case "signing":
+                Interlocked.Increment(ref _signingGeneration);
                 foreach (var keyName in _signing.Keys.Where(key =>
                     string.Equals(SigningCacheKey(key), invalidation.CacheKey, StringComparison.Ordinal)))
                 {
