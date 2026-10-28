@@ -47,42 +47,52 @@
     }
     else if (!confirming)
     {
-        <div class="credential-panel__actions">
+        <SUIStack Row="true" AlignItems="center" Justify="between" Spacing="2" Wrap="true" Class="credential-panel__actions">
             <span>@L["Users.MfaReset.VerificationNote"]</span>
             <SUIButton ColorValue="SUIColor.Error" VariantValue="SUIVariant.Outlined" OnClick="BeginConfirmation">
                 @L["Users.MfaReset.Title"]
             </SUIButton>
-        </div>
+        </SUIStack>
     }
     else
     {
-        <form class="form-grid" @onsubmit="ResetAsync" @onsubmit:preventDefault data-mfa-reset-confirmation>
-            <SUIAlert ToneValue="SUITone.Warning">@L["Users.MfaReset.Consequences", ConfirmationValue]</SUIAlert>
-            <div class="form-grid credential-panel__fields">
-                <div class="field-group">
-                    <label for="mfa-reset-reason">@L["Users.MfaReset.Reason"]</label>
-                    <input id="mfa-reset-reason" class="form-control" type="text" minlength="10" maxlength="500" required
-                           aria-describedby="mfa-reset-reason-help" disabled="@busy" @bind="reason" @bind:event="oninput" />
-                    <span id="mfa-reset-reason-help" class="field-hint">@L["Users.MfaReset.ReasonHelp"]</span>
-                </div>
-                <div class="field-group">
-                    <label for="mfa-reset-confirmation">@L["Users.MfaReset.Confirmation", ConfirmationValue]</label>
-                    <input id="mfa-reset-confirmation" class="form-control" type="text" autocomplete="off" spellcheck="false" required
-                           disabled="@busy" @bind="confirmation" @bind:event="oninput" />
-                </div>
-                <label class="account-access-confirmation" for="mfa-reset-verified">
-                    <input id="mfa-reset-verified" type="checkbox" disabled="@busy" @bind="identityVerified" />
-                    <span>@L["Users.MfaReset.IdentityVerified"]</span>
-                </label>
-            </div>
-            <div class="credential-panel__actions">
-                <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" Disabled="@busy" OnClick="Cancel">
-                    @L["Users.MfaReset.Cancel"]
-                </SUIButton>
-                <SUIButton ButtonTypeValue="SUIButtonType.Submit" ColorValue="SUIColor.Error" Disabled="@(!CanSubmit)">
-                    @(busy ? L["Users.MfaReset.Submitting"] : L["Users.MfaReset.Confirm"])
-                </SUIButton>
-            </div>
+        <form @onsubmit="ResetAsync" @onsubmit:preventDefault data-mfa-reset-confirmation>
+            <SUIStack Spacing="4">
+                <SUIAlert ToneValue="SUITone.Warning">@L["Users.MfaReset.Consequences", ConfirmationValue]</SUIAlert>
+                <SUIFormGrid Columns="1" Class="credential-panel__fields">
+                    <IdentityTextField T="string"
+                                       Id="mfa-reset-reason"
+                                       Immediate="true"
+                                       MaxLength="500"
+                                       minlength="10"
+                                       required
+                                       Disabled="@busy"
+                                       Label="@L["Users.MfaReset.Reason"].Value"
+                                       HelperText="@L["Users.MfaReset.ReasonHelp"].Value"
+                                       @bind-Value="reason" />
+                    <IdentityTextField T="string"
+                                       Id="mfa-reset-confirmation"
+                                       Immediate="true"
+                                       autocomplete="off"
+                                       spellcheck="false"
+                                       required
+                                       Disabled="@busy"
+                                       Label="@L["Users.MfaReset.Confirmation", ConfirmationValue].Value"
+                                       @bind-Value="confirmation" />
+                    <SUICheckbox Id="mfa-reset-verified"
+                                 Disabled="@busy"
+                                 Label="@L["Users.MfaReset.IdentityVerified"].Value"
+                                 @bind-Value="identityVerified" />
+                </SUIFormGrid>
+                <SUIStack Row="true" AlignItems="center" Justify="end" Spacing="2" Wrap="true" Class="credential-panel__actions">
+                    <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" Disabled="@busy" OnClick="Cancel">
+                        @L["Users.MfaReset.Cancel"]
+                    </SUIButton>
+                    <SUIButton ButtonTypeValue="SUIButtonType.Submit" ColorValue="SUIColor.Error" Disabled="@(!CanSubmit)">
+                        @(busy ? L["Users.MfaReset.Submitting"] : L["Users.MfaReset.Confirm"])
+                    </SUIButton>
+                </SUIStack>
+            </SUIStack>
         </form>
     }
 </section>

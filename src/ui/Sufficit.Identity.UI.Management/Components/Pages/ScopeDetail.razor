@@ -10,10 +10,10 @@
 <SUIPageHeader Title="@HeaderTitle"
             Description="@L["Scopes.Detail.HeaderDescription"].Value">
     <Actions>
-        <a class="button button--secondary" href="scopes">
+        <SUIButton Href="scopes" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">
             <SUIIcon Name="arrow-left" Size="17" />
             @L["Scopes.BackToScopes"]
-        </a>
+        </SUIButton>
     </Actions>
 </SUIPageHeader>
 
@@ -51,7 +51,7 @@
         </div>
     </LoadingContent>
     <FailureActions>
-        <a class="button button--secondary" href="scopes">@L["Scopes.BackToScopes"]</a>
+        <SUIButton Href="scopes" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">@L["Scopes.BackToScopes"]</SUIButton>
     </FailureActions>
     <Success Context="_">
     @if (scope.IsManifestManaged)
@@ -147,21 +147,20 @@
 
         @if (!scope.IsManifestManaged)
         {
-            <footer class="form-actions">
-                <a class="button button--secondary" href="scopes">Cancelar</a>
-                <button class="button button--primary" type="submit" disabled="@submitting">
+            <SUIStack Row="true" AlignItems="center" Justify="end" Spacing="2" Wrap="true">
+                <SUIButton Href="scopes" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">@L["Scopes.Cancel"]</SUIButton>
+                <SUIButton ButtonTypeValue="SUIButtonType.Submit" Disabled="@submitting">
                     @if (submitting)
                     {
-                        <span class="button-spinner" aria-hidden="true"></span>
-                        <span>@L["Scopes.Save.Saving"]</span>
+                        @L["Scopes.Save.Saving"]
                     }
                     else
                     {
                         <SUIIcon Name="check" Size="17" />
-                        <span>@L["Scopes.Save.Submit"]</span>
+                        @L["Scopes.Save.Submit"]
                     }
-                </button>
-            </footer>
+                </SUIButton>
+            </SUIStack>
         }
     </EditForm>
     </div>
@@ -177,19 +176,16 @@
                         : L["Scopes.Delete.HasClients"])
                 </p>
             </div>
-            <label class="delete-confirmation">
-                <input type="checkbox"
-                       disabled="@(scope.ClientIds.Count > 0)"
-                       @bind="deleteConfirmed" />
-                <span>@L["Scopes.Delete.ConfirmLabel"]</span>
-            </label>
-            <button class="button button--danger"
-                    type="button"
-                    disabled="@(!deleteConfirmed || deleting || scope.ClientIds.Count > 0)"
-                    @onclick="DeleteAsync">
+            <SUICheckbox ColorValue="SUIColor.Error"
+                         Disabled="@(scope.ClientIds.Count > 0)"
+                         Label="@L["Scopes.Delete.ConfirmLabel"].Value"
+                         @bind-Value="deleteConfirmed" />
+            <SUIButton ColorValue="SUIColor.Error"
+                       Disabled="@(!deleteConfirmed || deleting || scope.ClientIds.Count > 0)"
+                       OnClick="DeleteAsync">
                 <SUIIcon Name="trash" Size="17" />
                 @(deleting ? L["Scopes.Delete.Deleting"] : L["Scopes.Delete.Title"])
-            </button>
+            </SUIButton>
         </div>
     }
     </Success>

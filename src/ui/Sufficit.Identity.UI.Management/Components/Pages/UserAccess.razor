@@ -9,10 +9,10 @@
 
 <SUIPageHeader Title="@HeaderTitle" Description="@L["Users.Detail.Actions.AccessDescription"].Value">
     <Actions>
-        <a class="button button--secondary" href="@DetailHref">
+        <SUIButton Href="@DetailHref" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">
             <SUIIcon Name="arrow-left" Size="17" />
             @L["Users.Actions.BackToUser"]
-        </a>
+        </SUIButton>
     </Actions>
 </SUIPageHeader>
 
@@ -31,7 +31,7 @@
     </div>
     </LoadingContent>
     <FailureActions>
-        <a class="button button--secondary" href="@DetailHref">@L["Users.Actions.BackToUser"]</a>
+        <SUIButton Href="@DetailHref" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">@L["Users.Actions.BackToUser"]</SUIButton>
     </FailureActions>
     <Success Context="_">
 @if (user.Actions.CanSetLockout)
@@ -69,28 +69,29 @@
 
         @if (!currentlyLocked)
         {
-            <label class="account-access-confirmation" for="confirm-account-lockout">
-                <input id="confirm-account-lockout" type="checkbox" @bind="lockoutConfirmed" />
-                <span><strong>@L["Users.Detail.Access.ConfirmLabel"]</strong><small>@L["Users.Detail.Access.ConfirmHint"]</small></span>
-            </label>
+            <SUICheckbox Id="confirm-account-lockout"
+                         ColorValue="SUIColor.Error"
+                         Label="@LockoutConfirmationLabel"
+                         @bind-Value="lockoutConfirmed" />
         }
 
-        <div class="account-access-panel__actions">
+        <SUIStack Row="true" AlignItems="center" Justify="between" Spacing="2" Wrap="true" Class="account-access-panel__actions">
             <span>@L["Users.Detail.Access.ActionNote"]</span>
-            <button class="button @(currentlyLocked ? "button--secondary" : "button--danger")" type="button"
-                    disabled="@(busy || (!currentlyLocked && !lockoutConfirmed))" @onclick="() => SetLockoutAsync(!currentlyLocked)">
+            <SUIButton ColorValue="@(currentlyLocked ? SUIColor.Default : SUIColor.Error)"
+                       VariantValue="@(currentlyLocked ? SUIVariant.Outlined : SUIVariant.Filled)"
+                       Disabled="@(busy || (!currentlyLocked && !lockoutConfirmed))"
+                       OnClick="() => SetLockoutAsync(!currentlyLocked)">
                 @if (busy)
                 {
-                    <span class="button-spinner" aria-hidden="true"></span>
-                    <span>@(currentlyLocked ? L["Users.Detail.Access.Unlocking"] : L["Users.Detail.Access.Locking"])</span>
+                    @(currentlyLocked ? L["Users.Detail.Access.Unlocking"] : L["Users.Detail.Access.Locking"])
                 }
                 else
                 {
                     <SUIIcon Name="@(currentlyLocked ? "refresh" : "lock")" Size="17" />
-                    <span>@(currentlyLocked ? L["Users.Detail.Access.UnlockButton"] : L["Users.Detail.Access.LockButton"])</span>
+                    @(currentlyLocked ? L["Users.Detail.Access.UnlockButton"] : L["Users.Detail.Access.LockButton"])
                 }
-            </button>
-        </div>
+            </SUIButton>
+        </SUIStack>
     </section>
 }
 else if (user.Actions.SetLockoutRequiresMfa)
@@ -119,6 +120,7 @@ else
     private bool? lastLockoutState;
     private string DetailHref => $"users/{Uri.EscapeDataString(Id)}";
     private string HeaderTitle => result?.Value?.UserName ?? result?.Value?.Email ?? L["Users.Detail.Actions.Access"].Value;
+    private string LockoutConfirmationLabel => $"{L["Users.Detail.Access.ConfirmLabel"].Value}. {L["Users.Detail.Access.ConfirmHint"].Value}";
     private string OperationErrorTitle => operation?.Outcome is ManagementDataOutcome.StepUpRequired
         ? L["Users.Detail.Access.Error.StepUp"].Value
         : operation?.Outcome is ManagementDataOutcome.Forbidden

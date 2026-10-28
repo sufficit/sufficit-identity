@@ -6,12 +6,12 @@
 
 <span class="management-capability-help"
       lang="@System.Globalization.CultureInfo.CurrentUICulture.Name">
-    <button type="button"
-            class="management-capability-help__trigger"
-            aria-label="@L["Capability.Help.AriaLabel", copy.HelpTitle]"
-            aria-describedby="@TooltipId">
+    <SUIIconButton ColorValue="SUIColor.Info"
+                   SizeValue="SUISize.Small"
+                   Title="@L["Capability.Help.AriaLabel", copy.HelpTitle].Value"
+                   aria-describedby="@TooltipId">
         <SUIIcon Name="info" Size="17" />
-    </button>
+    </SUIIconButton>
     <span id="@TooltipId"
           class="management-capability-help__tooltip"
           role="tooltip">

@@ -206,11 +206,11 @@
                 }
                 else if (CanRetry && OnRetry.HasDelegate)
                 {
-                    <button class="button button--secondary"
-                            type="button"
-                            @onclick="RetryAsync">
+                    <SUIButton VariantValue="SUIVariant.Outlined"
+                               ColorValue="SUIColor.Default"
+                               OnClick="RetryAsync">
                         @L["Common.State.Retry"]
-                    </button>
+                    </SUIButton>
                 }
                 @FailureActions
             </Actions>

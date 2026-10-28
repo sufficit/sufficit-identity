@@ -12,10 +12,10 @@
     <Actions>
         @if (accessResult?.IsSuccess is true && Access.CanCreate)
         {
-            <a class="button button--primary" href="users/new">
+            <SUIButton Href="users/new">
                 <SUIIcon Name="plus" Size="17" />
                 @L["Users.Actions.New"]
-            </a>
+            </SUIButton>
         }
         <SUIStatusBadge ToneValue="SUITone.Info" Icon="shield">@L["Users.Badge.GlobalDirectory"]</SUIStatusBadge>
     </Actions>
@@ -50,10 +50,11 @@
                 </div>
                 @if (SelectedDay is not null)
                 {
-                    <a class="filter-chip" href="@UrlFor(day: null, clearDay: true, page: 1)">
+                    <SUIChip ColorValue="SUIColor.Primary"
+                             RemoveLabel="@L["Users.Overview.ClearDay"].Value"
+                             OnRemove="ClearSelectedDay">
                         @BrowserTime.FormatDay(SelectedDay.Value)
-                        <SUIIcon Name="x" Size="14" />
-                    </a>
+                    </SUIChip>
                 }
             </div>
 
@@ -121,15 +122,15 @@
             </div>
             @if (IsStaleUnverifiedReview)
             {
-                <a class="button button--secondary" href="@BaseUri" aria-current="page">
+                <SUIButton Href="@BaseUri" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" aria-current="page">
                     <SUIIcon Name="x" Size="15" /> @L["Users.Investigation.End"]
-                </a>
+                </SUIButton>
             }
             else
             {
-                <a class="button button--secondary" href="@RiskReviewUrl">
+                <SUIButton Href="@RiskReviewUrl" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">
                     @L["Users.Investigation.Review"] <SUIIcon Name="arrow-right" Size="15" />
-                </a>
+                </SUIButton>
             }
         </div>
 
@@ -196,10 +197,10 @@
                     <SUISelectItem Value="@(60)">@L["Users.Range.Days", 60]</SUISelectItem>
                     <SUISelectItem Value="@(90)">@L["Users.Range.Days", 90]</SUISelectItem>
                 </IdentitySelect>
-                <div class="users-filter-actions">
+                <SUIStack Row="true" AlignItems="end" Spacing="2" Wrap="true" Class="users-filter-actions">
                     <SUIButton ColorValue="SUIColor.Primary" ButtonTypeValue="SUIButtonType.Submit" Disabled="@usersLoading">@(usersLoading ? L["Users.Filters.Applying"] : L["Users.Filters.Apply"])</SUIButton>
                     <SUIButton ColorValue="SUIColor.Default" VariantValue="SUIVariant.Outlined" Disabled="@usersLoading" OnClick="ClearFilters">@L["Users.Filters.Clear"]</SUIButton>
-                </div>
+                </SUIStack>
             </form>
         </details>
 
@@ -220,62 +221,80 @@
                 <Success Context="loadedUsers">
                 @if (Page.Items.Count is 0)
                 {
-                    <SUIEmptyState Icon="users" Title="@EmptyStateTitle" Description="@EmptyStateDescription"><Actions><button class="button button--secondary" type="button" @onclick="ClearFilters">@L["Users.Empty.BackToDirectory"]</button></Actions></SUIEmptyState>
+                    <SUIEmptyState Icon="users" Title="@EmptyStateTitle" Description="@EmptyStateDescription"><Actions><SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" OnClick="ClearFilters">@L["Users.Empty.BackToDirectory"]</SUIButton></Actions></SUIEmptyState>
                 }
                 else
                 {
-                    <div class="table-scroll">
-                        <table class="data-table data-table--users users-table">
-                            <thead><tr>
-                                <th scope="col"><a href="@UrlFor(sort: ToggleNameSort, page: 1)" aria-label="@L["Users.Table.SortByName"]">@L["Users.Table.User"] @SortMark(ManagementUserSort.NameAscending, ManagementUserSort.NameDescending)</a></th>
-                                <th scope="col">@L["Users.Common.Email"]</th>
-                                <th scope="col"><a href="@UrlFor(sort: ToggleCreatedSort, page: 1)" aria-label="@L["Users.Table.SortByCreated"]">@L["Users.Table.Registered"] @SortMark(ManagementUserSort.CreatedNewest, ManagementUserSort.CreatedOldest)</a></th>
-                                <th scope="col">@L["Users.Table.ExternalAccess"]</th><th scope="col">@L["Users.Filters.Mfa"]</th><th scope="col">@L["Users.Filters.State"]</th><th scope="col"><span class="visually-hidden">@L["Users.Table.Actions"]</span></th>
-                            </tr></thead>
-                            <tbody>
-                            @foreach (var user in Page.Items)
-                            {
-                                <tr>
-                                    <td data-label="@L["Users.Table.User"]">
-                                        <span class="user-identity">
-                                            @*
-                                                referrerpolicy: the avatar host must not learn which
-                                                console page an operator is looking at.
-                                            *@
-                                            @if (user.PictureUrl is not null)
-                                            {
-                                                <img class="user-avatar" src="@user.PictureUrl" alt=""
-                                                     referrerpolicy="no-referrer" loading="lazy"
-                                                     width="28" height="28" />
-                                            }
-                                            else
-                                            {
-                                                <span class="user-avatar user-avatar--initials" aria-hidden="true">@InitialsFor(user)</span>
-                                            }
-                                            <a class="client-name client-link" href="@UserHref(user.Id)">@DisplayUserName(user)</a>
+                    <SUITable TItem="ManagementUserSummary"
+                              Items="Page.Items"
+                              RowKey="user => user.Id"
+                              Class="data-table data-table--users users-table">
+                        <HeaderContent>
+                            <SUITh>
+                                <SUITableSortLabel TItem="ManagementUserSummary"
+                                                   aria-label="@L["Users.Table.SortByName"].Value"
+                                                   AllowUnsorted="false"
+                                                   SortDirection="@SortDirectionFor(ManagementUserSort.NameAscending, ManagementUserSort.NameDescending)"
+                                                   SortDirectionChanged="_ => SortBy(ToggleNameSort)"
+                                                   StateDescriptionFactory="NoSortStateDescription">@L["Users.Table.User"]</SUITableSortLabel>
+                            </SUITh>
+                            <SUITh>@L["Users.Common.Email"]</SUITh>
+                            <SUITh>
+                                <SUITableSortLabel TItem="ManagementUserSummary"
+                                                   aria-label="@L["Users.Table.SortByCreated"].Value"
+                                                   AllowUnsorted="false"
+                                                   SortDirection="@SortDirectionFor(ManagementUserSort.CreatedOldest, ManagementUserSort.CreatedNewest)"
+                                                   SortDirectionChanged="_ => SortBy(ToggleCreatedSort)"
+                                                   StateDescriptionFactory="NoSortStateDescription">@L["Users.Table.Registered"]</SUITableSortLabel>
+                            </SUITh>
+                            <SUITh>@L["Users.Table.ExternalAccess"]</SUITh>
+                            <SUITh>@L["Users.Filters.Mfa"]</SUITh>
+                            <SUITh>@L["Users.Filters.State"]</SUITh>
+                            <SUITh><span class="visually-hidden">@L["Users.Table.Actions"]</span></SUITh>
+                        </HeaderContent>
+                        <RowTemplate Context="user">
+                            <SUITd DataLabel="@L["Users.Table.User"]">
+                                <span class="user-identity">
+                                    @*
+                                        referrerpolicy: the avatar host must not learn which
+                                        console page an operator is looking at.
+                                    *@
+                                    @if (user.PictureUrl is not null)
+                                    {
+                                        <img class="user-avatar" src="@user.PictureUrl" alt=""
+                                             referrerpolicy="no-referrer" loading="lazy"
+                                             width="28" height="28" />
+                                    }
+                                    else
+                                    {
+                                        <span class="user-avatar user-avatar--initials" aria-hidden="true">@InitialsFor(user)</span>
+                                    }
+                                    <a class="client-name client-link" href="@UserHref(user.Id)">@DisplayUserName(user)</a>
+                                </span>
+                            </SUITd>
+                            <SUITd DataLabel="@L["Users.Common.Email"]">
+                                <span class="user-email">
+                                    <span>@DisplayEmail(user)</span>
+                                    @if (user.EmailConfirmed)
+                                    {
+                                        <span class="verified-mark" title="@L["Users.Table.EmailConfirmed"]" aria-label="@L["Users.Table.EmailConfirmed"]">
+                                            <SUIIcon Name="check" Size="13" />
                                         </span>
-                                    </td>
-                                    <td data-label="@L["Users.Common.Email"]">
-                                        <span class="user-email">
-                                            <span>@DisplayEmail(user)</span>
-                                            @if (user.EmailConfirmed)
-                                            {
-                                                <span class="verified-mark" title="@L["Users.Table.EmailConfirmed"]" aria-label="@L["Users.Table.EmailConfirmed"]">
-                                                    <SUIIcon Name="check" Size="13" />
-                                                </span>
-                                            }
-                                        </span>
-                                    </td>
-                                    <td data-label="@L["Users.Table.Registered"]"><time datetime="@user.CreatedAtUtc.ToString("O")"><strong>@Time.Format(user.CreatedAtUtc, TimeStyle.Date)</strong><span>@Time.Format(user.CreatedAtUtc, TimeStyle.Time)</span></time></td>
-                                    <td data-label="@L["Users.Table.ExternalAccess"]"><SUIStatusBadge ToneValue="@(user.HasExternalLogin ? SUITone.Info : SUITone.Warning)">@(user.HasExternalLogin ? L["Users.Table.Linked"] : L["Users.Table.Missing"])</SUIStatusBadge></td>
-                                    <td data-label="@L["Users.Filters.Mfa"]"><SUIStatusBadge ToneValue="@(user.TwoFactorEnabled ? SUITone.Success : SUITone.Neutral)">@(user.TwoFactorEnabled ? L["Users.Filters.Active"] : L["Users.Filters.Inactive"])</SUIStatusBadge></td>
-                                    <td data-label="@L["Users.Filters.State"]"><span class="registration-state"><span class="status-dot @(user.IsLockedOut ? "status-dot--danger" : "status-dot--success")" aria-hidden="true"></span>@(user.IsLockedOut ? L["Users.Table.Locked"] : L["Users.Filters.Active"])</span></td>
-                                    <td data-label="@L["Users.Table.Actions"]"><a class="row-action" href="@UserHref(user.Id)" aria-label="@L["Users.Table.OpenDetails", DisplayUserName(user)]">@L["Users.Table.Details"]<SUIIcon Name="arrow-right" Size="15" /></a></td>
-                                </tr>
-                            }
-                            </tbody>
-                        </table>
-                    </div>
+                                    }
+                                </span>
+                            </SUITd>
+                            <SUITd DataLabel="@L["Users.Table.Registered"]"><time datetime="@user.CreatedAtUtc.ToString("O")"><strong>@Time.Format(user.CreatedAtUtc, TimeStyle.Date)</strong><span>@Time.Format(user.CreatedAtUtc, TimeStyle.Time)</span></time></SUITd>
+                            <SUITd DataLabel="@L["Users.Table.ExternalAccess"]"><SUIStatusBadge ToneValue="@(user.HasExternalLogin ? SUITone.Info : SUITone.Warning)">@(user.HasExternalLogin ? L["Users.Table.Linked"] : L["Users.Table.Missing"])</SUIStatusBadge></SUITd>
+                            <SUITd DataLabel="@L["Users.Filters.Mfa"]"><SUIStatusBadge ToneValue="@(user.TwoFactorEnabled ? SUITone.Success : SUITone.Neutral)">@(user.TwoFactorEnabled ? L["Users.Filters.Active"] : L["Users.Filters.Inactive"])</SUIStatusBadge></SUITd>
+                            <SUITd DataLabel="@L["Users.Filters.State"]"><span class="registration-state"><span class="status-dot @(user.IsLockedOut ? "status-dot--danger" : "status-dot--success")" aria-hidden="true"></span>@(user.IsLockedOut ? L["Users.Table.Locked"] : L["Users.Filters.Active"])</span></SUITd>
+                            <SUITd DataLabel="@L["Users.Table.Actions"]">
+                                <SUIButton Href="@UserHref(user.Id)" VariantValue="SUIVariant.Text" SizeValue="SUISize.Small"
+                                           aria-label="@L["Users.Table.OpenDetails", DisplayUserName(user)].Value">
+                                    @L["Users.Table.Details"]<SUIIcon Name="arrow-right" Size="15" />
+                                </SUIButton>
+                            </SUITd>
+                        </RowTemplate>
+                    </SUITable>
                 }
                 </Success>
             </ManagementDataView>
@@ -284,9 +303,13 @@
                 @if (TotalPages > 1)
                 {
                     <nav class="pagination" aria-label="@L["Users.Pagination.AriaLabel"]">
-                        <a class="button button--secondary button--compact" aria-disabled="@(Page.Page <= 1)" href="@(Page.Page > 1 ? UrlFor(page: Page.Page - 1) : null)">@L["Users.Pagination.Previous"]</a>
+                        <SUIButton Href="@(Page.Page > 1 ? UrlFor(page: Page.Page - 1) : null)"
+                                   VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" SizeValue="SUISize.Small"
+                                   Disabled="@(Page.Page <= 1)">@L["Users.Pagination.Previous"]</SUIButton>
                         <span>@L["Users.Pagination.PageOf", Page.Page, TotalPages]</span>
-                        <a class="button button--secondary button--compact" aria-disabled="@(Page.Page >= TotalPages)" href="@(Page.Page < TotalPages ? UrlFor(page: Page.Page + 1) : null)">@L["Users.Pagination.Next"]</a>
+                        <SUIButton Href="@(Page.Page < TotalPages ? UrlFor(page: Page.Page + 1) : null)"
+                                   VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" SizeValue="SUISize.Small"
+                                   Disabled="@(Page.Page >= TotalPages)">@L["Users.Pagination.Next"]</SUIButton>
                     </nav>
                 }
             </footer>
@@ -436,6 +459,11 @@
         return first == default ? "?" : char.ToUpperInvariant(first).ToString();
     }
     private static string Pluralize(int count, string singular, string plural) => count is 1 ? singular : plural;
-    private string SortMark(ManagementUserSort ascending, ManagementUserSort descending) => QuerySort == ascending ? "↑" : QuerySort == descending ? "↓" : "↕";
+    private SUISortDirection SortDirectionFor(ManagementUserSort ascending, ManagementUserSort descending) => QuerySort == ascending ? SUISortDirection.Ascending : QuerySort == descending ? SUISortDirection.Descending : SUISortDirection.None;
+    // The header keeps its localized aria-label (which already names the action),
+    // so the library's built-in English state suffix is suppressed.
+    private static string NoSortStateDescription(SUISortDirection _) => string.Empty;
+    private void SortBy(ManagementUserSort value) => Navigation.NavigateTo(UrlFor(sort: value, page: 1));
+    private void ClearSelectedDay() => Navigation.NavigateTo(UrlFor(day: null, clearDay: true, page: 1));
     private string DayAriaLabel(ManagementUserRegistrationDay day) => L["Users.Chart.DayAriaLabel", day.Date.ToString("dd 'de' MMMM", PtBr), day.Count, Pluralize(day.Count, L["Users.Count.RegistrationSingular"], L["Users.Count.RegistrationPlural"]), day.IsAnomaly ? L["Users.Chart.DayAnomalySuffix"] : string.Empty];
 }

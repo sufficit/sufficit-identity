@@ -9,10 +9,10 @@
 <SUIPageHeader Title="@L["Users.Edit.HeaderTitle"].Value"
             Description="@L["Users.Edit.HeaderDescription"].Value">
     <Actions>
-        <a class="button button--secondary" href="@DetailHref">
+        <SUIButton Href="@DetailHref" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">
             <SUIIcon Name="arrow-left" Size="17" />
             @L["Users.Edit.BackToUser"]
-        </a>
+        </SUIButton>
     </Actions>
 </SUIPageHeader>
 
@@ -35,9 +35,9 @@
         </div>
     </LoadingContent>
     <FailureActions>
-        <a class="button button--secondary" href="@UsersHref">
+        <SUIButton Href="@UsersHref" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">
             @L["Users.Edit.BackToUsers"]
-        </a>
+        </SUIButton>
     </FailureActions>
     <Success Context="_">
 @if (User.Actions.UpdateProfileRequiresMfa)
@@ -47,9 +47,9 @@
                     Title="@L["Users.Edit.MfaRequired.Title"].Value"
                     Description="@L["Users.Edit.MfaRequired.Description"].Value">
             <Actions>
-                <a class="button button--secondary" href="@DetailHref">
+                <SUIButton Href="@DetailHref" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">
                     @L["Users.Edit.BackToUser"]
-                </a>
+                </SUIButton>
             </Actions>
         </SUIEmptyState>
     </div>
@@ -61,9 +61,9 @@ else if (!User.Actions.CanUpdateProfile)
                     Title="@L["Users.Edit.Forbidden.Title"].Value"
                     Description="@L["Users.Edit.Forbidden.Description"].Value">
             <Actions>
-                <a class="button button--secondary" href="@DetailHref">
+                <SUIButton Href="@DetailHref" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">
                     @L["Users.Edit.BackToUser"]
-                </a>
+                </SUIButton>
             </Actions>
         </SUIEmptyState>
     </div>
@@ -103,74 +103,52 @@ else
                 <p>@L["Users.Edit.Identity.Description"]</p>
             </div>
 
-            <div class="form-grid form-grid--two">
-                <div class="field-group">
-                    <label for="user-name">@L["Users.Edit.Field.UserName"]</label>
-                    <InputText id="user-name"
-                               class="form-control"
-                               autocomplete="username"
-                               maxlength="256"
-                               @bind-Value="model.UserName" />
-                    <ValidationMessage For="() => model.UserName" />
-                    @if (submission?.ErrorField is "userName")
-                    {
-                        <p class="validation-message">@submission.ErrorMessage</p>
-                    }
-                </div>
-
-                <div class="field-group">
-                    <label for="user-email">@L["Users.Edit.Field.Email"]</label>
-                    <InputText id="user-email"
-                               class="form-control"
-                               type="email"
-                               autocomplete="email"
-                               maxlength="256"
-                               @bind-Value="model.Email" />
-                    <ValidationMessage For="() => model.Email" />
-                    @if (submission?.ErrorField is "email")
-                    {
-                        <p class="validation-message">@submission.ErrorMessage</p>
-                    }
-                </div>
-            </div>
-
-            <div class="field-group">
-                <label for="user-phone">
-                    @L["Users.Edit.Field.Phone"]
-                    <span class="label-optional">@L["Users.Edit.Field.PhoneOptional"]</span>
-                </label>
-                <InputText id="user-phone"
-                           class="form-control"
-                           type="tel"
-                           autocomplete="tel"
-                           maxlength="256"
-                           @bind-Value="model.PhoneNumber" />
-                <ValidationMessage For="() => model.PhoneNumber" />
-                @if (submission?.ErrorField is "phoneNumber")
-                {
-                    <p class="validation-message">@submission.ErrorMessage</p>
-                }
-                <span class="field-hint">@L["Users.Edit.Field.PhoneHint"]</span>
-            </div>
+            <SUIFormGrid Columns="2">
+                <ChildContent>
+                    <IdentityTextField T="string"
+                                       Id="user-name"
+                                       autocomplete="username"
+                                       MaxLength="256"
+                                       Label="@L["Users.Edit.Field.UserName"].Value"
+                                       ErrorText="@(submission?.ErrorField is "userName" ? submission.ErrorMessage : null)"
+                                       @bind-Value="model.UserName" />
+                    <IdentityTextField T="string"
+                                       Id="user-email"
+                                       InputType="email"
+                                       autocomplete="email"
+                                       MaxLength="256"
+                                       Label="@L["Users.Edit.Field.Email"].Value"
+                                       ErrorText="@(submission?.ErrorField is "email" ? submission.ErrorMessage : null)"
+                                       @bind-Value="model.Email" />
+                </ChildContent>
+                <FullWidthContent>
+                    <IdentityTextField T="string"
+                                       Id="user-phone"
+                                       InputType="tel"
+                                       autocomplete="tel"
+                                       MaxLength="256"
+                                       Label="@PhoneLabel"
+                                       HelperText="@L["Users.Edit.Field.PhoneHint"].Value"
+                                       ErrorText="@(submission?.ErrorField is "phoneNumber" ? submission.ErrorMessage : null)"
+                                       @bind-Value="model.PhoneNumber" />
+                </FullWidthContent>
+            </SUIFormGrid>
         </div>
 
-        <footer class="form-actions">
-            <a class="button button--secondary" href="@DetailHref">@L["Users.Edit.Cancel"]</a>
-            <button class="button button--primary"
-                    type="submit"
-                    disabled="@submitting">
+        <SUIStack Row="true" AlignItems="center" Justify="end" Spacing="2" Wrap="true">
+            <SUIButton Href="@DetailHref" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">@L["Users.Edit.Cancel"]</SUIButton>
+            <SUIButton ButtonTypeValue="SUIButtonType.Submit" Disabled="@submitting">
                 @if (submitting)
                 {
-                    <span class="button-spinner" aria-hidden="true"></span>
-                    <span>@L["Users.Edit.Submitting"]</span>
+                    @L["Users.Edit.Submitting"]
                 }
                 else
                 {
                     <SUIIcon Name="check" Size="17" />
-                    <span>@L["Users.Edit.Submit"]</span>
+                    @L["Users.Edit.Submit"]
                 }
-            </button>
-        </footer>
+            </SUIButton>
+        </SUIStack>
     </EditForm>
     </div>
 }
@@ -186,6 +164,8 @@ else
     private ManagementDataResult<ManagementUserDetail>? submission;
     private bool loading = true;
     private bool submitting;
+
+    private string PhoneLabel => $"{L["Users.Edit.Field.Phone"].Value} ({L["Users.Edit.Field.PhoneOptional"].Value})";
 
     private ManagementUserDetail User =>
         detailResult?.Value

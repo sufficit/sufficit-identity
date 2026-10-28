@@ -9,10 +9,10 @@
 <SUIPageHeader Title="@L["Users.Create.HeaderTitle"].Value"
             Description="@L["Users.Create.HeaderDescription"].Value">
     <Actions>
-        <a class="button button--secondary" href="users">
+        <SUIButton Href="users" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">
             <SUIIcon Name="arrow-left" Size="17" />
             @L["Users.Create.BackToUsers"]
-        </a>
+        </SUIButton>
     </Actions>
 </SUIPageHeader>
 
@@ -49,7 +49,7 @@
                     Title="@L["Users.Create.Forbidden.Title"].Value"
                     Description="@L["Users.Create.Forbidden.Description"].Value">
             <Actions>
-                <a class="button button--secondary" href="users">@L["Users.Create.BackToUsers"]</a>
+                <SUIButton Href="users" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">@L["Users.Create.BackToUsers"]</SUIButton>
             </Actions>
         </SUIEmptyState>
     </div>
@@ -80,36 +80,23 @@ else
                 <p>@L["Users.Create.Identity.Description"]</p>
             </div>
 
-            <div class="form-grid form-grid--two">
-                <div class="field-group">
-                    <label for="user-name">@L["Users.Create.Field.UserName"]</label>
-                    <InputText id="user-name"
-                               class="form-control"
-                               autocomplete="username"
-                               maxlength="256"
-                               @bind-Value="model.UserName" />
-                    <ValidationMessage For="() => model.UserName" />
-                    @if (submission?.ErrorField is "userName")
-                    {
-                        <p class="validation-message">@submission.ErrorMessage</p>
-                    }
-                </div>
-
-                <div class="field-group">
-                    <label for="user-email">@L["Users.Create.Field.Email"]</label>
-                    <InputText id="user-email"
-                               class="form-control"
-                               type="email"
-                               autocomplete="email"
-                               maxlength="256"
-                               @bind-Value="model.Email" />
-                    <ValidationMessage For="() => model.Email" />
-                    @if (submission?.ErrorField is "email")
-                    {
-                        <p class="validation-message">@submission.ErrorMessage</p>
-                    }
-                </div>
-            </div>
+            <SUIFormGrid Columns="2">
+                <IdentityTextField T="string"
+                                   Id="user-name"
+                                   autocomplete="username"
+                                   MaxLength="256"
+                                   Label="@L["Users.Create.Field.UserName"].Value"
+                                   ErrorText="@(submission?.ErrorField is "userName" ? submission.ErrorMessage : null)"
+                                   @bind-Value="model.UserName" />
+                <IdentityTextField T="string"
+                                   Id="user-email"
+                                   InputType="email"
+                                   autocomplete="email"
+                                   MaxLength="256"
+                                   Label="@L["Users.Create.Field.Email"].Value"
+                                   ErrorText="@(submission?.ErrorField is "email" ? submission.ErrorMessage : null)"
+                                   @bind-Value="model.Email" />
+            </SUIFormGrid>
         </div>
 
         <div class="form-section" aria-labelledby="user-password-heading">
@@ -118,51 +105,38 @@ else
                 <p>@L["Users.Create.Password.Description"]</p>
             </div>
 
-            <div class="form-grid form-grid--two">
-                <div class="field-group">
-                    <label for="initial-password">@L["Users.Create.Field.Password"]</label>
-                    <InputText id="initial-password"
-                               class="form-control"
-                               type="password"
-                               autocomplete="new-password"
-                               @bind-Value="model.InitialPassword" />
-                    <ValidationMessage For="() => model.InitialPassword" />
-                    @if (submission?.ErrorField is "initialPassword")
-                    {
-                        <p class="validation-message">@submission.ErrorMessage</p>
-                    }
-                </div>
-
-                <div class="field-group">
-                    <label for="confirm-password">@L["Users.Create.Field.ConfirmPassword"]</label>
-                    <InputText id="confirm-password"
-                               class="form-control"
-                               type="password"
-                               autocomplete="new-password"
-                               @bind-Value="model.ConfirmPassword" />
-                    <ValidationMessage For="() => model.ConfirmPassword" />
-                </div>
-            </div>
-            <span class="field-hint">@L["Users.Create.Password.Hint"]</span>
+            <SUIFormGrid Columns="2">
+                <IdentityTextField T="string"
+                                   Id="initial-password"
+                                   InputType="password"
+                                   autocomplete="new-password"
+                                   Label="@L["Users.Create.Field.Password"].Value"
+                                   HelperText="@L["Users.Create.Password.Hint"].Value"
+                                   ErrorText="@(submission?.ErrorField is "initialPassword" ? submission.ErrorMessage : null)"
+                                   @bind-Value="model.InitialPassword" />
+                <IdentityTextField T="string"
+                                   Id="confirm-password"
+                                   InputType="password"
+                                   autocomplete="new-password"
+                                   Label="@L["Users.Create.Field.ConfirmPassword"].Value"
+                                   @bind-Value="model.ConfirmPassword" />
+            </SUIFormGrid>
         </div>
 
-        <footer class="form-actions">
-            <a class="button button--secondary" href="users">@L["Users.Create.Cancel"]</a>
-            <button class="button button--primary"
-                    type="submit"
-                    disabled="@submitting">
+        <SUIStack Row="true" AlignItems="center" Justify="end" Spacing="2" Wrap="true">
+            <SUIButton Href="users" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">@L["Users.Create.Cancel"]</SUIButton>
+            <SUIButton ButtonTypeValue="SUIButtonType.Submit" Disabled="@submitting">
                 @if (submitting)
                 {
-                    <span class="button-spinner" aria-hidden="true"></span>
-                    <span>@L["Users.Create.Submitting"]</span>
+                    @L["Users.Create.Submitting"]
                 }
                 else
                 {
                     <SUIIcon Name="plus" Size="17" />
-                    <span>@L["Users.Create.Submit"]</span>
+                    @L["Users.Create.Submit"]
                 }
-            </button>
-        </footer>
+            </SUIButton>
+        </SUIStack>
     </EditForm>
     </div>
 }

@@ -9,48 +9,48 @@
 <SUIPageHeader Title="@HeaderTitle"
             Description="@L["Users.Detail.HeaderDescription"].Value">
     <Actions>
-        <a class="button button--secondary" href="@BackHref">
+        <SUIButton Href="@BackHref" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">
             <SUIIcon Name="arrow-left" Size="17" />
             @L["Users.Detail.BackToUsers"]
-        </a>
+        </SUIButton>
         <AuthorizeView Policy="@ManagementUiPolicies.ManageClaims">
             <Authorized>
-                <a class="button button--secondary" href="@ClaimsHref">
+                <SUIButton Href="@ClaimsHref" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">
                     <SUIIcon Name="shield" Size="17" />
                     @L["Users.Detail.ClaimsLink"]
-                </a>
+                </SUIButton>
             </Authorized>
         </AuthorizeView>
         <AuthorizeView Policy="@ManagementUiPolicies.ManageSessions">
             <Authorized>
-                <a class="button button--secondary" href="@SessionsHref">
+                <SUIButton Href="@SessionsHref" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">
                     <SUIIcon Name="clock" Size="17" />
                     @L["Users.Detail.SessionsLink"]
-                </a>
+                </SUIButton>
             </Authorized>
         </AuthorizeView>
         <AuthorizeView Policy="@ManagementUiPolicies.ManageMetrics">
             <Authorized>
-                <a class="button button--secondary" href="@UsageHref">
+                <SUIButton Href="@UsageHref" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">
                     <SUIIcon Name="chart" Size="17" />
                     @L["Users.Detail.UsageLink"]
-                </a>
+                </SUIButton>
             </Authorized>
         </AuthorizeView>
         <AuthorizeView Policy="@ManagementUiPolicies.ManageAuthorizations">
             <Authorized>
-                <a class="button button--secondary" href="@AuthorizationsHref">
+                <SUIButton Href="@AuthorizationsHref" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">
                     <SUIIcon Name="shield" Size="17" />
                     @L["Users.Detail.AuthorizationsLink"]
-                </a>
+                </SUIButton>
             </Authorized>
         </AuthorizeView>
         @if (result?.Value?.Actions.CanUpdateProfile is true)
         {
-            <a class="button button--primary" href="@EditHref">
+            <SUIButton Href="@EditHref">
                 <SUIIcon Name="edit" Size="17" />
                 @L["Users.Detail.EditProfileLink"]
-            </a>
+            </SUIButton>
         }
     </Actions>
 </SUIPageHeader>
@@ -91,7 +91,7 @@
         </div>
     </LoadingContent>
     <FailureActions>
-        <a class="button button--secondary" href="@BackHref">@L["Users.Detail.BackToUsers"]</a>
+        <SUIButton Href="@BackHref" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">@L["Users.Detail.BackToUsers"]</SUIButton>
     </FailureActions>
     <Success Context="_">
     <div class="detail-shell">
@@ -176,15 +176,16 @@
     </div>
 
     <section class="user-account-actions" aria-label="@L["Users.Detail.Actions.Toggle"].Value">
-        <button class="button button--secondary user-account-actions__toggle"
-                type="button"
-                aria-expanded="@(showAccountActions ? "true" : "false")"
-                aria-controls="user-account-actions-menu"
-                @onclick="() => showAccountActions = !showAccountActions">
+        <SUIButton Class="user-account-actions__toggle"
+                   VariantValue="SUIVariant.Outlined"
+                   ColorValue="SUIColor.Default"
+                   aria-expanded="@(showAccountActions ? "true" : "false")"
+                   aria-controls="user-account-actions-menu"
+                   OnClick="() => showAccountActions = !showAccountActions">
             <SUIIcon Name="settings" Size="17" />
-            <span>@L["Users.Detail.Actions.Toggle"]</span>
+            @L["Users.Detail.Actions.Toggle"]
             <SUIIcon Name="@(showAccountActions ? "chevron-up" : "chevron-down")" Size="15" />
-        </button>
+        </SUIButton>
 
         <div id="user-account-actions-menu"
              class="user-account-actions__menu @(showAccountActions ? "user-account-actions__menu--open" : null)">

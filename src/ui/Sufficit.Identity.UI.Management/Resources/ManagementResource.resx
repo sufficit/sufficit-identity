@@ -251,6 +251,7 @@
   <data name="Users.Loading.Users" xml:space="preserve"><value>Loading users</value></data>
   <data name="Users.Overview.Heading" xml:space="preserve"><value>Registrations per day</value></data>
   <data name="Users.Overview.RangeLabel" xml:space="preserve"><value>Last {0} days · dates in UTC</value></data>
+  <data name="Users.Overview.ClearDay" xml:space="preserve"><value>Clear day filter</value></data>
   <data name="Users.Overview.EmptyHistory" xml:space="preserve"><value>There is not enough history for this period yet.</value></data>
   <data name="Users.Insight.Directory" xml:space="preserve"><value>Directory</value></data>
   <data name="Users.Insight.Today" xml:space="preserve"><value>Today</value></data>

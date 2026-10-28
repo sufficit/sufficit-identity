@@ -215,7 +215,7 @@ public sealed partial class ManagementUiRoutingTests
         Assert.Equal(HttpStatusCode.OK, password.StatusCode);
         Assert.Contains("reset-management-user-password", passwordHtml, StringComparison.Ordinal);
         Assert.Equal(HttpStatusCode.OK, delete.StatusCode);
-        Assert.Contains("Digite <strong>alice</strong> para confirmar", deleteHtml, StringComparison.Ordinal);
+        Assert.Contains("Digite alice para confirmar", deleteHtml, StringComparison.Ordinal);
         Assert.Equal(HttpStatusCode.OK, detailEnglish.StatusCode);
         Assert.Contains("Account actions", detailEnglishHtml, StringComparison.Ordinal);
     }

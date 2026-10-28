@@ -8,10 +8,10 @@
 <SUIPageHeader Title="Scopes"
             Description="@L["Scopes.PageDescription"].Value">
     <Actions>
-        <a class="button button--primary" href="scopes/new">
+        <SUIButton Href="scopes/new">
             <SUIIcon Name="plus" Size="17" />
             @L["Scopes.NewScope"]
-        </a>
+        </SUIButton>
     </Actions>
 </SUIPageHeader>
 
@@ -44,15 +44,14 @@
         <div class="data-toolbar__actions">
             @if (AllScopes.Count > 0)
             {
-                <label class="search-field">
-                    <span class="visually-hidden">@L["Scopes.Search.Label"]</span>
-                    <SUIIcon Name="search" Size="18" />
-                    <input type="search"
-                           placeholder="@L["Scopes.Search.Placeholder"].Value"
-                           autocomplete="off"
-                           @bind="search"
-                           @bind:event="oninput" />
-                </label>
+                <IdentityTextField T="string"
+                                   InputType="search"
+                                   Immediate="true"
+                                   AdornmentIcon="search"
+                                   Placeholder="@L["Scopes.Search.Placeholder"].Value"
+                                   aria-label="@L["Scopes.Search.Label"].Value"
+                                   autocomplete="off"
+                                   @bind-Value="search" />
             }
         </div>
     </div>
@@ -74,56 +73,50 @@
                     <Actions>
                         @if (AllScopes.Count is 0)
                         {
-                            <a class="button button--primary" href="scopes/new">@L["Scopes.CreateFirst"]</a>
+                            <SUIButton Href="scopes/new">@L["Scopes.CreateFirst"]</SUIButton>
                         }
                         else
                         {
-                            <button class="button button--secondary" type="button" @onclick="ClearSearch">@L["Scopes.ClearSearch"]</button>
+                            <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" OnClick="ClearSearch">@L["Scopes.ClearSearch"]</SUIButton>
                         }
                     </Actions>
                 </SUIEmptyState>
             }
             else
             {
-                <div class="table-scroll">
-                    <table class="data-table data-table--scopes">
-                        <thead>
-                            <tr>
-                                <th scope="col">@L["Scopes.Table.Scope"]</th>
-                                <th scope="col">@L["Scopes.Table.Origin"]</th>
-                                <th scope="col">@L["Scopes.Table.Resources"]</th>
-                                <th scope="col">@L["Scopes.Table.Clients"]</th>
-                                <th scope="col"><span class="visually-hidden">@L["Scopes.Table.Actions"]</span></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var scope in FilteredScopes)
-                            {
-                                <tr>
-                                    <td data-label="@L["Scopes.Table.Scope"].Value">
-                                        <a class="scope-identity" href="@ScopeHref(scope.Id)">
-                                            <strong>@DisplayName(scope)</strong>
-                                            <code>@scope.Name</code>
-                                        </a>
-                                    </td>
-                                    <td data-label="@L["Scopes.Table.Origin"].Value">
-                                        <SUIStatusBadge ToneValue="@(scope.IsManifestManaged ? SUITone.Info : SUITone.Neutral)">
-                                            @(scope.IsManifestManaged ? L["Scopes.Origin.Manifest"] : L["Scopes.Origin.Manual"])
-                                        </SUIStatusBadge>
-                                    </td>
-                                    <td data-label="@L["Scopes.Table.Resources"].Value">@scope.ResourceCount</td>
-                                    <td data-label="@L["Scopes.Table.Clients"].Value">@scope.ClientCount</td>
-                                    <td data-label="@L["Scopes.Table.Actions"].Value">
-                                        <a class="row-action" href="@ScopeHref(scope.Id)">
-                                            @L["Scopes.Details"]
-                                            <SUIIcon Name="arrow-right" Size="15" />
-                                        </a>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
+                <SUITable TItem="ManagementScopeSummary"
+                          Items="FilteredScopes"
+                          RowKey="scope => scope.Id"
+                          Class="data-table data-table--scopes">
+                    <HeaderContent>
+                        <SUITh>@L["Scopes.Table.Scope"]</SUITh>
+                        <SUITh>@L["Scopes.Table.Origin"]</SUITh>
+                        <SUITh>@L["Scopes.Table.Resources"]</SUITh>
+                        <SUITh>@L["Scopes.Table.Clients"]</SUITh>
+                        <SUITh><span class="visually-hidden">@L["Scopes.Table.Actions"]</span></SUITh>
+                    </HeaderContent>
+                    <RowTemplate Context="scope">
+                        <SUITd DataLabel="@L["Scopes.Table.Scope"].Value">
+                            <a class="scope-identity" href="@ScopeHref(scope.Id)">
+                                <strong>@DisplayName(scope)</strong>
+                                <code>@scope.Name</code>
+                            </a>
+                        </SUITd>
+                        <SUITd DataLabel="@L["Scopes.Table.Origin"].Value">
+                            <SUIStatusBadge ToneValue="@(scope.IsManifestManaged ? SUITone.Info : SUITone.Neutral)">
+                                @(scope.IsManifestManaged ? L["Scopes.Origin.Manifest"] : L["Scopes.Origin.Manual"])
+                            </SUIStatusBadge>
+                        </SUITd>
+                        <SUITd DataLabel="@L["Scopes.Table.Resources"].Value">@scope.ResourceCount</SUITd>
+                        <SUITd DataLabel="@L["Scopes.Table.Clients"].Value">@scope.ClientCount</SUITd>
+                        <SUITd DataLabel="@L["Scopes.Table.Actions"].Value">
+                            <SUIButton Href="@ScopeHref(scope.Id)" VariantValue="SUIVariant.Text" SizeValue="SUISize.Small">
+                                @L["Scopes.Details"]
+                                <SUIIcon Name="arrow-right" Size="15" />
+                            </SUIButton>
+                        </SUITd>
+                    </RowTemplate>
+                </SUITable>
             }
         </Success>
     </ManagementDataView>

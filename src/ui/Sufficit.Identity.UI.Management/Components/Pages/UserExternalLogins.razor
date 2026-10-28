@@ -11,10 +11,10 @@
 
 <SUIPageHeader Title="@HeaderTitle" Description="@L["Users.ExternalLogins.Description"].Value">
     <Actions>
-        <a class="button button--secondary" href="@DetailHref">
+        <SUIButton Href="@DetailHref" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">
             <SUIIcon Name="arrow-left" Size="17" />
             @L["Users.Actions.BackToUser"]
-        </a>
+        </SUIButton>
     </Actions>
 </SUIPageHeader>
 
@@ -33,7 +33,7 @@
     </div>
     </LoadingContent>
     <FailureActions>
-        <a class="button button--secondary" href="@DetailHref">@L["Users.Actions.BackToUser"]</a>
+        <SUIButton Href="@DetailHref" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">@L["Users.Actions.BackToUser"]</SUIButton>
     </FailureActions>
     <Success Context="_">
 @if (logins.Logins.Count == 0)
@@ -66,21 +66,19 @@ else
                     </div>
                     @if (logins.CanRemove)
                     {
-                        <button class="button button--danger"
-                                type="button"
-                                disabled="@(busyKey is not null)"
-                                @onclick="() => RemoveAsync(current)">
+                        <SUIButton ColorValue="SUIColor.Error"
+                                   Disabled="@(busyKey is not null)"
+                                   OnClick="() => RemoveAsync(current)">
                             @if (removing)
                             {
-                                <span class="button-spinner" aria-hidden="true"></span>
-                                <span>@L["Users.ExternalLogins.Removing"]</span>
+                                @L["Users.ExternalLogins.Removing"]
                             }
                             else
                             {
                                 <SUIIcon Name="trash" Size="17" />
-                                <span>@L["Users.ExternalLogins.RemoveButton"]</span>
+                                @L["Users.ExternalLogins.RemoveButton"]
                             }
-                        </button>
+                        </SUIButton>
                     }
                 </li>
             }

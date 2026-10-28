@@ -19,7 +19,6 @@
     font-size: 15px;
 }
 
-.system-users-create__fields,
 .system-user-credentials__issue {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -30,12 +29,6 @@
 .system-user-credentials__issue ::deep > .sui-btn {
     align-self: end;
     margin-bottom: 22px;
-}
-
-.system-users-create__actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
 }
 
 .system-user-credentials > header {

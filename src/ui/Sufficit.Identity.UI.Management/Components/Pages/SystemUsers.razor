@@ -39,7 +39,7 @@
 {
     <section class="system-users-create" aria-labelledby="system-users-create-heading">
         <h2 id="system-users-create-heading">@L["SystemUsers.Create.Title"]</h2>
-        <div class="system-users-create__fields" data-sui-align-row>
+        <SUIFormGrid Columns="2" Spacing="4">
             <IdentityTextField T="string"
                                id="system-user-name"
                                Immediate="true"
@@ -60,8 +60,8 @@
                                Value="@draftDisplayName"
                                ValueChanged="@((string? value) => draftDisplayName = value ?? string.Empty)"
                                autocomplete="off" />
-        </div>
-        <footer class="system-users-create__actions">
+        </SUIFormGrid>
+        <SUIStack Row="true" AlignItems="center" Justify="end" Spacing="2" Wrap="true">
             <SUIButton ButtonTypeValue="SUIButtonType.Button"
                        ColorValue="SUIColor.Secondary"
                        Disabled="@creating"
@@ -74,7 +74,7 @@
                 <SUIIcon Name="plus" Size="17" />
                 <span>@L["SystemUsers.Create.Submit"]</span>
             </SUILoadingButton>
-        </footer>
+        </SUIStack>
     </section>
 }
 
@@ -91,58 +91,54 @@
 }
 else
 {
-    <div class="table-scroll">
-        <table class="data-table system-users-table" aria-label="@L["SystemUsers.Table.AriaLabel"].Value">
-            <thead>
-                <tr>
-                    <th>@L["SystemUsers.Table.Name"]</th>
-                    <th>@L["SystemUsers.Table.Created"]</th>
-                    <th>@L["SystemUsers.Table.Credentials"]</th>
-                    <th>@L["SystemUsers.Table.State"]</th>
-                    <th><span class="visually-hidden">@L["SystemUsers.Table.Actions"]</span></th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var item in systemUsers)
-                {
-                    <tr class="@(selected?.UserId == item.UserId ? "is-selected" : null)">
-                        <td data-label="@L["SystemUsers.Table.Name"]">
-                            <strong>@(item.DisplayName ?? item.UserName)</strong>
-                            <small><code>@item.UserName</code> · <a href="users/@item.UserId">@item.UserId</a></small>
-                        </td>
-                        <td data-label="@L["SystemUsers.Table.Created"]">
-                            <span>@Time.Format(item.CreatedAtUtc)</span>
-                            <small>@item.CreatedBy</small>
-                        </td>
-                        <td data-label="@L["SystemUsers.Table.Credentials"]">@item.ActiveCredentials</td>
-                        <td data-label="@L["SystemUsers.Table.State"]">
-                            <SUIStatusBadge ToneValue="@(item.Disabled ? SUITone.Neutral : SUITone.Success)">
-                                @(item.Disabled ? L["SystemUsers.State.Disabled"] : L["SystemUsers.State.Enabled"])
-                            </SUIStatusBadge>
-                        </td>
-                        <td class="system-users-table__actions">
-                            <SUIStack Row="true" AlignItems="Center" Justify="End" Spacing="2" Wrap="false">
-                                <SUIButton ButtonTypeValue="SUIButtonType.Button"
-                                           VariantValue="SUIVariant.Outlined"
-                                           ColorValue="SUIColor.Primary"
-                                           OnClick="@(() => SelectAsync(item))">
-                                    <SUIIcon Name="key" Size="16" />
-                                    @L["SystemUsers.Action.Credentials"]
-                                </SUIButton>
-                                <SUIButton ButtonTypeValue="SUIButtonType.Button"
-                                           VariantValue="SUIVariant.Text"
-                                           ColorValue="@(item.Disabled ? SUIColor.Primary : SUIColor.Error)"
-                                           Disabled="@(toggling == item.UserId)"
-                                           OnClick="@(() => ToggleAsync(item))">
-                                    @(item.Disabled ? L["SystemUsers.Action.Enable"] : L["SystemUsers.Action.Disable"])
-                                </SUIButton>
-                            </SUIStack>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
+    <SUITable TItem="SystemUserSummary"
+              Items="systemUsers"
+              RowKey="item => item.UserId"
+              RowClassFunc="@((item, _) => selected?.UserId == item.UserId ? "is-selected" : null)"
+              Class="data-table system-users-table"
+              aria-label="@L["SystemUsers.Table.AriaLabel"].Value">
+        <HeaderContent>
+            <SUITh>@L["SystemUsers.Table.Name"]</SUITh>
+            <SUITh>@L["SystemUsers.Table.Created"]</SUITh>
+            <SUITh>@L["SystemUsers.Table.Credentials"]</SUITh>
+            <SUITh>@L["SystemUsers.Table.State"]</SUITh>
+            <SUITh><span class="visually-hidden">@L["SystemUsers.Table.Actions"]</span></SUITh>
+        </HeaderContent>
+        <RowTemplate Context="item">
+            <SUITd DataLabel="@L["SystemUsers.Table.Name"]">
+                <strong>@(item.DisplayName ?? item.UserName)</strong>
+                <small><code>@item.UserName</code> · <a href="users/@item.UserId">@item.UserId</a></small>
+            </SUITd>
+            <SUITd DataLabel="@L["SystemUsers.Table.Created"]">
+                <span>@Time.Format(item.CreatedAtUtc)</span>
+                <small>@item.CreatedBy</small>
+            </SUITd>
+            <SUITd DataLabel="@L["SystemUsers.Table.Credentials"]">@item.ActiveCredentials</SUITd>
+            <SUITd DataLabel="@L["SystemUsers.Table.State"]">
+                <SUIStatusBadge ToneValue="@(item.Disabled ? SUITone.Neutral : SUITone.Success)">
+                    @(item.Disabled ? L["SystemUsers.State.Disabled"] : L["SystemUsers.State.Enabled"])
+                </SUIStatusBadge>
+            </SUITd>
+            <SUITd Class="system-users-table__actions">
+                <SUIStack Row="true" AlignItems="Center" Justify="End" Spacing="2" Wrap="false">
+                    <SUIButton ButtonTypeValue="SUIButtonType.Button"
+                               VariantValue="SUIVariant.Outlined"
+                               ColorValue="SUIColor.Primary"
+                               OnClick="@(() => SelectAsync(item))">
+                        <SUIIcon Name="key" Size="16" />
+                        @L["SystemUsers.Action.Credentials"]
+                    </SUIButton>
+                    <SUIButton ButtonTypeValue="SUIButtonType.Button"
+                               VariantValue="SUIVariant.Text"
+                               ColorValue="@(item.Disabled ? SUIColor.Primary : SUIColor.Error)"
+                               Disabled="@(toggling == item.UserId)"
+                               OnClick="@(() => ToggleAsync(item))">
+                        @(item.Disabled ? L["SystemUsers.Action.Enable"] : L["SystemUsers.Action.Disable"])
+                    </SUIButton>
+                </SUIStack>
+            </SUITd>
+        </RowTemplate>
+    </SUITable>
 }
     </Success>
 </ManagementDataView>
@@ -216,52 +212,46 @@ else
         }
         else
         {
-            <div class="table-scroll">
-                <table class="data-table" aria-label="@L["SystemUsers.Credentials.TableAriaLabel"].Value">
-                    <thead>
-                        <tr>
-                            <th>@L["SystemUsers.Credentials.Client"]</th>
-                            <th>@L["SystemUsers.Credentials.Label"]</th>
-                            <th>@L["SystemUsers.Credentials.State"]</th>
-                            <th>@L["SystemUsers.Credentials.Issued"]</th>
-                            <th><span class="visually-hidden">@L["SystemUsers.Table.Actions"]</span></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var enrollment in enrollments)
-                        {
-                            <tr>
-                                <td data-label="@L["SystemUsers.Credentials.Client"]"><code>@enrollment.ClientId</code></td>
-                                <td data-label="@L["SystemUsers.Credentials.Label"]">
-                                    @enrollment.Label
-                                    <small>#@enrollment.CodeHint</small>
-                                </td>
-                                <td data-label="@L["SystemUsers.Credentials.State"]">
-                                    <SUIStatusBadge ToneValue="@StatusTone(enrollment.Status)">@StatusText(enrollment.Status)</SUIStatusBadge>
-                                    <small>@StatusDetail(enrollment)</small>
-                                </td>
-                                <td data-label="@L["SystemUsers.Credentials.Issued"]">
-                                    <span>@Time.Format(enrollment.CreatedAtUtc)</span>
-                                    <small>@enrollment.IssuedBy</small>
-                                </td>
-                                <td class="system-users-table__actions">
-                                    <SUIStack Row="true" AlignItems="Center" Justify="End" Spacing="2" Wrap="false">
-                                        @if (enrollment.Status is SystemUserEnrollmentStatus.Pending or SystemUserEnrollmentStatus.Active)
-                                        {
-                                            <SUIButton ButtonTypeValue="SUIButtonType.Button"
-                                                       VariantValue="SUIVariant.Text"
-                                                       ColorValue="SUIColor.Error"
-                                                       OnClick="@(() => RevokeAsync(enrollment))">
-                                                @L["SystemUsers.Credentials.Revoke"]
-                                            </SUIButton>
-                                        }
-                                    </SUIStack>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
+            <SUITable TItem="SystemUserEnrollmentSummary"
+                      Items="enrollments"
+                      Class="data-table"
+                      aria-label="@L["SystemUsers.Credentials.TableAriaLabel"].Value">
+                <HeaderContent>
+                    <SUITh>@L["SystemUsers.Credentials.Client"]</SUITh>
+                    <SUITh>@L["SystemUsers.Credentials.Label"]</SUITh>
+                    <SUITh>@L["SystemUsers.Credentials.State"]</SUITh>
+                    <SUITh>@L["SystemUsers.Credentials.Issued"]</SUITh>
+                    <SUITh><span class="visually-hidden">@L["SystemUsers.Table.Actions"]</span></SUITh>
+                </HeaderContent>
+                <RowTemplate Context="enrollment">
+                    <SUITd DataLabel="@L["SystemUsers.Credentials.Client"]"><code>@enrollment.ClientId</code></SUITd>
+                    <SUITd DataLabel="@L["SystemUsers.Credentials.Label"]">
+                        @enrollment.Label
+                        <small>#@enrollment.CodeHint</small>
+                    </SUITd>
+                    <SUITd DataLabel="@L["SystemUsers.Credentials.State"]">
+                        <SUIStatusBadge ToneValue="@StatusTone(enrollment.Status)">@StatusText(enrollment.Status)</SUIStatusBadge>
+                        <small>@StatusDetail(enrollment)</small>
+                    </SUITd>
+                    <SUITd DataLabel="@L["SystemUsers.Credentials.Issued"]">
+                        <span>@Time.Format(enrollment.CreatedAtUtc)</span>
+                        <small>@enrollment.IssuedBy</small>
+                    </SUITd>
+                    <SUITd Class="system-users-table__actions">
+                        <SUIStack Row="true" AlignItems="Center" Justify="End" Spacing="2" Wrap="false">
+                            @if (enrollment.Status is SystemUserEnrollmentStatus.Pending or SystemUserEnrollmentStatus.Active)
+                            {
+                                <SUIButton ButtonTypeValue="SUIButtonType.Button"
+                                           VariantValue="SUIVariant.Text"
+                                           ColorValue="SUIColor.Error"
+                                           OnClick="@(() => RevokeAsync(enrollment))">
+                                    @L["SystemUsers.Credentials.Revoke"]
+                                </SUIButton>
+                            }
+                        </SUIStack>
+                    </SUITd>
+                </RowTemplate>
+            </SUITable>
         }
 
         <div class="system-user-clients">
@@ -290,34 +280,31 @@ else
             }
             else
             {
-                <div class="table-scroll">
-                    <table class="data-table" aria-label="@L["SystemUsers.Clients.TableAriaLabel"].Value">
-                        <tbody>
-                            @foreach (var client in boundClients)
+                <SUITable TItem="SystemUserClientSummary"
+                          Items="boundClients"
+                          RowKey="client => client.ClientId"
+                          Class="data-table"
+                          aria-label="@L["SystemUsers.Clients.TableAriaLabel"].Value">
+                    <RowTemplate Context="client">
+                        <SUITd DataLabel="@L["SystemUsers.Clients.Field"]">
+                            <code>@client.ClientId</code>
+                            @if (!string.IsNullOrWhiteSpace(client.DisplayName))
                             {
-                                <tr>
-                                    <td data-label="@L["SystemUsers.Clients.Field"]">
-                                        <code>@client.ClientId</code>
-                                        @if (!string.IsNullOrWhiteSpace(client.DisplayName))
-                                        {
-                                            <small>@client.DisplayName</small>
-                                        }
-                                    </td>
-                                    <td class="system-users-table__actions">
-                                        <SUIStack Row="true" AlignItems="Center" Justify="End" Spacing="2" Wrap="false">
-                                            <SUIButton ButtonTypeValue="SUIButtonType.Button"
-                                                       VariantValue="SUIVariant.Text"
-                                                       ColorValue="SUIColor.Error"
-                                                       OnClick="@(() => UnbindClientAsync(client))">
-                                                @L["SystemUsers.Clients.Unbind"]
-                                            </SUIButton>
-                                        </SUIStack>
-                                    </td>
-                                </tr>
+                                <small>@client.DisplayName</small>
                             }
-                        </tbody>
-                    </table>
-                </div>
+                        </SUITd>
+                        <SUITd Class="system-users-table__actions">
+                            <SUIStack Row="true" AlignItems="Center" Justify="End" Spacing="2" Wrap="false">
+                                <SUIButton ButtonTypeValue="SUIButtonType.Button"
+                                           VariantValue="SUIVariant.Text"
+                                           ColorValue="SUIColor.Error"
+                                           OnClick="@(() => UnbindClientAsync(client))">
+                                    @L["SystemUsers.Clients.Unbind"]
+                                </SUIButton>
+                            </SUIStack>
+                        </SUITd>
+                    </RowTemplate>
+                </SUITable>
             }
         </div>
     </section>

@@ -251,6 +251,7 @@
   <data name="Users.Loading.Users" xml:space="preserve"><value>Carregando usuários</value></data>
   <data name="Users.Overview.Heading" xml:space="preserve"><value>Cadastros por dia</value></data>
   <data name="Users.Overview.RangeLabel" xml:space="preserve"><value>Últimos {0} dias · datas em UTC</value></data>
+  <data name="Users.Overview.ClearDay" xml:space="preserve"><value>Limpar filtro do dia</value></data>
   <data name="Users.Overview.EmptyHistory" xml:space="preserve"><value>Ainda não há histórico suficiente para o período.</value></data>
   <data name="Users.Insight.Directory" xml:space="preserve"><value>Diretório</value></data>
   <data name="Users.Insight.Today" xml:space="preserve"><value>Hoje</value></data>

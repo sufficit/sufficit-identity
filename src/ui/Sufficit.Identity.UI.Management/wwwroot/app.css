@@ -2611,13 +2611,6 @@ h3 {
     border-top: 1px solid var(--line);
 }
 
-.credential-panel__actions {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 18px;
-}
-
 .credential-panel__actions > span {
     color: var(--ink-muted);
     font-size: 11px;
@@ -2632,10 +2625,6 @@ h3 {
 .user-account-actions__toggle {
     display: none;
     min-height: 42px;
-}
-
-.user-account-actions__toggle .sui-icon:last-child {
-    margin-left: 2px;
 }
 
 .user-account-actions__menu {
@@ -2833,49 +2822,6 @@ h3 {
     margin-bottom: 0;
     color: var(--ink-muted);
     font-size: 12px;
-}
-
-.account-access-confirmation {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    padding: 14px 16px;
-    border: 1px solid #f4c7c3;
-    border-radius: var(--radius);
-    background: var(--danger-soft);
-    color: var(--ink);
-    cursor: pointer;
-}
-
-.account-access-confirmation input {
-    width: 18px;
-    height: 18px;
-    flex: 0 0 auto;
-    margin-top: 2px;
-    accent-color: var(--danger);
-}
-
-.account-access-confirmation span {
-    display: grid;
-    min-width: 0;
-    gap: 2px;
-}
-
-.account-access-confirmation strong {
-    font-size: 12px;
-}
-
-.account-access-confirmation small {
-    color: #7f1d17;
-    font-size: 11px;
-    line-height: 1.5;
-}
-
-.account-access-panel__actions {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 18px;
 }
 
 .account-access-panel__actions > span {
@@ -5120,33 +5066,6 @@ h3 {
     place-items: center;
 }
 
-.management-capability-help__trigger {
-    display: inline-grid;
-    width: 32px;
-    height: 32px;
-    cursor: help;
-    place-items: center;
-    padding: 0;
-    border: 0;
-    border-radius: 50%;
-    background: transparent;
-    color: var(--ink-subtle);
-    transition:
-        background-color var(--duration) var(--ease),
-        color var(--duration) var(--ease);
-}
-
-.management-capability-help__trigger:hover,
-.management-capability-help__trigger:focus-visible {
-    background: var(--info-soft);
-    color: var(--info);
-}
-
-.management-capability-help__trigger:focus-visible {
-    outline: 2px solid var(--info);
-    outline-offset: 1px;
-}
-
 .management-capability-help__tooltip {
     position: absolute;
     right: -5px;
@@ -5205,7 +5124,6 @@ h3 {
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .management-capability-help__trigger,
     .management-capability-help__tooltip {
         transition: none;
     }
@@ -5319,15 +5237,6 @@ h3 {
         color: rgba(255, 255, 255, 0.72);
         font-size: 12px;
         font-weight: 600;
-    }
-
-    .sidebar-mobile-header .icon-button {
-        color: rgba(255, 255, 255, 0.76);
-    }
-
-    .sidebar-mobile-header .icon-button:hover {
-        background: rgba(255, 255, 255, 0.08);
-        color: #ffffff;
     }
 
     .sidebar-brand {
@@ -5891,17 +5800,6 @@ h3 {
         justify-self: start;
     }
 
-    .credential-panel__actions,
-    .account-access-panel__actions {
-        align-items: stretch;
-        flex-direction: column;
-    }
-
-    .credential-panel__actions .button,
-    .account-access-panel__actions .button {
-        width: 100%;
-    }
-
     .account-access-panel {
         padding: 20px 16px;
     }
@@ -6100,10 +5998,6 @@ h3 {
 }
 
 @media (max-width: 420px) {
-    .topbar-actions > .icon-button {
-        display: none;
-    }
-
     .integration-banner {
         display: block;
     }

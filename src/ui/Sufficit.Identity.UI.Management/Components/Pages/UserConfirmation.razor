@@ -10,10 +10,10 @@
 
 <SUIPageHeader Title="@HeaderTitle" Description="@L["Users.Detail.Actions.ResendConfirmationDescription"].Value">
     <Actions>
-        <a class="button button--secondary" href="@DetailHref">
+        <SUIButton Href="@DetailHref" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">
             <SUIIcon Name="arrow-left" Size="17" />
             @L["Users.Actions.BackToUser"]
-        </a>
+        </SUIButton>
     </Actions>
 </SUIPageHeader>
 
@@ -32,7 +32,7 @@
     </div>
     </LoadingContent>
     <FailureActions>
-        <a class="button button--secondary" href="@DetailHref">@L["Users.Actions.BackToUser"]</a>
+        <SUIButton Href="@DetailHref" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">@L["Users.Actions.BackToUser"]</SUIButton>
     </FailureActions>
     <Success Context="_">
 @if (user.EmailConfirmed)
@@ -55,21 +55,20 @@ else if (user.Actions.CanResendConfirmation)
             <SUIStatusBadge ToneValue="SUITone.Neutral">@L["Users.Detail.EmailConfirmedPending"]</SUIStatusBadge>
         </div>
 
-        <div class="account-access-panel__actions">
+        <SUIStack Row="true" AlignItems="center" Justify="between" Spacing="2" Wrap="true" Class="account-access-panel__actions">
             <span>@L["Users.Confirmation.ActionNote"]</span>
-            <button class="button button--primary" type="button" disabled="@busy" @onclick="ResendAsync">
+            <SUIButton Disabled="@busy" OnClick="ResendAsync">
                 @if (busy)
                 {
-                    <span class="button-spinner" aria-hidden="true"></span>
-                    <span>@L["Users.Confirmation.Sending"]</span>
+                    @L["Users.Confirmation.Sending"]
                 }
                 else
                 {
                     <SUIIcon Name="inbox" Size="17" />
-                    <span>@L["Users.Confirmation.SendButton"]</span>
+                    @L["Users.Confirmation.SendButton"]
                 }
-            </button>
-        </div>
+            </SUIButton>
+        </SUIStack>
     </section>
 }
 else if (user.Actions.ResendConfirmationRequiresMfa)

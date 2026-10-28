@@ -8,7 +8,7 @@
 
 <SUIPageHeader Title="@HeaderTitle" Description="@L["Users.Detail.Actions.DeleteDescription"].Value">
     <Actions>
-        <a class="button button--secondary" href="@DetailHref"><SUIIcon Name="arrow-left" Size="17" />@L["Users.Actions.BackToUser"]</a>
+        <SUIButton Href="@DetailHref" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default"><SUIIcon Name="arrow-left" Size="17" />@L["Users.Actions.BackToUser"]</SUIButton>
     </Actions>
 </SUIPageHeader>
 
@@ -24,23 +24,25 @@
     <div class="delete-zone" aria-label="@L["Users.Actions.Loading"].Value"><div class="detail-skeleton"></div><div class="detail-skeleton detail-skeleton--short"></div></div>
     </LoadingContent>
     <FailureActions>
-        <a class="button button--secondary" href="@DetailHref">@L["Users.Actions.BackToUser"]</a>
+        <SUIButton Href="@DetailHref" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">@L["Users.Actions.BackToUser"]</SUIButton>
     </FailureActions>
     <Success Context="user">
 @if (user.Actions.CanDelete)
 {
     <section class="delete-zone" aria-labelledby="delete-user-heading">
         <div><h2 id="delete-user-heading">@L["Users.Detail.Delete.Heading"]</h2><p>@L["Users.Detail.Delete.Description"]</p></div>
-        <div class="delete-confirmation">
-            <label for="delete-user-confirmation">@L["Users.Detail.Delete.ConfirmLabelPrefix"] <strong>@ConfirmationValue</strong> @L["Users.Detail.Delete.ConfirmLabelSuffix"]</label>
-            <input id="delete-user-confirmation" class="form-control" type="text" autocomplete="off" spellcheck="false"
-                   aria-describedby="delete-user-help" @bind="confirmation" @bind:event="oninput" />
-            <small id="delete-user-help">@L["Users.Detail.Delete.Help"]</small>
-        </div>
-        <button class="button button--danger" type="button" disabled="@(!CanSubmit)" @onclick="DeleteAsync">
-            @if (busy) { <span class="button-spinner" aria-hidden="true"></span><span>@L["Users.Detail.Delete.Submitting"]</span> }
-            else { <SUIIcon Name="trash" Size="17" /><span>@L["Users.Detail.Delete.Submit"]</span> }
-        </button>
+        <SUITextField TValue="string"
+                      Id="delete-user-confirmation"
+                      Label="@ConfirmationLabel"
+                      HelperText="@L["Users.Detail.Delete.Help"].Value"
+                      Immediate="true"
+                      autocomplete="off"
+                      spellcheck="false"
+                      @bind-Value="confirmation" />
+        <SUIButton ColorValue="SUIColor.Error" Disabled="@(!CanSubmit)" OnClick="DeleteAsync">
+            @if (busy) { @L["Users.Detail.Delete.Submitting"] }
+            else { <SUIIcon Name="trash" Size="17" />@L["Users.Detail.Delete.Submit"] }
+        </SUIButton>
         @if (operation?.IsSuccess is false)
         {
             <div class="inline-notice inline-notice--danger" role="alert"><SUIIcon Name="alert" Size="19" /><div><strong>@OperationErrorTitle</strong><span>@operation.ErrorMessage</span></div></div>
@@ -73,6 +75,7 @@ else
     private string DetailHref => $"users/{Uri.EscapeDataString(Id)}";
     private string HeaderTitle => result?.Value?.UserName ?? result?.Value?.Email ?? L["Users.Detail.Delete.Heading"].Value;
     private string ConfirmationValue => result?.Value?.UserName ?? result?.Value?.Email ?? Id;
+    private string ConfirmationLabel => $"{L["Users.Detail.Delete.ConfirmLabelPrefix"].Value} {ConfirmationValue} {L["Users.Detail.Delete.ConfirmLabelSuffix"].Value}";
     private bool CanSubmit => !busy && string.Equals(confirmation.Trim(), ConfirmationValue, StringComparison.Ordinal);
     private string OperationErrorTitle => operation?.Outcome is ManagementDataOutcome.StepUpRequired
         ? L["Users.Detail.Delete.Error.StepUp"].Value

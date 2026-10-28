@@ -8,10 +8,10 @@
 <SUIPageHeader Title="@L["Scopes.NewScope"].Value"
             Description="@L["Scopes.Create.HeaderDescription"].Value">
     <Actions>
-        <a class="button button--secondary" href="scopes">
+        <SUIButton Href="scopes" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">
             <SUIIcon Name="arrow-left" Size="17" />
             @L["Scopes.BackToScopes"]
-        </a>
+        </SUIButton>
     </Actions>
 </SUIPageHeader>
 
@@ -92,21 +92,20 @@
         </SUIFormGrid>
     </div>
 
-    <footer class="form-actions">
-        <a class="button button--secondary" href="scopes">@L["Scopes.Cancel"]</a>
-        <button class="button button--primary" type="submit" disabled="@submitting">
+    <SUIStack Row="true" AlignItems="center" Justify="end" Spacing="2" Wrap="true">
+        <SUIButton Href="scopes" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">@L["Scopes.Cancel"]</SUIButton>
+        <SUIButton ButtonTypeValue="SUIButtonType.Submit" Disabled="@submitting">
             @if (submitting)
             {
-                <span class="button-spinner" aria-hidden="true"></span>
-                <span>@L["Scopes.Create.Submitting"]</span>
+                @L["Scopes.Create.Submitting"]
             }
             else
             {
                 <SUIIcon Name="plus" Size="17" />
-                <span>@L["Scopes.Create.Submit"]</span>
+                @L["Scopes.Create.Submit"]
             }
-        </button>
-    </footer>
+        </SUIButton>
+    </SUIStack>
 </EditForm>
 
 @code {
