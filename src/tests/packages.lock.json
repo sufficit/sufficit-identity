@@ -1526,8 +1526,8 @@
       "Sufficit.Blazor.UI": {
         "type": "CentralTransitive",
         "requested": "[2.*, )",
-        "resolved": "2.26.1028.1446",
-        "contentHash": "p/aOmJov9O8CcRsF1YkxbAtTXvMlFiCWrJCtp93s9dO++g3jT9YgMaKEuoGhpCNaWfbSyd4Efafhl4Nsai5zQg==",
+        "resolved": "2.26.1028.1620",
+        "contentHash": "6wCuRhYLRftJLiM4SqsDfyu0ZekKUoaRTa3qeykShFuLF3WTQd2m9ceBYPcBS1eIZWYNNWpoAFuWTgMvwLouzQ==",
         "dependencies": {
           "Microsoft.AspNetCore.Components": "10.0.14",
           "Microsoft.AspNetCore.Components.Web": "10.0.14"

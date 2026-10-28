@@ -102,6 +102,12 @@ try {
   await page.goto(`${origin}/management/clients/registrations`);
   await page.locator('.registration-tokens').waitFor();
   assert.equal(await page.locator('.registrations-footer nav.sui-pagination').count(), 1, 'registrations pagination');
+  // Under the enforced CSP (style-src-attr 'none') SUI applies computed
+  // values through CSSOM; the unequal token grid proves the initializer ran.
+  const grid = page.locator('.registration-tokens .sui-form-grid[data-sui-style]').first();
+  await grid.waitFor();
+  assert.match(await grid.evaluate(el => el.style.getPropertyValue('--sui-form-grid-template')), /2fr/,
+    'SUI style initializer did not apply data-sui-style');
 
   // Capability help: SUITooltip keeps title and body permanently described
   // on the help button (aria-describedby), not only while hovered.
