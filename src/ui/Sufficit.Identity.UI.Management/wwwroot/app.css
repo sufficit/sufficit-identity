@@ -3631,11 +3631,6 @@ h3 {
     padding: 13px 18px;
 }
 
-.client-detail-shell,
-.client-detail-shell + .danger-zone {
-    width: min(100%, 1180px);
-}
-
 /* SUIStatusBadge owns its appearance in sufficit-blazor-ui; this rule only
    prevents the summary grid from stretching the shared component. */
 .client-detail-shell .detail-summary .sui-status-badge {
@@ -3688,6 +3683,11 @@ h3 {
     justify-content: space-between;
     gap: 14px;
     margin-bottom: 14px;
+}
+
+/* The heading action keeps its size; the title text wraps instead. */
+.client-detail-panel__heading > .sui-btn {
+    flex-shrink: 0;
 }
 
 .client-detail-panel__heading h2,
@@ -3874,9 +3874,11 @@ h3 {
     padding-block: 14px;
 }
 
+/* As many columns as fit, so a summary with five items never leaves an
+   empty grey cell where the grid line colour shows through. */
 .detail-summary {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
     gap: 1px;
     background: var(--line);
 }
@@ -4146,6 +4148,13 @@ h3 {
 .delete-zone > .button {
     align-self: end;
     white-space: nowrap;
+}
+
+/* Two zones on the same page never touch (e.g. the single-session
+   revocation confirmation followed by "revoke all"). */
+.delete-zone + .danger-zone,
+.danger-zone + .delete-zone {
+    margin-top: 16px;
 }
 
 .danger-zone h2 {
@@ -4477,6 +4486,10 @@ h3 {
 
     .detail-summary {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .detail-summary > div:last-child:nth-child(odd) {
+        grid-column: 1 / -1;
     }
 
     .client-detail-layout {

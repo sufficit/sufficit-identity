@@ -1,3 +1,12 @@
+/* Summary and the two danger zones share one width; SUIStack spaces them. */
+.client-detail-page {
+    width: min(100%, 1180px);
+}
+
+.client-detail-page .detail-shell {
+    margin-bottom: 0;
+}
+
 /* Width of the inline confirmation stacks inside the danger zones. */
 .danger-zone ::deep .client-detail-confirmation {
     width: min(100%, 440px);
