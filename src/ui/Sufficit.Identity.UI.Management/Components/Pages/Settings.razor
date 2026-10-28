@@ -7,15 +7,16 @@
 <PageTitle>@L["Settings.PageTitle"]</PageTitle>
 
 <SUIPageHeader Title="@L["Settings.HeaderTitle"].Value"
-            Description="@L["Settings.HeaderDescription"].Value" />
-
-<AuthorizeView Policy="@ManagementUiPolicies.ReadTrustedProxies">
-    <SUIButton ColorValue="SUIColor.Secondary" Href="settings/trusted-proxies">@L["Settings.ConfigureTrustedProxies"]</SUIButton>
-</AuthorizeView>
-
-<AuthorizeView Policy="@ManagementUiPolicies.ReadMaintenance">
-    <SUIButton ColorValue="SUIColor.Secondary" Href="settings/token-maintenance">@L["Maintenance.Title"]</SUIButton>
-</AuthorizeView>
+            Description="@L["Settings.HeaderDescription"].Value">
+    <Actions>
+        <AuthorizeView Policy="@ManagementUiPolicies.ReadTrustedProxies">
+            <SUIButton ColorValue="SUIColor.Secondary" Href="settings/trusted-proxies">@L["Settings.ConfigureTrustedProxies"]</SUIButton>
+        </AuthorizeView>
+        <AuthorizeView Policy="@ManagementUiPolicies.ReadMaintenance">
+            <SUIButton ColorValue="SUIColor.Secondary" Href="settings/token-maintenance">@L["Maintenance.Title"]</SUIButton>
+        </AuthorizeView>
+    </Actions>
+</SUIPageHeader>
 
 <ManagementDataView Result="result"
                     Loading="loading"
