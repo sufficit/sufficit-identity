@@ -164,30 +164,33 @@ else
     </section>
 
     <AuthorizeView Policy="@VaultUiPolicies.AdminManage">
-        <section class="vault-danger-zone" aria-labelledby="vault-cleanup-heading">
-            <div>
-                <h2 id="vault-cleanup-heading">@L["Vault.AdminUserVault.CleanupHeading"]</h2>
-                <p>@L["Vault.AdminUserVault.CleanupDescription"]</p>
-            </div>
-            @if (confirmClear)
-            {
-                <div class="vault-danger-zone__confirm" role="group" aria-label="@L["Vault.AdminUserVault.CleanupConfirmAriaLabel"].Value">
-                    <strong>@L["Vault.AdminUserVault.CleanupIrreversible"]</strong>
-                    <div>
-                        <SUIButton ColorValue="SUIColor.Error" OnClick="ClearAsync" Disabled="@working">@(working ? L["Vault.AdminUserVault.Clearing"].Value : L["Vault.AdminUserVault.ConfirmCleanup"].Value)</SUIButton>
-                        <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" OnClick="CancelClear" Disabled="@working">@L["Vault.Common.Cancel"]</SUIButton>
-                    </div>
-                </div>
-            }
-            else
-            {
-                <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Error" OnClick="RequestClear" Disabled="@(working || TotalItems == 0)">@L["Vault.AdminUserVault.ClearCredentials"]</SUIButton>
-            }
-        </section>
+        <SUISection Title="@L["Vault.AdminUserVault.CleanupHeading"].Value"
+                    Description="@L["Vault.AdminUserVault.CleanupDescription"].Value"
+                    ToneValue="SUITone.Danger"
+                    ChildContent="@(confirmClear ? CleanupConfirmation : null)"
+                    Class="vault-cleanup"
+                    id="vault-cleanup">
+            <Actions>
+                @if (!confirmClear)
+                {
+                    <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Error" OnClick="RequestClear" Disabled="@(working || TotalItems == 0)">@L["Vault.AdminUserVault.ClearCredentials"]</SUIButton>
+                }
+            </Actions>
+        </SUISection>
     </AuthorizeView>
 }
 
 @code {
+    // The confirmation is the section content only while open: an empty
+    // fragment would still render the card's content slot.
+    private RenderFragment CleanupConfirmation => @<div class="vault-cleanup__confirm" role="group" aria-label="@L["Vault.AdminUserVault.CleanupConfirmAriaLabel"].Value">
+        <strong>@L["Vault.AdminUserVault.CleanupIrreversible"]</strong>
+        <div>
+            <SUIButton ColorValue="SUIColor.Error" OnClick="ClearAsync" Disabled="@working">@(working ? L["Vault.AdminUserVault.Clearing"].Value : L["Vault.AdminUserVault.ConfirmCleanup"].Value)</SUIButton>
+            <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" OnClick="CancelClear" Disabled="@working">@L["Vault.Common.Cancel"]</SUIButton>
+        </div>
+    </div>;
+
     [Parameter] public string OwnerSubject { get; set; } = string.Empty;
 
     private VaultUserDetail? detail;

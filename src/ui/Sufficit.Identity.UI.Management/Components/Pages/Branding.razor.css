@@ -5,3 +5,8 @@
     gap: 12px;
     margin-bottom: 20px;
 }
+
+/* Width of the inline delete confirmation inside the danger zone. */
+.branding-delete-confirmation {
+    width: min(100%, 440px);
+}

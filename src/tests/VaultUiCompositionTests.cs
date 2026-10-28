@@ -100,7 +100,9 @@ public sealed class VaultUiCompositionTests
             StringComparison.Ordinal);
         Assert.Contains(".vault-user-row", css,
             StringComparison.Ordinal);
-        Assert.Contains(".vault-danger-zone", css,
+        Assert.Contains(".vault-cleanup__confirm", css,
+            StringComparison.Ordinal);
+        Assert.Contains("ToneValue=\"SUITone.Danger\"", adminUserPage,
             StringComparison.Ordinal);
         Assert.Contains(".vault-layout { min-height: 100vh; background: var(--vault-bg); }",
             css, StringComparison.Ordinal);

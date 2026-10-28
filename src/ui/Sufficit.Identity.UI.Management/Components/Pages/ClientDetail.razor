@@ -371,95 +371,41 @@
         </div>
     </div>
 
-    <div class="danger-zone" aria-labelledby="client-state-heading">
-        <div>
-            <h2 id="client-state-heading">@(IsDisabled(client) ? L["Clients.State.EnableTitle"] : L["Clients.State.DisableTitle"])</h2>
-            <p>@(IsDisabled(client) ? L["Clients.State.EnableDescription"] : L["Clients.State.DisableDescription"])</p>
-        </div>
+    <SUISection Title="@(IsDisabled(client) ? L["Clients.State.EnableTitle"].Value : L["Clients.State.DisableTitle"].Value)"
+                Description="@(IsDisabled(client) ? L["Clients.State.EnableDescription"].Value : L["Clients.State.DisableDescription"].Value)"
+                ToneValue="@(IsDisabled(client) ? null : SUITone.Danger)"
+                ChildContent="@(!IsDisabled(client) && editingState ? StateConfirmation : null)"
+                id="client-state">
+        <Actions>
+            @if (IsDisabled(client))
+            {
+                <SUIButton ColorValue="SUIColor.Primary" Disabled="@changingState" AutoLoading="false" OnClick="EnableAsync" StartIcon="check-circle">
+                    @L["Clients.State.Enable"]
+                </SUIButton>
+            }
+            else if (!editingState)
+            {
+                <SUIButton ColorValue="SUIColor.Error" StartIcon="lock" OnClick="@(() => editingState = true)">
+                    @L["Clients.State.Disable"]
+                </SUIButton>
+            }
+        </Actions>
+    </SUISection>
 
-        @if (IsDisabled(client))
-        {
-            <SUIButton ColorValue="SUIColor.Primary" Disabled="@changingState" AutoLoading="false" OnClick="EnableAsync" StartIcon="check-circle">
-                @L["Clients.State.Enable"]
-            </SUIButton>
-        }
-        else if (!editingState)
-        {
-            <SUIButton ColorValue="SUIColor.Error" StartIcon="lock" OnClick="@(() => editingState = true)">
-                @L["Clients.State.Disable"]
-            </SUIButton>
-        }
-        else
-        {
-            <SUIStack Spacing="3" Class="client-detail-confirmation">
-                <IdentityTextField T="string"
-                                   Id="client-state-reason"
-                                   Label="@L["Clients.State.ReasonLabel"].Value"
-                                   MaxLength="500"
-                                   Immediate="true"
-                                   autocomplete="off"
-                                   @bind-Value="stateReason" />
-                <SUICheckbox Label="@L["Clients.State.RevokeTokens"].Value"
-                             @bind-Value="stateRevokeTokens" />
-                <SUIStack Row="true" Wrap="true" Spacing="2" Justify="End">
-                    <SUIButton ColorValue="SUIColor.Secondary" Disabled="@changingState"
-                               OnClick="@(() => editingState = false)">
-                        @L["Clients.Detail.Cancel"]
-                    </SUIButton>
-                    <SUIButton ColorValue="SUIColor.Error"
-                               Disabled="@(changingState || string.IsNullOrWhiteSpace(stateReason))"
-                               OnClick="DisableAsync" StartIcon="lock">
-                        @L["Clients.State.ConfirmDisable"]
-                    </SUIButton>
-                </SUIStack>
-            </SUIStack>
-        }
-    </div>
-
-    <div class="danger-zone" aria-labelledby="delete-client-heading">
-        <div>
-            <h2 id="delete-client-heading">@L["Clients.Detail.DeleteClient"]</h2>
-            <p>
-                @L["Clients.Detail.DeleteDescription"]
-            </p>
-        </div>
-
-        @if (!confirmingDelete)
-        {
-            <SUIButton ColorValue="SUIColor.Error" OnClick="BeginDelete" StartIcon="trash">
-                @L["Clients.Detail.DeleteClient"]
-            </SUIButton>
-        }
-        else
-        {
-            <SUIStack Spacing="3" Class="client-detail-confirmation">
-                <IdentityTextField T="string"
-                                   Id="delete-confirmation"
-                                   Monospace="true"
-                                   ErrorText="@(deleteResult?.IsSuccess is false ? deleteResult.ErrorMessage : null)"
-                                   Immediate="true"
-                                   autocomplete="off"
-                                   @bind-Value="deleteConfirmation">
-                    <LabelContent>@L["Clients.Detail.DeleteConfirmPrefix"] <code>@client.ClientId</code> @L["Clients.Detail.DeleteConfirmSuffix"]</LabelContent>
-                </IdentityTextField>
-                <SUIStack Row="true" Wrap="true" Spacing="2" Justify="End">
-                    <SUIButton ColorValue="SUIColor.Secondary"
-                               Disabled="@deleting"
-                               OnClick="CancelDelete">
-                        @L["Clients.Detail.Cancel"]
-                    </SUIButton>
-                    <SUILoadingButton ColorValue="SUIColor.Error"
-                                      IsLoading="@deleting"
-                                      Disabled="@(!CanDelete)"
-                                      aria-label="@(deleting ? L["Clients.Detail.Deleting"].Value : null)"
-                                      OnClick="DeleteAsync"
-                    StartIcon="trash">
-                        <span>@L["Clients.Detail.ConfirmDelete"]</span>
-                    </SUILoadingButton>
-                </SUIStack>
-            </SUIStack>
-        }
-    </div>
+    <SUISection Title="@L["Clients.Detail.DeleteClient"].Value"
+                Description="@L["Clients.Detail.DeleteDescription"].Value"
+                ToneValue="SUITone.Danger"
+                ChildContent="@(confirmingDelete ? DeleteConfirmation(client) : null)"
+                id="delete-client">
+        <Actions>
+            @if (!confirmingDelete)
+            {
+                <SUIButton ColorValue="SUIColor.Error" OnClick="BeginDelete" StartIcon="trash">
+                    @L["Clients.Detail.DeleteClient"]
+                </SUIButton>
+            }
+        </Actions>
+    </SUISection>
     </SUIStack>
     </div>
     </Success>
@@ -487,6 +433,58 @@
     private bool changingState;
     private bool stateRevokeTokens = true;
     private string stateReason = string.Empty;
+
+    // Confirmation forms are the section content only while open: an empty
+    // fragment would still render the card's content slot.
+    private RenderFragment StateConfirmation => @<SUIStack Spacing="3" Class="client-detail-confirmation">
+        <IdentityTextField T="string"
+                           Id="client-state-reason"
+                           Label="@L["Clients.State.ReasonLabel"].Value"
+                           MaxLength="500"
+                           Immediate="true"
+                           autocomplete="off"
+                           @bind-Value="stateReason" />
+        <SUICheckbox Label="@L["Clients.State.RevokeTokens"].Value"
+                     @bind-Value="stateRevokeTokens" />
+        <SUIStack Row="true" Wrap="true" Spacing="2" Justify="End">
+            <SUIButton ColorValue="SUIColor.Secondary" Disabled="@changingState"
+                       OnClick="@(() => editingState = false)">
+                @L["Clients.Detail.Cancel"]
+            </SUIButton>
+            <SUIButton ColorValue="SUIColor.Error"
+                       Disabled="@(changingState || string.IsNullOrWhiteSpace(stateReason))"
+                       OnClick="DisableAsync" StartIcon="lock">
+                @L["Clients.State.ConfirmDisable"]
+            </SUIButton>
+        </SUIStack>
+    </SUIStack>;
+
+    private RenderFragment DeleteConfirmation(ManagementClientDetail client) => @<SUIStack Spacing="3" Class="client-detail-confirmation">
+        <IdentityTextField T="string"
+                           Id="delete-confirmation"
+                           Monospace="true"
+                           ErrorText="@(deleteResult?.IsSuccess is false ? deleteResult.ErrorMessage : null)"
+                           Immediate="true"
+                           autocomplete="off"
+                           @bind-Value="deleteConfirmation">
+            <LabelContent>@L["Clients.Detail.DeleteConfirmPrefix"] <code>@client.ClientId</code> @L["Clients.Detail.DeleteConfirmSuffix"]</LabelContent>
+        </IdentityTextField>
+        <SUIStack Row="true" Wrap="true" Spacing="2" Justify="End">
+            <SUIButton ColorValue="SUIColor.Secondary"
+                       Disabled="@deleting"
+                       OnClick="CancelDelete">
+                @L["Clients.Detail.Cancel"]
+            </SUIButton>
+            <SUILoadingButton ColorValue="SUIColor.Error"
+                              IsLoading="@deleting"
+                              Disabled="@(!CanDelete)"
+                              aria-label="@(deleting ? L["Clients.Detail.Deleting"].Value : null)"
+                              OnClick="DeleteAsync"
+                              StartIcon="trash">
+                <span>@L["Clients.Detail.ConfirmDelete"]</span>
+            </SUILoadingButton>
+        </SUIStack>
+    </SUIStack>;
 
     private static bool IsDisabled(ManagementClientDetail client) =>
         string.Equals(client.Status, "disabled", StringComparison.Ordinal);

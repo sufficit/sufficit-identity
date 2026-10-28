@@ -5,12 +5,12 @@
 }
 
 /* Width of the inline confirmation stacks inside the danger zones. */
-.danger-zone ::deep .client-detail-confirmation {
+.client-detail-page ::deep .client-detail-confirmation {
     width: min(100%, 440px);
 }
 
 @media (max-width: 640px) {
-    .danger-zone ::deep .client-detail-confirmation {
+    .client-detail-page ::deep .client-detail-confirmation {
         width: 100%;
     }
 }

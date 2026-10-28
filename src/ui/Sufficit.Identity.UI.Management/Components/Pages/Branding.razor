@@ -365,51 +365,54 @@
 
 @if (Selected is { IsActive: false } selectedTheme && !editing)
 {
-    <div class="danger-zone" aria-labelledby="delete-theme-heading">
-        <div>
-            <h2 id="delete-theme-heading">@L["Branding.DeleteTheme"]</h2>
-            <p>@L["Branding.DeleteTheme.Description"]</p>
-        </div>
-
-        @if (!confirmingDelete)
-        {
-            <SUIButton ColorValue="SUIColor.Error"
-                       StartIcon="trash"
-                       Disabled="@busy"
-                       OnClick="BeginDelete">
-                @L["Branding.DeleteTheme"]
-            </SUIButton>
-        }
-        else
-        {
-            <SUIStack Spacing="2">
-                <IdentityTextField T="string"
-                                   Id="delete-theme-confirmation"
-                                   Immediate="true"
-                                   @bind-Value="deleteConfirmation"
-                                   autocomplete="off">
-                    <LabelContent>@L["Branding.DeleteConfirmPrefix"] <code>@selectedTheme.Name</code> @L["Branding.DeleteConfirmSuffix"]</LabelContent>
-                </IdentityTextField>
-                <SUIStack Row Wrap AlignItems="Center" Justify="End" Spacing="2">
-                    <SUIButton ColorValue="SUIColor.Secondary"
-                               Disabled="@deleting"
-                               OnClick="CancelDelete">
-                        @L["Branding.Cancel"]
-                    </SUIButton>
-                    <SUILoadingButton ColorValue="SUIColor.Error"
-                                      StartIcon="trash"
-                                      IsLoading="@deleting"
-                                      Disabled="@(!CanDelete)"
-                                      OnClick="DeleteAsync">
-                        @(deleting ? L["Branding.Deleting"] : L["Branding.ConfirmDeletion"])
-                    </SUILoadingButton>
-                </SUIStack>
-            </SUIStack>
-        }
-    </div>
+    <SUISection Title="@L["Branding.DeleteTheme"].Value"
+                Description="@L["Branding.DeleteTheme.Description"].Value"
+                ToneValue="SUITone.Danger"
+                ChildContent="@(confirmingDelete ? DeleteConfirmation(selectedTheme) : null)"
+                id="delete-theme">
+        <Actions>
+            @if (!confirmingDelete)
+            {
+                <SUIButton ColorValue="SUIColor.Error"
+                           StartIcon="trash"
+                           Disabled="@busy"
+                           OnClick="BeginDelete">
+                    @L["Branding.DeleteTheme"]
+                </SUIButton>
+            }
+        </Actions>
+    </SUISection>
 }
 
 @code {
+    // The confirmation is the section content only while open: an empty
+    // fragment would still render the card's content slot.
+    private RenderFragment DeleteConfirmation(ManagementBrandingTheme selectedTheme) => @<div class="branding-delete-confirmation">
+        <SUIStack Spacing="2">
+            <IdentityTextField T="string"
+                               Id="delete-theme-confirmation"
+                               Immediate="true"
+                               @bind-Value="deleteConfirmation"
+                               autocomplete="off">
+                <LabelContent>@L["Branding.DeleteConfirmPrefix"] <code>@selectedTheme.Name</code> @L["Branding.DeleteConfirmSuffix"]</LabelContent>
+            </IdentityTextField>
+            <SUIStack Row Wrap AlignItems="Center" Justify="End" Spacing="2">
+                <SUIButton ColorValue="SUIColor.Secondary"
+                           Disabled="@deleting"
+                           OnClick="CancelDelete">
+                    @L["Branding.Cancel"]
+                </SUIButton>
+                <SUILoadingButton ColorValue="SUIColor.Error"
+                                  StartIcon="trash"
+                                  IsLoading="@deleting"
+                                  Disabled="@(!CanDelete)"
+                                  OnClick="DeleteAsync">
+                    @(deleting ? L["Branding.Deleting"] : L["Branding.ConfirmDeletion"])
+                </SUILoadingButton>
+            </SUIStack>
+        </SUIStack>
+    </div>;
+
     // The reader's zone once the browser answers (BrowserTimeProvider in the layout).
     [CascadingParameter]
     private BrowserTime Time { get; set; } = BrowserTime.Server;
