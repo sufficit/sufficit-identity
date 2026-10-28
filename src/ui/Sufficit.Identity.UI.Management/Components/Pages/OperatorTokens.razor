@@ -126,7 +126,7 @@
 
             <div class="operator-token-fields" data-sui-align-row>
                 <IdentityTextField T="string"
-                              id="operator-token-purpose"
+                              Id="operator-token-purpose"
                               aria-label="@L["OperatorTokens.Field.PurposeLabel"].Value"
                               Label="@L["OperatorTokens.Field.PurposeLabel"].Value"
                               HelperText="@L["OperatorTokens.Field.Purpose.Helper"].Value"
@@ -138,7 +138,7 @@
                               autocomplete="off" />
 
                 <IdentitySelect T="int"
-                           id="operator-token-lifetime"
+                           Id="operator-token-lifetime"
                            aria-label="@L["OperatorTokens.Field.LifetimeLabel"].Value"
                            Label="@L["OperatorTokens.Field.LifetimeLabel"].Value"
                            HelperText="@LifetimeHelperText"
@@ -156,7 +156,7 @@
                 <summary>@L["OperatorTokens.CapabilityPicker.Summary"]</summary>
                 <div class="operator-token-capability-picker__body">
                     <IdentityTextField T="string"
-                                  id="capability-filter"
+                                  Id="capability-filter"
                                   aria-label="@L["OperatorTokens.CapabilityFilter.Label"].Value"
                                   Label="@L["OperatorTokens.CapabilityFilter.Label"].Value"
                                   Placeholder="@L["OperatorTokens.CapabilityFilter.Placeholder"].Value"
@@ -174,16 +174,13 @@
                                 @foreach (var capability in group.Capabilities)
                                 {
                                     <div class="operator-token-capability">
-                                        <label class="operator-token-capability__selection">
-                                            <input type="checkbox"
-                                                   checked="@selectedCapabilities.Contains(capability)"
-                                                   disabled="@issuing"
-                                                   @onchange="eventArgs => ToggleCapability(capability, eventArgs)" />
-                                            <span>
-                                                <strong>@CapabilityLabel(capability)</strong>
-                                                <code>@capability</code>
-                                            </span>
-                                        </label>
+                                        <div class="operator-token-capability__selection">
+                                            <SUICheckbox Label="@CapabilityLabel(capability)"
+                                                         Value="@selectedCapabilities.Contains(capability)"
+                                                         ValueChanged="selected => ToggleCapability(capability, selected)"
+                                                         Disabled="@issuing" />
+                                            <code>@capability</code>
+                                        </div>
                                         <ManagementCapabilityHelp Capability="@capability" />
                                     </div>
                                 }
@@ -567,9 +564,9 @@
         return Task.CompletedTask;
     }
 
-    private void ToggleCapability(string capability, ChangeEventArgs eventArgs)
+    private void ToggleCapability(string capability, bool selected)
     {
-        if (eventArgs.Value is true)
+        if (selected)
         {
             selectedCapabilities.Add(capability);
         }

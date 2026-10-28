@@ -26,23 +26,22 @@
         <div class="data-toolbar__actions">
             @if (CanFilter)
             {
-                <label class="search-field">
-                    <span class="visually-hidden">@L["Audit.Search.Label"]</span>
-                    <SUIIcon Name="search" Size="18" />
-                    <input type="search"
-                           placeholder="@L["Audit.Search.Placeholder"].Value"
-                           autocomplete="off"
-                           @bind="search"
-                           @bind:event="oninput" />
-                </label>
+                <IdentityTextField T="string"
+                                   Id="audit-search"
+                                   InputType="search"
+                                   AdornmentIcon="search"
+                                   Immediate="true"
+                                   Placeholder="@L["Audit.Search.Placeholder"].Value"
+                                   aria-label="@L["Audit.Search.Label"].Value"
+                                   autocomplete="off"
+                                   @bind-Value="search" />
             }
-            <button class="button button--secondary"
-                    type="button"
-                    disabled="@loading"
-                    @onclick="LoadAsync">
-                <SUIIcon Name="refresh" Size="16" />
+            <SUIButton ColorValue="SUIColor.Secondary"
+                       StartIcon="refresh"
+                       Disabled="@loading"
+                       OnClick="LoadAsync">
                 @L["Audit.Refresh"]
-            </button>
+            </SUIButton>
         </div>
     </div>
 
@@ -61,39 +60,34 @@
                     <Actions>
                         @if (!string.IsNullOrWhiteSpace(search))
                         {
-                            <button class="button button--secondary"
-                                    type="button"
-                                    @onclick="ClearSearch">
+                            <SUIButton ColorValue="SUIColor.Secondary"
+                                       OnClick="ClearSearch">
                                 @L["Audit.ClearSearch"]
-                            </button>
+                            </SUIButton>
                         }
                     </Actions>
                 </SUIEmptyState>
             }
             else
             {
-                <div class="table-scroll">
-                    <table class="data-table data-table--audit">
-                        <thead>
-                            <tr>
-                                <th scope="col">@L["Audit.Table.When"]</th>
-                                <th scope="col">@L["Audit.Table.Operator"]</th>
-                                <th scope="col">@L["Audit.Table.Action"]</th>
-                                <th scope="col">@L["Audit.Table.Target"]</th>
-                                <th scope="col">@L["Audit.Table.Result"]</th>
-                                <th scope="col">@L["Audit.Table.Correlation"]</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var entry in FilteredEvents)
-                            {
-                                <tr>
-                                    <td data-label="@L["Audit.Table.When"].Value">
+                <SUITable TItem="ManagementAuditRecord"
+                          Items="FilteredEvents"
+                          StackOnMobile="true">
+                    <HeaderContent>
+                                <SUITh>@L["Audit.Table.When"]</SUITh>
+                                <SUITh>@L["Audit.Table.Operator"]</SUITh>
+                                <SUITh>@L["Audit.Table.Action"]</SUITh>
+                                <SUITh>@L["Audit.Table.Target"]</SUITh>
+                                <SUITh>@L["Audit.Table.Result"]</SUITh>
+                                <SUITh>@L["Audit.Table.Correlation"]</SUITh>
+                    </HeaderContent>
+                    <RowTemplate Context="entry">
+                                    <SUITd DataLabel="@L["Audit.Table.When"].Value">
                                         <time datetime="@entry.OccurredAtUtc.ToString("O")">
                                             @Time.Format(entry.OccurredAtUtc, TimeStyle.DateTimeSeconds)
                                         </time>
-                                    </td>
-                                    <td data-label="@L["Audit.Table.Operator"].Value">
+                                    </SUITd>
+                                    <SUITd DataLabel="@L["Audit.Table.Operator"].Value">
                                         <strong class="audit-operator">
                                             @(entry.OperatorDisplayName ?? entry.OperatorSubject)
                                         </strong>
@@ -101,38 +95,36 @@
                                         {
                                             <code class="audit-subject">@entry.OperatorSubject</code>
                                         }
-                                    </td>
-                                    <td data-label="@L["Audit.Table.Action"].Value">
+                                    </SUITd>
+                                    <SUITd DataLabel="@L["Audit.Table.Action"].Value">
                                         <code>@CapabilityLabel(entry.Capability)</code>
                                         @if (entry.BeforeJson is not null || entry.AfterJson is not null)
                                         {
+                                            @* Native disclosure keeps the JSON in the document while collapsed. *@
                                             <details class="audit-change-details">
                                                 <summary>@L["Audit.ViewChange"]</summary>
                                                 <strong>@L["Audit.Before"]</strong><pre class="audit-json">@entry.BeforeJson</pre>
                                                 <strong>@L["Audit.After"]</strong><pre class="audit-json">@entry.AfterJson</pre>
                                             </details>
                                         }
-                                    </td>
-                                    <td data-label="@L["Audit.Table.Target"].Value">
+                                    </SUITd>
+                                    <SUITd DataLabel="@L["Audit.Table.Target"].Value">
                                         <span>@entry.ResourceType</span>
                                         @if (entry.ResourceId is not null)
                                         {
                                             <code>@entry.ResourceId</code>
                                         }
-                                    </td>
-                                    <td data-label="@L["Audit.Table.Result"].Value">
+                                    </SUITd>
+                                    <SUITd DataLabel="@L["Audit.Table.Result"].Value">
                                         <SUIStatusBadge ToneValue="@IdentitySuiTone.From(OutcomeTone(entry.OperationOutcome))">
                                             @OutcomeLabel(entry.OperationOutcome)
                                         </SUIStatusBadge>
-                                    </td>
-                                    <td data-label="@L["Audit.Table.Correlation"].Value">
+                                    </SUITd>
+                                    <SUITd DataLabel="@L["Audit.Table.Correlation"].Value">
                                         <code class="audit-correlation">@entry.CorrelationId</code>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
+                                    </SUITd>
+                    </RowTemplate>
+                </SUITable>
             }
         </Success>
     </ManagementDataView>

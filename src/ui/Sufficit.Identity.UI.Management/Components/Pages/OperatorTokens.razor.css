@@ -243,28 +243,8 @@
     display: grid;
     min-width: 0;
     min-height: 42px;
-    cursor: pointer;
-    grid-template-columns: 18px minmax(0, 1fr);
-    align-items: center;
-    gap: 9px;
-}
-
-.operator-token-capability input {
-    width: 16px;
-    height: 16px;
-    accent-color: var(--brand);
-}
-
-.operator-token-capability__selection > span {
-    display: grid;
-    min-width: 0;
+    align-content: center;
     gap: 2px;
-}
-
-.operator-token-capability strong {
-    color: var(--ink-strong);
-    font-size: 10px;
-    font-weight: 600;
 }
 
 .operator-token-capability code {

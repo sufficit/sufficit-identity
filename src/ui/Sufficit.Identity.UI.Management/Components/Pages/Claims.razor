@@ -9,16 +9,14 @@
 <SUIPageHeader Title="@HeaderTitle"
             Description="@L["Claims.HeaderDescription"].Value">
     <Actions>
-        <a class="button button--secondary" href="@UserHref">
-            <SUIIcon Name="arrow-left" Size="17" />
+        <SUIButton ColorValue="SUIColor.Secondary" StartIcon="arrow-left" Href="@UserHref">
             @L["Claims.BackToUser"]
-        </a>
+        </SUIButton>
         @if (HasUserContext)
         {
-            <a class="button button--primary" href="@CreateHref">
-                <SUIIcon Name="plus" Size="17" />
+            <SUIButton ColorValue="SUIColor.Primary" StartIcon="plus" Href="@CreateHref">
                 @L["Claims.AssignClaim"]
-            </a>
+            </SUIButton>
         }
     </Actions>
 </SUIPageHeader>
@@ -30,7 +28,7 @@
                     Title="@L["Claims.SelectUser.Title"].Value"
                     Description="@L["Claims.SelectUser.Description"].Value">
             <Actions>
-                <a class="button button--primary" href="users">@L["Claims.OpenUserDirectory"]</a>
+                <SUIButton ColorValue="SUIColor.Primary" Href="users">@L["Claims.OpenUserDirectory"]</SUIButton>
             </Actions>
         </SUIEmptyState>
     </div>
@@ -75,26 +73,30 @@ else
                 <p>@L["Claims.List.Description"]</p>
             </div>
             <div class="data-toolbar__actions">
-                <form class="user-search" @onsubmit="SearchAsync" @onsubmit:preventDefault>
-                    <label class="search-field">
-                        <span class="visually-hidden">@L["Claims.Search.VisuallyHidden"]</span>
-                        <SUIIcon Name="search" Size="18" />
-                        <input type="search"
-                               placeholder="@L["Claims.Search.Placeholder"].Value"
-                               autocomplete="off"
-                               @bind="search" />
-                    </label>
-                    <button class="button button--secondary" type="submit" disabled="@loading">
-                        @L["Claims.Search.Submit"]
-                    </button>
-                    @if (!string.IsNullOrWhiteSpace(search))
-                    {
-                        <button class="button button--secondary button--compact"
-                                type="button"
-                                @onclick="ClearSearchAsync">
-                            @L["Claims.Search.Clear"]
-                        </button>
-                    }
+                <form @onsubmit="SearchAsync" @onsubmit:preventDefault>
+                    <SUIStack Row Wrap AlignItems="End" Spacing="2">
+                        <IdentityTextField T="string"
+                                           Id="claim-search"
+                                           InputType="search"
+                                           AdornmentIcon="search"
+                                           Placeholder="@L["Claims.Search.Placeholder"].Value"
+                                           aria-label="@L["Claims.Search.VisuallyHidden"].Value"
+                                           autocomplete="off"
+                                           @bind-Value="search" />
+                        <SUIButton ButtonTypeValue="SUIButtonType.Submit"
+                                   ColorValue="SUIColor.Secondary"
+                                   Disabled="@loading">
+                            @L["Claims.Search.Submit"]
+                        </SUIButton>
+                        @if (!string.IsNullOrWhiteSpace(search))
+                        {
+                            <SUIButton ColorValue="SUIColor.Secondary"
+                                       SizeValue="SUISize.Small"
+                                       OnClick="ClearSearchAsync">
+                                @L["Claims.Search.Clear"]
+                            </SUIButton>
+                        }
+                    </SUIStack>
                 </form>
             </div>
         </div>
@@ -107,7 +109,7 @@ else
                             NotFoundTitle="@L["Claims.User.Error.NotFound"].Value"
                             UnavailableTitle="@L["Claims.User.Error.Generic"].Value">
             <FailureActions>
-                <a class="button button--secondary" href="users">@L["Claims.BackToUsers"]</a>
+                <SUIButton ColorValue="SUIColor.Secondary" Href="users">@L["Claims.BackToUsers"]</SUIButton>
             </FailureActions>
             <Success Context="_">
             <ManagementDataView Result="result"
@@ -122,40 +124,38 @@ else
                                 Title="@L["Claims.Empty.Title"].Value"
                                 Description="@EmptyDescription">
                         <Actions>
-                            <a class="button button--primary" href="@CreateHref">@L["Claims.AssignFirstClaim"]</a>
+                            <SUIButton ColorValue="SUIColor.Primary" Href="@CreateHref">@L["Claims.AssignFirstClaim"]</SUIButton>
                         </Actions>
                     </SUIEmptyState>
                 }
                 else
                 {
-                    <div class="table-scroll">
-                        <table class="data-table data-table--claims">
-                            <thead>
-                                <tr>
-                                    <th scope="col">@L["Claims.Column.Type"]</th>
-                                    <th scope="col">@L["Claims.Column.Value"]</th>
-                                    <th scope="col">@L["Claims.Column.State"]</th>
-                                    <th scope="col"><span class="visually-hidden">@L["Claims.Column.Actions"]</span></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var claim in Page.Items)
-                                {
-                                    <tr>
-                                        <td data-label="@L["Claims.Column.Type"].Value"><code class="client-id">@claim.Type</code></td>
-                                        <td data-label="@L["Claims.Column.Value"].Value"><span class="claim-value">@claim.Value</span></td>
-                                        <td data-label="@L["Claims.Column.State"].Value"><SUIStatusBadge ToneValue="SUITone.Success">@L["Claims.AssignedBadge"]</SUIStatusBadge></td>
-                                        <td data-label="@L["Claims.Column.Actions"].Value">
-                                            <a class="row-action" href="@ClaimHref(claim.Id)">
-                                                @L["Claims.Edit"]
-                                                <SUIIcon Name="edit" Size="15" />
-                                            </a>
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
+                    <SUITable TItem="ManagementClaimAssignment"
+                              Items="Page.Items"
+                              RowKey="claim => claim.Id"
+                              Hover="true"
+                              StackOnMobile="true">
+                        <HeaderContent>
+                            <SUITh>@L["Claims.Column.Type"]</SUITh>
+                            <SUITh>@L["Claims.Column.Value"]</SUITh>
+                            <SUITh>@L["Claims.Column.State"]</SUITh>
+                            <SUITh><span class="visually-hidden">@L["Claims.Column.Actions"]</span></SUITh>
+                        </HeaderContent>
+                        <RowTemplate Context="claim">
+                            <SUITd DataLabel="@L["Claims.Column.Type"].Value"><code class="client-id">@claim.Type</code></SUITd>
+                            <SUITd DataLabel="@L["Claims.Column.Value"].Value"><span class="claim-value">@claim.Value</span></SUITd>
+                            <SUITd DataLabel="@L["Claims.Column.State"].Value"><SUIStatusBadge ToneValue="SUITone.Success">@L["Claims.AssignedBadge"]</SUIStatusBadge></SUITd>
+                            <SUITd DataLabel="@L["Claims.Column.Actions"].Value">
+                                <SUIButton VariantValue="SUIVariant.Text"
+                                           ColorValue="SUIColor.Primary"
+                                           SizeValue="SUISize.Small"
+                                           EndIcon="edit"
+                                           Href="@ClaimHref(claim.Id)">
+                                    @L["Claims.Edit"]
+                                </SUIButton>
+                            </SUITd>
+                        </RowTemplate>
+                    </SUITable>
                 }
                 </Success>
             </ManagementDataView>
@@ -166,15 +166,21 @@ else
             <span>@ResultCountLabel</span>
             @if (result?.IsSuccess is true && Page.TotalCount > Page.PageSize)
             {
-                <div class="pagination" aria-label="@L["Claims.PaginationAriaLabel"].Value">
-                    <button class="button button--secondary button--compact" type="button"
-                            disabled="@(Page.Page <= 1 || loading)"
-                            @onclick="PreviousPageAsync">@L["Claims.Previous"]</button>
+                <SUIStack Row AlignItems="Center" Spacing="2" aria-label="@L["Claims.PaginationAriaLabel"].Value">
+                    <SUIButton ColorValue="SUIColor.Secondary"
+                               SizeValue="SUISize.Small"
+                               Disabled="@(Page.Page <= 1 || loading)"
+                               OnClick="PreviousPageAsync">
+                        @L["Claims.Previous"]
+                    </SUIButton>
                     <span>@string.Format(L["Claims.PageOfFormat"].Value, Page.Page, TotalPages)</span>
-                    <button class="button button--secondary button--compact" type="button"
-                            disabled="@(Page.Page >= TotalPages || loading)"
-                            @onclick="NextPageAsync">@L["Claims.Next"]</button>
-                </div>
+                    <SUIButton ColorValue="SUIColor.Secondary"
+                               SizeValue="SUISize.Small"
+                               Disabled="@(Page.Page >= TotalPages || loading)"
+                               OnClick="NextPageAsync">
+                        @L["Claims.Next"]
+                    </SUIButton>
+                </SUIStack>
             }
         </footer>
     </div>

@@ -9,10 +9,9 @@
 <SUIPageHeader Title="@L["ClaimCreate.HeaderTitle"].Value"
             Description="@HeaderDescription">
     <Actions>
-        <a class="button button--secondary" href="@BackHref">
-            <SUIIcon Name="arrow-left" Size="17" />
+        <SUIButton ColorValue="SUIColor.Secondary" StartIcon="arrow-left" Href="@BackHref">
             @L["ClaimCreate.BackToClaims"]
-        </a>
+        </SUIButton>
     </Actions>
 </SUIPageHeader>
 
@@ -23,7 +22,7 @@
                     Title="@L["ClaimCreate.SelectUser.Title"].Value"
                     Description="@L["ClaimCreate.SelectUser.Description"].Value">
             <Actions>
-                <a class="button button--primary" href="users">@L["ClaimCreate.OpenUserDirectory"]</a>
+                <SUIButton ColorValue="SUIColor.Primary" Href="users">@L["ClaimCreate.OpenUserDirectory"]</SUIButton>
             </Actions>
         </SUIEmptyState>
     </div>
@@ -86,49 +85,41 @@ else
                 <p>@L["ClaimCreate.Attribute.Description"]</p>
             </div>
 
-            <div class="field-group">
-                <label for="claim-type">@L["ClaimCreate.Field.Type"]</label>
-                <InputText id="claim-type"
-                           class="form-control"
-                           list="claim-type-suggestions"
-                           autocomplete="off"
-                           @bind-Value="model.Type" />
+            <SUIStack Spacing="4">
+                @* Free text with suggestions: SUIAutocomplete only commits a
+                   listed item, so the field keeps the native datalist hint. *@
+                <IdentityTextField T="string"
+                                   Id="claim-type"
+                                   Label="@L["ClaimCreate.Field.Type"].Value"
+                                   HelperText="@TypeHint"
+                                   list="claim-type-suggestions"
+                                   autocomplete="off"
+                                   @bind-Value="model.Type" />
                 <datalist id="claim-type-suggestions">
                     @foreach (var type in SuggestedTypes)
                     {
                         <option value="@type"></option>
                     }
                 </datalist>
-                <ValidationMessage For="() => model.Type" />
-                <span class="field-hint">@L["ClaimCreate.Field.TypeHintPrefix"] <code>locale</code>, <code>zoneinfo</code> @L["ClaimCreate.Field.TypeHintSuffix"]</span>
-            </div>
-
-            <div class="field-group">
-                <label for="claim-value">@L["ClaimCreate.Field.Value"]</label>
-                <InputTextArea id="claim-value"
-                               class="form-control form-control--textarea"
-                               @bind-Value="model.Value" />
-                <ValidationMessage For="() => model.Value" />
-                <span class="field-hint">@L["ClaimCreate.Field.ValueHint"]</span>
-            </div>
+                <IdentityTextField T="string"
+                                   Id="claim-value"
+                                   Label="@L["ClaimCreate.Field.Value"].Value"
+                                   HelperText="@L["ClaimCreate.Field.ValueHint"].Value"
+                                   Multiline="true"
+                                   @bind-Value="model.Value" />
+            </SUIStack>
         </div>
 
-        <footer class="form-actions">
-            <a class="button button--secondary" href="@BackHref">@L["ClaimCreate.Cancel"]</a>
-            <button class="button button--primary" type="submit"
-                    disabled="@(submitting || userResult?.IsSuccess is not true)">
-                @if (submitting)
-                {
-                    <span class="button-spinner" aria-hidden="true"></span>
-                    <span>@L["ClaimCreate.Submitting"]</span>
-                }
-                else
-                {
-                    <SUIIcon Name="plus" Size="17" />
-                    <span>@L["ClaimCreate.Submit"]</span>
-                }
-            </button>
-        </footer>
+        <SUIStack Row Wrap AlignItems="Center" Justify="End" Spacing="2" Class="form-actions">
+            <SUIButton ColorValue="SUIColor.Secondary" Href="@BackHref">@L["ClaimCreate.Cancel"]</SUIButton>
+            <SUILoadingButton ButtonTypeValue="SUIButtonType.Submit"
+                              ColorValue="SUIColor.Primary"
+                              StartIcon="plus"
+                              IsLoading="@submitting"
+                              Disabled="@(submitting || userResult?.IsSuccess is not true)">
+                @(submitting ? L["ClaimCreate.Submitting"] : L["ClaimCreate.Submit"])
+            </SUILoadingButton>
+        </SUIStack>
     </EditForm>
     </div>
     </Success>
@@ -147,6 +138,9 @@ else
 
     private bool HasUserContext =>
         !string.IsNullOrWhiteSpace(UserId);
+
+    private string TypeHint =>
+        $"{L["ClaimCreate.Field.TypeHintPrefix"].Value} locale, zoneinfo {L["ClaimCreate.Field.TypeHintSuffix"].Value}";
 
     private IReadOnlyList<string> SuggestedTypes =>
         metadataResult?.Value?.SuggestedTypes ?? [];

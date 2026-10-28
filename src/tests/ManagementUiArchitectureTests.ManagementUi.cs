@@ -294,7 +294,9 @@ public sealed partial class ManagementUiArchitectureTests
             "wwwroot",
             "app.css"));
 
-        Assert.Contains("@bind-Value:event=\"oninput\"", page, StringComparison.Ordinal);
+        // The background field updates the preview on every keystroke.
+        Assert.Contains("Id=\"background-url\"", page, StringComparison.Ordinal);
+        Assert.Contains("Immediate=\"true\"", page, StringComparison.Ordinal);
         Assert.Contains("SafePreviewImageUrl", page, StringComparison.Ordinal);
         Assert.Contains("--preview-background-image", page, StringComparison.Ordinal);
         Assert.Contains("var(--preview-background-image, none)", styles, StringComparison.Ordinal);
@@ -401,26 +403,19 @@ public sealed partial class ManagementUiArchitectureTests
     [Fact]
     public void Authorization_filter_controls_share_a_baseline_and_consistent_select_inset()
     {
-        var stylesheet = File.ReadAllText(Path.Combine(
-            ResolveManagementUiSource(),
-            "wwwroot",
-            "app.css"));
-
-        Assert.Contains(
-            ".user-search {\n    display: flex;\n    /* Align the actual controls, not the select's label, to one baseline. */\n    align-items: flex-end;",
-            stylesheet,
-            StringComparison.Ordinal);
-        Assert.Contains(".select-field .sui-select__trigger {", stylesheet, StringComparison.Ordinal);
-        Assert.Contains("padding-inline: 12px;", stylesheet, StringComparison.Ordinal);
-        Assert.Contains("min-width: 190px;", stylesheet, StringComparison.Ordinal);
-
+        // The filter bar is a SUIStack aligned to the end of the cross axis:
+        // the select's label sits above, and the controls themselves share
+        // one baseline without page CSS.
         var page = File.ReadAllText(Path.Combine(
             ResolveManagementUiSource(),
             "Components",
             "Pages",
             "Authorizations.razor"));
-        Assert.Contains("authorization-state-filter", page, StringComparison.Ordinal);
-        Assert.Contains("aria-label=\"@L[\"Authorizations.Filter.StateLabel\"].Value\"", page, StringComparison.Ordinal);
+        Assert.Contains("<SUIStack Row Wrap AlignItems=\"End\"", page, StringComparison.Ordinal);
+        Assert.Contains("Id=\"authorization-state-filter\"", page, StringComparison.Ordinal);
+        Assert.Contains("Label=\"@L[\"Authorizations.Filter.StateLabel\"].Value\"", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("class=\"user-search\"", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("class=\"select-field\"", page, StringComparison.Ordinal);
     }
 
     [Fact]

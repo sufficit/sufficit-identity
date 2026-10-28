@@ -36,23 +36,30 @@
             <p>@FilterDescription</p>
         </div>
         <div class="data-toolbar__actions">
-            <form class="user-search" @onsubmit="SearchAsync" @onsubmit:preventDefault>
-                <label class="search-field">
-                    <span class="visually-hidden">@L["Authorizations.Search.VisuallyHidden"]</span>
-                    <SUIIcon Name="search" Size="18" />
-                    <input type="search"
-                           placeholder="@L["Authorizations.Search.Placeholder"].Value"
-                           autocomplete="off"
-                           @bind="search" />
-                </label>
-                <div class="select-field">
-                    <span>@L["Authorizations.Filter.StateLabel"]</span>
-                    <IdentitySelect T="string" id="authorization-state-filter" name="state" aria-label="@L["Authorizations.Filter.StateLabel"].Value" @bind-Value="stateFilter">
+            <form @onsubmit="SearchAsync" @onsubmit:preventDefault>
+                <SUIStack Row Wrap AlignItems="End" Spacing="2">
+                    <IdentityTextField T="string"
+                                       Id="authorization-search"
+                                       InputType="search"
+                                       AdornmentIcon="search"
+                                       Placeholder="@L["Authorizations.Search.Placeholder"].Value"
+                                       aria-label="@L["Authorizations.Search.VisuallyHidden"].Value"
+                                       autocomplete="off"
+                                       @bind-Value="search" />
+                    <IdentitySelect T="string"
+                                    Id="authorization-state-filter"
+                                    Name="state"
+                                    Label="@L["Authorizations.Filter.StateLabel"].Value"
+                                    @bind-Value="stateFilter">
                         <SUISelectItem Value="@("active")">@L["Authorizations.Filter.Active"]</SUISelectItem>
                         <SUISelectItem Value="@("all")">@L["Authorizations.Filter.All"]</SUISelectItem>
                     </IdentitySelect>
-                </div>
-                <button class="button button--secondary" type="submit" disabled="@loading">@L["Authorizations.Apply"]</button>
+                    <SUIButton ButtonTypeValue="SUIButtonType.Submit"
+                               ColorValue="SUIColor.Secondary"
+                               Disabled="@loading">
+                        @L["Authorizations.Apply"]
+                    </SUIButton>
+                </SUIStack>
             </form>
         </div>
     </div>
@@ -74,24 +81,22 @@
             }
             else
             {
-                <div class="table-scroll">
-                    <table class="data-table data-table--claims">
-                        <thead>
-                            <tr>
-                                <th scope="col">@L["Authorizations.Column.User"]</th>
-                                <th scope="col">@L["Authorizations.Column.Client"]</th>
-                                <th scope="col">@L["Authorizations.Column.Scopes"]</th>
-                                <th scope="col">@L["Authorizations.Column.TypeCreated"]</th>
-                                <th scope="col">@L["Authorizations.Column.Credentials"]</th>
-                                <th scope="col">@L["Authorizations.Column.State"]</th>
-                                <th scope="col"><span class="visually-hidden">@L["Authorizations.Column.Actions"]</span></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var grant in Page.Items)
-                            {
-                                <tr>
-                                    <td data-label="@L["Authorizations.Column.User"].Value">
+                <SUITable TItem="ManagementAuthorizationSummary"
+                          Items="Page.Items"
+                          RowKey="grant => grant.Id"
+                          Hover="true"
+                          StackOnMobile="true">
+                    <HeaderContent>
+                                <SUITh>@L["Authorizations.Column.User"]</SUITh>
+                                <SUITh>@L["Authorizations.Column.Client"]</SUITh>
+                                <SUITh>@L["Authorizations.Column.Scopes"]</SUITh>
+                                <SUITh>@L["Authorizations.Column.TypeCreated"]</SUITh>
+                                <SUITh>@L["Authorizations.Column.Credentials"]</SUITh>
+                                <SUITh>@L["Authorizations.Column.State"]</SUITh>
+                                <SUITh><span class="visually-hidden">@L["Authorizations.Column.Actions"]</span></SUITh>
+                    </HeaderContent>
+                    <RowTemplate Context="grant">
+                                    <SUITd DataLabel="@L["Authorizations.Column.User"].Value">
                                         @if (grant.UserId is not null)
                                         {
                                             <a class="client-name" href="@UserHref(grant.UserId)">@UserLabel(grant)</a>
@@ -100,8 +105,8 @@
                                         {
                                             <span>@L["Authorizations.NoUser"]</span>
                                         }
-                                    </td>
-                                    <td data-label="@L["Authorizations.Column.Client"].Value">
+                                    </SUITd>
+                                    <SUITd DataLabel="@L["Authorizations.Column.Client"].Value">
                                         <span class="scope-identity">
                                             <strong>@(grant.ClientDisplayName ?? grant.ClientId ?? L["Authorizations.NoClient"].Value)</strong>
                                             @if (grant.ClientId is not null)
@@ -109,8 +114,8 @@
                                                 <code>@grant.ClientId</code>
                                             }
                                         </span>
-                                    </td>
-                                    <td data-label="@L["Authorizations.Column.Scopes"].Value">
+                                    </SUITd>
+                                    <SUITd DataLabel="@L["Authorizations.Column.Scopes"].Value">
                                         <span class="token-row">
                                             @if (grant.Scopes.Count is 0)
                                             {
@@ -128,35 +133,33 @@
                                                 }
                                             }
                                         </span>
-                                    </td>
-                                    <td data-label="@L["Authorizations.Column.TypeCreated"].Value">
+                                    </SUITd>
+                                    <SUITd DataLabel="@L["Authorizations.Column.TypeCreated"].Value">
                                         <span class="scope-identity">
                                             <strong>@TypeLabel(grant.Type)</strong>
                                             <code>@DateLabel(grant.CreatedAt)</code>
                                         </span>
-                                    </td>
-                                    <td data-label="@L["Authorizations.Column.Credentials"].Value">@grant.CredentialCount</td>
-                                    <td data-label="@L["Authorizations.Column.State"].Value">
+                                    </SUITd>
+                                    <SUITd DataLabel="@L["Authorizations.Column.Credentials"].Value">@grant.CredentialCount</SUITd>
+                                    <SUITd DataLabel="@L["Authorizations.Column.State"].Value">
                                         <SUIStatusBadge ToneValue="@(grant.IsActive ? SUITone.Success : SUITone.Neutral)">
                                             @StatusLabel(grant.Status)
                                         </SUIStatusBadge>
-                                    </td>
-                                    <td data-label="@L["Authorizations.Column.Actions"].Value">
+                                    </SUITd>
+                                    <SUITd DataLabel="@L["Authorizations.Column.Actions"].Value">
                                         @if (grant.IsActive)
                                         {
-                                            <button class="row-action row-action--button"
-                                                    type="button"
-                                                    @onclick="() => SelectForRevocation(grant)">
+                                            <SUIButton VariantValue="SUIVariant.Text"
+                                                       ColorValue="SUIColor.Primary"
+                                                       SizeValue="SUISize.Small"
+                                                       EndIcon="lock"
+                                                       OnClick="() => SelectForRevocation(grant)">
                                                 @L["Authorizations.RevokeAction"]
-                                                <SUIIcon Name="lock" Size="15" />
-                                            </button>
+                                            </SUIButton>
                                         }
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
+                                    </SUITd>
+                    </RowTemplate>
+                </SUITable>
             }
         </Success>
     </ManagementDataView>
@@ -165,15 +168,21 @@
         <span>@ResultCountLabel</span>
         @if (result?.IsSuccess is true && Page.TotalCount > Page.PageSize)
         {
-            <div class="pagination" aria-label="@L["Authorizations.PaginationAriaLabel"].Value">
-                <button class="button button--secondary button--compact" type="button"
-                        disabled="@(Page.Page <= 1 || loading)"
-                        @onclick="PreviousPageAsync">@L["Authorizations.Previous"]</button>
+            <SUIStack Row AlignItems="Center" Spacing="2" aria-label="@L["Authorizations.PaginationAriaLabel"].Value">
+                <SUIButton ColorValue="SUIColor.Secondary"
+                           SizeValue="SUISize.Small"
+                           Disabled="@(Page.Page <= 1 || loading)"
+                           OnClick="PreviousPageAsync">
+                    @L["Authorizations.Previous"]
+                </SUIButton>
                 <span>@string.Format(L["Authorizations.PageOfFormat"].Value, Page.Page, TotalPages)</span>
-                <button class="button button--secondary button--compact" type="button"
-                        disabled="@(Page.Page >= TotalPages || loading)"
-                        @onclick="NextPageAsync">@L["Authorizations.Next"]</button>
-            </div>
+                <SUIButton ColorValue="SUIColor.Secondary"
+                           SizeValue="SUISize.Small"
+                           Disabled="@(Page.Page >= TotalPages || loading)"
+                           OnClick="NextPageAsync">
+                    @L["Authorizations.Next"]
+                </SUIButton>
+            </SUIStack>
         }
     </footer>
 </div>
@@ -192,11 +201,13 @@
                 <div><strong>@L["Authorizations.RevokeConfirm.ErrorTitle"]</strong><span>@revocation.ErrorMessage</span></div>
             </div>
         }
-        <button class="button button--secondary" type="button" @onclick="CancelRevocation">@L["Authorizations.Cancel"]</button>
-        <button class="button button--danger" type="button" disabled="@revoking" @onclick="RevokeAsync">
-            <SUIIcon Name="lock" Size="17" />
+        <SUIButton ColorValue="SUIColor.Secondary" OnClick="CancelRevocation">@L["Authorizations.Cancel"]</SUIButton>
+        <SUILoadingButton ColorValue="SUIColor.Error"
+                          StartIcon="lock"
+                          IsLoading="@revoking"
+                          OnClick="RevokeAsync">
             @(revoking ? L["Authorizations.Revoking"] : L["Authorizations.ConfirmRevocation"])
-        </button>
+        </SUILoadingButton>
     </div>
 }
 

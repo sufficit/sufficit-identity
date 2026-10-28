@@ -25,11 +25,6 @@
     padding-block: .25rem;
 }
 
-.audience-panel .data-table th:last-child,
-.audience-panel .data-table td:last-child {
-    width: auto;
-}
-
 .audience-binding-impact {
     color: var(--ink-muted);
     font-size: .8125rem;
@@ -38,11 +33,4 @@
 
 .form-section + .audience-panel {
     margin-top: 1.25rem;
-}
-
-@media (max-width: 767px) {
-    .audience-panel .search-field,
-    .audience-panel .data-table td:last-child {
-        width: 100%;
-    }
 }

@@ -1,11 +1,4 @@
 .settings-panel { margin-bottom: var(--sui-space-6, 24px); min-width: 0; }
 fieldset { display: grid; gap: var(--sui-space-4, 16px); border: 0; padding: var(--sui-space-5, 20px); margin: 0; min-width: 0; }
-.table-scroll { overflow-x: auto; }
 
 .maintenance-refresh { padding: 0 var(--sui-space-5, 20px) var(--sui-space-5, 20px); }
-@media (max-width: 760px) {
-    .maintenance-history, .maintenance-history tbody, .maintenance-history tr { display: block; width: 100%; }
-    .maintenance-history tr { padding: var(--sui-space-4, 16px); }
-    .maintenance-history td { display: grid; grid-template-columns: minmax(110px, 1fr) minmax(0, 1fr); gap: var(--sui-space-3, 12px); width: 100%; padding: var(--sui-space-2, 8px) 0; border: 0; }
-    .maintenance-history td::before { content: attr(data-label); color: var(--sui-text-secondary); font-weight: 600; }
-}

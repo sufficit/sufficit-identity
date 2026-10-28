@@ -10,10 +10,9 @@
 <SUIPageHeader Title="@L["ClaimDetail.HeaderTitle"].Value"
             Description="@L["ClaimDetail.HeaderDescription"].Value">
     <Actions>
-        <a class="button button--secondary" href="@BackHref">
-            <SUIIcon Name="arrow-left" Size="17" />
+        <SUIButton ColorValue="SUIColor.Secondary" StartIcon="arrow-left" Href="@BackHref">
             @L["ClaimDetail.BackToClaims"]
-        </a>
+        </SUIButton>
     </Actions>
 </SUIPageHeader>
 
@@ -35,7 +34,7 @@
                     Title="@L["ClaimDetail.SelectClaim.Title"].Value"
                     Description="@L["ClaimDetail.SelectClaim.Description"].Value">
             <Actions>
-                <a class="button button--primary" href="users">@L["ClaimDetail.OpenUserDirectory"]</a>
+                <SUIButton ColorValue="SUIColor.Primary" Href="users">@L["ClaimDetail.OpenUserDirectory"]</SUIButton>
             </Actions>
         </SUIEmptyState>
     </div>
@@ -55,7 +54,7 @@ else
         </div>
     </LoadingContent>
     <FailureActions>
-        <a class="button button--secondary" href="@BackHref">@L["ClaimDetail.BackToClaims"]</a>
+        <SUIButton ColorValue="SUIColor.Secondary" Href="@BackHref">@L["ClaimDetail.BackToClaims"]</SUIButton>
     </FailureActions>
     <Success Context="_">
     <div class="contract-strip contract-strip--warning">
@@ -108,40 +107,31 @@ else
                 <p>@L["ClaimDetail.TypeValue.Description"]</p>
             </div>
 
-            <div class="field-group">
-                <label for="claim-type">@L["ClaimDetail.Field.Type"]</label>
-                <InputText id="claim-type"
-                           class="form-control"
-                           autocomplete="off"
-                           @bind-Value="model.Type" />
-                <ValidationMessage For="() => model.Type" />
-            </div>
-
-            <div class="field-group">
-                <label for="claim-value">@L["ClaimDetail.Field.Value"]</label>
-                <InputTextArea id="claim-value"
-                               class="form-control form-control--textarea"
-                               @bind-Value="model.Value" />
-                <ValidationMessage For="() => model.Value" />
-                <span class="field-hint">@L["ClaimDetail.Field.ValueHint"]</span>
-            </div>
+            <SUIStack Spacing="4">
+                <IdentityTextField T="string"
+                                   Id="claim-type"
+                                   Label="@L["ClaimDetail.Field.Type"].Value"
+                                   autocomplete="off"
+                                   @bind-Value="model.Type" />
+                <IdentityTextField T="string"
+                                   Id="claim-value"
+                                   Label="@L["ClaimDetail.Field.Value"].Value"
+                                   HelperText="@L["ClaimDetail.Field.ValueHint"].Value"
+                                   Multiline="true"
+                                   @bind-Value="model.Value" />
+            </SUIStack>
         </div>
 
-        <footer class="form-actions">
-            <a class="button button--secondary" href="@BackHref">@L["ClaimDetail.Cancel"]</a>
-            <button class="button button--primary" type="submit" disabled="@saving">
-                @if (saving)
-                {
-                    <span class="button-spinner" aria-hidden="true"></span>
-                    <span>@L["ClaimDetail.Saving"]</span>
-                }
-                else
-                {
-                    <SUIIcon Name="edit" Size="17" />
-                    <span>@L["ClaimDetail.SaveClaim"]</span>
-                }
-            </button>
-        </footer>
+        <SUIStack Row Wrap AlignItems="Center" Justify="End" Spacing="2" Class="form-actions">
+            <SUIButton ColorValue="SUIColor.Secondary" Href="@BackHref">@L["ClaimDetail.Cancel"]</SUIButton>
+            <SUILoadingButton ButtonTypeValue="SUIButtonType.Submit"
+                              ColorValue="SUIColor.Primary"
+                              StartIcon="edit"
+                              IsLoading="@saving"
+                              Disabled="@saving">
+                @(saving ? L["ClaimDetail.Saving"] : L["ClaimDetail.SaveClaim"])
+            </SUILoadingButton>
+        </SUIStack>
     </EditForm>
     </div>
 
@@ -160,17 +150,16 @@ else
                 </div>
             </div>
         }
-        <label class="delete-confirmation">
-            <input type="checkbox" @bind="confirmed" />
-            <span>@L["ClaimDetail.Delete.ConfirmLabel"]</span>
-        </label>
-        <button class="button button--danger"
-                type="button"
-                disabled="@(!confirmed || deleting)"
-                @onclick="DeleteAsync">
-            <SUIIcon Name="trash" Size="17" />
+        <SUICheckbox Id="claim-delete-confirmation"
+                     Label="@L["ClaimDetail.Delete.ConfirmLabel"].Value"
+                     @bind-Value="confirmed" />
+        <SUILoadingButton ColorValue="SUIColor.Error"
+                          StartIcon="trash"
+                          IsLoading="@deleting"
+                          Disabled="@(!confirmed)"
+                          OnClick="DeleteAsync">
             @(deleting ? L["ClaimDetail.Delete.Removing"] : L["ClaimDetail.Delete.Submit"])
-        </button>
+        </SUILoadingButton>
     </div>
     </Success>
 </ManagementDataView>

@@ -11,20 +11,18 @@
 <SUIPageHeader Title="Branding"
             Description="@L["Branding.HeaderDescription"].Value">
     <Actions>
-        <button class="button button--secondary"
-                type="button"
-                disabled="@busy"
-                @onclick="RefreshAsync">
-            <SUIIcon Name="refresh" Size="17" />
+        <SUIButton ColorValue="SUIColor.Secondary"
+                   StartIcon="refresh"
+                   Disabled="@busy"
+                   OnClick="RefreshAsync">
             @L["Branding.Refresh"]
-        </button>
-        <button class="button button--primary"
-                type="button"
-                disabled="@busy"
-                @onclick="BeginCreate">
-            <SUIIcon Name="plus" Size="17" />
+        </SUIButton>
+        <SUIButton ColorValue="SUIColor.Primary"
+                   StartIcon="plus"
+                   Disabled="@busy"
+                   OnClick="BeginCreate">
             @L["Branding.NewTheme"]
-        </button>
+        </SUIButton>
     </Actions>
 </SUIPageHeader>
 
@@ -100,38 +98,39 @@
                         Title="@L["Branding.NoThemes.Title"].Value"
                         Description="@L["Branding.NoThemes.Description"].Value">
                 <Actions>
-                    <button class="button button--primary"
-                            type="button"
-                            @onclick="BeginCreate">
+                    <SUIButton ColorValue="SUIColor.Primary"
+                               OnClick="BeginCreate">
                         @L["Branding.CreateTheme"]
-                    </button>
+                    </SUIButton>
                 </Actions>
             </SUIEmptyState>
         }
         else
         {
-            <div class="theme-list">
-                @foreach (var theme in themes)
-                {
-                    <button class="theme-row @(Selected?.Id == theme.Id ? "theme-row--selected" : null)"
-                            type="button"
-                            aria-pressed="@(Selected?.Id == theme.Id)"
-                            @onclick="() => Select(theme)">
-                        <span class="theme-row__mark" aria-hidden="true">@ColorFill(theme.BrandColor)</span>
-                        <span class="theme-row__copy">
-                            <strong>@theme.Name</strong>
-                            <small>@ThemeIdentity(theme)</small>
-                        </span>
-                        @if (theme.IsActive)
-                        {
-                            <SUIStatusBadge ToneValue="SUITone.Success">@L["Branding.Active"]</SUIStatusBadge>
-                        }
-                        else
-                        {
-                            <SUIIcon Name="arrow-right" Size="16" />
-                        }
-                    </button>
-                }
+            <div class="theme-list" role="radiogroup" aria-labelledby="themes-heading">
+                <SUIStack Spacing="2">
+                    @foreach (var theme in themes)
+                    {
+                        <SUIChoiceCard TValue="int"
+                                       @key="theme.Id"
+                                       Name="branding-theme"
+                                       Value="@theme.Id"
+                                       SelectedValue="@(Selected?.Id ?? 0)"
+                                       SelectedValueChanged="SelectById"
+                                       Title="@theme.Name"
+                                       Description="@ThemeIdentity(theme)">
+                            <IconContent>
+                                <span class="theme-row__mark" aria-hidden="true">@ColorFill(theme.BrandColor)</span>
+                            </IconContent>
+                            <TrailingContent>
+                                @if (theme.IsActive)
+                                {
+                                    <SUIStatusBadge ToneValue="SUITone.Success">@L["Branding.Active"]</SUIStatusBadge>
+                                }
+                            </TrailingContent>
+                        </SUIChoiceCard>
+                    }
+                </SUIStack>
             </div>
         }
             </Success>
@@ -156,6 +155,8 @@
                 </SUIStatusBadge>
             </div>
 
+            @* Sample of the public sign-in page, not controls of this page: the
+               blocks imitate the login card and stay plain markup. *@
             <div class="identity-preview" @ref="previewElement">
                 <div class="identity-preview__top">
                     <img @key="PreviewHeaderIcon"
@@ -207,33 +208,24 @@
                 </div>
             </dl>
 
-            <div class="brand-preview-actions">
-                <button class="button button--secondary"
-                        type="button"
-                        disabled="@busy"
-                        @onclick="BeginEdit">
-                    <SUIIcon Name="edit" Size="17" />
+            <SUIStack Row Wrap AlignItems="Center" Justify="End" Spacing="2" Class="brand-preview-actions">
+                <SUIButton ColorValue="SUIColor.Secondary"
+                           StartIcon="edit"
+                           Disabled="@busy"
+                           OnClick="BeginEdit">
                     @L["Branding.EditTheme"]
-                </button>
+                </SUIButton>
                 @if (!theme.IsActive)
                 {
-                    <button class="button button--primary"
-                            type="button"
-                            disabled="@busy"
-                            @onclick="ActivateAsync">
-                        @if (activating)
-                        {
-                            <span class="button-spinner" aria-hidden="true"></span>
-                            <span>@L["Branding.Publishing"]</span>
-                        }
-                        else
-                        {
-                            <SUIIcon Name="check" Size="17" />
-                            <span>@L["Branding.PublishTheme"]</span>
-                        }
-                    </button>
+                    <SUILoadingButton ColorValue="SUIColor.Primary"
+                                      StartIcon="check"
+                                      IsLoading="@activating"
+                                      Disabled="@busy"
+                                      OnClick="ActivateAsync">
+                        @(activating ? L["Branding.Publishing"] : L["Branding.PublishTheme"])
+                    </SUILoadingButton>
                 }
-            </div>
+            </SUIStack>
         }
     </div>
 </div>
@@ -253,37 +245,28 @@
                 <p>@L["Branding.Form.IdentityHelp"]</p>
             </div>
 
-            <div class="form-grid form-grid--two">
-                <div class="field-group">
-                    <label for="theme-name">@L["Branding.Field.ThemeName"]</label>
-                    <InputText id="theme-name"
-                               class="form-control"
-                               @bind-Value="model.Name"
-                               autocomplete="off" />
-                    <ValidationMessage For="() => model.Name" />
-                </div>
-                <div class="field-group">
-                    <label for="theme-title">@L["Branding.Field.BrowserTitle"]</label>
-                    <InputText id="theme-title"
-                               class="form-control"
-                               @bind-Value="model.Title"
-                               autocomplete="off" />
-                </div>
-                <div class="field-group">
-                    <label for="brand-name">@L["Branding.Field.BrandName"]</label>
-                    <InputText id="brand-name"
-                               class="form-control"
-                               @bind-Value="model.BrandName"
-                               autocomplete="off" />
-                </div>
-                <div class="field-group">
-                    <label for="brand-subtitle">@L["Branding.Field.BrandSubtitle"]</label>
-                    <InputText id="brand-subtitle"
-                               class="form-control"
-                               @bind-Value="model.BrandSubtitle"
-                               autocomplete="off" />
-                </div>
-            </div>
+            <SUIFormGrid Columns="2">
+                <IdentityTextField T="string"
+                                   Id="theme-name"
+                                   Label="@L["Branding.Field.ThemeName"].Value"
+                                   @bind-Value="model.Name"
+                                   autocomplete="off" />
+                <IdentityTextField T="string"
+                                   Id="theme-title"
+                                   Label="@L["Branding.Field.BrowserTitle"].Value"
+                                   @bind-Value="model.Title"
+                                   autocomplete="off" />
+                <IdentityTextField T="string"
+                                   Id="brand-name"
+                                   Label="@L["Branding.Field.BrandName"].Value"
+                                   @bind-Value="model.BrandName"
+                                   autocomplete="off" />
+                <IdentityTextField T="string"
+                                   Id="brand-subtitle"
+                                   Label="@L["Branding.Field.BrandSubtitle"].Value"
+                                   @bind-Value="model.BrandSubtitle"
+                                   autocomplete="off" />
+            </SUIFormGrid>
         </div>
 
         <div class="form-section" aria-labelledby="branding-assets-heading">
@@ -292,40 +275,31 @@
                 <p>@L["Branding.Form.AssetsHelp"]</p>
             </div>
 
-            <div class="form-grid form-grid--two">
-                <div class="field-group">
-                    <label for="logo-url">@L["Branding.Field.MainLogo"]</label>
-                    <InputText id="logo-url"
-                               class="form-control"
-                               @bind-Value="model.LogoUrl"
-                               autocomplete="url" />
-                </div>
-                <div class="field-group">
-                    <label for="header-icon-url">@L["Branding.Field.HeaderIcon"]</label>
-                    <InputText id="header-icon-url"
-                               class="form-control"
-                               @bind-Value="model.HeaderIconUrl"
-                               autocomplete="url" />
-                </div>
-                <div class="field-group">
-                    <label for="favicon-url">Favicon</label>
-                    <InputText id="favicon-url"
-                               class="form-control"
-                               @bind-Value="model.FaviconUrl"
-                               autocomplete="url" />
-                </div>
-                <div class="field-group">
-                    <label for="background-url">@L["Branding.Field.BackgroundImage"]</label>
-                    <InputText id="background-url"
-                               class="form-control"
-                               @bind-Value="model.BackgroundImageUrl"
-                               @bind-Value:event="oninput"
-                               autocomplete="url" />
-                    <span class="field-hint">
-                        @L["Branding.Form.BackgroundHint"]
-                    </span>
-                </div>
-            </div>
+            <SUIFormGrid Columns="2">
+                <IdentityTextField T="string"
+                                   Id="logo-url"
+                                   Label="@L["Branding.Field.MainLogo"].Value"
+                                   @bind-Value="model.LogoUrl"
+                                   autocomplete="url" />
+                <IdentityTextField T="string"
+                                   Id="header-icon-url"
+                                   Label="@L["Branding.Field.HeaderIcon"].Value"
+                                   @bind-Value="model.HeaderIconUrl"
+                                   autocomplete="url" />
+                <IdentityTextField T="string"
+                                   Id="favicon-url"
+                                   Label="Favicon"
+                                   @bind-Value="model.FaviconUrl"
+                                   autocomplete="url" />
+                @* Immediate: the preview background follows every keystroke. *@
+                <IdentityTextField T="string"
+                                   Id="background-url"
+                                   Label="@L["Branding.Field.BackgroundImage"].Value"
+                                   HelperText="@L["Branding.Form.BackgroundHint"].Value"
+                                   Immediate="true"
+                                   @bind-Value="model.BackgroundImageUrl"
+                                   autocomplete="url" />
+            </SUIFormGrid>
         </div>
 
         <div class="form-section" aria-labelledby="branding-colors-heading">
@@ -334,40 +308,32 @@
                 <p>@L["Branding.Form.ColorsHelp"]</p>
             </div>
 
-            <div class="form-grid form-grid--four">
-                <div class="field-group">
-                    <label for="brand-color">@L["Branding.Field.Brand"]</label>
-                    <InputText id="brand-color"
-                               class="form-control"
-                               @bind-Value="model.BrandColor"
-                               placeholder="#cc0000"
-                               autocomplete="off" />
-                </div>
-                <div class="field-group">
-                    <label for="brand-hover-color">@L["Branding.Field.Interaction"]</label>
-                    <InputText id="brand-hover-color"
-                               class="form-control"
-                               @bind-Value="model.BrandHoverColor"
-                               placeholder="#a30000"
-                               autocomplete="off" />
-                </div>
-                <div class="field-group">
-                    <label for="brand-soft-color">@L["Branding.Field.SoftBackground"]</label>
-                    <InputText id="brand-soft-color"
-                               class="form-control"
-                               @bind-Value="model.BrandSoftColor"
-                               placeholder="#fbe9e9"
-                               autocomplete="off" />
-                </div>
-                <div class="field-group">
-                    <label for="theme-color">@L["Branding.Field.Browser"]</label>
-                    <InputText id="theme-color"
-                               class="form-control"
-                               @bind-Value="model.ThemeColor"
-                               placeholder="#cc0000"
-                               autocomplete="off" />
-                </div>
-            </div>
+            <SUIFormGrid Columns="4" MinColumnWidth="10rem">
+                <IdentityTextField T="string"
+                                   Id="brand-color"
+                                   Label="@L["Branding.Field.Brand"].Value"
+                                   Placeholder="#cc0000"
+                                   @bind-Value="model.BrandColor"
+                                   autocomplete="off" />
+                <IdentityTextField T="string"
+                                   Id="brand-hover-color"
+                                   Label="@L["Branding.Field.Interaction"].Value"
+                                   Placeholder="#a30000"
+                                   @bind-Value="model.BrandHoverColor"
+                                   autocomplete="off" />
+                <IdentityTextField T="string"
+                                   Id="brand-soft-color"
+                                   Label="@L["Branding.Field.SoftBackground"].Value"
+                                   Placeholder="#fbe9e9"
+                                   @bind-Value="model.BrandSoftColor"
+                                   autocomplete="off" />
+                <IdentityTextField T="string"
+                                   Id="theme-color"
+                                   Label="@L["Branding.Field.Browser"].Value"
+                                   Placeholder="#cc0000"
+                                   @bind-Value="model.ThemeColor"
+                                   autocomplete="off" />
+            </SUIFormGrid>
         </div>
 
         <div class="form-section" aria-labelledby="branding-avatar-heading">
@@ -375,37 +341,27 @@
                 <h2 id="branding-avatar-heading">@L["Branding.Form.AvatarsTitle"]</h2>
                 <p>@L["Branding.Form.AvatarsHelp"]</p>
             </div>
-            <div class="field-group">
-                <label for="avatar-url-template">@L["Branding.Field.AvatarUrlTemplate"]</label>
-                <InputText id="avatar-url-template"
-                           class="form-control"
-                           @bind-Value="model.AvatarUrlTemplate"
-                           autocomplete="off" />
-            </div>
+            <IdentityTextField T="string"
+                               Id="avatar-url-template"
+                               Label="@L["Branding.Field.AvatarUrlTemplate"].Value"
+                               @bind-Value="model.AvatarUrlTemplate"
+                               autocomplete="off" />
         </div>
 
-        <footer class="form-actions">
-            <button class="button button--secondary"
-                    type="button"
-                    disabled="@saving"
-                    @onclick="CancelEdit">
+        <SUIStack Row Wrap AlignItems="Center" Justify="End" Spacing="2" Class="form-actions">
+            <SUIButton ColorValue="SUIColor.Secondary"
+                       Disabled="@saving"
+                       OnClick="CancelEdit">
                 @L["Branding.Cancel"]
-            </button>
-            <button class="button button--primary"
-                    type="submit"
-                    disabled="@saving">
-                @if (saving)
-                {
-                    <span class="button-spinner" aria-hidden="true"></span>
-                    <span>@L["Branding.Saving"]</span>
-                }
-                else
-                {
-                    <SUIIcon Name="check" Size="17" />
-                    <span>@(creating ? L["Branding.CreateTheme"] : L["Branding.SaveChanges"])</span>
-                }
-            </button>
-        </footer>
+            </SUIButton>
+            <SUILoadingButton ButtonTypeValue="SUIButtonType.Submit"
+                              ColorValue="SUIColor.Primary"
+                              StartIcon="check"
+                              IsLoading="@saving"
+                              Disabled="@saving">
+                @(saving ? L["Branding.Saving"] : creating ? L["Branding.CreateTheme"] : L["Branding.SaveChanges"])
+            </SUILoadingButton>
+        </SUIStack>
     </EditForm>
     </div>
 }
@@ -420,49 +376,37 @@
 
         @if (!confirmingDelete)
         {
-            <button class="button button--danger"
-                    type="button"
-                    disabled="@busy"
-                    @onclick="BeginDelete">
-                <SUIIcon Name="trash" Size="17" />
+            <SUIButton ColorValue="SUIColor.Error"
+                       StartIcon="trash"
+                       Disabled="@busy"
+                       OnClick="BeginDelete">
                 @L["Branding.DeleteTheme"]
-            </button>
+            </SUIButton>
         }
         else
         {
-            <div class="delete-confirmation">
-                <label for="delete-theme-confirmation">
-                    @L["Branding.DeleteConfirmPrefix"] <code>@selectedTheme.Name</code> @L["Branding.DeleteConfirmSuffix"]
-                </label>
-                <input id="delete-theme-confirmation"
-                       class="form-control"
-                       autocomplete="off"
-                       @bind="deleteConfirmation"
-                       @bind:event="oninput" />
-                <div class="delete-confirmation__actions">
-                    <button class="button button--secondary"
-                            type="button"
-                            disabled="@deleting"
-                            @onclick="CancelDelete">
+            <SUIStack Spacing="2">
+                <IdentityTextField T="string"
+                                   Id="delete-theme-confirmation"
+                                   Label="@($"{L["Branding.DeleteConfirmPrefix"].Value} {selectedTheme.Name} {L["Branding.DeleteConfirmSuffix"].Value}")"
+                                   Immediate="true"
+                                   @bind-Value="deleteConfirmation"
+                                   autocomplete="off" />
+                <SUIStack Row Wrap AlignItems="Center" Justify="End" Spacing="2">
+                    <SUIButton ColorValue="SUIColor.Secondary"
+                               Disabled="@deleting"
+                               OnClick="CancelDelete">
                         @L["Branding.Cancel"]
-                    </button>
-                    <button class="button button--danger"
-                            type="button"
-                            disabled="@(!CanDelete)"
-                            @onclick="DeleteAsync">
-                        @if (deleting)
-                        {
-                            <span class="button-spinner" aria-hidden="true"></span>
-                            <span>@L["Branding.Deleting"]</span>
-                        }
-                        else
-                        {
-                            <SUIIcon Name="trash" Size="17" />
-                            <span>@L["Branding.ConfirmDeletion"]</span>
-                        }
-                    </button>
-                </div>
-            </div>
+                    </SUIButton>
+                    <SUILoadingButton ColorValue="SUIColor.Error"
+                                      StartIcon="trash"
+                                      IsLoading="@deleting"
+                                      Disabled="@(!CanDelete)"
+                                      OnClick="DeleteAsync">
+                        @(deleting ? L["Branding.Deleting"] : L["Branding.ConfirmDeletion"])
+                    </SUILoadingButton>
+                </SUIStack>
+            </SUIStack>
         }
     </div>
 }
@@ -584,6 +528,14 @@
                 ?? themes.FirstOrDefault();
         ResetPreviewFallbacks();
         loading = false;
+    }
+
+    private void SelectById(int id)
+    {
+        if (themes.FirstOrDefault(theme => theme.Id == id) is { } theme)
+        {
+            Select(theme);
+        }
     }
 
     private void Select(ManagementBrandingTheme theme)

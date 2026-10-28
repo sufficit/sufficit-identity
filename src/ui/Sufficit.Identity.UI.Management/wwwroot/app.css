@@ -2048,47 +2048,6 @@ h3 {
     align-items: flex-end;
 }
 
-.user-search {
-    display: flex;
-    /* Align the actual controls, not the select's label, to one baseline. */
-    align-items: flex-end;
-    gap: 8px;
-}
-
-.select-field {
-    display: grid;
-    gap: 5px;
-    min-width: 190px;
-    color: var(--ink-muted);
-    font-size: 10px;
-    font-weight: 650;
-    letter-spacing: 0.035em;
-    text-transform: uppercase;
-}
-
-.select-field > .sui-field {
-    width: 190px;
-}
-
-.select-field .sui-select__trigger {
-    min-height: 44px;
-    min-width: 190px;
-    padding-inline: 12px;
-    border: 1px solid var(--line-strong);
-    border-radius: var(--radius);
-    background: var(--surface);
-    color: var(--ink);
-    font-size: 12px;
-    letter-spacing: normal;
-    text-transform: none;
-}
-
-.select-field .sui-select__trigger:focus-visible {
-    border-color: var(--brand);
-    outline: 3px solid var(--brand-ring);
-    outline-offset: 0;
-}
-
 .search-field {
     display: flex;
     min-height: 44px;
@@ -2967,48 +2926,9 @@ h3 {
     padding: 16px;
 }
 
-.theme-row,
 .theme-row-skeleton {
     min-height: 66px;
     border-radius: var(--radius);
-}
-
-.theme-row {
-    display: grid;
-    width: 100%;
-    cursor: pointer;
-    grid-template-columns: 28px minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 12px;
-    border: 1px solid transparent;
-    outline: 0;
-    background: transparent;
-    color: var(--ink);
-    font: inherit;
-    text-align: left;
-    transition:
-        border-color var(--duration) var(--ease),
-        background-color var(--duration) var(--ease),
-        transform var(--duration) var(--ease);
-}
-
-.theme-row:hover {
-    background: var(--surface-page);
-}
-
-.theme-row:active {
-    transform: translateY(1px);
-}
-
-.theme-row:focus-visible {
-    border-color: var(--brand);
-    box-shadow: 0 0 0 3px var(--brand-ring);
-}
-
-.theme-row--selected {
-    border-color: var(--line-strong);
-    background: var(--surface-page);
 }
 
 .theme-row__mark {
@@ -3016,34 +2936,6 @@ h3 {
     height: 28px;
     border: 1px solid rgba(31, 29, 30, 0.14);
     border-radius: 9px;
-}
-
-.theme-row__copy {
-    display: grid;
-    min-width: 0;
-    gap: 3px;
-}
-
-.theme-row__copy strong,
-.theme-row__copy small {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.theme-row__copy strong {
-    color: var(--ink-strong);
-    font-size: 13px;
-    font-weight: 650;
-}
-
-.theme-row__copy small {
-    color: var(--ink-muted);
-    font-size: 11px;
-}
-
-.theme-row > svg {
-    color: var(--ink-subtle);
 }
 
 .theme-row-skeleton {
@@ -3270,19 +3162,11 @@ h3 {
 }
 
 .brand-preview-actions {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 10px;
     padding: 0 20px 20px;
 }
 
 .branding-form {
     margin-top: 20px;
-}
-
-.form-grid--four {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .workflow-step {
@@ -3694,19 +3578,6 @@ h3 {
 
 .row-action:hover {
     color: var(--brand-hover);
-}
-
-.row-action--button {
-    padding: 0;
-    border: 0;
-    background: transparent;
-    cursor: pointer;
-}
-
-.row-action--button:focus-visible {
-    border-radius: var(--radius-sm);
-    outline: 3px solid var(--brand-ring);
-    outline-offset: 3px;
 }
 
 .button--danger {
@@ -4771,40 +4642,6 @@ h3 {
     min-height: 290px;
 }
 
-.data-table--audit {
-    min-width: 1080px;
-}
-
-.data-table--audit th:last-child,
-.data-table--audit td:last-child {
-    width: auto;
-}
-
-.data-table--audit td {
-    vertical-align: top;
-}
-
-.data-table--audit td > code,
-.data-table--audit td > span {
-    display: block;
-}
-
-/* Keep outcome chips visually balanced in the audit result column. The
-   generic table rule above targets every direct span, so restore the badge's
-   flex layout before centering its label. */
-.data-table--audit th:nth-child(5),
-.data-table--audit td[data-label="Resultado"] {
-    text-align: center;
-}
-
-.data-table--audit td[data-label="Resultado"] > .status-badge,
-.data-table--audit td[data-label="Resultado"] > .sui-status-badge {
-    display: flex;
-    width: 100%;
-    justify-content: center;
-    text-align: center;
-}
-
 .audit-operator {
     display: block;
     color: var(--ink-strong);
@@ -4825,30 +4662,6 @@ h3 {
 }
 
 /* Database runtime monitoring */
-.database-page-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.database-live-control .status-dot {
-    flex: 0 0 auto;
-}
-
-.database-refresh-icon {
-    transform-origin: 50% 50%;
-}
-
-.database-refresh-icon--active {
-    animation: database-refresh-spin 800ms linear infinite;
-}
-
-@keyframes database-refresh-spin {
-    to {
-        transform: rotate(360deg);
-    }
-}
-
 .database-capacity-stack {
     display: grid;
     gap: 16px;
@@ -4998,15 +4811,6 @@ h3 {
     gap: 8px;
     color: var(--ink-muted);
     font-size: 11px;
-}
-
-.data-table--database {
-    min-width: 980px;
-}
-
-.data-table--database th:last-child,
-.data-table--database td:last-child {
-    width: auto;
 }
 
 .database-connection-id,
@@ -5175,8 +4979,7 @@ h3 {
         min-height: auto;
     }
 
-    .form-grid--three,
-    .form-grid--four {
+    .form-grid--three {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
@@ -5300,12 +5103,6 @@ h3 {
         width: 100%;
     }
 
-    .database-page-actions {
-        width: 100%;
-        align-items: stretch;
-        flex-direction: column;
-    }
-
     .page-description {
         font-size: 14px;
     }
@@ -5409,18 +5206,6 @@ h3 {
         grid-column: span 2;
     }
 
-    .user-search {
-        align-items: stretch;
-        flex-direction: column;
-    }
-
-    .select-field .sui-select__trigger,
-    .user-search,
-    .user-search .search-field,
-    .user-search .button {
-        width: 100%;
-    }
-
     .data-toolbar__actions .search-field,
     .data-toolbar__actions .button {
         width: 100%;
@@ -5449,10 +5234,6 @@ h3 {
     .data-table--clients tbody,
     .data-table--clients tr,
     .data-table--clients td,
-    .data-table--claims,
-    .data-table--claims tbody,
-    .data-table--claims tr,
-    .data-table--claims td,
     .data-table--scopes,
     .data-table--scopes tbody,
     .data-table--scopes tr,
@@ -5462,19 +5243,16 @@ h3 {
     }
 
     .data-table--clients tbody tr,
-    .data-table--claims tbody tr,
     .data-table--scopes tbody tr {
         padding: 14px 16px;
     }
 
     .data-table--clients tbody tr + tr,
-    .data-table--claims tbody tr + tr,
     .data-table--scopes tbody tr + tr {
         border-top: 1px solid var(--line);
     }
 
     .data-table--clients td,
-    .data-table--claims td,
     .data-table--scopes td {
         display: grid;
         min-height: 40px;
@@ -5486,7 +5264,6 @@ h3 {
     }
 
     .data-table--clients td::before,
-    .data-table--claims td::before,
     .data-table--scopes td::before {
         color: var(--ink-subtle);
         content: attr(data-label);
@@ -5497,7 +5274,6 @@ h3 {
     }
 
     .data-table--clients td > *,
-    .data-table--claims td > *,
     .data-table--scopes td > * {
         min-width: 0;
         justify-self: start;
@@ -5581,46 +5357,6 @@ h3 {
 
     .database-live-status {
         align-self: flex-start;
-    }
-
-    .data-table--database,
-    .data-table--database tbody,
-    .data-table--database tr,
-    .data-table--database td {
-        display: block;
-        width: 100%;
-    }
-
-    .data-table--database tbody tr {
-        padding: 14px 16px;
-    }
-
-    .data-table--database tbody tr + tr {
-        border-top: 1px solid var(--line);
-    }
-
-    .data-table--database td {
-        display: grid;
-        min-height: 40px;
-        grid-template-columns: minmax(104px, 0.4fr) minmax(0, 0.6fr);
-        align-items: center;
-        gap: 12px;
-        padding: 6px 0;
-        border: 0;
-    }
-
-    .data-table--database td::before {
-        color: var(--ink-subtle);
-        content: attr(data-label);
-        font-size: 10px;
-        font-weight: 650;
-        letter-spacing: 0.035em;
-        text-transform: uppercase;
-    }
-
-    .data-table--database td > * {
-        min-width: 0;
-        justify-self: start;
     }
 
     .client-guardrails {
@@ -5713,17 +5449,7 @@ h3 {
     }
 
     .brand-preview-actions {
-        align-items: stretch;
-        flex-direction: column-reverse;
         padding: 0 16px 16px;
-    }
-
-    .brand-preview-actions .button {
-        width: 100%;
-    }
-
-    .form-grid--four {
-        grid-template-columns: minmax(0, 1fr);
     }
 
     .temporary-token-field {
@@ -5930,55 +5656,6 @@ h3 {
     .delete-confirmation__actions {
         align-items: stretch;
         flex-direction: column-reverse;
-    }
-
-    .data-table--audit,
-    .data-table--audit tbody,
-    .data-table--audit tr,
-    .data-table--audit td {
-        display: block;
-        width: 100%;
-        min-width: 0;
-    }
-
-    .data-table--audit tbody tr {
-        padding: 14px 16px;
-    }
-
-    .data-table--audit tbody tr + tr {
-        border-top: 1px solid var(--line);
-    }
-
-    .data-table--audit td {
-        display: grid;
-        min-height: 40px;
-        grid-template-columns: minmax(92px, 0.34fr) minmax(0, 0.66fr);
-        gap: 12px;
-        padding: 6px 0;
-        border: 0;
-    }
-
-    .data-table--audit td::before {
-        color: var(--ink-subtle);
-        content: attr(data-label);
-        font-size: 10px;
-        font-weight: 650;
-        letter-spacing: 0.035em;
-        text-transform: uppercase;
-    }
-
-    .data-table--audit td > * {
-        min-width: 0;
-        justify-self: start;
-    }
-
-    .data-table--audit td[data-label="Resultado"] {
-        text-align: left;
-    }
-
-    .data-table--audit td[data-label="Resultado"] > .status-badge,
-    .data-table--audit td[data-label="Resultado"] > .sui-status-badge {
-        justify-self: center;
     }
 
     .config-list > div {
