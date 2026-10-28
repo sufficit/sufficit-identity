@@ -46,15 +46,16 @@
                         <SUISelectItem Value="@(1800)">@L["Provisioning.TemporaryToken.Lifetime30Min"]</SUISelectItem>
                         <SUISelectItem Value="@(3600)">@L["Provisioning.TemporaryToken.Lifetime60Min"]</SUISelectItem>
                     </IdentitySelect>
-                    <SUILoadingButton IsLoading="@tokenIssuing"
-                                      Disabled="@tokenIssuing"
-                                      VariantValue="SUIVariant.Outlined"
-                                      ColorValue="SUIColor.Primary"
-                                      OnClick="IssueTemporaryTokenAsync"
-                                      aria-busy="@tokenIssuing">
-                        <SUIIcon Name="key" Size="17" />
-                        <span>@L["Provisioning.TemporaryToken.GenerateButton"]</span>
-                    </SUILoadingButton>
+                    @* The handler goes on to await the one-time-token dialog: only the
+                       issue call is a wait, so the spinner follows tokenIssuing. *@
+                    <SUIButton Loading="@tokenIssuing"
+                               AutoLoading="false"
+                               VariantValue="SUIVariant.Outlined"
+                               ColorValue="SUIColor.Primary"
+                               StartIcon="key"
+                               OnClick="IssueTemporaryTokenAsync">
+                        @L["Provisioning.TemporaryToken.GenerateButton"]
+                    </SUIButton>
                 </SUIStack>
             </SUIStack>
 
@@ -141,20 +142,19 @@ else if (applyResult?.IsSuccess is true)
                                Rows="16"
                                Immediate="true"
                                MaxLength="@ManagementProvisioningDataSource.MaxManifestLength"
+                               Monospace="true"
                                HelperText="@ManifestHelp"
                                Value="@ManifestJson"
                                ValueChanged="@((string? value) => ManifestJson = value ?? string.Empty)"
                                aria-label="@L["Provisioning.Manifest.VisuallyHidden"].Value"
-                               spellcheck="false"
                                autocomplete="off" />
             <SUIStack Row="true" Justify="End">
                 <SUILoadingButton IsLoading="@previewing"
                                   Disabled="@IsBusy"
                                   ColorValue="SUIColor.Primary"
-                                  OnClick="PreviewAsync"
-                                  aria-busy="@previewing">
-                    <SUIIcon Name="search" Size="17" />
-                    <span>@L["Capability.Label.Preview"]</span>
+                                  StartIcon="search"
+                                  OnClick="PreviewAsync">
+                    @L["Capability.Label.Preview"]
                 </SUILoadingButton>
             </SUIStack>
         </SUIStack>
@@ -223,19 +223,18 @@ else if (applyResult?.IsSuccess is true)
                 <SUIStack Row="true" Wrap="true" AlignItems="Center" Justify="Between" Spacing="4">
                     @if (Plan.HasChanges)
                     {
-                        <SUISwitch Id="provisioning-confirmation"
-                                   Label="@L["Provisioning.Plan.ConfirmLabel"].Value"
-                                   HelperText="@L["Provisioning.Plan.ConfirmHint"].Value"
-                                   Disabled="@IsBusy"
-                                   Value="@confirmed"
-                                   ValueChanged="@((bool value) => confirmed = value)" />
+                        <SUICheckbox Id="provisioning-confirmation"
+                                     Label="@L["Provisioning.Plan.ConfirmLabel"].Value"
+                                     HelperText="@L["Provisioning.Plan.ConfirmHint"].Value"
+                                     Disabled="@IsBusy"
+                                     Value="@confirmed"
+                                     ValueChanged="@((bool value) => confirmed = value)" />
                         <SUILoadingButton IsLoading="@applying"
                                           Disabled="@(!CanApply)"
                                           ColorValue="SUIColor.Error"
-                                          OnClick="ApplyAsync"
-                                          aria-busy="@applying">
-                            <SUIIcon Name="workflow" Size="17" />
-                            <span>@L["Provisioning.Plan.ApplyButton"]</span>
+                                          StartIcon="workflow"
+                                          OnClick="ApplyAsync">
+                            @L["Provisioning.Plan.ApplyButton"]
                         </SUILoadingButton>
                     }
                     else

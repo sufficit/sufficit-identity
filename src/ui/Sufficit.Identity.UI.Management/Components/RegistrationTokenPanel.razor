@@ -23,7 +23,8 @@
             </SUIAlert>
         }
 
-        <SUIFormGrid Columns="2">
+        @* The registrant label carries the meaning; the lifetime is a short choice. *@
+        <SUIFormGrid Columns="2" ColumnTemplate="minmax(0, 2fr) minmax(0, 1fr)">
             <IdentityTextField T="string"
                           id="registration-token-label"
                           aria-label="@L["Clients.RegistrationTokens.LabelField"].Value"
@@ -57,6 +58,9 @@
                           aria-label="@L["Clients.RegistrationTokens.GrantsField"].Value"
                           Label="@L["Clients.RegistrationTokens.GrantsField"].Value"
                           HelperText="@L["Clients.RegistrationTokens.PolicyHelper"].Value"
+                          Optional="true"
+                          OptionalText="@L["Clients.Draft.OptionalMarker"].Value"
+                          Monospace="true"
                           Placeholder="authorization_code refresh_token"
                           Immediate
                           Disabled="@issuing"
@@ -69,6 +73,9 @@
                           aria-label="@L["Clients.RegistrationTokens.ScopesField"].Value"
                           Label="@L["Clients.RegistrationTokens.ScopesField"].Value"
                           HelperText="@L["Clients.RegistrationTokens.PolicyHelper"].Value"
+                          Optional="true"
+                          OptionalText="@L["Clients.Draft.OptionalMarker"].Value"
+                          Monospace="true"
                           Placeholder="openid profile"
                           Immediate
                           Disabled="@issuing"
@@ -82,14 +89,16 @@
                          Value="@singleUse"
                          ValueChanged="@((bool value) => singleUse = value)"
                          Disabled="@issuing" />
-            <SUILoadingButton IsLoading="@issuing"
-                              Disabled="@(!CanIssue)"
-                              ColorValue="SUIColor.Primary"
-                              OnClick="IssueAsync"
-                              aria-busy="@issuing">
-                <SUIIcon Name="key" Size="17" />
-                <span>@L["Clients.RegistrationTokens.IssueButton"]</span>
-            </SUILoadingButton>
+            @* IssueAsync ends by awaiting the one-time-token dialog: the spinner
+               follows the issue call only, not the reading of the token. *@
+            <SUIButton Loading="@issuing"
+                       AutoLoading="false"
+                       Disabled="@(!CanIssue)"
+                       ColorValue="SUIColor.Primary"
+                       StartIcon="key"
+                       OnClick="IssueAsync">
+                @L["Clients.RegistrationTokens.IssueButton"]
+            </SUIButton>
         </SUIStack>
 
         @if (!string.IsNullOrWhiteSpace(revokeError))

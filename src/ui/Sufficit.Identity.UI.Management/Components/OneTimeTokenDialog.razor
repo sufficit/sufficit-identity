@@ -21,10 +21,10 @@
                        Class="one-time-token-dialog__value"
                        Multiline="true"
                        Rows="4"
+                       Monospace="true"
                        Value="@Request.Token"
                        aria-label="@Request.AriaLabel"
                        readonly
-                       spellcheck="false"
                        autocomplete="off" />
     @if (!string.IsNullOrEmpty(Request.Detail))
     {

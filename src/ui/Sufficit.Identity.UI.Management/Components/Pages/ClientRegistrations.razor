@@ -90,9 +90,9 @@
                         </span>
                         @if (!string.IsNullOrWhiteSpace(client.RegisteredUserAgent))
                         {
-                            <span class="registration-hint" title="@client.RegisteredUserAgent">
-                                @Truncate(client.RegisteredUserAgent!, 48)
-                            </span>
+                            <SUITooltip Text="@client.RegisteredUserAgent">
+                                <span class="registration-hint">@Truncate(client.RegisteredUserAgent!, 48)</span>
+                            </SUITooltip>
                         }
                     </SUITd>
                     <SUITd DataLabel="Gate">
@@ -128,27 +128,21 @@
         </ManagementDataView>
     </div>
 
-    <footer class="table-footer table-footer--paginated">
-        <span aria-live="polite" aria-atomic="true">@ResultCountLabel</span>
-        @if (Page is { PageCount: > 1 })
-        {
-            <SUIStack Row="true" AlignItems="Center" Spacing="2" Wrap="false">
-                <SUIButton VariantValue="SUIVariant.Text"
-                           ColorValue="SUIColor.Default"
-                           Disabled="@(CurrentPage <= 1)"
-                           OnClick="() => GoToPageAsync(CurrentPage - 1)">
-                    @L["Clients.Registrations.Previous"]
-                </SUIButton>
-                <span>@L["Clients.Registrations.PageOf", Page.Page, Page.PageCount]</span>
-                <SUIButton VariantValue="SUIVariant.Text"
-                           ColorValue="SUIColor.Default"
-                           Disabled="@(CurrentPage >= Page.PageCount)"
-                           OnClick="() => GoToPageAsync(CurrentPage + 1)">
-                    @L["Clients.Registrations.Next"]
-                </SUIButton>
-            </SUIStack>
-        }
-    </footer>
+    @if (Page is not null)
+    {
+        <footer class="registrations-footer">
+            <SUIPagination TotalItems="Page.TotalCount"
+                           PageSize="Page.PageSize"
+                           PageIndex="@(Page.Page - 1)"
+                           PageHref="@(index => $"clients/registrations?page={index + 1}")"
+                           AriaLabel="@L["Clients.Registrations.PaginationAriaLabel"].Value"
+                           PreviousLabel="@L["Clients.Registrations.PreviousPage"].Value"
+                           NextLabel="@L["Clients.Registrations.NextPage"].Value"
+                           PageLabel="@((page, count) => L["Clients.Registrations.PageOf", page, count].Value)"
+                           RangeFormatter="@((first, last, total) => L["Clients.Registrations.RangeFormat", first, last, total].Value)"
+                           EmptyText="@L["Clients.Registrations.EmptyTitle"].Value" />
+        </footer>
+    }
 </section>
 
 @code {
@@ -175,14 +169,6 @@
         ? result.Value
         : null;
 
-    private string ResultCountLabel => Page is null
-        ? result is { IsSuccess: false }
-            ? string.Empty
-            : L["Clients.Registrations.LoadingRegistrations"].Value
-        : Page.TotalCount == 0
-            ? L["Clients.Registrations.EmptyTitle"].Value
-            : L["Clients.Registrations.CountFormat", Page.TotalCount].Value;
-
     protected override async Task OnParametersSetAsync()
     {
         var fingerprint = CurrentPage.ToString();
@@ -207,12 +193,6 @@
             Status: "all",
             Page: CurrentPage,
             PageSize: 25));
-    }
-
-    private async Task GoToPageAsync(int target)
-    {
-        Navigation.NavigateTo($"clients/registrations?page={target}");
-        await Task.CompletedTask;
     }
 
     private async Task RevokeAsync(string clientId)

@@ -237,7 +237,10 @@
   <data name="Clients.Registrations.Previous" xml:space="preserve"><value>Anterior</value></data>
   <data name="Clients.Registrations.PageOf" xml:space="preserve"><value>Página {0} de {1}</value></data>
   <data name="Clients.Registrations.Next" xml:space="preserve"><value>Próxima</value></data>
-  <data name="Clients.Registrations.CountFormat" xml:space="preserve"><value>{0} registro(s) automático(s)</value></data>
+  <data name="Clients.Registrations.PreviousPage" xml:space="preserve"><value>Página anterior</value></data>
+  <data name="Clients.Registrations.NextPage" xml:space="preserve"><value>Próxima página</value></data>
+  <data name="Clients.Registrations.PaginationAriaLabel" xml:space="preserve"><value>Paginação dos registros automáticos</value></data>
+  <data name="Clients.Registrations.RangeFormat" xml:space="preserve"><value>{0}–{1} de {2} registros automáticos</value></data>
   <data name="Clients.Registrations.RevokeGenericError" xml:space="preserve"><value>O serviço de identidade recusou a remoção.</value></data>
   <data name="Users.PageTitle" xml:space="preserve"><value>Usuários | Sufficit Identity</value></data>
   <data name="Users.Header.Title" xml:space="preserve"><value>Usuários</value></data>
@@ -540,10 +543,12 @@
   <data name="Clients.Draft.ConsentSystematicOption" xml:space="preserve"><value>Sistemático — confirmação recorrente</value></data>
   <data name="Clients.Draft.RequireParLabel" xml:space="preserve"><value>Exigir PAR</value></data>
   <data name="Clients.Draft.RequireParHint" xml:space="preserve"><value>Protege os parâmetros antes de abrir o navegador.</value></data>
-  <data name="Clients.Draft.TokenLifetimeHint" xml:space="preserve"><value>Opcional: em branco, a aplicação herda o padrão global do servidor.</value></data>
-  <data name="Clients.Draft.AccessTokenLifetimeLabel" xml:space="preserve"><value>Access token (minutos)</value></data>
-  <data name="Clients.Draft.IdTokenLifetimeLabel" xml:space="preserve"><value>ID token (minutos)</value></data>
-  <data name="Clients.Draft.RefreshTokenLifetimeLabel" xml:space="preserve"><value>Refresh token (dias)</value></data>
+  <data name="Clients.Draft.TokenLifetimeHint" xml:space="preserve"><value>Em branco, a aplicação herda o padrão global do servidor.</value></data>
+  <data name="Clients.Draft.AccessTokenLifetimeLabel" xml:space="preserve"><value>Access token</value></data>
+  <data name="Clients.Draft.IdTokenLifetimeLabel" xml:space="preserve"><value>ID token</value></data>
+  <data name="Clients.Draft.RefreshTokenLifetimeLabel" xml:space="preserve"><value>Refresh token</value></data>
+  <data name="Clients.Draft.UnitMinutes" xml:space="preserve"><value>min</value></data>
+  <data name="Clients.Draft.UnitDays" xml:space="preserve"><value>dias</value></data>
   <data name="Clients.Draft.SearchPermissionsLabel" xml:space="preserve"><value>Pesquisar permissões</value></data>
   <data name="Clients.Draft.SearchScopesPlaceholder" xml:space="preserve"><value>Pesquisar por nome ou finalidade</value></data>
   <data name="Clients.Draft.DefaultScopeBadge" xml:space="preserve"><value>Padrão</value></data>
@@ -572,6 +577,7 @@
   <data name="Clients.Draft.FlowsLabel" xml:space="preserve"><value>Fluxos</value></data>
   <data name="Clients.Draft.RequiredLabel" xml:space="preserve"><value>Obrigatório</value></data>
   <data name="Clients.Draft.OptionalLabel" xml:space="preserve"><value>Opcional</value></data>
+  <data name="Clients.Draft.OptionalMarker" xml:space="preserve"><value> (opcional)</value></data>
   <data name="Clients.Draft.TokensLabel" xml:space="preserve"><value>Tokens</value></data>
   <data name="Clients.Draft.NoScopeSelected" xml:space="preserve"><value>Nenhuma permissão selecionada.</value></data>
   <data name="Clients.Draft.ReturnsHeading" xml:space="preserve"><value>Retornos</value></data>
@@ -2032,7 +2038,7 @@
   <data name="Error.registration_token_not_found" xml:space="preserve"><value>O token de registro não existe.</value></data>
   <data name="Clients.RegistrationTokens.GrantsField" xml:space="preserve"><value>Grants permitidos</value></data>
   <data name="Clients.RegistrationTokens.ScopesField" xml:space="preserve"><value>Escopos permitidos</value></data>
-  <data name="Clients.RegistrationTokens.PolicyHelper" xml:space="preserve"><value>Opcional, separados por espaço. Vazio mantém só a lista geral do servidor.</value></data>
+  <data name="Clients.RegistrationTokens.PolicyHelper" xml:space="preserve"><value>Separados por espaço. Vazio mantém só a lista geral do servidor.</value></data>
   <data name="Clients.RegistrationTokens.PolicyGrants" xml:space="preserve"><value>Grants: {0}</value></data>
   <data name="Clients.RegistrationTokens.PolicyScopes" xml:space="preserve"><value>Escopos: {0}</value></data>
   <data name="Error.registration_token_policy_invalid" xml:space="preserve"><value>Cada valor deve ser um identificador sem espaços, até 20 valores.</value></data>

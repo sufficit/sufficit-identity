@@ -656,12 +656,16 @@ public sealed partial class ManagementUiArchitectureTests
         Assert.Contains("data-sui-align-row", page, StringComparison.Ordinal);
         Assert.Contains("<IdentitySelect T=\"int\"", page, StringComparison.Ordinal);
         Assert.Contains("<SUISelectItem", page, StringComparison.Ordinal);
+        // Preview and apply own their spinner; issuing a temporary token is a
+        // SUIButton without AutoLoading, since its handler awaits the dialog.
         Assert.Equal(
-            3,
+            2,
             page.Split("<SUILoadingButton", StringSplitOptions.None).Length - 1);
         Assert.Equal(
-            0,
+            1,
             page.Split("<SUIButton", StringSplitOptions.None).Length - 1);
+        Assert.Contains("AutoLoading=\"false\"", page, StringComparison.Ordinal);
+        Assert.Contains("<SUICheckbox Id=\"provisioning-confirmation\"", page, StringComparison.Ordinal);
         Assert.DoesNotContain("<select", page, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("class=\"button ", page, StringComparison.Ordinal);
         Assert.DoesNotContain(".temporary-token-field select", stylesheet, StringComparison.Ordinal);

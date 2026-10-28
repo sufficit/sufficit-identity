@@ -80,7 +80,8 @@ else
                               AriaLabel="@L["Clients.Draft.StepsAriaLabel"].Value"
                               CompletedStatusLabel="@L["Clients.Draft.StepStatus.Completed"].Value"
                               CurrentStatusLabel="@L["Clients.Draft.StepStatus.Current"].Value"
-                              PendingStatusLabel="@L["Clients.Draft.StepStatus.Pending"].Value" />
+                              PendingStatusLabel="@L["Clients.Draft.StepStatus.Pending"].Value"
+                              StepPositionLabel="@((position, total) => L["Clients.Draft.StepProgress", position, total].Value)" />
             <div class="wizard-save-state" aria-live="polite">
                 @if (saving)
                 {
@@ -114,7 +115,8 @@ else
                                        Id="client-display-name"
                                        Name="displayName"
                                        Label="@L["Clients.Draft.AppNameLabel"].Value"
-                                       HelperText="@FieldHelp(L["Clients.Draft.AppNameHint"].Value, "displayName")"
+                                       HelperText="@L["Clients.Draft.AppNameHint"].Value"
+                                       WarningText="@FieldWarnings("displayName")"
                                        ErrorText="@FieldErrors("displayName")"
                                        Immediate="true"
                                        Value="@draft!.Values.DisplayName"
@@ -124,13 +126,15 @@ else
                                        Id="client-id"
                                        Name="clientId"
                                        Label="Client ID"
-                                       HelperText="@FieldHelp(L["Clients.Draft.ClientIdHintPrefix"].Value + " portal_web.", "clientId")"
+                                       WarningText="@FieldWarnings("clientId")"
                                        ErrorText="@FieldErrors("clientId")"
+                                       Monospace="true"
                                        Immediate="true"
                                        Value="@draft.Values.ClientId"
                                        ValueChanged="ClientIdChangedAsync"
-                                       autocomplete="off"
-                                       spellcheck="false" />
+                                       autocomplete="off">
+                        <HelperContent>@L["Clients.Draft.ClientIdHintPrefix"] <code>portal_web</code></HelperContent>
+                    </IdentityTextField>
                 </SUIFormGrid>
                 <div class="profile-context">
                     <SUIIcon Name="shield" Size="21" />
@@ -139,95 +143,107 @@ else
             }
             else if (CurrentStep.Id == ManagementClientDraftSteps.Protocol)
             {
-                <fieldset class="choice-fieldset">
-                    <legend>@L["Clients.Draft.ClientTypeLegend"]</legend>
+                @* Fieldsets and grids carry no outer margin: the stack spaces the groups. *@
+                <SUIStack Spacing="5">
+                    <fieldset class="choice-fieldset">
+                        <legend>@L["Clients.Draft.ClientTypeLegend"]</legend>
+                        <SUIFormGrid Columns="2">
+                            <SUIChoiceCard TValue="string"
+                                           Name="client-type"
+                                           Value="@("public")"
+                                           SelectedValue="@draft!.Values.ClientType"
+                                           SelectedValueChanged="SetClientTypeAsync"
+                                           Title="@L["Clients.Detail.TypePublic"].Value"
+                                           Description="@L["Clients.Draft.PublicClientHint"].Value" />
+                            <SUIChoiceCard TValue="string"
+                                           Name="client-type"
+                                           Value="@("confidential")"
+                                           SelectedValue="@draft.Values.ClientType"
+                                           SelectedValueChanged="SetClientTypeAsync"
+                                           Title="@L["Clients.Detail.TypeConfidential"].Value"
+                                           Description="@L["Clients.Draft.ConfidentialClientHint"].Value" />
+                        </SUIFormGrid>
+                    </fieldset>
+                    <fieldset class="choice-fieldset">
+                        <legend>@L["Clients.Draft.GrantTypesLegend"]</legend>
+                        <SUIFormGrid Columns="2">
+                            <SUICheckbox Id="grant-authorization-code" Name="grantTypes" FormValue="authorization_code"
+                                         Label="Authorization Code + PKCE" HelperText="@L["Clients.Draft.AuthCodeHint"].Value"
+                                         Value="@draft!.Values.AuthorizationCode" ValueChanged="AuthorizationCodeChangedAsync" />
+                            <SUICheckbox Id="grant-refresh-token" Name="grantTypes" FormValue="refresh_token"
+                                         Label="Refresh Token" HelperText="@L["Clients.Draft.RefreshTokenHint"].Value"
+                                         Value="@draft.Values.RefreshToken" ValueChanged="RefreshTokenChangedAsync" />
+                            <SUICheckbox Id="grant-client-credentials" Name="grantTypes" FormValue="client_credentials"
+                                         Label="Client Credentials" HelperText="@L["Clients.Draft.ClientCredentialsHint"].Value"
+                                         Value="@draft.Values.ClientCredentials" ValueChanged="ClientCredentialsChangedAsync" />
+                            <SUICheckbox Id="grant-device-code" Name="grantTypes" FormValue="device_code"
+                                         Label="Device Code" HelperText="@L["Clients.Draft.DeviceCodeHint"].Value"
+                                         Value="@draft.Values.DeviceCode" ValueChanged="DeviceCodeChangedAsync" />
+                        </SUIFormGrid>
+                        @foreach (var issue in IssuesFor("grantTypes"))
+                        {
+                            <SUIAlert ToneValue="@IssueTone(issue)">@issue.Message</SUIAlert>
+                        }
+                    </fieldset>
                     <SUIFormGrid Columns="2">
-                        <SUIChoiceCard TValue="string"
-                                       Name="client-type"
-                                       Value="@("public")"
-                                       SelectedValue="@draft!.Values.ClientType"
-                                       SelectedValueChanged="SetClientTypeAsync"
-                                       Title="@L["Clients.Detail.TypePublic"].Value"
-                                       Description="@L["Clients.Draft.PublicClientHint"].Value" />
-                        <SUIChoiceCard TValue="string"
-                                       Name="client-type"
-                                       Value="@("confidential")"
-                                       SelectedValue="@draft.Values.ClientType"
-                                       SelectedValueChanged="SetClientTypeAsync"
-                                       Title="@L["Clients.Detail.TypeConfidential"].Value"
-                                       Description="@L["Clients.Draft.ConfidentialClientHint"].Value" />
+                        <IdentitySelect T="string"
+                                        Id="consent-type"
+                                        Name="consentType"
+                                        Label="@L["Clients.Detail.ConsentLabel"].Value"
+                                        Value="@draft!.Values.ConsentType"
+                                        ValueChanged="ConsentChangedAsync">
+                            <SUISelectItem Value="@("explicit")">@L["Clients.Draft.ConsentExplicitOption"]</SUISelectItem>
+                            <SUISelectItem Value="@("implicit")">@L["Clients.Draft.ConsentImplicitOption"]</SUISelectItem>
+                            <SUISelectItem Value="@("external")">@L["Clients.Draft.ConsentExternalOption"]</SUISelectItem>
+                            <SUISelectItem Value="@("systematic")">@L["Clients.Draft.ConsentSystematicOption"]</SUISelectItem>
+                        </IdentitySelect>
+                        <SUISwitch Id="require-par" Name="requirePar"
+                                   Label="@L["Clients.Draft.RequireParLabel"].Value" HelperText="@L["Clients.Draft.RequireParHint"].Value"
+                                   Value="@draft.Values.RequirePar" ValueChanged="RequireParChangedAsync" />
                     </SUIFormGrid>
-                </fieldset>
-                <fieldset class="choice-fieldset">
-                    <legend>@L["Clients.Draft.GrantTypesLegend"]</legend>
-                    <SUIFormGrid Columns="2">
-                        <SUISwitch Id="grant-authorization-code" Name="grantTypes" FormValue="authorization_code"
-                                   Label="Authorization Code + PKCE" HelperText="@L["Clients.Draft.AuthCodeHint"].Value"
-                                   Value="@draft!.Values.AuthorizationCode" ValueChanged="AuthorizationCodeChangedAsync" />
-                        <SUISwitch Id="grant-refresh-token" Name="grantTypes" FormValue="refresh_token"
-                                   Label="Refresh Token" HelperText="@L["Clients.Draft.RefreshTokenHint"].Value"
-                                   Value="@draft.Values.RefreshToken" ValueChanged="RefreshTokenChangedAsync" />
-                        <SUISwitch Id="grant-client-credentials" Name="grantTypes" FormValue="client_credentials"
-                                   Label="Client Credentials" HelperText="@L["Clients.Draft.ClientCredentialsHint"].Value"
-                                   Value="@draft.Values.ClientCredentials" ValueChanged="ClientCredentialsChangedAsync" />
-                        <SUISwitch Id="grant-device-code" Name="grantTypes" FormValue="device_code"
-                                   Label="Device Code" HelperText="@L["Clients.Draft.DeviceCodeHint"].Value"
-                                   Value="@draft.Values.DeviceCode" ValueChanged="DeviceCodeChangedAsync" />
-                    </SUIFormGrid>
-                    @foreach (var issue in IssuesFor("grantTypes"))
-                    {
-                        <SUIAlert ToneValue="@IssueTone(issue)">@issue.Message</SUIAlert>
-                    }
-                </fieldset>
-                <SUIFormGrid Columns="2">
-                    <IdentitySelect T="string"
-                                    Id="consent-type"
-                                    Name="consentType"
-                                    Label="@L["Clients.Detail.ConsentLabel"].Value"
-                                    Value="@draft!.Values.ConsentType"
-                                    ValueChanged="ConsentChangedAsync">
-                        <SUISelectItem Value="@("explicit")">@L["Clients.Draft.ConsentExplicitOption"]</SUISelectItem>
-                        <SUISelectItem Value="@("implicit")">@L["Clients.Draft.ConsentImplicitOption"]</SUISelectItem>
-                        <SUISelectItem Value="@("external")">@L["Clients.Draft.ConsentExternalOption"]</SUISelectItem>
-                        <SUISelectItem Value="@("systematic")">@L["Clients.Draft.ConsentSystematicOption"]</SUISelectItem>
-                    </IdentitySelect>
-                    <SUISwitch Id="require-par" Name="requirePar"
-                               Label="@L["Clients.Draft.RequireParLabel"].Value" HelperText="@L["Clients.Draft.RequireParHint"].Value"
-                               Value="@draft.Values.RequirePar" ValueChanged="RequireParChangedAsync" />
-                </SUIFormGrid>
-                <fieldset class="choice-fieldset">
-                    <legend>@L["Clients.Detail.TokenValidityHeading"]</legend>
-                    <span class="field-hint">@L["Clients.Draft.TokenLifetimeHint"]</span>
-                    <SUIFormGrid Columns="3">
-                        <IdentityNumericField T="int?"
-                                              Id="draft-access-token-lifetime"
-                                              Name="accessTokenLifetimeMinutes"
-                                              Label="@L["Clients.Draft.AccessTokenLifetimeLabel"].Value"
-                                              Min="1"
-                                              Max="@TokenLifetimeLimits.MaximumAccessTokenLifetimeMinutes"
-                                              Immediate="true"
-                                              Value="@draft!.Values.AccessTokenLifetimeMinutes"
-                                              ValueChanged="AccessTokenLifetimeChangedAsync" />
-                        <IdentityNumericField T="int?"
-                                              Id="draft-identity-token-lifetime"
-                                              Name="identityTokenLifetimeMinutes"
-                                              Label="@L["Clients.Draft.IdTokenLifetimeLabel"].Value"
-                                              Min="1"
-                                              Max="120"
-                                              Immediate="true"
-                                              Value="@draft.Values.IdentityTokenLifetimeMinutes"
-                                              ValueChanged="IdentityTokenLifetimeChangedAsync" />
-                        <IdentityNumericField T="int?"
-                                              Id="draft-refresh-token-lifetime"
-                                              Name="refreshTokenLifetimeDays"
-                                              Label="@L["Clients.Draft.RefreshTokenLifetimeLabel"].Value"
-                                              Min="1"
-                                              Max="365"
-                                              Immediate="true"
-                                              Value="@draft.Values.RefreshTokenLifetimeDays"
-                                              ValueChanged="RefreshTokenLifetimeChangedAsync" />
-                    </SUIFormGrid>
-                </fieldset>
+                    <fieldset class="choice-fieldset">
+                        <legend>@L["Clients.Detail.TokenValidityHeading"]</legend>
+                        <span class="field-hint">@L["Clients.Draft.TokenLifetimeHint"]</span>
+                        <SUIFormGrid Columns="3">
+                            <IdentityNumericField T="int?"
+                                                  Id="draft-access-token-lifetime"
+                                                  Name="accessTokenLifetimeMinutes"
+                                                  Label="@L["Clients.Draft.AccessTokenLifetimeLabel"].Value"
+                                                  Suffix="@L["Clients.Draft.UnitMinutes"].Value"
+                                                  Optional="true"
+                                                  OptionalText="@L["Clients.Draft.OptionalMarker"].Value"
+                                                  Min="1"
+                                                  Max="@TokenLifetimeLimits.MaximumAccessTokenLifetimeMinutes"
+                                                  Immediate="true"
+                                                  Value="@draft!.Values.AccessTokenLifetimeMinutes"
+                                                  ValueChanged="AccessTokenLifetimeChangedAsync" />
+                            <IdentityNumericField T="int?"
+                                                  Id="draft-identity-token-lifetime"
+                                                  Name="identityTokenLifetimeMinutes"
+                                                  Label="@L["Clients.Draft.IdTokenLifetimeLabel"].Value"
+                                                  Suffix="@L["Clients.Draft.UnitMinutes"].Value"
+                                                  Optional="true"
+                                                  OptionalText="@L["Clients.Draft.OptionalMarker"].Value"
+                                                  Min="1"
+                                                  Max="120"
+                                                  Immediate="true"
+                                                  Value="@draft.Values.IdentityTokenLifetimeMinutes"
+                                                  ValueChanged="IdentityTokenLifetimeChangedAsync" />
+                            <IdentityNumericField T="int?"
+                                                  Id="draft-refresh-token-lifetime"
+                                                  Name="refreshTokenLifetimeDays"
+                                                  Label="@L["Clients.Draft.RefreshTokenLifetimeLabel"].Value"
+                                                  Suffix="@L["Clients.Draft.UnitDays"].Value"
+                                                  Optional="true"
+                                                  OptionalText="@L["Clients.Draft.OptionalMarker"].Value"
+                                                  Min="1"
+                                                  Max="365"
+                                                  Immediate="true"
+                                                  Value="@draft.Values.RefreshTokenLifetimeDays"
+                                                  ValueChanged="RefreshTokenLifetimeChangedAsync" />
+                        </SUIFormGrid>
+                    </fieldset>
+                </SUIStack>
             }
             else if (CurrentStep.Id == ManagementClientDraftSteps.Permissions)
             {
@@ -246,12 +262,13 @@ else
                     @foreach (var scope in FilteredScopes)
                     {
                         <SUIStack Row="true" AlignItems="Center" Justify="Between" Spacing="3" @key="scope.Name">
-                            <SUISwitch Name="selectedScopes"
-                                       FormValue="@scope.Name"
-                                       Label="@scope.DisplayName"
-                                       HelperText="@ScopeHelp(scope)"
-                                       Value="@draft!.Values.Scopes.Contains(scope.Name, StringComparer.Ordinal)"
-                                       ValueChanged="value => ScopeChangedAsync(scope.Name, value)" />
+                            <SUICheckbox Name="selectedScopes"
+                                         FormValue="@scope.Name"
+                                         Label="@scope.DisplayName"
+                                         Value="@draft!.Values.Scopes.Contains(scope.Name, StringComparer.Ordinal)"
+                                         ValueChanged="value => ScopeChangedAsync(scope.Name, value)">
+                                <HelperContent><code>@scope.Name</code>@(string.IsNullOrWhiteSpace(scope.Description) ? null : $" — {scope.Description}")</HelperContent>
+                            </SUICheckbox>
                             @if (scope.IsProtocolScope)
                             {
                                 <SUIStatusBadge ToneValue="SUITone.Neutral">@L["Clients.Draft.DefaultScopeBadge"]</SUIStatusBadge>
@@ -283,6 +300,7 @@ else
                                                    Id="@($"redirect-uri-{uri.index}")"
                                                    Name="redirectUris"
                                                    Class="uri-editor__field"
+                                                   Monospace="true"
                                                    Immediate="true"
                                                    Value="@uri.value"
                                                    ValueChanged="value => RedirectChangedAsync(uri.index, value)"
@@ -313,6 +331,7 @@ else
                                                    Id="@($"logout-redirect-uri-{uri.index}")"
                                                    Name="postLogoutRedirectUris"
                                                    Class="uri-editor__field"
+                                                   Monospace="true"
                                                    Immediate="true"
                                                    Value="@uri.value"
                                                    ValueChanged="value => LogoutRedirectChangedAsync(uri.index, value)"
@@ -330,10 +349,10 @@ else
                     <SUIStack Spacing="4">
                         <SUIFormGrid Columns="2">
                             <IdentityTextField T="string" Id="frontchannel-uri" Name="frontchannelLogoutUri"
-                                               Label="Front-channel logout URI" Immediate="true"
+                                               Label="Front-channel logout URI" Monospace="true" Immediate="true"
                                                Value="@draft!.Values.FrontchannelLogoutUri" ValueChanged="FrontchannelChangedAsync" />
                             <IdentityTextField T="string" Id="backchannel-uri" Name="backchannelLogoutUri"
-                                               Label="Back-channel logout URI" Immediate="true"
+                                               Label="Back-channel logout URI" Monospace="true" Immediate="true"
                                                Value="@draft.Values.BackchannelLogoutUri" ValueChanged="BackchannelChangedAsync" />
                         </SUIFormGrid>
                         <SUIFormGrid Columns="2">
@@ -663,12 +682,10 @@ else
     private static string NormalizeStep(string? step) => ManagementClientDraftSteps.All.FirstOrDefault(item => string.Equals(item, step, StringComparison.OrdinalIgnoreCase)) ?? ManagementClientDraftSteps.Identity;
     private static SUITone IssueTone(ClientValidationIssue issue) => issue.Severity == ClientValidationSeverity.Error ? SUITone.Danger : SUITone.Warning;
 
-    // Errors go to the field's ErrorText; warnings ride along with the hint,
-    // because SUI fields carry no separate warning message.
+    // Errors block (ErrorText, aria-invalid); warnings only advise (WarningText).
     private string? FieldErrors(string field) => JoinMessages(IssuesFor(field).Where(issue => issue.Severity == ClientValidationSeverity.Error));
-    private string FieldHelp(string hint, string field) => JoinMessages(IssuesFor(field).Where(issue => issue.Severity != ClientValidationSeverity.Error)) is { } warnings ? $"{hint} {warnings}" : hint;
+    private string? FieldWarnings(string field) => JoinMessages(IssuesFor(field).Where(issue => issue.Severity != ClientValidationSeverity.Error));
     private static string? JoinMessages(IEnumerable<ClientValidationIssue> issues) => string.Join(" ", issues.Select(issue => issue.Message)) is { Length: > 0 } text ? text : null;
-    private static string ScopeHelp(ManagementClientAvailableScope scope) => string.IsNullOrWhiteSpace(scope.Description) ? scope.Name : $"{scope.Name} — {scope.Description}";
     private static string ValueOrDash(string? value) => string.IsNullOrWhiteSpace(value) ? "—" : value;
     private static string Slugify(string? value) => string.Join("-", (value ?? string.Empty).Trim().ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries)).Where(character => char.IsLetterOrDigit(character) || character is '-' or '_' or '.').Aggregate(string.Empty, (current, character) => current + character).Trim('-');
 

@@ -1,0 +1,6 @@
+/* Layout between SUI components only: the pagination sits under the table, inside the card. */
+
+.registrations-footer {
+    padding: 0 16px 12px;
+    border-top: 1px solid var(--line);
+}
