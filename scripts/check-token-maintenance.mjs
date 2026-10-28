@@ -39,7 +39,7 @@ try {
   await page.reload();
   await page.waitForLoadState('networkidle');
   await page.screenshot({ path: `${output}/mobile.png`, fullPage: true });
-  assert.notEqual(await page.locator('.maintenance-history td').first().evaluate(el => getComputedStyle(el, '::before').content), 'none');
+  assert.notEqual(await page.locator('section[aria-labelledby="maintenance-history"] td').first().evaluate(el => getComputedStyle(el, '::before').content), 'none');
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), 'mobile overflow');
   await page.keyboard.press('Tab');
   assert.deepEqual(errors, []);

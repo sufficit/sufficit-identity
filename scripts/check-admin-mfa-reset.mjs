@@ -87,7 +87,8 @@ try {
   assert.equal(await confirm.isDisabled(), true);
   await page.getByLabel('Motivo da redefinição', { exact: true }).fill('Chamado 123: perda do aparelho confirmada pelo suporte.');
   await page.getByLabel('Digite alice para confirmar a conta', { exact: true }).fill('bob');
-  await page.getByLabel('Verifiquei a identidade do titular pelo procedimento de suporte.', { exact: true }).check();
+  // The SUI checkbox draws its box over the native input; the input is still the control.
+  await page.getByLabel('Verifiquei a identidade do titular pelo procedimento de suporte.', { exact: true }).setChecked(true, { force: true });
   assert.equal(await confirm.isDisabled(), true);
   await page.getByLabel('Digite alice para confirmar a conta', { exact: true }).fill('alice');
   await page.waitForFunction(() => document.querySelector('[data-mfa-reset-confirmation] button[type=submit]')?.disabled === false);
@@ -105,7 +106,7 @@ try {
   assert.equal(await page.locator('#mfa-reset-reason').inputValue(), '');
   await page.locator('#mfa-reset-reason').fill('Chamado 123: perda do aparelho confirmada pelo suporte.');
   await page.locator('#mfa-reset-confirmation').fill('alice');
-  await page.locator('#mfa-reset-verified').check();
+  await page.locator('#mfa-reset-verified').setChecked(true, { force: true });
   await confirm.click();
   await page.getByRole('status').filter({ hasText: 'Autenticação de dois fatores redefinida.' }).waitFor();
   assert.equal(await form.count(), 0);

@@ -53,11 +53,14 @@
     font-size: 11px;
 }
 
-.system-users-table tr.is-selected td {
+/* The tables are SUITable children: reach their cells through a page element. */
+.system-users-list ::deep tr.is-selected td {
     background: var(--surface-page);
 }
 
-.system-users-table__actions {
+.system-users-list ::deep .system-users-table__actions,
+.system-user-credentials ::deep .system-users-table__actions {
+    width: 1%;
     white-space: nowrap;
 }
 

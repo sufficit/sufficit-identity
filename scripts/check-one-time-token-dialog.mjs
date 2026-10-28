@@ -21,13 +21,13 @@ try {
   await page.waitForLoadState('networkidle');
 
   const dialog = page.getByRole('dialog');
-  const value = dialog.locator('textarea.one-time-token-dialog__value');
+  const value = dialog.locator('.one-time-token-dialog__value textarea');
 
   // Issuing opens the dialog with the token; nothing is rendered inline.
   await page.locator('.temporary-token-panel .sui-btn').filter({ hasText: /Gerar|Generate/ }).click();
   await dialog.waitFor();
   assert.equal(await value.inputValue(), 'stub-one-time-token-value');
-  assert.equal(await page.locator('.temporary-token-panel .inline-notice--success').count(), 0, 'hidden notice while the dialog is open');
+  assert.equal(await page.locator('.temporary-token-panel .sui-alert--success').count(), 0, 'hidden notice while the dialog is open');
   const box = await dialog.boundingBox();
   const copy = await dialog.getByRole('button', { name: /Copiar token|Copy token/ }).boundingBox();
   assert.ok(copy.x + copy.width <= box.x + box.width, 'copy button clipped by the dialog');
@@ -51,7 +51,7 @@ try {
   assert.equal(await page.evaluate(() => navigator.clipboard.readText()), 'stub-one-time-token-value');
   await page.keyboard.press('Escape');
   await page.getByRole('dialog').waitFor({ state: 'detached' });
-  await page.locator('.temporary-token-panel .inline-notice--success').waitFor();
+  await page.locator('.temporary-token-panel .sui-alert--success').waitFor();
 
   // Discarding on purpose closes without copying.
   await page.locator('.temporary-token-panel .sui-btn').filter({ hasText: /Gerar|Generate/ }).click();

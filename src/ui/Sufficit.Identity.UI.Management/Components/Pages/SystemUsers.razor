@@ -91,11 +91,13 @@
 }
 else
 {
+    <div class="system-users-list">
     <SUITable TItem="SystemUserSummary"
               Items="systemUsers"
               RowKey="item => item.UserId"
               RowClassFunc="@((item, _) => selected?.UserId == item.UserId ? "is-selected" : null)"
-              Class="data-table system-users-table"
+              Class="system-users-table"
+              StackOnMobile="true"
               aria-label="@L["SystemUsers.Table.AriaLabel"].Value">
         <HeaderContent>
             <SUITh>@L["SystemUsers.Table.Name"]</SUITh>
@@ -105,14 +107,14 @@ else
             <SUITh><span class="visually-hidden">@L["SystemUsers.Table.Actions"]</span></SUITh>
         </HeaderContent>
         <RowTemplate Context="item">
-            <SUITd DataLabel="@L["SystemUsers.Table.Name"]">
+            <SUITd DataLabel="@L["SystemUsers.Table.Name"]"><div>
                 <strong>@(item.DisplayName ?? item.UserName)</strong>
                 <small><code>@item.UserName</code> · <a href="users/@item.UserId">@item.UserId</a></small>
-            </SUITd>
-            <SUITd DataLabel="@L["SystemUsers.Table.Created"]">
+            </div></SUITd>
+            <SUITd DataLabel="@L["SystemUsers.Table.Created"]"><div>
                 <span>@Time.Format(item.CreatedAtUtc)</span>
                 <small>@item.CreatedBy</small>
-            </SUITd>
+            </div></SUITd>
             <SUITd DataLabel="@L["SystemUsers.Table.Credentials"]">@item.ActiveCredentials</SUITd>
             <SUITd DataLabel="@L["SystemUsers.Table.State"]">
                 <SUIStatusBadge ToneValue="@(item.Disabled ? SUITone.Neutral : SUITone.Success)">
@@ -139,6 +141,7 @@ else
             </SUITd>
         </RowTemplate>
     </SUITable>
+    </div>
 }
     </Success>
 </ManagementDataView>
@@ -214,7 +217,7 @@ else
         {
             <SUITable TItem="SystemUserEnrollmentSummary"
                       Items="enrollments"
-                      Class="data-table"
+                      StackOnMobile="true"
                       aria-label="@L["SystemUsers.Credentials.TableAriaLabel"].Value">
                 <HeaderContent>
                     <SUITh>@L["SystemUsers.Credentials.Client"]</SUITh>
@@ -225,18 +228,18 @@ else
                 </HeaderContent>
                 <RowTemplate Context="enrollment">
                     <SUITd DataLabel="@L["SystemUsers.Credentials.Client"]"><code>@enrollment.ClientId</code></SUITd>
-                    <SUITd DataLabel="@L["SystemUsers.Credentials.Label"]">
+                    <SUITd DataLabel="@L["SystemUsers.Credentials.Label"]"><div>
                         @enrollment.Label
                         <small>#@enrollment.CodeHint</small>
-                    </SUITd>
-                    <SUITd DataLabel="@L["SystemUsers.Credentials.State"]">
+                    </div></SUITd>
+                    <SUITd DataLabel="@L["SystemUsers.Credentials.State"]"><div>
                         <SUIStatusBadge ToneValue="@StatusTone(enrollment.Status)">@StatusText(enrollment.Status)</SUIStatusBadge>
                         <small>@StatusDetail(enrollment)</small>
-                    </SUITd>
-                    <SUITd DataLabel="@L["SystemUsers.Credentials.Issued"]">
+                    </div></SUITd>
+                    <SUITd DataLabel="@L["SystemUsers.Credentials.Issued"]"><div>
                         <span>@Time.Format(enrollment.CreatedAtUtc)</span>
                         <small>@enrollment.IssuedBy</small>
-                    </SUITd>
+                    </div></SUITd>
                     <SUITd Class="system-users-table__actions">
                         <SUIStack Row="true" AlignItems="Center" Justify="End" Spacing="2" Wrap="false">
                             @if (enrollment.Status is SystemUserEnrollmentStatus.Pending or SystemUserEnrollmentStatus.Active)
@@ -283,16 +286,16 @@ else
                 <SUITable TItem="SystemUserClientSummary"
                           Items="boundClients"
                           RowKey="client => client.ClientId"
-                          Class="data-table"
+                          StackOnMobile="true"
                           aria-label="@L["SystemUsers.Clients.TableAriaLabel"].Value">
                     <RowTemplate Context="client">
-                        <SUITd DataLabel="@L["SystemUsers.Clients.Field"]">
+                        <SUITd DataLabel="@L["SystemUsers.Clients.Field"]"><div>
                             <code>@client.ClientId</code>
                             @if (!string.IsNullOrWhiteSpace(client.DisplayName))
                             {
                                 <small>@client.DisplayName</small>
                             }
-                        </SUITd>
+                        </div></SUITd>
                         <SUITd Class="system-users-table__actions">
                             <SUIStack Row="true" AlignItems="Center" Justify="End" Spacing="2" Wrap="false">
                                 <SUIButton ButtonTypeValue="SUIButtonType.Button"

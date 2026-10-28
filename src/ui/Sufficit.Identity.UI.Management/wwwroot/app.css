@@ -1969,49 +1969,19 @@ h3 {
     overflow-x: auto;
 }
 
-.data-table {
-    width: 100%;
-    min-width: 760px;
-    border-collapse: collapse;
-    font-size: 12px;
-}
 
-.data-table th,
-.data-table td {
-    padding: 13px 16px;
-    border-bottom: 1px solid var(--line);
-    text-align: left;
-    vertical-align: middle;
-}
 
-.data-table th {
-    background: #fafafa;
-    color: var(--ink-muted);
-    font-size: 10px;
-    font-weight: 650;
-    letter-spacing: 0.035em;
-    text-transform: uppercase;
-    white-space: nowrap;
-}
 
-.data-table th:last-child,
-.data-table td:last-child {
-    width: 52px;
-}
 
-.data-table__empty-row td {
-    height: 290px;
-    padding: 0;
-    border-bottom: 0;
-}
 
-.data-table tbody tr:not(.data-table__empty-row) {
-    transition: background-color var(--duration) var(--ease);
-}
 
-.data-table tbody tr:not(.data-table__empty-row):hover {
-    background: #fafafa;
-}
+
+
+
+
+
+
+
 
 .client-name {
     color: var(--ink-strong);
@@ -4935,109 +4905,35 @@ h3 {
         overflow-x: hidden;
     }
 
-    .data-table {
-        min-width: 0;
-    }
 
-    .data-table thead {
-        display: none;
-    }
 
-    .data-table__empty-row,
-    .data-table__empty-row td {
-        display: block;
-        width: 100%;
-        height: auto;
-    }
 
-    .data-table--clients,
-    .data-table--clients tbody,
-    .data-table--clients tr,
-    .data-table--clients td,
-    .data-table--scopes,
-    .data-table--scopes tbody,
-    .data-table--scopes tr,
-    .data-table--scopes td {
-        display: block;
-        width: 100%;
-    }
 
-    .data-table--clients tbody tr,
-    .data-table--scopes tbody tr {
-        padding: 14px 16px;
-    }
 
-    .data-table--clients tbody tr + tr,
-    .data-table--scopes tbody tr + tr {
-        border-top: 1px solid var(--line);
-    }
 
-    .data-table--clients td,
-    .data-table--scopes td {
-        display: grid;
-        min-height: 40px;
-        grid-template-columns: minmax(96px, 0.38fr) minmax(0, 0.62fr);
-        align-items: center;
-        gap: 12px;
-        padding: 6px 0;
-        border: 0;
-    }
 
-    .data-table--clients td::before,
-    .data-table--scopes td::before {
-        color: var(--ink-subtle);
-        content: attr(data-label);
-        font-size: 10px;
-        font-weight: 650;
-        letter-spacing: 0.035em;
-        text-transform: uppercase;
-    }
 
-    .data-table--clients td > *,
-    .data-table--scopes td > * {
-        min-width: 0;
-        justify-self: start;
-    }
 
-    .data-table--users,
-    .data-table--users tbody,
-    .data-table--users tr,
-    .data-table--users td {
-        display: block;
-        width: 100%;
-    }
 
-    .data-table--users tbody tr {
-        padding: 14px 16px;
-    }
 
-    .data-table--users tbody tr + tr {
-        border-top: 1px solid var(--line);
-    }
 
-    .data-table--users td {
-        display: grid;
-        min-height: 40px;
-        grid-template-columns: minmax(96px, 0.38fr) minmax(0, 0.62fr);
-        align-items: center;
-        gap: 12px;
-        padding: 6px 0;
-        border: 0;
-    }
 
-    .data-table--users td::before {
-        color: var(--ink-subtle);
-        content: attr(data-label);
-        font-size: 10px;
-        font-weight: 650;
-        letter-spacing: 0.035em;
-        text-transform: uppercase;
-    }
 
-    .data-table--users td > * {
-        min-width: 0;
-        justify-self: start;
-    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     .database-capacity__header {
         align-items: flex-start;
