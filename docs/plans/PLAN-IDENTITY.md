@@ -62,88 +62,22 @@ path only when telemetry reaches zero legacy use.
 
 ## A. Authorization and trust boundaries
 
-### A1 — Protected principals and operator entitlements
-
-**There is no tenant or context boundary inside a deployment, by product
-decision** (`cd67f51`, 2026-08-15; `ARCHITECTURE-MANAGEMENT-AUTHORIZATION.md`,
-"No tenant boundary inside a deployment"). One deployment serves one
-organization; isolation between organizations is one deployment each, with its
-own database. Object-level authorization is capability, MFA step-up and
-protected principals, and the architecture says not to reintroduce tenant data
-or authority without a new decision.
-
-The first consolidation of this plan carried over five items from the
-2026-08-07 evaluation (V-19, "tenant-aware Management authorization") that
-predate that decision — a persisted `ContextId` per object, an
-`IManagementContextResolver`, a backfill into a global context, context
-predicates on every query, and context shadow telemetry. They were exactly the
-machinery the decision removed, and they are gone from here. What V-19 asked
-for that still applies under the current contract is below.
-
-Delivered 2026-10-24 —
-[`202610240100`](../activities/202610240100-operator-authority.md): console
-authority comes only from reviewed role mapping, reserved claims that never
-reach a token, self-bounded operator tokens and the service-principal list;
-break-glass is now audited, alike on every path that reaches a user.
-
-Protected principals: [`202609192300`](../activities/202609192300-protected-principals-everywhere.md).
-
-**Done when:** no Management capability lets an operator change or revoke
-anything belonging to a principal of equal or higher tier without break-glass.
-
 ### A2 — Operator-aware client scope and secret authorization
 
-- [x] Extend the scope-grant boundary to evaluate operator, target client,
-  grant type and requested scopes; keep `ReservedApiScopes` a non-bypassable
-  floor and add deployment-defined privileged scopes
-- [x] Define operator-specific scope-minting entitlements and negative
-  decisions for privilege expansion, with stable reason codes and audit records
-- [x] Add `SecretReference` to the Management HTTP create/update contract;
-  retain raw `ClientSecret` only as a deprecated compatibility adapter with a
-  PII-free audit warning and an explicit expiry
-- [x] Run the validator and the new entitlement decision in shadow mode by
-  client/operator cohort (`ClientScopeGrants:Mode=Observe`, default)
-- [ ] **(operational)** Declare the deployment's privileged scopes, reconcile
-  the observed denials (audit `reasonCode like 'scope_grant_%'`), set
-  `ClientScopeGrants:Mode=Enforce`, migrate plaintext-secret callers
-  (`client_secret_plaintext_deprecated`) and remove the adapter after
-  `ClientSecrets:PlaintextExpiresAtUtc`
+- [ ] **(operational, ~2026-11-04)** Reconcile the observed denials (audit
+  `reasonCode like 'scope_grant_%'`, `operationOutcome = 'observed'`), then set
+  `ClientScopeGrants:Mode=Enforce` on the three nodes
+- [ ] **(operational, before 2027-04-30)** Migrate plaintext-secret
+  callers (`client_secret_plaintext_deprecated`) to `secretReference` and
+  remove the adapter after `ClientSecrets:PlaintextExpiresAtUtc`
 - [ ] **(operational)** Inventory the real production manifests and adopt
   existing managed clients explicitly before enabling client-definition
   enforcement
+- [ ] Bring `/secret/rotate` and `/credentials` onto `secretReference`; they
+  still accept an operator-supplied secret
 
-**Production list (configured in `Observe` on the three nodes 2026-10-28, `appsettings.Production.json`, backup `*.bak-20261028-scopegrants`).** Rule: a scope
-is privileged when its holder acts beyond the signed-in user's own data —
-another user's or the whole tenant's data, money, infrastructure, delegation or
-publication. Scopes that only release claims or act for the signed-in user stay
-open. A client keeps whatever it already holds, so declaring the list only
-gates new grants.
-
-| Privileged | Why |
-|---|---|
-| `identity.scim`, `identity.tokens`, `identity.vault`, `identity.mcp` | identity administration, token minting, secrets |
-| `personal.tokens.manage`, `genius.executor.delegate` | creates credentials or delegates the user's authority |
-| `provisioning.manage`, `provisioning.installation` | device and account provisioning |
-| `network.control`, `background.jobs` | infrastructure and job control |
-| `telephony.billing`, `endpoints.invoices`, `sufficit.endpoints.n8n.asaas-invoices`, `policies` | money and tenant-wide policy |
-| `sufficit.landing.publish` | public publication |
-| `fleet.api`, `ai.bridge`, `sufficit_ai_openai_bridge` | agent orchestration and model access paid by the tenant |
-
-Open: `openid`, `profile`, `email`, `address`, `roles`, `offline_access`,
-`directives`, `entitlements`, `ai.user`, `chrome.phone`, `endpoints.phone`,
-`endpoints.webcallback`. `identity.management` and `scim` are already the
-reserved floor. All privileged entries use the default capability
-`identity.scopes.grant`; split a capability out only when someone other than a
-full administrator must grant one scope.
-
-Sequence: configure the list in `Observe` on the three nodes, read the
-observed rows after seven days, then `Enforce`.
-
-Operator dimension, privileged scopes, `secretReference` and the plaintext
-adapter delivered 2026-10-28 —
-[`202610281800`](../activities/202610281800-operator-scope-grant.md). One
-decision, `IClientScopeGrantAuthorization`, serves Management, provisioning,
-dynamic registration and CIMD; what is left is operational.
+Decision, contract and the production privileged-scope list:
+[`202610281800`](../activities/202610281800-operator-scope-grant.md).
 
 **Done when:** no operator can grant authority they do not hold, every client
 entry point shares one decision, and new Management requests carry no plaintext
@@ -152,7 +86,7 @@ client secret.
 ### A3 — SCIM operation policy
 
 The directory a SCIM client sees is the deployment's whole directory, by the
-same product decision as A1 — partitioning it would be the row-level tenant
+same product decision as the no-tenant boundary (`ARCHITECTURE-MANAGEMENT-AUTHORIZATION.md`) — partitioning it would be the row-level tenant
 boundary that decision rejected. What SCIM lacks is a decision per
 *operation*: today a client that may provision may also delete.
 
@@ -188,26 +122,6 @@ endpoint rather than in each relying party.
 
 ## B. Token issuance and claim release
 
-### B1 — One issuance kernel
-
-Decided 2026-10-24: **no** `ITokenIssuanceService` across the two boundaries —
-[`202610240200`](../activities/202610240200-no-unified-issuance-service.md).
-Grants and privileged mints each already have a single assembly point; B2's
-claim-release policy is shared by both instead.
-
-### B2 — Claim release fails closed
-
-Inventory done and standard claims gated by their scope
-([`202610221930`](../activities/202610221930-vault-restore-proof-and-claim-inventory.md)).
-
-Closed 2026-10-24. Release already fails closed: standard claims follow their
-scope, the only mapped claim (`entitlements`/`directive`) follows `directives`,
-unmapped claims stay out (`IncludeUnmappedClaimsInAccessTokens=false`) and
-console authority never leaves. A client- and resource-aware policy has no rule
-to apply until an application needs its own claims, so it moved to E4
-("Application claims with allow-list and destinations") —
-[`202610240200`](../activities/202610240200-no-unified-issuance-service.md).
-
 ### B3 — Token exchange provenance and delegation
 
 - [ ] Let the holder of a DPoP-bound subject token exchange it. It fails
@@ -219,53 +133,20 @@ to apply until an application needs its own claims, so it moved to E4
   skipped test in `TokenExchangeSubjectTokenTests`. No production exchange
   presents a DPoP-bound subject token today
 
-Tests for a foreign issuer, a personal token, a CIBA token and DPoP binding
-across the exchange landed 2026-10-24 (`TokenExchangeSubjectTokenTests`, 12):
-a foreign or re-signed token is refused; a personal or CIBA token is exchanged
-only by its holder or a declared audience, with `act`; a proof binds the new
-token to the caller's key; a DPoP-bound subject token is refused without its
-proof or with another key.
-
-Delegation depth is bounded since 2026-09-20
-(`TokenExchange:MaxDelegationDepth`, default 5) —
-[`202609200500-delegation-depth.md`](../activities/202609200500-delegation-depth.md).
-
-Delegated device credentials since 2026-10-04, off by default
-(`TokenExchange:DelegatedCredentials`): a refresh token of another client,
-bound to the device's DPoP key —
-[`202610042300-delegated-device-credentials.md`](../activities/202610042300-delegated-device-credentials.md).
-
-Already in place, verified 2026-09-20: the actor allow-list
-(`AllowedClientIds`), `may_act`, refusal of an actor token issued to another
-client, confused-deputy refusal, and nested `act` chains — all tested.
-Provenance has been **unconditional** since `1d04868` (2026-08-30, F-1):
-evaluated on every exchange, with or without an allow-list; `Observe` remains
-only as a migration valve, reported by the posture check and cleared by D4.
-Missing and ambiguous `azp` are tested.
+Built on: exchange provenance, actor allow-list and `act` chains (`1d04868`),
+[`202609200500`](../activities/202609200500-delegation-depth.md) (delegation
+depth) and
+[`202610042300`](../activities/202610042300-delegated-device-credentials.md)
+(delegated device credentials, off by default). `Observe` for provenance is
+only a migration valve reported by the posture check.
 
 ### B5 — CIBA trust boundary completion
 
 - [ ] Run CIBA interoperability/conformance and approval-fatigue abuse tests
   before enabling additional clients
 
-The test battery is complete since 2026-09-20 —
-[`202609201500-ciba-initiator-and-rolling-deploy.md`](../activities/202609201500-ciba-initiator-and-rolling-deploy.md).
-
-`ICibaClientPolicy` and the bound, displayed `binding_message` are in place,
-and `CibaProtocolFeature` already composes the whole capability as one unit:
-disabled answers 404 (`CibaController.cs:75`), the grant handler refuses, and
-the runtime capability is not advertised.
-
-### B7 — Consent configuration fails closed
-
-Delivered: the one client without a consent type was backfilled to `explicit`,
-what the runtime already applied —
-[`202610231700`](../activities/202610231700-csp-inline-styles.md).
-
-### B8 — Per-client OAuth resource validation
-
-Delivered: there is no Observe mode, per-client resource permissions are always
-enforced — [`202610221630`](../activities/202610221630-plan-reconciliation.md).
+Built on: [`202609201500`](../activities/202609201500-ciba-initiator-and-rolling-deploy.md)
+(`ICibaClientPolicy`, bound `binding_message`, `CibaProtocolFeature`).
 
 ### B9 — FAPI 2.0: the one accepted conformance failure **(deferred by decision)**
 
@@ -275,7 +156,7 @@ as a redirect carrying `invalid_request_uri`; the server refuses the expired
 extracting it, before any redirect URI has been resolved — the request carries
 only `client_id` and `request_uri` — so there is nowhere to send the error.
 
-Attempted 2026-09-18 and reverted. A handler on
+A handler on
 `ApplyAuthorizationResponseContext` does find the client and its single
 registered URI, but nothing downstream honours it:
 `Authentication.AttachRedirectUri` clears a redirect URI it did not validate
@@ -304,18 +185,12 @@ The accepted warning and skips (`FAPIEnsureServerConfigurationDoesNotSupport`
   old-version decrypt and restore are covered:
   [`202610232000`](../activities/202610232000-vault-kek-rotation.md))
 
-The KEK is escrowed by a daily vzdump of `apoint-apps` (CT 1101) to the
-`nas-sufficit` NAS since 2026-10-23 —
-[`202610231900`](../activities/202610231900-vault-kek-escrow.md). The vault
-module itself (phases 1–3: envelope crypto, named secrets, signing keys) is
-delivered; `KeySource=certificate` with a dedicated KEK is deployed on
-the three nodes. Procedure lives in `../runbooks/RUNBOOK-VAULT.md`.
+Built on: [`202610231900`](../activities/202610231900-vault-kek-escrow.md)
+(KEK escrow). Procedure: `../runbooks/RUNBOOK-VAULT.md`.
 
 ### C2 — Signing and encryption key separation
 
-Signing and encryption use separate certificates on the three servers since
-2026-10-23 (`RequirePurposeSeparation=true`,
-[`202610231600`](../activities/202610231600-encryption-certificate-separation.md)).
+Certificate separation: [`202610231600`](../activities/202610231600-encryption-certificate-separation.md).
 
 - [ ] **(operational, from 2026-11-20)** Drop `certificate.pfx` and
   `certificate-old.pfx` from `EncryptionPaths`: the last valid token encrypted
@@ -357,41 +232,6 @@ UnixSocket exception; production still has to choose the mode.
   no expiry (reports already strip query and userinfo)
 
 Procedure: [`RUNBOOK-CSP-CALIBRATION.md`](../runbooks/RUNBOOK-CSP-CALIBRATION.md).
-The placeholder external image host and the websocket wildcards were already
-removed from the three servers.
-
-### D2 — Public origin enforcement
-
-Delivered: `PublicOrigin.Mode` defaults to `Enforce` and production does not
-override it — [`202610221630`](../activities/202610221630-plan-reconciliation.md).
-
-### D3 — Explicit deployment topology
-
-Delivered 2026-10-24: `TwoReplicaSmokeTests` runs two hosts on one database
-and one distributed cache. A DPoP proof used on one replica is a replay on the
-other; a DPoP nonce from one is honoured by the other; a CIBA request created
-on one is redeemed exactly once across both; a passkey registration or sign-in
-started on one completes on the other and cannot be replayed on either. No
-state that must be shared lives in one process's memory.
-
-### D4 — Enforcement-mode inventory per environment
-
-Closed 2026-10-24: production is the only deployment of the Identity (the three
-`*-apps` nodes; no staging or homolog host exists), and its posture check
-passes with **no** finding — not even an advisory — since the C2/D1/A1 deploys.
-A new environment must pass the same check before it serves traffic; the code
-defaults that still start in `Observe` (CIBA client policy, personal tokens,
-token-exchange provenance, credential-mutation step-up) are reported by it.
-
-### D5 — Real shared cache
-
-- [x] **(operational)** Rehearse revocation across replicas: revoke on one
-  node, consume on the others — done 2026-10-28, all six issuer/revoker pairs
-  ([`202610281700`](../activities/202610281700-replica-revocation.md))
-
-Issuance, consumption and DPoP replay across the three production replicas
-rehearsed 2026-10-24 —
-[`202610241900`](../activities/202610241900-replica-rehearsal.md).
 
 ---
 
@@ -435,7 +275,7 @@ rehearsed 2026-10-24 —
 - [ ] Typed public metadata (`description`, `client_uri`, `logo_uri`)
 - [ ] Application claims with allow-list and destinations, through a release
   policy that sees client, grant, scopes, resources and destination and is
-  shared by the grants and the privileged mints (from B2)
+  shared by the grants and the privileged mints ([`202610240200`](../activities/202610240200-no-unified-issuance-service.md))
 - [ ] Advanced properties with a namespace and reserved keys
 - [ ] Per-client DPoP/JAR/CIBA/FAPI configuration only where the runtime
   actually honours it
@@ -443,11 +283,6 @@ rehearsed 2026-10-24 —
 
 Per-application access, identity and refresh token lifetimes already exist on
 create and update (`ClientTokenLifetimePolicy`), as does per-client PAR.
-
-### E5 — One result-state component for the Management console
-
-Delivered 2026-10-24 —
-[`202610240300`](../activities/202610240300-management-data-view.md).
 
 ### E6 — Mobile-first validation and rollout
 
@@ -458,11 +293,8 @@ Delivered 2026-10-24 —
 - [ ] **(operational)** Publish the update capability per deployment and
   validate the real clients
 
-Automated phone inspection delivered 2026-10-24: `ManagementConsoleResponsiveTests`
-checks every console page at 320, 360, 390 and 430 px and the drawer's tab
-order. Run against production on a tablet, it found the closed drawer's 18
-links still focusable off-screen and the service-accounts table widening the
-page to 425 px; both fixed (`9dc112f`).
+`ManagementConsoleResponsiveTests` already checks every console page at 320,
+360, 390 and 430 px.
 
 ### E7 — Pluggable UI, phases 2–5
 
@@ -614,14 +446,10 @@ central metadata validation and public-client PKCE are already covered.
 ### F11 — Breached-password availability policy
 
 - [ ] **(operational)** Move to `FailClosed` once the
-  `breached_password_check` telemetry characterises latency and availability.
-  The three production nodes run `RejectBreached=true` with `LocalFallback`
-  since 2026-09-20 —
-  [`202609201200-breach-check-in-production.md`](../activities/202609201200-breach-check-in-production.md)
-
-`LocalFallback`, the range cache and the degraded-mode telemetry landed on
-2026-09-20 —
-[`202609201700-breached-password-fallback.md`](../activities/202609201700-breached-password-fallback.md).
+  `breached_password_check` telemetry characterises latency and availability
+  (production runs `LocalFallback`:
+  [`202609201200`](../activities/202609201200-breach-check-in-production.md),
+  [`202609201700`](../activities/202609201700-breached-password-fallback.md))
 
 ### F12 — GCM budget
 
@@ -654,9 +482,8 @@ central metadata validation and public-client PKCE are already covered.
 
 ### G2 — Conformance and certification
 
-OIDC Basic (36 modules) and the FAPI 2.0 Security Profile (56 modules) run
-green nightly since 2026-09-18 —
-[`202609171900-openid-conformance-gate.md`](../activities/202609171900-openid-conformance-gate.md).
+OIDC Basic and FAPI 2.0 run nightly:
+[`202609171900`](../activities/202609171900-openid-conformance-gate.md).
 
 - [ ] Run the SSF conformance suite for the capabilities announced
 - [ ] **(operational)** Submit the applicable profiles to formal certification
@@ -676,11 +503,9 @@ green nightly since 2026-09-18 —
 
 ### G4 — Legacy cutover operational gates **(operational)**
 
-Database and provider gates are complete
-([`202608011820-legacy-cutover-db-provider.md`](../activities/202608011820-legacy-cutover-db-provider.md)),
-and so are legacy grants, PKCE, key distribution, management parity and the
-secret scan ([`202610221630`](../activities/202610221630-plan-reconciliation.md)).
-Everything below needs a human against real infrastructure and clients.
+Gates already passed:
+[`202608011820`](../activities/202608011820-legacy-cutover-db-provider.md),
+[`202610221630`](../activities/202610221630-plan-reconciliation.md).
 
 **Clients**
 
@@ -695,9 +520,6 @@ Everything below needs a human against real infrastructure and clients.
   transition
 - [ ] Proxy and forwarded headers verified end to end
   (`X-Forwarded-Proto`/`Host`, TrustedProxies)
-
-The cutover rehearsals were done in August, and the retired `identity_legacy`
-database was dropped on 2026-10-23.
 
 ### G5 — Confirmed-email rollout **(operational)**
 
@@ -724,15 +546,13 @@ Deliberately after everything above; none of it is required for production.
 
 ## Execution order
 
-1. **C1** — the re-wrap race test and the reader/KEK authority split
-2. **B3, B5** — test batteries: token exchange provenance and CIBA abuse
-3. **D5** — the revocation rehearsal across replicas
-4. **E1** — enforcement first, UI last. E3's disable action waits on it
-5. **E5, E6** — console consistency and the mobile pass; independent of the
-   protocol work and safe to run in parallel with it
-6. **E2, E4, E7, F1–F14** — as capacity allows, in the order the team prefers;
+1. **A2** — reconcile the observed scope grants and enforce (~2026-11-04)
+2. **C1** — the re-wrap race test and the reader/KEK authority split
+3. **B3, B5** — DPoP-bound subject token exchange and CIBA abuse tests
+4. **E6** — the mobile pass on the creation and edit flows
+5. **E2, E4, E7, F1–F14** — as capacity allows, in the order the team prefers;
    none of them blocks another
-7. **G** — conformance, audit, cutover and rehearsals, continuously, and G4
+6. **G** — conformance, audit, cutover and rehearsals, continuously, and G4
    before anyone calls the legacy migration finished
 
 What has already been delivered is in `../activities/`, dated, not here: this

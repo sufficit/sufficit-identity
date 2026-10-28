@@ -80,10 +80,39 @@ referência criando e trocando o segredo, segredo real do Vault).
 `ClientsControllerTests.Create_and_delete_append_redacted_audit_events` passa
 a esperar a linha de aviso do adaptador.
 
+## Produção (28/10)
+
+Publicado nos três nós em `6beda5b`. A lista de escopos privilegiados foi
+configurada em `Observe` no `appsettings.Production.json` de cada nó (o deploy
+preserva o arquivo; cópia `*.bak-20261028-scopegrants`). Os três reiniciaram um
+por vez e registraram o aviso esperado `management-client-scope-grants-observe`.
+
+Regra usada: é privilegiado o escopo cujo portador age além dos dados do
+próprio usuário logado — dados de outros usuários ou do cliente inteiro,
+dinheiro, infraestrutura, delegação ou publicação. Escopo que só libera claims
+ou age pelo usuário logado fica livre. Quem já tem o escopo o mantém, então a
+lista só controla concessões novas.
+
+| Privilegiado | Motivo |
+|---|---|
+| `identity.scim`, `identity.tokens`, `identity.vault`, `identity.mcp` | administração do identity, emissão de token, segredos |
+| `personal.tokens.manage`, `genius.executor.delegate` | cria credencial ou delega a autoridade do usuário |
+| `provisioning.manage`, `provisioning.installation` | provisionamento de dispositivos e contas |
+| `network.control`, `background.jobs` | infraestrutura e jobs |
+| `telephony.billing`, `endpoints.invoices`, `sufficit.endpoints.n8n.asaas-invoices`, `policies` | dinheiro e política do cliente inteiro |
+| `sufficit.landing.publish` | publicação pública |
+| `fleet.api`, `ai.bridge`, `sufficit_ai_openai_bridge` | orquestração de agentes e modelos pagos pelo cliente |
+
+Livres: `openid`, `profile`, `email`, `address`, `roles`, `offline_access`,
+`directives`, `entitlements`, `ai.user`, `chrome.phone`, `endpoints.phone`,
+`endpoints.webcallback`. `identity.management` e `scim` já são o piso
+reservado. Todos usam a capacidade padrão `identity.scopes.grant`; separar uma
+capacidade só quando alguém que não é administrador pleno precisar conceder um
+escopo.
+
 ## Pendências (operacionais, no plano)
 
-- Declarar os escopos privilegiados da implantação, conciliar as recusas
-  observadas, passar a `Enforce`.
+- Conciliar as recusas observadas (~04/11) e passar a `Enforce`.
 - Migrar quem ainda manda `clientSecret` (linhas
   `client_secret_plaintext_deprecated`) e remover o adaptador depois da data.
 - Inventário dos manifestos reais e adoção explícita dos clientes

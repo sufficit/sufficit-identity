@@ -9,10 +9,11 @@ composition root; `Core` mantém o modelo compartilhado e o `AppDbContext`.
 Não há nova dependência em UI, contrato público, tabela ou migração.
 
 Isso segue [a arquitetura do repositório](ARCHITECTURE-REPOSITORY.md) e mantém
-os chamadores usando `IOpenIddictTokenManager`. A correção também se encaixa
-na centralização futura de emissão/revogação prevista em
-[PLAN-IDENTITY.md, seção B1](../plans/PLAN-IDENTITY.md): não cria outro fluxo de
-emissão nem transfere regras de protocolo para controllers.
+os chamadores usando `IOpenIddictTokenManager`. A correção segue a decisão de
+manter um ponto de montagem por fronteira, sem serviço de emissão único
+([`202610240200`](../activities/202610240200-no-unified-issuance-service.md)):
+não cria outro fluxo de emissão nem transfere regras de protocolo para
+controllers.
 
 ## Por que especializar o store
 
