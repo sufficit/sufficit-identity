@@ -121,20 +121,22 @@ else
                             </SUIStatusBadge>
                         </td>
                         <td class="system-users-table__actions">
-                            <SUIButton ButtonTypeValue="SUIButtonType.Button"
-                                       VariantValue="SUIVariant.Outlined"
-                                       ColorValue="SUIColor.Primary"
-                                       OnClick="@(() => SelectAsync(item))">
-                                <SUIIcon Name="key" Size="16" />
-                                @L["SystemUsers.Action.Credentials"]
-                            </SUIButton>
-                            <SUIButton ButtonTypeValue="SUIButtonType.Button"
-                                       VariantValue="SUIVariant.Text"
-                                       ColorValue="@(item.Disabled ? SUIColor.Primary : SUIColor.Error)"
-                                       Disabled="@(toggling == item.UserId)"
-                                       OnClick="@(() => ToggleAsync(item))">
-                                @(item.Disabled ? L["SystemUsers.Action.Enable"] : L["SystemUsers.Action.Disable"])
-                            </SUIButton>
+                            <SUIStack Row="true" AlignItems="Center" Justify="End" Spacing="2" Wrap="false">
+                                <SUIButton ButtonTypeValue="SUIButtonType.Button"
+                                           VariantValue="SUIVariant.Outlined"
+                                           ColorValue="SUIColor.Primary"
+                                           OnClick="@(() => SelectAsync(item))">
+                                    <SUIIcon Name="key" Size="16" />
+                                    @L["SystemUsers.Action.Credentials"]
+                                </SUIButton>
+                                <SUIButton ButtonTypeValue="SUIButtonType.Button"
+                                           VariantValue="SUIVariant.Text"
+                                           ColorValue="@(item.Disabled ? SUIColor.Primary : SUIColor.Error)"
+                                           Disabled="@(toggling == item.UserId)"
+                                           OnClick="@(() => ToggleAsync(item))">
+                                    @(item.Disabled ? L["SystemUsers.Action.Enable"] : L["SystemUsers.Action.Disable"])
+                                </SUIButton>
+                            </SUIStack>
                         </td>
                     </tr>
                 }
@@ -243,15 +245,17 @@ else
                                     <small>@enrollment.IssuedBy</small>
                                 </td>
                                 <td class="system-users-table__actions">
-                                    @if (enrollment.Status is SystemUserEnrollmentStatus.Pending or SystemUserEnrollmentStatus.Active)
-                                    {
-                                        <SUIButton ButtonTypeValue="SUIButtonType.Button"
-                                                   VariantValue="SUIVariant.Text"
-                                                   ColorValue="SUIColor.Error"
-                                                   OnClick="@(() => RevokeAsync(enrollment))">
-                                            @L["SystemUsers.Credentials.Revoke"]
-                                        </SUIButton>
-                                    }
+                                    <SUIStack Row="true" AlignItems="Center" Justify="End" Spacing="2" Wrap="false">
+                                        @if (enrollment.Status is SystemUserEnrollmentStatus.Pending or SystemUserEnrollmentStatus.Active)
+                                        {
+                                            <SUIButton ButtonTypeValue="SUIButtonType.Button"
+                                                       VariantValue="SUIVariant.Text"
+                                                       ColorValue="SUIColor.Error"
+                                                       OnClick="@(() => RevokeAsync(enrollment))">
+                                                @L["SystemUsers.Credentials.Revoke"]
+                                            </SUIButton>
+                                        }
+                                    </SUIStack>
                                 </td>
                             </tr>
                         }
@@ -300,12 +304,14 @@ else
                                         }
                                     </td>
                                     <td class="system-users-table__actions">
-                                        <SUIButton ButtonTypeValue="SUIButtonType.Button"
-                                                   VariantValue="SUIVariant.Text"
-                                                   ColorValue="SUIColor.Error"
-                                                   OnClick="@(() => UnbindClientAsync(client))">
-                                            @L["SystemUsers.Clients.Unbind"]
-                                        </SUIButton>
+                                        <SUIStack Row="true" AlignItems="Center" Justify="End" Spacing="2" Wrap="false">
+                                            <SUIButton ButtonTypeValue="SUIButtonType.Button"
+                                                       VariantValue="SUIVariant.Text"
+                                                       ColorValue="SUIColor.Error"
+                                                       OnClick="@(() => UnbindClientAsync(client))">
+                                                @L["SystemUsers.Clients.Unbind"]
+                                            </SUIButton>
+                                        </SUIStack>
                                     </td>
                                 </tr>
                             }
