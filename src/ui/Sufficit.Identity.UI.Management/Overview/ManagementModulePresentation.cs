@@ -62,15 +62,6 @@ public static class ManagementModulePresentations
             "clients",
             "key"),
         new(
-            "service-accounts",
-            localizer["Capability.Group.OAuthOidc"].Value,
-            20,
-            15,
-            localizer["Overview.Module.ServiceAccounts.Title"].Value,
-            localizer["Overview.Module.ServiceAccounts.Description"].Value,
-            "service-accounts",
-            "server"),
-        new(
             "scopes",
             localizer["Capability.Group.OAuthOidc"].Value,
             20,

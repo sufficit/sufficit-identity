@@ -100,5 +100,36 @@ public sealed partial class ManagementUiRoutingTests
             list[index] = list[index] with { RevokedAtUtc = DateTime.UtcNow, Status = SystemUserEnrollmentStatus.Revoked };
             return Task.CompletedTask;
         }
+
+        private readonly Dictionary<string, List<SystemUserClientSummary>> _clients = new(StringComparer.Ordinal);
+
+        public Task<IReadOnlyList<SystemUserClientSummary>> ListClientsAsync(
+            string userId, ManagementRequestContext context, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<SystemUserClientSummary>>(
+                _clients.TryGetValue(userId, out var list) ? [.. list] : []);
+
+        public Task<SystemUserClientSummary> BindClientAsync(
+            string userId, string clientId, ManagementRequestContext context, CancellationToken cancellationToken = default)
+        {
+            var summary = new SystemUserClientSummary(clientId, null);
+            if (!_clients.TryGetValue(userId, out var list))
+            {
+                _clients[userId] = list = [];
+            }
+
+            list.Add(summary);
+            return Task.FromResult(summary);
+        }
+
+        public Task UnbindClientAsync(
+            string userId, string clientId, ManagementRequestContext context, CancellationToken cancellationToken = default)
+        {
+            if (_clients.TryGetValue(userId, out var list))
+            {
+                list.RemoveAll(item => item.ClientId == clientId);
+            }
+
+            return Task.CompletedTask;
+        }
     }
 }

@@ -15,9 +15,8 @@ namespace Sufficit.Identity.STS;
 /// that is a value.
 /// <para>
 /// The grant lives in the client's own <c>identity:client:entitlements</c>
-/// property, the same convention as <c>identity:client:roles</c>: the
-/// database says who has what, and revoking is an UPDATE, with no
-/// deployment.
+/// property: the database says who has what, and revoking is an UPDATE,
+/// with no deployment.
 /// </para>
 /// <para>
 /// The claim type is fixed here on purpose. Letting the operator choose the

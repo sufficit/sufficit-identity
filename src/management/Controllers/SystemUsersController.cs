@@ -65,6 +65,30 @@ public sealed class SystemUsersController(ISystemUserManagementService systemUse
         return NoContent();
     }
 
+    /// <summary>Confidential clients that act as the system user (client_credentials).</summary>
+    [HttpGet("clients")]
+    public async Task<ActionResult<IReadOnlyList<SystemUserClientSummary>>> ListClients(
+        [FromQuery] string userId,
+        CancellationToken cancellationToken) =>
+        Ok(await systemUsers.ListClientsAsync(userId, RequestContext(), cancellationToken));
+
+    [HttpPut("clients")]
+    public async Task<ActionResult<SystemUserClientSummary>> BindClient(
+        [FromQuery] string userId,
+        [FromQuery] string clientId,
+        CancellationToken cancellationToken) =>
+        Ok(await systemUsers.BindClientAsync(userId, clientId, RequestContext(), cancellationToken));
+
+    [HttpDelete("clients")]
+    public async Task<IActionResult> UnbindClient(
+        [FromQuery] string userId,
+        [FromQuery] string clientId,
+        CancellationToken cancellationToken)
+    {
+        await systemUsers.UnbindClientAsync(userId, clientId, RequestContext(), cancellationToken);
+        return NoContent();
+    }
+
     private ManagementRequestContext RequestContext() => new(User, HttpContext.TraceIdentifier);
 }
 

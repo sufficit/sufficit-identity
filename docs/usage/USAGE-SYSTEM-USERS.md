@@ -7,10 +7,20 @@ qualquer: tem `sub`, claims, entitlements, papéis e responde no
 as rotas de login ainda o recusam como defesa extra. Não há marcação separada:
 dar e-mail, senha, login externo ou passkey a ele o torna um usuário comum.
 
-Use para software que precisa agir como um usuário (agentes, executores,
-integrações) sem uma pessoa por trás. Para software que não age como usuário,
-continua existindo a conta de sistema de serviço (`/management/service-accounts`),
-que é só um cliente OAuth.
+Use para todo software sem uma pessoa por trás (agentes, executores,
+integrações, serviços de servidor). O cliente OAuth do software só o
+autentica; o que ele pode fazer vem do usuário de sistema, como para qualquer
+pessoa. Não existe autoridade dada a um cliente: a antiga tela de contas de
+serviço (`/management/service-accounts`, que redireciona para cá) e os papéis
+gravados no cliente foram aposentados.
+
+Há duas formas de o software obter o token do usuário de sistema:
+
+- **Serviço de servidor com segredo** (`client_credentials`): vincule o
+  cliente confidencial ao usuário de sistema (seção 6). O software continua
+  usando o mesmo `client_id` e segredo; o token passa a trazer o usuário.
+- **Agente ou dispositivo** sem segredo fixo: código de habilitação trocado por
+  refresh token (seções 3 e 4).
 
 Decisões e registro: [`docs/activities/202610211700-system-users.md`](../activities/202610211700-system-users.md).
 
@@ -66,9 +76,13 @@ do recurso, mas só em usuários de sistema":
   qualquer outra conta é recusado (403, auditado nas alterações). Tipos de
   claim reservados (`permission`, `scope`, …) continuam proibidos.
 
-Dê a uma conta de serviço (`identity:client:roles`) um papel mapeado só para
-ela em `RoleCapabilities`, por exemplo
-`"systemusers": ["identity.users.system", "identity.claims.system"]`.
+Dê ao usuário de sistema do serviço de provisionamento um papel mapeado só
+para isso em `RoleCapabilities`, por exemplo
+`"systemusers": ["identity.users.system", "identity.claims.system"]`. Papéis
+são dados no banco (`userroles`), como para pessoas; o Identity não atribui
+papéis por nenhuma API. Para software, os papéis são lidos a cada chamada (tirar
+o papel ou desativar o usuário vale na próxima) e o que eles concedem não exige
+MFA.
 O nome antigo `identity.system-users.manage` ainda é aceito e normalizado para
 `identity.users.system`.
 
@@ -146,6 +160,29 @@ padrão 365) que o refresh não estende; perto do fim, emita um novo código.
   revoga todas as credenciais e impede novas. Ao reativar, emita um novo código.
 
 Tudo é auditado com o operador e a correlação.
+
+## 6. Cliente de servidor agindo como o usuário (client_credentials)
+
+O cliente precisa ser **confidencial** e ter `gt:client_credentials`. Na
+página do usuário de sistema, *Credenciais* → *Clientes que agem como este
+usuário* → informe o `client_id` e vincule. Ou pela API (identificadores na
+query string):
+
+```http
+GET    /api/users/system/clients?userId=<id>
+PUT    /api/users/system/clients?userId=<id>&clientId=<client_id>
+DELETE /api/users/system/clients?userId=<id>&clientId=<client_id>
+```
+
+(também em `/api/system-users/clients`). Vincular e desvincular exigem as duas
+capacidades: a de credencial do usuário (`identity.users.reset`, ou
+`identity.users.system`) e `identity.clients.update`, porque mudam o cadastro
+do cliente. Um cliente vinculado a outro usuário responde 409: desvincule lá
+antes. O vínculo fica na propriedade `identity:client:system-user` do cliente.
+
+Na emissão, se o usuário vinculado não existir, estiver desativado ou tiver
+ganhado como entrar (e-mail, senha, login externo, passkey), o cliente é
+recusado (`unauthorized_client`) em vez de receber um token sem usuário.
 
 ## Implantação
 

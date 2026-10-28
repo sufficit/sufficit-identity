@@ -1005,54 +1005,6 @@
   <data name="Sessions.Status.Revoked" xml:space="preserve"><value>Revogada</value></data>
   <data name="Sessions.Status.Used" xml:space="preserve"><value>Utilizada</value></data>
   <data name="Sessions.NoExpiration" xml:space="preserve"><value>sem prazo</value></data>
-  <data name="ServiceAccounts.PageTitle" xml:space="preserve"><value>Contas de sistema | Sufficit Identity</value></data>
-  <data name="ServiceAccounts.HeaderTitle" xml:space="preserve"><value>Contas de sistema</value></data>
-  <data name="ServiceAccounts.HeaderDescription" xml:space="preserve"><value>Serviços que se autenticam sozinhos (client_credentials) e recebem capacidades de gestão por papéis declarados no próprio registro. Revogar um papel vale na próxima requisição — nenhum token precisa expirar.</value></data>
-  <data name="ServiceAccounts.Reload" xml:space="preserve"><value>Recarregar</value></data>
-  <data name="ServiceAccounts.NewAccount" xml:space="preserve"><value>Nova conta</value></data>
-  <data name="ServiceAccounts.CreatedSecret.Title" xml:space="preserve"><value>Copie o segredo agora — ele não será exibido de novo</value></data>
-  <data name="ServiceAccounts.CreatedSecret.AccountLabel" xml:space="preserve"><value>Conta</value></data>
-  <data name="ServiceAccounts.CreatedSecret.HashNote" xml:space="preserve"><value>O segredo é guardado apenas como hash; se perder, só resta rotacionar.</value></data>
-  <data name="ServiceAccounts.Create.AriaLabel" xml:space="preserve"><value>Nova conta de sistema</value></data>
-  <data name="ServiceAccounts.Create.DescriptionPrefix" xml:space="preserve"><value>A conta é criada como cliente confidencial com</value></data>
-  <data name="ServiceAccounts.Create.DescriptionSuffix" xml:space="preserve"><value>— sem redirect e sem fluxo interativo, porque não há usuário nessa história. O segredo é gerado pelo servidor e mostrado uma única vez.</value></data>
-  <data name="ServiceAccounts.Field.IdentifierAriaLabel" xml:space="preserve"><value>Identificador</value></data>
-  <data name="ServiceAccounts.Field.IdentifierLabel" xml:space="preserve"><value>Identificador (client_id)</value></data>
-  <data name="ServiceAccounts.Field.IdentifierHelp" xml:space="preserve"><value>Como o serviço se identifica no endpoint de token.</value></data>
-  <data name="ServiceAccounts.Field.IdentifierPlaceholder" xml:space="preserve"><value>Ex.: billing-sync</value></data>
-  <data name="ServiceAccounts.Field.DisplayNameAriaLabel" xml:space="preserve"><value>Nome de exibição</value></data>
-  <data name="ServiceAccounts.Field.DisplayNameLabel" xml:space="preserve"><value>Nome de exibição</value></data>
-  <data name="ServiceAccounts.Field.DisplayNameHelp" xml:space="preserve"><value>Opcional. Aparece na lista e na auditoria.</value></data>
-  <data name="ServiceAccounts.Field.DisplayNamePlaceholder" xml:space="preserve"><value>Ex.: Sincronização de faturamento</value></data>
-  <data name="ServiceAccounts.Roles" xml:space="preserve"><value>Papéis</value></data>
-  <data name="ServiceAccounts.NoRoles.DescriptionPrefix" xml:space="preserve"><value>Esta implantação não declara papéis</value></data>
-  <data name="ServiceAccounts.NoRoles.DescriptionSuffix" xml:space="preserve"><value>. A conta pode ser criada sem papel e recebê-los depois.</value></data>
-  <data name="ServiceAccounts.RolePicker.NewAccountAriaLabel" xml:space="preserve"><value>Papéis da nova conta</value></data>
-  <data name="ServiceAccounts.FullAdministratorSuffixCreate" xml:space="preserve"><value> — administrador pleno</value></data>
-  <data name="ServiceAccounts.CreateSubmit" xml:space="preserve"><value>Criar conta</value></data>
-  <data name="ServiceAccounts.Cancel" xml:space="preserve"><value>Cancelar</value></data>
-  <data name="ServiceAccounts.Error.Title" xml:space="preserve"><value>Não foi possível concluir</value></data>
-  <data name="ServiceAccounts.Loading" xml:space="preserve"><value>Carregando contas de sistema…</value></data>
-  <data name="ServiceAccounts.Empty.Title" xml:space="preserve"><value>Nenhuma conta de sistema</value></data>
-  <data name="ServiceAccounts.Empty.Description" xml:space="preserve"><value>Nenhum cliente tem o grant client_credentials nem papéis declarados. Conceda o grant no registro do cliente para que ele apareça aqui.</value></data>
-  <data name="ServiceAccounts.Table.AriaLabel" xml:space="preserve"><value>Contas de sistema</value></data>
-  <data name="ServiceAccounts.Column.Client" xml:space="preserve"><value>Cliente</value></data>
-  <data name="ServiceAccounts.Column.ResultingCapabilities" xml:space="preserve"><value>Capacidades resultantes</value></data>
-  <data name="ServiceAccounts.NoGrantTag" xml:space="preserve"><value>sem grant client_credentials</value></data>
-  <data name="ServiceAccounts.RolePicker.AccountAriaLabelFormat" xml:space="preserve"><value>Papéis de {0}</value></data>
-  <data name="ServiceAccounts.FullAdministratorSuffixEdit" xml:space="preserve"><value> — administrador total</value></data>
-  <data name="ServiceAccounts.NoneRolesMasculine" xml:space="preserve"><value>nenhum</value></data>
-  <data name="ServiceAccounts.NoneCapabilitiesFeminine" xml:space="preserve"><value>nenhuma</value></data>
-  <data name="ServiceAccounts.CapabilityCountFormat" xml:space="preserve"><value>{0} capacidade(s)</value></data>
-  <data name="ServiceAccounts.Save" xml:space="preserve"><value>Salvar</value></data>
-  <data name="ServiceAccounts.EditRoles" xml:space="preserve"><value>Editar papéis</value></data>
-  <data name="ServiceAccounts.Footnote.Prefix" xml:space="preserve"><value>O que cada papel significa vem da configuração da implantação</value></data>
-  <data name="ServiceAccounts.Footnote.Middle" xml:space="preserve"><value>; esta tela decide apenas</value></data>
-  <data name="ServiceAccounts.Footnote.Who" xml:space="preserve"><value>quem</value></data>
-  <data name="ServiceAccounts.Footnote.Suffix" xml:space="preserve"><value>tem o papel. Um operador humano com o mesmo papel continua exigindo segundo fator — a isenção de MFA é da conta de sistema, e só para o que os papéis dela concedem.</value></data>
-  <data name="ServiceAccounts.Created.SuccessFormat" xml:space="preserve"><value>Conta '{0}' criada.</value></data>
-  <data name="ServiceAccounts.RolesRemovedFormat" xml:space="preserve"><value>Papéis removidos de {0}. A conta perde as capacidades na próxima requisição.</value></data>
-  <data name="ServiceAccounts.RolesUpdatedFormat" xml:space="preserve"><value>Papéis de {0} atualizados.</value></data>
   <data name="Authorizations.PageTitle" xml:space="preserve"><value>Autorizações | Sufficit Identity</value></data>
   <data name="Authorizations.HeaderTitle" xml:space="preserve"><value>Autorizações</value></data>
   <data name="Authorizations.HeaderDescription" xml:space="preserve"><value>Revise consentimentos e grants OAuth/OpenID Connect mantidos pelo provedor.</value></data>
@@ -1800,8 +1752,6 @@
   <data name="Overview.Module.Claims.Description" xml:space="preserve"><value>Atributos personalizados vinculados a cada identidade</value></data>
   <data name="Overview.Module.Clients.Title" xml:space="preserve"><value>Clientes</value></data>
   <data name="Overview.Module.Clients.Description" xml:space="preserve"><value>Aplicações, redirects e fluxos autorizados</value></data>
-  <data name="Overview.Module.ServiceAccounts.Title" xml:space="preserve"><value>Contas de sistema</value></data>
-  <data name="Overview.Module.ServiceAccounts.Description" xml:space="preserve"><value>Serviços que se autenticam sozinhos e seus papéis de gestão</value></data>
   <data name="Overview.Module.Scopes.Description" xml:space="preserve"><value>Recursos e permissões delegadas do protocolo</value></data>
   <data name="Overview.Module.Audiences.Title" xml:space="preserve"><value>Audiências</value></data>
   <data name="Overview.Module.Audiences.Description" xml:space="preserve"><value>Destinatários dos tokens e vínculos com scopes</value></data>
@@ -2288,4 +2238,19 @@
   <data name="Capability.identity.maintenance.read.Description" xml:space="preserve"><value>Permite consultar a política de limpeza, a próxima execução, solicitações pendentes e resultados recentes. Não permite alterar a retenção nem solicitar uma limpeza.</value></data>
   <data name="Capability.identity.maintenance.manage.Title" xml:space="preserve"><value>Gerenciar manutenção de tokens</value></data>
   <data name="Capability.identity.maintenance.manage.Description" xml:space="preserve"><value>Permite ativar ou pausar a limpeza, alterar retenção e frequência e solicitar uma execução. As alterações são auditadas; sessões válidas e ativas continuam protegidas.</value></data>
+  <data name="SystemUsers.Clients.Title" xml:space="preserve"><value>Clientes que agem como este usuário</value></data>
+  <data name="SystemUsers.Clients.Description" xml:space="preserve"><value>Software de servidor se autentica por client_credentials com o próprio segredo; o token de um cliente vinculado traz este usuário, e o que ele pode fazer vem dos papéis deste usuário.</value></data>
+  <data name="SystemUsers.Clients.Field" xml:space="preserve"><value>Cliente (client_id)</value></data>
+  <data name="SystemUsers.Clients.FieldHelp" xml:space="preserve"><value>Um cliente confidencial com permissão de client_credentials.</value></data>
+  <data name="SystemUsers.Clients.Bind" xml:space="preserve"><value>Vincular cliente</value></data>
+  <data name="SystemUsers.Clients.Unbind" xml:space="preserve"><value>Desvincular</value></data>
+  <data name="SystemUsers.Clients.Empty" xml:space="preserve"><value>Nenhum cliente age como este usuário.</value></data>
+  <data name="SystemUsers.Clients.TableAriaLabel" xml:space="preserve"><value>Clientes que agem como este usuário</value></data>
+  <data name="SystemUsers.Clients.Bound.ToastFormat" xml:space="preserve"><value>O cliente '{0}' agora age como este usuário.</value></data>
+  <data name="SystemUsers.Clients.Unbound.Toast" xml:space="preserve"><value>Cliente desvinculado. O próximo token dele não traz mais este usuário.</value></data>
+  <data name="SystemUsers.Clients.Unbind.ConfirmTitle" xml:space="preserve"><value>Desvincular cliente?</value></data>
+  <data name="SystemUsers.Clients.Unbind.ConfirmFormat" xml:space="preserve"><value>'{0}' deixará de agir como este usuário; o que ele pedir depois disso fica sem acesso de gestão.</value></data>
+  <data name="Error.system_user_client_not_allowed" xml:space="preserve"><value>O cliente precisa ser confidencial e ter permissão de client_credentials.</value></data>
+  <data name="Error.system_user_client_bound_elsewhere" xml:space="preserve"><value>Este cliente já age como outro usuário de sistema. Desvincule lá primeiro.</value></data>
+  <data name="Error.system_user_client_not_bound" xml:space="preserve"><value>Este cliente não age como este usuário de sistema.</value></data>
 </root>

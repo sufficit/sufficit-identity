@@ -424,36 +424,22 @@ public sealed partial class ManagementUiArchitectureTests
     }
 
     [Fact]
-    public void Service_account_form_uses_shared_sui_controls_and_page_vocabulary()
+    public void System_user_page_uses_shared_sui_controls_and_styles_every_class()
     {
-        // A primeira versão desta tela escreveu inputs crus com classes
-        // inventadas (field/input/card/actions) que não existem na folha de
-        // estilo — o formulário saiu visualmente quebrado em produção. O que
-        // impede a repetição não é lembrar da convenção, é falhar quando ela
-        // não é seguida.
+        // The page that replaced service accounts (clients now act as a
+        // system user) keeps the rules that screen was held to: shared
+        // controls, no raw buttons, and no class without a rule.
         var managementUi = ResolveManagementUiSource();
-        var page = File.ReadAllText(Path.Combine(
-            managementUi,
-            "Components",
-            "Pages",
-            "ServiceAccounts.razor"));
-        var stylesheet = File.ReadAllText(Path.Combine(
-            managementUi,
-            "wwwroot",
-            "app.css"));
+        var pages = Path.Combine(managementUi, "Components", "Pages");
+        var page = File.ReadAllText(Path.Combine(pages, "SystemUsers.razor"));
+        var stylesheet = File.ReadAllText(Path.Combine(managementUi, "wwwroot", "app.css"))
+            + File.ReadAllText(Path.Combine(pages, "SystemUsers.razor.css"));
 
         Assert.Contains("<IdentityTextField T=\"string\"", page, StringComparison.Ordinal);
         Assert.Contains("<SUILoadingButton", page, StringComparison.Ordinal);
-        // The created secret opens in the shared one-time dialog.
-        Assert.Contains("OneTimeTokenDialog.ShowAsync(", page, StringComparison.Ordinal);
         Assert.Contains("data-sui-align-row", page, StringComparison.Ordinal);
-
-        // Nenhum botão cru: a tela inteira usa os componentes compartilhados.
+        Assert.Contains("BindClientAsync", page, StringComparison.Ordinal);
         Assert.DoesNotContain("class=\"button ", page, StringComparison.Ordinal);
-
-        // Classes que a página usa têm de existir na folha de estilo. Sem esta
-        // asserção, um nome inventado passa despercebido até alguém abrir a
-        // tela.
         AssertEveryClassIsStyled(page, stylesheet);
     }
 
@@ -475,6 +461,9 @@ public sealed partial class ManagementUiArchitectureTests
         // Pega tanto o class= do HTML quanto o Class= dos componentes SUI.
         var used = Regex
             .Matches(page, "\\bclass\\s*=\\s*\"([^\"]*)\"", RegexOptions.IgnoreCase)
+            // A value that is a whole Razor expression (class="@(...)") is
+            // computed; the quotes inside it would split it into nonsense.
+            .Where(match => !match.Groups[1].Value.TrimStart().StartsWith('@'))
             .SelectMany(match => match.Groups[1].Value.Split(
                 (char[]?)null,
                 StringSplitOptions.RemoveEmptyEntries))

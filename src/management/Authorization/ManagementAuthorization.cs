@@ -431,17 +431,16 @@ public sealed class CapabilityManagementAuthorizationEvaluator
             resource,
             cancellationToken);
 
-        // The exemption applies ONLY to the capability the deployment explicitly
-        // granted to this client_id in ServicePrincipals. It is not "this
-        // service never does MFA": it is "this grant, for this client, was
-        // declared without a second factor". Any other capability of the same
-        // principal still requires MFA and is still denied, which is correct.
+        // The exemption applies ONLY to capabilities the resolver marked as
+        // granted to software (a system user's roles). It is not "this
+        // principal never does MFA": any capability it holds by other means
+        // still requires MFA and is still denied, which is correct.
         //
-        // It exists because requiring a second factor from someone who
-        // authenticated with a client secret is requiring the impossible: a
-        // machine principal never has `amr`, and the practical effect of the
-        // requirement is not security, it is permanent denial. Its control is
-        // the secret plus this closed list.
+        // It exists because requiring a second factor from software that
+        // authenticated with a client secret or a bound key is requiring the
+        // impossible: it never has `amr`, and the practical effect is not
+        // security, it is permanent denial. Its control is the credential plus
+        // the roles the database gives the system user.
         var exempt = grants.IsMultiFactorExempt(capability);
         if (policy.RequireMfa && !exempt && !HasMfaEvidence(principal))
         {

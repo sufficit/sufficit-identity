@@ -13,7 +13,7 @@ public sealed partial class ManagementUiArchitectureTests
     [InlineData(null, "RegistrationTokenPanel.razor")]
     [InlineData("Pages", "ClientEdit.razor")]
     [InlineData("Pages", "ClientDraft.razor")]
-    [InlineData("Pages", "ServiceAccounts.razor")]
+    [InlineData("Pages", "SystemUsers.razor")]
     public void One_time_tokens_open_in_the_shared_dialog(string? folder, string file)
     {
         var components = Path.Combine(ResolveManagementUiSource(), "Components");

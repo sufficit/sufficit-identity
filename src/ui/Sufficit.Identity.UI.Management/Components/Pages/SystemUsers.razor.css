@@ -74,3 +74,22 @@
 
     .system-user-credentials__issue ::deep > .sui-btn { width: 100%; margin-bottom: 0; }
 }
+
+.system-user-clients {
+    display: grid;
+    gap: 10px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+}
+
+.system-user-clients h3 {
+    margin: 0;
+    color: var(--ink-strong);
+    font-size: 14px;
+}
+
+.system-user-clients > p {
+    margin: 0;
+    color: var(--ink-muted);
+    font-size: 13px;
+}

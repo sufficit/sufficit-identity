@@ -187,9 +187,8 @@ Delegated credentials (RFC 8693) are audited under the audit-only label
 Retired spellings are accepted on input and normalized
 (`ManagementCapabilities.Normalize` / `LegacyNames`) wherever a capability
 enters: `permission` claims (including operator tokens already issued),
-`RoleCapabilities`, `ServicePrincipals` roles, operator-token issuance and
-listing, the service-account screen, query-string prefill and the evaluator
-itself. They are not in the catalog and are never emitted in new tokens,
+`RoleCapabilities`, operator-token issuance and listing, query-string
+prefill and the evaluator itself. They are not in the catalog and are never emitted in new tokens,
 responses or generated configuration.
 
 | Retired | Canonical |
@@ -229,7 +228,14 @@ Console authority never comes from something the console itself can hand out:
   a relying party.
 - **Operator tokens** delegate a subset of the issuing operator's own
   capabilities; issuing and revoking them is never delegable.
-- **Service principals** get theirs from the closed `ServicePrincipals` list.
+- **Software** acts as a system user: a confidential client bound to it
+  (client property `identity:client:system-user`) gets client_credentials
+  tokens that name the user. Its capabilities come from the user's roles,
+  read at check time (removing a role or disabling the user stops the next
+  call) and exempt from MFA, which software cannot present. A client has no
+  authority of its own: a token without a bound user gets no management
+  capability, and no production path reads roles from a client registration
+  (`ClientAuthorityContractTests`).
 
 Break-glass against a protected principal is recorded the same way whichever
 path reaches the user — the user itself, a claim, a session or an

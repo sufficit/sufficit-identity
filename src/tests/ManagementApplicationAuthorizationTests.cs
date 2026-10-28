@@ -333,26 +333,11 @@ public sealed partial class ManagementApplicationAuthorizationTests
             ValueTask.FromResult(ManagementAuthorizationDecision.Allowed());
     }
 
-    // --- Machine principal (client_credentials) --------------------------
-    //
-    // A service matches none of the generic resolver's capability sources: the
-    // `permission` claim is only issued for an authenticated operator, and the
-    // client holds no user role. Previously the only way to give a service
-    // management access was to put it in an administrator role — trading
-    // "can do nothing" for "can do everything".
-    //
-    // The grant lives in the database (a client property); what the role means
-    // stays in configuration. The same split that already applied to people.
-
-    private const string ServiceClient = "example_service_api";
-    private const string VaultRole = "mobilecloudadministrator";
-
     private static CapabilityManagementAuthorizationEvaluator CreateEvaluator(
         bool requireMfa = false,
         string[]? adminRoles = null,
         IManagementObjectAccessPolicy? objectAccess = null,
-        Dictionary<string, string[]>? roleCapabilities = null,
-        string[]? clientRoles = null)
+        Dictionary<string, string[]>? roleCapabilities = null)
     {
         var options = Options.Create(new ManagementOptions
         {
@@ -368,11 +353,6 @@ public sealed partial class ManagementApplicationAuthorizationTests
         });
         IManagementEntitlementResolver resolver =
             new ScopeAndRoleManagementEntitlementResolver(options);
-        if (clientRoles is not null)
-        {
-            resolver = new ServicePrincipalEntitlementResolver(
-                resolver, new FakeRoleSource(ServiceClient, clientRoles), options);
-        }
 
         return new CapabilityManagementAuthorizationEvaluator(
             resolver,

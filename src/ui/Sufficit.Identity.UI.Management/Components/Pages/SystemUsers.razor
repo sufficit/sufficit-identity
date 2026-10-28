@@ -259,6 +259,61 @@ else
                 </table>
             </div>
         }
+
+        <div class="system-user-clients">
+            <h3>@L["SystemUsers.Clients.Title"]</h3>
+            <p>@L["SystemUsers.Clients.Description"]</p>
+            <div class="system-user-credentials__issue" data-sui-align-row>
+                <IdentityTextField T="string"
+                                   id="system-user-bind-client" Immediate="true"
+                                   Label="@L["SystemUsers.Clients.Field"].Value"
+                                   HelperText="@L["SystemUsers.Clients.FieldHelp"].Value"
+                                   MaxLength="100"
+                                   Disabled="@binding"
+                                   Value="@draftBindClientId"
+                                   ValueChanged="@((string? value) => draftBindClientId = value ?? string.Empty)"
+                                   autocomplete="off" />
+                <SUILoadingButton IsLoading="@binding"
+                                  Disabled="@(binding || string.IsNullOrWhiteSpace(draftBindClientId))"
+                                  OnClick="BindClientAsync">
+                    <SUIIcon Name="plus" Size="17" />
+                    <span>@L["SystemUsers.Clients.Bind"]</span>
+                </SUILoadingButton>
+            </div>
+            @if (boundClients.Count == 0)
+            {
+                <p class="system-user-credentials__empty">@L["SystemUsers.Clients.Empty"]</p>
+            }
+            else
+            {
+                <div class="table-scroll">
+                    <table class="data-table" aria-label="@L["SystemUsers.Clients.TableAriaLabel"].Value">
+                        <tbody>
+                            @foreach (var client in boundClients)
+                            {
+                                <tr>
+                                    <td data-label="@L["SystemUsers.Clients.Field"]">
+                                        <code>@client.ClientId</code>
+                                        @if (!string.IsNullOrWhiteSpace(client.DisplayName))
+                                        {
+                                            <small>@client.DisplayName</small>
+                                        }
+                                    </td>
+                                    <td class="system-users-table__actions">
+                                        <SUIButton ButtonTypeValue="SUIButtonType.Button"
+                                                   VariantValue="SUIVariant.Text"
+                                                   ColorValue="SUIColor.Error"
+                                                   OnClick="@(() => UnbindClientAsync(client))">
+                                            @L["SystemUsers.Clients.Unbind"]
+                                        </SUIButton>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
     </section>
 }
 
@@ -269,6 +324,9 @@ else
     private ManagementDataResult<IReadOnlyList<SystemUserSummary>>? listResult;
     private IReadOnlyList<SystemUserSummary> systemUsers => listResult?.Value ?? [];
     private IReadOnlyList<SystemUserEnrollmentSummary> enrollments = [];
+    private IReadOnlyList<SystemUserClientSummary> boundClients = [];
+    private bool binding;
+    private string draftBindClientId = string.Empty;
     private SystemUserSummary? selected;
     private bool loading = true, creating, showCreate, issuing;
     private string? toggling;
@@ -320,7 +378,55 @@ else
         draftClientId = string.Empty;
         draftLabel = string.Empty;
         draftLifetimeHours = 24;
+        draftBindClientId = string.Empty;
         await LoadEnrollmentsAsync();
+        await LoadClientsAsync();
+    }
+
+    private async Task LoadClientsAsync()
+    {
+        if (selected is null) return;
+        var result = await SystemUserData.ListClientsAsync(selected.UserId);
+        boundClients = result.Value ?? [];
+        if (!result.IsSuccess) Toast.Error(result.ErrorMessage ?? L["Common.Unavailable"].Value);
+    }
+
+    private async Task BindClientAsync()
+    {
+        if (selected is null) return;
+        binding = true;
+        var result = await SystemUserData.BindClientAsync(selected.UserId, draftBindClientId.Trim());
+        binding = false;
+        if (!result.IsSuccess)
+        {
+            Toast.Error(result.ErrorMessage ?? L["Common.Unavailable"].Value);
+            return;
+        }
+
+        draftBindClientId = string.Empty;
+        Toast.Success(string.Format(L["SystemUsers.Clients.Bound.ToastFormat"].Value, result.Value!.ClientId));
+        await LoadClientsAsync();
+    }
+
+    private async Task UnbindClientAsync(SystemUserClientSummary client)
+    {
+        if (selected is null) return;
+        if (!await Dialogs.ConfirmAsync(
+                L["SystemUsers.Clients.Unbind.ConfirmTitle"].Value,
+                string.Format(L["SystemUsers.Clients.Unbind.ConfirmFormat"].Value, client.ClientId)))
+        {
+            return;
+        }
+
+        var result = await SystemUserData.UnbindClientAsync(selected.UserId, client.ClientId);
+        if (!result.IsSuccess)
+        {
+            Toast.Error(result.ErrorMessage ?? L["Common.Unavailable"].Value);
+            return;
+        }
+
+        Toast.Success(L["SystemUsers.Clients.Unbound.Toast"].Value);
+        await LoadClientsAsync();
     }
 
     private async Task LoadEnrollmentsAsync()

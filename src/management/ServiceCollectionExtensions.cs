@@ -127,26 +127,16 @@ public static class ServiceCollectionExtensions
             SystemUsers.SystemUserManagementService>();
         services.TryAddScoped<IOperatorTokenManagementService,
             OperatorTokenManagementService>();
-        services.TryAddScoped<ServiceAccounts.IServiceAccountManagementService,
-            ServiceAccounts.ServiceAccountManagementService>();
-        // The machine resolver DECORATES the common one: a human principal
-        // passes through it unchanged, and a service principal gains the
-        // roles that the client registration declares in the database. See
-        // ServicePrincipalEntitlementResolver for why the grant lives there
-        // and not in configuration.
-        services.TryAddScoped<IServicePrincipalRoleSource,
-            OpenIddictServicePrincipalRoleSource>();
+        // System users get management capabilities from their roles, read at
+        // check time; everyone else passes through unchanged. See
+        // SystemUserEntitlementResolver.
         services.TryAddScoped<ScopeAndRoleManagementEntitlementResolver>();
         services.TryAddSingleton<Sufficit.Identity.Core.Services.SystemUserStore>();
         services.TryAddScoped<IManagementEntitlementResolver>(provider =>
             new SystemUserEntitlementResolver(
-                new ServicePrincipalEntitlementResolver(
-                    provider.GetRequiredService<ScopeAndRoleManagementEntitlementResolver>(),
-                    provider.GetRequiredService<IServicePrincipalRoleSource>(),
-                    provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<ManagementOptions>>()),
+                provider.GetRequiredService<ScopeAndRoleManagementEntitlementResolver>(),
                 provider.GetRequiredService<Sufficit.Identity.Core.Services.SystemUserStore>(),
                 provider.GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<Sufficit.Identity.Core.Entities.ApplicationUser>>(),
-                provider.GetRequiredService<IServicePrincipalRoleSource>(),
                 provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<ManagementOptions>>()));
         services.TryAddScoped<IManagementAccessPolicyProvider,
             ConfigurationManagementAccessPolicyProvider>();

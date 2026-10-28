@@ -87,6 +87,12 @@ public sealed record SystemUserEnrollmentIssueResult(
     string Code,
     string GrantType);
 
+/// <summary>
+/// A confidential client bound to a system user: its client_credentials
+/// tokens name the user, and the user's roles are what it may do.
+/// </summary>
+public sealed record SystemUserClientSummary(string ClientId, string? DisplayName);
+
 public interface ISystemUserManagementService
 {
     Task<IReadOnlyList<SystemUserSummary>> ListAsync(
@@ -135,6 +141,29 @@ public interface ISystemUserManagementService
     Task RevokeEnrollmentAsync(
         string userId,
         Guid enrollmentId,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Confidential clients that act as this system user.</summary>
+    Task<IReadOnlyList<SystemUserClientSummary>> ListClientsAsync(
+        string userId,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Binds a confidential client with the client_credentials grant to the
+    /// system user. A client bound to another user is a conflict, never a
+    /// silent rebind; binding again to the same user changes nothing.
+    /// </summary>
+    Task<SystemUserClientSummary> BindClientAsync(
+        string userId,
+        string clientId,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default);
+
+    Task UnbindClientAsync(
+        string userId,
+        string clientId,
         ManagementRequestContext context,
         CancellationToken cancellationToken = default);
 }

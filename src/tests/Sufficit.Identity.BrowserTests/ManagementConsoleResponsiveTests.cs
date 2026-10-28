@@ -17,7 +17,7 @@ public class ManagementConsoleResponsiveTests : PageTest
     [
         "/", "/clients", "/clients/new", "/users", "/claims", "/scopes", "/sessions",
         "/authorizations", "/audit", "/tokens", "/branding", "/settings",
-        "/settings/trusted-proxies", "/system-users", "/service-accounts", "/metrics", "/database",
+        "/settings/trusted-proxies", "/system-users", "/metrics", "/database",
     ];
 
     [SetUp]

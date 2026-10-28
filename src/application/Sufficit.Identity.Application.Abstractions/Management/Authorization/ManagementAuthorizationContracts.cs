@@ -483,22 +483,6 @@ public sealed class ManagementAuthorizationOptions
     /// </summary>
     public string[] CapabilityClaimTypes { get; set; } =
         ["permission"];
-
-    /// <summary>
-    /// Name of the property, on the client registration, that lists its roles.
-    ///
-    /// The GRANT lives in the database, alongside the client, exactly like a
-    /// human's lives in <c>userroles</c>. What the role MEANS stays in
-    /// <see cref="RoleCapabilities"/>, which is reviewed config. It's the same
-    /// split that already applied to people: the database says who is what,
-    /// the configuration says what that allows.
-    ///
-    /// Putting the grant in configuration seemed simpler and wasn't: revoking
-    /// access from a compromised service would then require a deployment, and
-    /// deployment is exactly what breaks first on a bad day.
-    /// </summary>
-    public string ClientRolesPropertyName { get; set; } =
-        "identity:client:roles";
 }
 
 /// <summary>

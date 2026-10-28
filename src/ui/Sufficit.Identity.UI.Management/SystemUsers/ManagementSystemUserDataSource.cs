@@ -48,6 +48,22 @@ public sealed class ManagementSystemUserDataSource(
             return true;
         }, "revoke enrollment", ct);
 
+    public Task<ManagementDataResult<IReadOnlyList<SystemUserClientSummary>>> ListClientsAsync(
+        string userId, CancellationToken ct = default) =>
+        ExecuteAsync((service, context) => service.ListClientsAsync(userId, context, ct), "list bound clients", ct);
+
+    public Task<ManagementDataResult<SystemUserClientSummary>> BindClientAsync(
+        string userId, string clientId, CancellationToken ct = default) =>
+        ExecuteAsync((service, context) => service.BindClientAsync(userId, clientId, context, ct), "bind client", ct);
+
+    public Task<ManagementDataResult<bool>> UnbindClientAsync(
+        string userId, string clientId, CancellationToken ct = default) =>
+        ExecuteAsync(async (service, context) =>
+        {
+            await service.UnbindClientAsync(userId, clientId, context, ct);
+            return true;
+        }, "unbind client", ct);
+
     private async Task<ManagementDataResult<T>> ExecuteAsync<T>(
         Func<ISystemUserManagementService, ManagementRequestContext, Task<T>> operation,
         string operationName,

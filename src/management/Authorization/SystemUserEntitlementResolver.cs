@@ -29,7 +29,6 @@ public sealed class SystemUserEntitlementResolver(
     IManagementEntitlementResolver inner,
     SystemUserStore systemUsers,
     UserManager<ApplicationUser> users,
-    IServicePrincipalRoleSource clientRoles,
     IOptions<ManagementOptions> options) : IManagementEntitlementResolver
 {
     public async ValueTask<ManagementEntitlements> ResolveAsync(
@@ -57,17 +56,7 @@ public sealed class SystemUserEntitlementResolver(
             return new ManagementEntitlements(none, none);
         }
 
-        var roles = new List<string>(await users.GetRolesAsync(user));
-
-        // Transition: a client that used to carry roles itself keeps them
-        // while it is moved to its system user.
-        var clientId = ManagementPrincipal.ClientId(principal);
-        if (!string.IsNullOrWhiteSpace(clientId))
-        {
-            roles.AddRange(await clientRoles.RolesAsync(clientId, cancellationToken));
-        }
-
-        var granted = Map(roles, options.Value.Authorization);
+        var granted = Map(await users.GetRolesAsync(user), options.Value.Authorization);
 
         // Replaces, not adds to, what the token said: roles stamped at
         // issuance are exactly what must not outlive a revocation.
