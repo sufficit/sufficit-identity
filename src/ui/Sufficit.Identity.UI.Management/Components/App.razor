@@ -14,10 +14,10 @@
     <base href="@ManagementOptions.Value.GetBaseHref()" />
     <link rel="icon" href="/_content/Sufficit.Identity.UI.Management/img/logo-mark.png" type="image/png" />
     <meta name="theme-color" content="#242223" />
-    <link rel="stylesheet" href="/_content/Sufficit.Blazor.UI/sufficit-ui.css" />
-    <link rel="stylesheet" href="/Sufficit.Identity.Server.styles.css" />
-    <link rel="stylesheet" href="/_content/Sufficit.Identity.UI.Management/app.css" />
-    <link rel="stylesheet" href="/_content/Sufficit.Identity.UI.Management/users.css" />
+    <link rel="stylesheet" href="/_content/Sufficit.Blazor.UI/sufficit-ui.css?v=@AssetVersion" />
+    <link rel="stylesheet" href="/Sufficit.Identity.Server.styles.css?v=@AssetVersion" />
+    <link rel="stylesheet" href="/_content/Sufficit.Identity.UI.Management/app.css?v=@AssetVersion" />
+    <link rel="stylesheet" href="/_content/Sufficit.Identity.UI.Management/users.css?v=@AssetVersion" />
     <HeadOutlet @rendermode="InteractiveServer" />
 </head>
 
@@ -39,6 +39,14 @@
 </html>
 
 @code {
+    // These stylesheets are served under fixed names without Cache-Control,
+    // so a browser could keep last release's layout for hours. The release
+    // id in the query string makes every deploy fetch them again.
+    private static readonly string AssetVersion = Uri.EscapeDataString(
+        (System.Reflection.CustomAttributeExtensions
+            .GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>(typeof(App).Assembly)
+            ?.InformationalVersion ?? "0").Split('+') is { Length: > 1 } parts ? parts[1] : "0");
+
     [CascadingParameter]
     private HttpContext? HttpContext { get; set; }
 

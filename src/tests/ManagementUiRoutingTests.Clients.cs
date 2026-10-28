@@ -52,8 +52,14 @@ public sealed partial class ManagementUiRoutingTests
             "src=\"/_content/Sufficit.Identity.UI.Management/_framework/blazor.web.js\"",
             html,
             StringComparison.Ordinal);
+        // Stylesheets carry the release id so a deploy is never hidden by
+        // a browser cache of the fixed file name.
         Assert.Contains(
-            "href=\"/_content/Sufficit.Identity.UI.Management/users.css\"",
+            "href=\"/_content/Sufficit.Identity.UI.Management/users.css?v=",
+            html,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "href=\"/_content/Sufficit.Identity.UI.Management/app.css?v=",
             html,
             StringComparison.Ordinal);
         Assert.DoesNotContain(
