@@ -9,34 +9,31 @@
 <SUIPageHeader Title="@L["Clients.List.PageTitle"].Value"
             Description="@L["Clients.List.Description"].Value">
     <Actions>
-        <a class="button button--secondary" href="clients/registrations">
+        <SUIButton Href="clients/registrations" ColorValue="SUIColor.Secondary">
             <SUIIcon Name="shield" Size="17" />
             @L["Clients.Registrations.Title"]
-        </a>
-        <a class="button button--primary" href="clients/new">
+        </SUIButton>
+        <SUIButton Href="clients/new" ColorValue="SUIColor.Primary">
             <SUIIcon Name="plus" Size="17" />
             @L["Clients.Create.Title"]
-        </a>
+        </SUIButton>
     </Actions>
 </SUIPageHeader>
 
 @if (!string.IsNullOrWhiteSpace(DeletedClientId))
 {
-    <div class="inline-notice inline-notice--success" role="status">
-        <SUIIcon Name="check" Size="19" />
-        <div>
-            <strong>@L["Clients.List.DeletedTitle"]</strong>
-            <span>@L["Clients.List.DeletedMessagePrefix"] <code>@DeletedClientId</code> @L["Clients.List.DeletedMessageSuffix"]</span>
-        </div>
-    </div>
+    <SUIAlert ToneValue="SUITone.Success" Icon="check" role="status">
+        <strong>@L["Clients.List.DeletedTitle"]</strong>
+        <span>@L["Clients.List.DeletedMessagePrefix"] <code>@DeletedClientId</code> @L["Clients.List.DeletedMessageSuffix"]</span>
+    </SUIAlert>
 }
 
 @if (DraftDeletedFlag is 1)
 {
-    <div class="inline-notice inline-notice--success" role="status">
-        <SUIIcon Name="check" Size="19" />
-        <div><strong>@L["Clients.List.DraftDeletedTitle"]</strong><span>@L["Clients.List.DraftDeletedMessage"]</span></div>
-    </div>
+    <SUIAlert ToneValue="SUITone.Success" Icon="check" role="status">
+        <strong>@L["Clients.List.DraftDeletedTitle"]</strong>
+        <span>@L["Clients.List.DraftDeletedMessage"]</span>
+    </SUIAlert>
 }
 
 <div class="contract-strip contract-strip--info" id="clients-integration-note">
@@ -55,21 +52,29 @@
             <div><h2 id="drafts-heading">@L["Clients.List.ContinueConfigHeading"]</h2><p>@L["Clients.List.DraftsProtectedDescription"]</p></div>
             <SUIStatusBadge ToneValue="SUITone.Info">@Drafts.Count @(Drafts.Count == 1 ? L["Clients.List.DraftSingular"] : L["Clients.List.DraftPlural"])</SUIStatusBadge>
         </div>
-        <div class="draft-list">
+        <SUIStack Spacing="0" Class="draft-list">
             @foreach (var item in Drafts)
             {
-                <a class="draft-item" href="@DraftHref(item)">
-                    <span class="draft-item__icon"><SUIIcon Name="edit" Size="19" /></span>
-                    <span class="draft-item__body">
-                        <strong>@DraftName(item)</strong>
-                        <span>@item.ProfileDisplayName · @L["Clients.List.StepLabel"] @DraftStepLabel(item.CurrentStep)</span>
-                        <small>@L["Clients.List.UpdatedLabel"] @FormatRelative(item.UpdatedAt) · @L["Clients.List.ExpiresInLabel"] @Time.Format(item.ExpiresAt, TimeStyle.Date)</small>
+                <SUIButton Href="@DraftHref(item)"
+                           VariantValue="SUIVariant.Text"
+                           ColorValue="SUIColor.Default"
+                           FullWidth="true"
+                           Style="justify-content:flex-start;text-align:start">
+                    <span class="draft-item">
+                        <span class="draft-item__icon"><SUIIcon Name="edit" Size="19" /></span>
+                        <span class="draft-item__body">
+                            <strong>@DraftName(item)</strong>
+                            <span>@item.ProfileDisplayName · @L["Clients.List.StepLabel"] @DraftStepLabel(item.CurrentStep)</span>
+                            <small>@L["Clients.List.UpdatedLabel"] @FormatRelative(item.UpdatedAt) · @L["Clients.List.ExpiresInLabel"] @Time.Format(item.ExpiresAt, TimeStyle.Date)</small>
+                        </span>
+                        <span class="draft-item__status">
+                            <SUIStatusBadge ToneValue="@(item.IsReady ? SUITone.Success : SUITone.Neutral)">@(item.IsReady ? L["Clients.List.ReadyStatus"] : L["Clients.List.InProgressStatus"])</SUIStatusBadge>
+                        </span>
+                        <SUIIcon Name="arrow-right" Size="17" />
                     </span>
-                    <SUIStatusBadge ToneValue="@(item.IsReady ? SUITone.Success : SUITone.Neutral)">@(item.IsReady ? L["Clients.List.ReadyStatus"] : L["Clients.List.InProgressStatus"])</SUIStatusBadge>
-                    <SUIIcon Name="arrow-right" Size="17" />
-                </a>
+                </SUIButton>
             }
-        </div>
+        </SUIStack>
     </div>
 }
 
@@ -150,58 +155,55 @@
             }
             else
             {
-                <div class="table-scroll">
-                    <table class="data-table data-table--clients">
-                        <thead>
-                            <tr>
-                                <th scope="col">@L["Clients.Registrations.ColumnApplication"]</th>
-                                <th scope="col">Client ID</th>
-                                <th scope="col">@L["Clients.Detail.TypeLabel"]</th>
-                                <th scope="col">@L["Clients.List.StatusLabel"]</th>
-                                <th scope="col">@L["Clients.List.OriginLabel"]</th>
-                                <th scope="col"><span class="visually-hidden">@L["Clients.Registrations.ColumnActions"]</span></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var client in FilteredClients)
-                            {
-                                <tr>
-                                    <td data-label="@L["Clients.Registrations.ColumnApplication"].Value">
-                                        <a class="client-name client-link"
-                                           href="@ClientHref(client.Id)">
-                                            @DisplayName(client)
-                                        </a>
-                                    </td>
-                                    <td data-label="Client ID">
-                                        <code class="client-id">@client.ClientId</code>
-                                    </td>
-                                    <td data-label="@L["Clients.Detail.TypeLabel"].Value">
-                                        <SUIStatusBadge ToneValue="@IdentitySuiTone.From(ClientTypeTone(client.Type))">
-                                            @ClientTypeLabel(client.Type)
-                                        </SUIStatusBadge>
-                                    </td>
-                                    <td data-label="@L["Clients.List.StatusLabel"].Value">
-                                        <span class="registration-state">
-                                            <span class="status-dot @(ClientStatusTone(client.Status))" aria-hidden="true"></span>
-                                            @ClientStatusLabel(client.Status)
-                                        </span>
-                                    </td>
-                                    <td data-label="@L["Clients.List.OriginLabel"].Value">
-                                        <span class="registration-state">@ClientOriginLabel(client.Origin)</span>
-                                    </td>
-                                    <td data-label="@L["Clients.Registrations.ColumnActions"].Value">
-                                        <a class="row-action"
-                                           href="@ClientHref(client.Id)"
-                                           aria-label="@L["Clients.List.OpenDetailsAriaLabel", client.ClientId].Value">
-                                            @L["Clients.Registrations.Details"]
-                                            <SUIIcon Name="arrow-right" Size="15" />
-                                        </a>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
+                <SUITable TItem="ManagementClientSummary"
+                          Items="FilteredClients"
+                          RowKey="@(client => client.Id)"
+                          StackOnMobile="true"
+                          Hover="true"
+                          ColumnCount="6"
+                          Class="client-results-table">
+                    <HeaderContent>
+                        <SUITh>@L["Clients.Registrations.ColumnApplication"]</SUITh>
+                        <SUITh>Client ID</SUITh>
+                        <SUITh>@L["Clients.Detail.TypeLabel"]</SUITh>
+                        <SUITh>@L["Clients.List.StatusLabel"]</SUITh>
+                        <SUITh>@L["Clients.List.OriginLabel"]</SUITh>
+                        <SUITh><span class="visually-hidden">@L["Clients.Registrations.ColumnActions"]</span></SUITh>
+                    </HeaderContent>
+                    <RowTemplate Context="client">
+                        <SUITd DataLabel="@L["Clients.Registrations.ColumnApplication"].Value">
+                            <SUILink Class="client-name client-link" Href="@ClientHref(client.Id)">
+                                @DisplayName(client)
+                            </SUILink>
+                        </SUITd>
+                        <SUITd DataLabel="Client ID">
+                            <code class="client-id">@client.ClientId</code>
+                        </SUITd>
+                        <SUITd DataLabel="@L["Clients.Detail.TypeLabel"].Value">
+                            <SUIStatusBadge ToneValue="@IdentitySuiTone.From(ClientTypeTone(client.Type))">
+                                @ClientTypeLabel(client.Type)
+                            </SUIStatusBadge>
+                        </SUITd>
+                        <SUITd DataLabel="@L["Clients.List.StatusLabel"].Value">
+                            <span class="registration-state">
+                                <span class="status-dot @(ClientStatusTone(client.Status))" aria-hidden="true"></span>
+                                @ClientStatusLabel(client.Status)
+                            </span>
+                        </SUITd>
+                        <SUITd DataLabel="@L["Clients.List.OriginLabel"].Value">
+                            <span class="registration-state">@ClientOriginLabel(client.Origin)</span>
+                        </SUITd>
+                        <SUITd DataLabel="@L["Clients.Registrations.ColumnActions"].Value">
+                            <SUIButton Href="@ClientHref(client.Id)"
+                                       VariantValue="SUIVariant.Text"
+                                       SizeValue="SUISize.Small"
+                                       aria-label="@L["Clients.List.OpenDetailsAriaLabel", client.ClientId].Value">
+                                @L["Clients.Registrations.Details"]
+                                <SUIIcon Name="arrow-right" Size="15" />
+                            </SUIButton>
+                        </SUITd>
+                    </RowTemplate>
+                </SUITable>
             }
         </Success>
     </ManagementDataView>

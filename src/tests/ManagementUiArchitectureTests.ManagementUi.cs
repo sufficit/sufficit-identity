@@ -107,7 +107,7 @@ public sealed partial class ManagementUiArchitectureTests
 
         Assert.Contains("new(L[\"Clients.Draft.Step.Credentials\"].Value, \"lock\")", editor,
             StringComparison.Ordinal);
-        Assert.Contains("type=\"password\"", editor, StringComparison.Ordinal);
+        Assert.Contains("InputType=\"password\"", editor, StringComparison.Ordinal);
         Assert.Contains("credentialClientIdConfirmation", editor,
             StringComparison.Ordinal);
         Assert.Contains("OneTimeTokenDialog.ShowAsync(", editor,

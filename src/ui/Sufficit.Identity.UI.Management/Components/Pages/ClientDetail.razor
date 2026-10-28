@@ -12,35 +12,33 @@
 <SUIPageHeader Title="@HeaderTitle"
             Description="@L["Clients.Detail.Description"].Value">
     <Actions>
-        <a class="button button--secondary" href="clients">
+        <SUIButton Href="clients" ColorValue="SUIColor.Secondary">
             <SUIIcon Name="arrow-left" Size="17" />
             @L["Clients.Detail.Back"]
-        </a>
+        </SUIButton>
         @if (result?.Value is { } selectedClient)
         {
             @if (!selectedClient.IsManifestManaged)
             {
-                <a class="button button--primary" href="@EditHref(selectedClient.Id)">
+                <SUIButton Href="@EditHref(selectedClient.Id)" ColorValue="SUIColor.Primary">
                     <SUIIcon Name="edit" Size="17" />
                     @L["Clients.Detail.Edit"]
-                </a>
+                </SUIButton>
             }
             <AuthorizeView Policy="@ManagementUiPolicies.ManageSessions">
                 <Authorized>
-                    <a class="button button--secondary"
-                       href="@SessionsHref(selectedClient.ClientId)">
+                    <SUIButton Href="@SessionsHref(selectedClient.ClientId)" ColorValue="SUIColor.Secondary">
                         <SUIIcon Name="clock" Size="17" />
                         @L["Clients.Detail.Sessions"]
-                    </a>
+                    </SUIButton>
                 </Authorized>
             </AuthorizeView>
             <AuthorizeView Policy="@ManagementUiPolicies.ManageAuthorizations">
                 <Authorized>
-                    <a class="button button--secondary"
-                       href="@AuthorizationsHref(selectedClient.ClientId)">
+                    <SUIButton Href="@AuthorizationsHref(selectedClient.ClientId)" ColorValue="SUIColor.Secondary">
                         <SUIIcon Name="shield" Size="17" />
                         @L["Clients.Detail.Authorizations"]
-                    </a>
+                    </SUIButton>
                 </Authorized>
             </AuthorizeView>
         }
@@ -49,21 +47,18 @@
 
 @if (Updated)
 {
-    <div class="inline-notice inline-notice--success" role="status">
-        <SUIIcon Name="check" Size="19" />
-        <div><strong>@L["Clients.Detail.UpdatedTitle"]</strong><span>@L["Clients.Detail.UpdatedMessage"]</span></div>
-    </div>
+    <SUIAlert ToneValue="SUITone.Success" Icon="check" role="status">
+        <strong>@L["Clients.Detail.UpdatedTitle"]</strong>
+        <span>@L["Clients.Detail.UpdatedMessage"]</span>
+    </SUIAlert>
 }
 
 @if (Created)
 {
-    <div class="inline-notice inline-notice--success" role="status">
-        <SUIIcon Name="check" Size="19" />
-        <div>
-            <strong>@L["Clients.Detail.CreatedTitle"]</strong>
-            <span>@L["Clients.Detail.CreatedMessage"]</span>
-        </div>
-    </div>
+    <SUIAlert ToneValue="SUITone.Success" Icon="check" role="status">
+        <strong>@L["Clients.Detail.CreatedTitle"]</strong>
+        <span>@L["Clients.Detail.CreatedMessage"]</span>
+    </SUIAlert>
 }
 
 <ManagementDataView Result="result"
@@ -78,7 +73,7 @@
         </div>
     </LoadingContent>
     <FailureActions>
-        <a class="button button--secondary" href="clients">@L["Clients.Detail.Back"]</a>
+        <SUIButton Href="clients" ColorValue="SUIColor.Secondary">@L["Clients.Detail.Back"]</SUIButton>
     </FailureActions>
     <Success Context="_">
     <div class="detail-shell client-detail-shell">
@@ -111,21 +106,18 @@
 
         @if (IsDisabled(client))
         {
-            <div class="inline-notice inline-notice--danger" role="status">
-                <SUIIcon Name="lock" Size="19" />
-                <div>
-                    <strong>@L["Clients.State.DisabledTitle"]</strong>
-                    <span>@L["Clients.State.DisabledSince", Time.Format(client.DisabledAtUtc) ?? "-", client.DisabledBy ?? "-", client.DisabledReason ?? "-"]</span>
-                </div>
-            </div>
+            <SUIAlert ToneValue="SUITone.Danger" Icon="lock" role="status">
+                <strong>@L["Clients.State.DisabledTitle"]</strong>
+                <span>@L["Clients.State.DisabledSince", Time.Format(client.DisabledAtUtc) ?? "-", client.DisabledBy ?? "-", client.DisabledReason ?? "-"]</span>
+            </SUIAlert>
         }
 
         @if (client.IsManifestManaged)
         {
-            <div class="inline-notice inline-notice--warning" role="status">
-                <SUIIcon Name="lock" Size="19" />
-                <div><strong>@L["Clients.Detail.ManifestManagedTitle"]</strong><span>@L["Clients.Detail.ManifestManagedDescription"]</span></div>
-            </div>
+            <SUIAlert ToneValue="SUITone.Warning" Icon="lock" role="status">
+                <strong>@L["Clients.Detail.ManifestManagedTitle"]</strong>
+                <span>@L["Clients.Detail.ManifestManagedDescription"]</span>
+            </SUIAlert>
         }
 
         <div class="client-detail-layout">
@@ -194,7 +186,7 @@
                     </div>
                     @if (!client.IsManifestManaged)
                     {
-                        <a class="compact-action" href="@EditTokensHref(client.Id)">@L["Clients.Detail.AdjustAction"]</a>
+                        <SUIButton Href="@EditTokensHref(client.Id)" VariantValue="SUIVariant.Text" SizeValue="SUISize.Small">@L["Clients.Detail.AdjustAction"]</SUIButton>
                     }
                 </header>
                 <dl class="token-policy-list">
@@ -242,9 +234,9 @@
                         </div>
                         @if (!client.IsManifestManaged)
                         {
-                            <a class="compact-action" href="@EditCredentialsHref(client.Id)">
+                            <SUIButton Href="@EditCredentialsHref(client.Id)" VariantValue="SUIVariant.Text" SizeValue="SUISize.Small">
                                 @L["Clients.Detail.ManageAction"]
-                            </a>
+                            </SUIButton>
                         }
                     </header>
                     <div class="client-secret-summary">
@@ -389,45 +381,43 @@
 
         @if (IsDisabled(client))
         {
-            <button class="button button--primary" type="button" disabled="@changingState" @onclick="EnableAsync">
+            <SUIButton ColorValue="SUIColor.Primary" Disabled="@changingState" OnClick="EnableAsync">
                 <SUIIcon Name="check-circle" Size="17" />
                 @L["Clients.State.Enable"]
-            </button>
+            </SUIButton>
         }
         else if (!editingState)
         {
-            <button class="button button--danger" type="button" @onclick="() => editingState = true">
+            <SUIButton ColorValue="SUIColor.Error" OnClick="@(() => editingState = true)">
                 <SUIIcon Name="lock" Size="17" />
                 @L["Clients.State.Disable"]
-            </button>
+            </SUIButton>
         }
         else
         {
-            <div class="delete-confirmation">
-                <label for="client-state-reason">@L["Clients.State.ReasonLabel"]</label>
-                <input id="client-state-reason"
-                       class="form-control"
-                       maxlength="500"
-                       autocomplete="off"
-                       @bind="stateReason"
-                       @bind:event="oninput" />
-                <label class="switch-control">
-                    <input type="checkbox" @bind="stateRevokeTokens" />
-                    <span>@L["Clients.State.RevokeTokens"]</span>
-                </label>
-                <div class="delete-confirmation__actions">
-                    <button class="button button--secondary" type="button" disabled="@changingState"
-                            @onclick="() => editingState = false">
+            <SUIStack Spacing="3" Class="client-detail-confirmation">
+                <IdentityTextField T="string"
+                                   Id="client-state-reason"
+                                   Label="@L["Clients.State.ReasonLabel"].Value"
+                                   MaxLength="500"
+                                   Immediate="true"
+                                   autocomplete="off"
+                                   @bind-Value="stateReason" />
+                <SUISwitch Label="@L["Clients.State.RevokeTokens"].Value"
+                           @bind-Value="stateRevokeTokens" />
+                <SUIStack Row="true" Wrap="true" Spacing="2" Justify="End">
+                    <SUIButton ColorValue="SUIColor.Secondary" Disabled="@changingState"
+                               OnClick="@(() => editingState = false)">
                         @L["Clients.Detail.Cancel"]
-                    </button>
-                    <button class="button button--danger" type="button"
-                            disabled="@(changingState || string.IsNullOrWhiteSpace(stateReason))"
-                            @onclick="DisableAsync">
+                    </SUIButton>
+                    <SUIButton ColorValue="SUIColor.Error"
+                               Disabled="@(changingState || string.IsNullOrWhiteSpace(stateReason))"
+                               OnClick="DisableAsync">
                         <SUIIcon Name="lock" Size="17" />
                         @L["Clients.State.ConfirmDisable"]
-                    </button>
-                </div>
-            </div>
+                    </SUIButton>
+                </SUIStack>
+            </SUIStack>
         }
     </div>
 
@@ -441,52 +431,37 @@
 
         @if (!confirmingDelete)
         {
-            <button class="button button--danger"
-                    type="button"
-                    @onclick="BeginDelete">
+            <SUIButton ColorValue="SUIColor.Error" OnClick="BeginDelete">
                 <SUIIcon Name="trash" Size="17" />
                 @L["Clients.Detail.DeleteClient"]
-            </button>
+            </SUIButton>
         }
         else
         {
-            <div class="delete-confirmation">
-                <label for="delete-confirmation">
-                    @L["Clients.Detail.DeleteConfirmPrefix"] <code>@client.ClientId</code> @L["Clients.Detail.DeleteConfirmSuffix"]
-                </label>
-                <input id="delete-confirmation"
-                       class="form-control"
-                       autocomplete="off"
-                       @bind="deleteConfirmation"
-                       @bind:event="oninput" />
-                @if (deleteResult?.IsSuccess is false)
-                {
-                    <p class="validation-message" role="alert">@deleteResult.ErrorMessage</p>
-                }
-                <div class="delete-confirmation__actions">
-                    <button class="button button--secondary"
-                            type="button"
-                            disabled="@deleting"
-                            @onclick="CancelDelete">
+            <SUIStack Spacing="3" Class="client-detail-confirmation">
+                <IdentityTextField T="string"
+                                   Id="delete-confirmation"
+                                   Label="@($"{L["Clients.Detail.DeleteConfirmPrefix"].Value} {client.ClientId} {L["Clients.Detail.DeleteConfirmSuffix"].Value}")"
+                                   ErrorText="@(deleteResult?.IsSuccess is false ? deleteResult.ErrorMessage : null)"
+                                   Immediate="true"
+                                   autocomplete="off"
+                                   @bind-Value="deleteConfirmation" />
+                <SUIStack Row="true" Wrap="true" Spacing="2" Justify="End">
+                    <SUIButton ColorValue="SUIColor.Secondary"
+                               Disabled="@deleting"
+                               OnClick="CancelDelete">
                         @L["Clients.Detail.Cancel"]
-                    </button>
-                    <button class="button button--danger"
-                            type="button"
-                            disabled="@(!CanDelete)"
-                            @onclick="DeleteAsync">
-                        @if (deleting)
-                        {
-                            <span class="button-spinner" aria-hidden="true"></span>
-                            <span>@L["Clients.Detail.Deleting"]</span>
-                        }
-                        else
-                        {
-                            <SUIIcon Name="trash" Size="17" />
-                            <span>@L["Clients.Detail.ConfirmDelete"]</span>
-                        }
-                    </button>
-                </div>
-            </div>
+                    </SUIButton>
+                    <SUILoadingButton ColorValue="SUIColor.Error"
+                                      IsLoading="@deleting"
+                                      Disabled="@(!CanDelete)"
+                                      aria-label="@(deleting ? L["Clients.Detail.Deleting"].Value : null)"
+                                      OnClick="DeleteAsync">
+                        <SUIIcon Name="trash" Size="17" />
+                        <span>@L["Clients.Detail.ConfirmDelete"]</span>
+                    </SUILoadingButton>
+                </SUIStack>
+            </SUIStack>
         }
     </div>
     </Success>

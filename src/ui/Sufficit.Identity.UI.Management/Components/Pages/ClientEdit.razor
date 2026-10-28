@@ -12,10 +12,10 @@
 <SUIPageHeader Title="@HeaderTitle"
             Description="@HeaderDescription">
     <Actions>
-        <a class="button button--secondary" href="@DetailHref">
+        <SUIButton Href="@DetailHref" ColorValue="SUIColor.Secondary">
             <SUIIcon Name="arrow-left" Size="17" />
             @L["Clients.Detail.Cancel"]
-        </a>
+        </SUIButton>
     </Actions>
 </SUIPageHeader>
 
@@ -26,26 +26,23 @@
                     UnavailableTitle="@L["Clients.Edit.OpenErrorTitle"].Value">
     <LoadingContent>
         <div class="wizard-loading" aria-label="@L["Clients.Edit.LoadingAriaLabel"].Value">
-            <span class="button-spinner" aria-hidden="true"></span>
+            <SUIProgressCircular Indeterminate="true" SizeValue="SUISize.Small" />
             <p>@L["Clients.Edit.RecoveringConfig"]</p>
         </div>
     </LoadingContent>
     <FailureActions>
-        <a class="button button--secondary" href="clients">@L["Clients.Create.Back"]</a>
+        <SUIButton Href="clients" ColorValue="SUIColor.Secondary">@L["Clients.Create.Back"]</SUIButton>
     </FailureActions>
     <Success Context="_">
 @if (client!.IsManifestManaged)
 {
-    <div class="inline-notice inline-notice--warning" role="status">
-        <SUIIcon Name="lock" Size="19" />
-        <div>
-            <strong>@L["Clients.Edit.ManifestManagedTitle"]</strong>
-            <span>@L["Clients.Edit.ManifestManagedMessage"]</span>
-        </div>
-    </div>
-    <div class="wizard-actions wizard-actions--complete">
-        <a class="button button--primary" href="@DetailHref">@L["Clients.Edit.BackToDetails"]</a>
-    </div>
+    <SUIAlert ToneValue="SUITone.Warning" Icon="lock" role="status">
+        <strong>@L["Clients.Edit.ManifestManagedTitle"]</strong>
+        <span>@L["Clients.Edit.ManifestManagedMessage"]</span>
+    </SUIAlert>
+    <SUIStack Row="true" Wrap="true" Justify="End" Class="wizard-actions wizard-actions--complete">
+        <SUIButton Href="@DetailHref" ColorValue="SUIColor.Primary">@L["Clients.Edit.BackToDetails"]</SUIButton>
+    </SUIStack>
 }
 else
 {
@@ -55,21 +52,21 @@ else
                 <span>@L["Clients.Edit.ExistingApplication"]</span>
                 <strong>@L["Clients.Edit.SafeReview"]</strong>
             </div>
-            <ol>
+            <SUIStack Row="true" Wrap="true" Spacing="2" Class="client-edit-sections">
                 @foreach (var item in Sections
                     .Select((value, index) => (value, index))
                     .Where(item => item.index != 4 || ShowsCredentialsSection))
                 {
-                    <li class="@(item.index == activeSection ? "is-current" : null)">
-                        <button type="button"
-                                aria-current="@(item.index == activeSection ? "page" : null)"
-                                @onclick="() => activeSection = item.index">
-                            <span class="client-edit-tab__icon"><SUIIcon Name="@item.value.Icon" Size="17" /></span>
-                            <strong>@item.value.Label</strong>
-                        </button>
-                    </li>
+                    <SUIButton VariantValue="@(item.index == activeSection ? SUIVariant.Soft : SUIVariant.Text)"
+                               ColorValue="@(item.index == activeSection ? SUIColor.Primary : SUIColor.Default)"
+                               Style="justify-content:flex-start;text-align:start"
+                               aria-current="@(item.index == activeSection ? "page" : null)"
+                               OnClick="@(() => activeSection = item.index)">
+                        <SUIIcon Name="@item.value.Icon" Size="17" />
+                        @item.value.Label
+                    </SUIButton>
                 }
-            </ol>
+            </SUIStack>
             <div class="wizard-save-state">
                 <span class="wizard-save-state__icon"><SUIIcon Name="lock" Size="15" /></span>
                 <span>@(client.HasClientSecret ? L["Clients.Edit.CredentialProtected"] : L["Clients.Edit.NoActiveCredential"])</span>
@@ -115,10 +112,12 @@ else
                     </IdentitySelect>
                     <div class="client-edit-choice-field" data-sui-align-field>
                         <span class="client-edit-choice-field__label" data-sui-field-label aria-hidden="true"></span>
-                        <label class="choice-control client-edit-par-choice">
-                            <input id="edit-require-par" name="requirePar" type="checkbox" @bind="requirePar" />
-                            <span><strong>@L["Clients.Draft.RequireParLabel"]</strong><small>@L["Clients.Edit.RequireParHint"]</small></span>
-                        </label>
+                        <SUISwitch Id="edit-require-par"
+                                   Name="requirePar"
+                                   Class="client-edit-par-choice"
+                                   Label="@L["Clients.Draft.RequireParLabel"].Value"
+                                   HelperText="@L["Clients.Edit.RequireParHint"].Value"
+                                   @bind-Value="requirePar" />
                     </div>
                 </SUIFormGrid>
             }
@@ -126,20 +125,21 @@ else
             {
                 <fieldset class="choice-fieldset">
                     <legend>@L["Clients.Edit.AuthorizedFlowsLegend"]</legend>
-                    <div class="choice-grid choice-grid--two">
-                        <label class="choice-control"><input id="edit-grant-authorization-code" name="grantAuthorizationCode" type="checkbox" @bind="authorizationCode" /><span><strong>Authorization Code + PKCE</strong><small>@L["Clients.Draft.AuthCodeHint"]</small></span></label>
-                        <label class="choice-control"><input id="edit-grant-refresh-token" name="grantRefreshToken" type="checkbox" @bind="refreshToken" /><span><strong>Refresh Token</strong><small>@L["Clients.Draft.RefreshTokenHint"]</small></span></label>
-                        <label class="choice-control"><input id="edit-grant-client-credentials" name="grantClientCredentials" type="checkbox" @bind="clientCredentials" /><span><strong>Client Credentials</strong><small>@L["Clients.Draft.ClientCredentialsHint"]</small></span></label>
-                        <label class="choice-control"><input id="edit-grant-device-code" name="grantDeviceCode" type="checkbox" @bind="deviceCode" /><span><strong>Device Code</strong><small>@L["Clients.Draft.DeviceCodeHint"]</small></span></label>
-                    </div>
-                    <span class="field-hint">@L["Clients.Edit.CurrentTypeHint", ClientTypeLabel(client.Type)]</span>
+                    <SUIFormGrid Columns="2" Spacing="3" LabelLines="1">
+                        <SUISwitch Id="edit-grant-authorization-code" Name="grantAuthorizationCode" Label="Authorization Code + PKCE" HelperText="@L["Clients.Draft.AuthCodeHint"].Value" @bind-Value="authorizationCode" />
+                        <SUISwitch Id="edit-grant-refresh-token" Name="grantRefreshToken" Label="Refresh Token" HelperText="@L["Clients.Draft.RefreshTokenHint"].Value" @bind-Value="refreshToken" />
+                        <SUISwitch Id="edit-grant-client-credentials" Name="grantClientCredentials" Label="Client Credentials" HelperText="@L["Clients.Draft.ClientCredentialsHint"].Value" @bind-Value="clientCredentials" />
+                        <SUISwitch Id="edit-grant-device-code" Name="grantDeviceCode" Label="Device Code" HelperText="@L["Clients.Draft.DeviceCodeHint"].Value" @bind-Value="deviceCode" />
+                    </SUIFormGrid>
+                    <p class="field-hint">@L["Clients.Edit.CurrentTypeHint", ClientTypeLabel(client.Type)]</p>
                 </fieldset>
-                <div class="field-group edit-textarea-group">
-                    <label for="edit-scopes">Scopes</label>
-                    <textarea id="edit-scopes" name="scopes" class="form-control form-control--textarea technical-value"
-                              @bind="scopesText"></textarea>
-                    <span class="field-hint">@L["Clients.Edit.ScopesHintPrefix"] <code>scp:</code>.</span>
-                </div>
+                <IdentityTextField T="string"
+                                   Id="edit-scopes"
+                                   Name="scopes"
+                                   Label="Scopes"
+                                   HelperText="@($"{L["Clients.Edit.ScopesHintPrefix"].Value} scp:.")"
+                                   Multiline="true"
+                                   @bind-Value="scopesText" />
             }
             else if (activeSection == 2)
             {
@@ -148,148 +148,120 @@ else
                         <div class="lifetime-policy-row__copy">
                             <div class="lifetime-policy-row__title">
                                 <strong>Access token</strong>
-                                <span class="token-help">
-                                    <button type="button"
-                                            class="token-help__trigger"
-                                            aria-label="@L["Clients.Edit.MoreInfoAboutAriaLabel", "Access token"].Value"
-                                            aria-describedby="access-token-help">
-                                        <SUIIcon Name="info" Size="16" />
-                                    </button>
-                                    <span id="access-token-help" class="token-help__content" role="tooltip">
-                                        @L["Clients.Edit.AccessTokenHelp"]
-                                    </span>
-                                </span>
+                                <SUITooltip Text="@L["Clients.Edit.AccessTokenHelp"].Value">
+                                    <SUIIconButton Icon="info"
+                                                   SizeValue="SUISize.Small"
+                                                   VariantValue="SUIVariant.Text"
+                                                   Title="@L["Clients.Edit.MoreInfoAboutAriaLabel", "Access token"].Value"
+                                                   aria-describedby="access-token-help" />
+                                </SUITooltip>
+                                <span id="access-token-help" class="visually-hidden">@L["Clients.Edit.AccessTokenHelp"]</span>
                             </div>
                             <span>@L["Clients.Edit.AccessTokenShortDesc"]</span>
                         </div>
-                        <label class="lifetime-inherit-control">
-                            <input type="checkbox" @bind="inheritAccessTokenLifetime" />
-                            <span>@L["Clients.Edit.UseGlobalDefault"] <small>@FormatMinutes(client.GlobalAccessTokenLifetimeMinutes)</small></span>
-                        </label>
-                        <label class="lifetime-value-control" for="edit-access-token-lifetime">
-                            <span>@L["Clients.Edit.CustomValueLabel"]</span>
-                            <span class="number-with-unit">
-                                <input id="edit-access-token-lifetime"
-                                       name="accessTokenLifetimeMinutes"
-                                       type="number"
-                                       min="1"
-                                       max="@TokenLifetimeLimits.MaximumAccessTokenLifetimeMinutes"
-                                       disabled="@inheritAccessTokenLifetime"
-                                       @bind="accessTokenLifetimeMinutes" />
-                                <span>@L["Clients.Edit.MinutesUnit"]</span>
-                            </span>
-                        </label>
+                        <SUISwitch Class="lifetime-inherit-control"
+                                   Label="@L["Clients.Edit.UseGlobalDefault"].Value"
+                                   HelperText="@(FormatMinutes(client.GlobalAccessTokenLifetimeMinutes))"
+                                   @bind-Value="inheritAccessTokenLifetime" />
+                        <IdentityNumericField T="int"
+                                              Id="edit-access-token-lifetime"
+                                              Name="accessTokenLifetimeMinutes"
+                                              Class="lifetime-value-control"
+                                              Label="@($"{L["Clients.Edit.CustomValueLabel"].Value} ({L["Clients.Edit.MinutesUnit"].Value})")"
+                                              Min="@(1)"
+                                              Max="@(TokenLifetimeLimits.MaximumAccessTokenLifetimeMinutes)"
+                                              Disabled="@inheritAccessTokenLifetime"
+                                              @bind-Value="accessTokenLifetimeMinutes" />
                     </div>
 
                     <div class="lifetime-policy-row">
                         <div class="lifetime-policy-row__copy">
                             <div class="lifetime-policy-row__title">
                                 <strong>ID token</strong>
-                                <span class="token-help">
-                                    <button type="button"
-                                            class="token-help__trigger"
-                                            aria-label="@L["Clients.Edit.MoreInfoAboutAriaLabel", "ID token"].Value"
-                                            aria-describedby="identity-token-help">
-                                        <SUIIcon Name="info" Size="16" />
-                                    </button>
-                                    <span id="identity-token-help" class="token-help__content" role="tooltip">
-                                        @L["Clients.Edit.IdTokenHelp"]
-                                    </span>
-                                </span>
+                                <SUITooltip Text="@L["Clients.Edit.IdTokenHelp"].Value">
+                                    <SUIIconButton Icon="info"
+                                                   SizeValue="SUISize.Small"
+                                                   VariantValue="SUIVariant.Text"
+                                                   Title="@L["Clients.Edit.MoreInfoAboutAriaLabel", "ID token"].Value"
+                                                   aria-describedby="identity-token-help" />
+                                </SUITooltip>
+                                <span id="identity-token-help" class="visually-hidden">@L["Clients.Edit.IdTokenHelp"]</span>
                             </div>
                             <span>@L["Clients.Edit.IdTokenShortDesc"]</span>
                         </div>
-                        <label class="lifetime-inherit-control">
-                            <input type="checkbox" @bind="inheritIdentityTokenLifetime" />
-                            <span>@L["Clients.Edit.UseGlobalDefault"] <small>@FormatMinutes(client.GlobalIdentityTokenLifetimeMinutes)</small></span>
-                        </label>
-                        <label class="lifetime-value-control" for="edit-identity-token-lifetime">
-                            <span>@L["Clients.Edit.CustomValueLabel"]</span>
-                            <span class="number-with-unit">
-                                <input id="edit-identity-token-lifetime"
-                                       name="identityTokenLifetimeMinutes"
-                                       type="number"
-                                       min="1"
-                                       max="120"
-                                       disabled="@inheritIdentityTokenLifetime"
-                                       @bind="identityTokenLifetimeMinutes" />
-                                <span>@L["Clients.Edit.MinutesUnit"]</span>
-                            </span>
-                        </label>
+                        <SUISwitch Class="lifetime-inherit-control"
+                                   Label="@L["Clients.Edit.UseGlobalDefault"].Value"
+                                   HelperText="@(FormatMinutes(client.GlobalIdentityTokenLifetimeMinutes))"
+                                   @bind-Value="inheritIdentityTokenLifetime" />
+                        <IdentityNumericField T="int"
+                                              Id="edit-identity-token-lifetime"
+                                              Name="identityTokenLifetimeMinutes"
+                                              Class="lifetime-value-control"
+                                              Label="@($"{L["Clients.Edit.CustomValueLabel"].Value} ({L["Clients.Edit.MinutesUnit"].Value})")"
+                                              Min="@(1)"
+                                              Max="@(120)"
+                                              Disabled="@inheritIdentityTokenLifetime"
+                                              @bind-Value="identityTokenLifetimeMinutes" />
                     </div>
 
                     <div class="lifetime-policy-row">
                         <div class="lifetime-policy-row__copy">
                             <div class="lifetime-policy-row__title">
                                 <strong>Refresh token</strong>
-                                <span class="token-help">
-                                    <button type="button"
-                                            class="token-help__trigger"
-                                            aria-label="@L["Clients.Edit.MoreInfoAboutAriaLabel", "Refresh token"].Value"
-                                            aria-describedby="refresh-token-help">
-                                        <SUIIcon Name="info" Size="16" />
-                                    </button>
-                                    <span id="refresh-token-help" class="token-help__content" role="tooltip">
-                                        @L["Clients.Edit.RefreshTokenHelp"]
-                                    </span>
-                                </span>
+                                <SUITooltip Text="@L["Clients.Edit.RefreshTokenHelp"].Value">
+                                    <SUIIconButton Icon="info"
+                                                   SizeValue="SUISize.Small"
+                                                   VariantValue="SUIVariant.Text"
+                                                   Title="@L["Clients.Edit.MoreInfoAboutAriaLabel", "Refresh token"].Value"
+                                                   aria-describedby="refresh-token-help" />
+                                </SUITooltip>
+                                <span id="refresh-token-help" class="visually-hidden">@L["Clients.Edit.RefreshTokenHelp"]</span>
                             </div>
                             <span>@L["Clients.Edit.RefreshTokenShortDesc"]</span>
                         </div>
-                        <label class="lifetime-inherit-control">
-                            <input type="checkbox" @bind="inheritRefreshTokenLifetime" />
-                            <span>@L["Clients.Edit.UseGlobalDefault"] <small>@FormatDays(client.GlobalRefreshTokenLifetimeDays)</small></span>
-                        </label>
-                        <label class="lifetime-value-control" for="edit-refresh-token-lifetime">
-                            <span>@L["Clients.Edit.CustomValueLabel"]</span>
-                            <span class="number-with-unit">
-                                <input id="edit-refresh-token-lifetime"
-                                       name="refreshTokenLifetimeDays"
-                                       type="number"
-                                       min="1"
-                                       max="365"
-                                       disabled="@inheritRefreshTokenLifetime"
-                                       @bind="refreshTokenLifetimeDays" />
-                                <span>@L["Clients.Edit.DaysUnit"]</span>
-                            </span>
-                        </label>
+                        <SUISwitch Class="lifetime-inherit-control"
+                                   Label="@L["Clients.Edit.UseGlobalDefault"].Value"
+                                   HelperText="@(FormatDays(client.GlobalRefreshTokenLifetimeDays))"
+                                   @bind-Value="inheritRefreshTokenLifetime" />
+                        <IdentityNumericField T="int"
+                                              Id="edit-refresh-token-lifetime"
+                                              Name="refreshTokenLifetimeDays"
+                                              Class="lifetime-value-control"
+                                              Label="@($"{L["Clients.Edit.CustomValueLabel"].Value} ({L["Clients.Edit.DaysUnit"].Value})")"
+                                              Min="@(1)"
+                                              Max="@(365)"
+                                              Disabled="@inheritRefreshTokenLifetime"
+                                              @bind-Value="refreshTokenLifetimeDays" />
                     </div>
 
                     <div class="lifetime-policy-row">
                         <div class="lifetime-policy-row__copy">
                             <div class="lifetime-policy-row__title">
                                 <strong>@L["Clients.Edit.DelegationSignInAge"]</strong>
-                                <span class="token-help">
-                                    <button type="button"
-                                            class="token-help__trigger"
-                                            aria-label="@L["Clients.Edit.MoreInfoAboutAriaLabel", L["Clients.Edit.DelegationSignInAge"].Value].Value"
-                                            aria-describedby="delegation-sign-in-age-help">
-                                        <SUIIcon Name="info" Size="16" />
-                                    </button>
-                                    <span id="delegation-sign-in-age-help" class="token-help__content" role="tooltip">
-                                        @L["Clients.Edit.DelegationSignInAgeHelp"]
-                                    </span>
-                                </span>
+                                <SUITooltip Text="@L["Clients.Edit.DelegationSignInAgeHelp"].Value">
+                                    <SUIIconButton Icon="info"
+                                                   SizeValue="SUISize.Small"
+                                                   VariantValue="SUIVariant.Text"
+                                                   Title="@L["Clients.Edit.MoreInfoAboutAriaLabel", L["Clients.Edit.DelegationSignInAge"].Value].Value"
+                                                   aria-describedby="delegation-sign-in-age-help" />
+                                </SUITooltip>
+                                <span id="delegation-sign-in-age-help" class="visually-hidden">@L["Clients.Edit.DelegationSignInAgeHelp"]</span>
                             </div>
                             <span>@L["Clients.Edit.DelegationSignInAgeShortDesc"]</span>
                         </div>
-                        <label class="lifetime-inherit-control">
-                            <input type="checkbox" @bind="inheritDelegationSignInAge" />
-                            <span>@L["Clients.Edit.UseGlobalDefault"] <small>@L["Clients.Edit.HoursValue", client.GlobalDelegationMaxAuthAgeHours]</small></span>
-                        </label>
-                        <label class="lifetime-value-control" for="edit-delegation-sign-in-age">
-                            <span>@L["Clients.Edit.CustomValueLabel"]</span>
-                            <span class="number-with-unit">
-                                <input id="edit-delegation-sign-in-age"
-                                       name="delegationMaxAuthAgeHours"
-                                       type="number"
-                                       min="1"
-                                       max="168"
-                                       disabled="@inheritDelegationSignInAge"
-                                       @bind="delegationMaxAuthAgeHours" />
-                                <span>@L["Clients.Edit.HoursUnit"]</span>
-                            </span>
-                        </label>
+                        <SUISwitch Class="lifetime-inherit-control"
+                                   Label="@L["Clients.Edit.UseGlobalDefault"].Value"
+                                   HelperText="@(L["Clients.Edit.HoursValue", client.GlobalDelegationMaxAuthAgeHours].Value)"
+                                   @bind-Value="inheritDelegationSignInAge" />
+                        <IdentityNumericField T="int"
+                                              Id="edit-delegation-sign-in-age"
+                                              Name="delegationMaxAuthAgeHours"
+                                              Class="lifetime-value-control"
+                                              Label="@($"{L["Clients.Edit.CustomValueLabel"].Value} ({L["Clients.Edit.HoursUnit"].Value})")"
+                                              Min="@(1)"
+                                              Max="@(168)"
+                                              Disabled="@inheritDelegationSignInAge"
+                                              @bind-Value="delegationMaxAuthAgeHours" />
                     </div>
                 </div>
                 <p class="field-hint lifetime-policy-editor__hint">
@@ -298,37 +270,54 @@ else
             }
             else if (activeSection == 3)
             {
-                <div class="field-group">
-                    <label for="edit-redirects">Redirect URIs</label>
-                    <textarea id="edit-redirects" name="redirectUris" class="form-control form-control--textarea technical-value"
-                              @bind="redirectUrisText"></textarea>
-                    <span class="field-hint">@L["Clients.Edit.RedirectUrisHint"]</span>
-                </div>
-                <div class="field-group">
-                    <label for="edit-post-logout">@L["Clients.Edit.PostLogoutUrisLabel"] <span class="label-optional">@L["Clients.Edit.OptionalTag"]</span></label>
-                    <textarea id="edit-post-logout" name="postLogoutRedirectUris" class="form-control form-control--textarea technical-value"
-                              @bind="postLogoutRedirectUrisText"></textarea>
-                </div>
-                <div class="field-group">
-                    <label for="edit-native-returns">@L["Clients.Detail.NativeReturnsHeading"] <span class="label-optional">@L["Clients.Edit.OptionalTag"]</span></label>
-                    <textarea id="edit-native-returns" name="nativeReturnUris" class="form-control form-control--textarea technical-value"
-                              @bind="nativeReturnUrisText"></textarea>
-                    <span class="field-hint">
-                        @L["Clients.Edit.NativeReturnsHintPrefix"] <code>meuapp://auth-complete</code>@L["Clients.Edit.NativeReturnsHintSuffix"]
-                    </span>
-                </div>
-                <div class="form-grid form-grid--two">
-                    <div class="field-group">
-                        <label for="edit-frontchannel">@L["Clients.Edit.FrontchannelLogoutLabel"] <span class="label-optional">@L["Clients.Edit.OptionalTag"]</span></label>
-                        <input id="edit-frontchannel" name="frontchannelLogoutUri" class="form-control technical-value" @bind="frontchannelLogoutUri" />
-                        <label class="switch-control"><input id="edit-frontchannel-session" name="frontchannelLogoutSessionRequired" type="checkbox" @bind="frontchannelLogoutSessionRequired" /><span><strong>@L["Clients.Edit.RequireSessionLabel"]</strong><small>@L["Clients.Edit.FrontchannelSidHint"]</small></span></label>
-                    </div>
-                    <div class="field-group">
-                        <label for="edit-backchannel">@L["Clients.Edit.BackchannelLogoutLabel"] <span class="label-optional">@L["Clients.Edit.OptionalTag"]</span></label>
-                        <input id="edit-backchannel" name="backchannelLogoutUri" class="form-control technical-value" @bind="backchannelLogoutUri" />
-                        <label class="switch-control"><input id="edit-backchannel-session" name="backchannelLogoutSessionRequired" type="checkbox" @bind="backchannelLogoutSessionRequired" /><span><strong>@L["Clients.Edit.RequireSessionLabel"]</strong><small>@L["Clients.Edit.BackchannelNotifyHint"]</small></span></label>
-                    </div>
-                </div>
+                <SUIStack Spacing="4">
+                    <IdentityTextField T="string"
+                                       Id="edit-redirects"
+                                       Name="redirectUris"
+                                       Label="Redirect URIs"
+                                       HelperText="@L["Clients.Edit.RedirectUrisHint"].Value"
+                                       Multiline="true"
+                                       @bind-Value="redirectUrisText" />
+                    <IdentityTextField T="string"
+                                       Id="edit-post-logout"
+                                       Name="postLogoutRedirectUris"
+                                       Label="@OptionalLabel(L["Clients.Edit.PostLogoutUrisLabel"].Value)"
+                                       Multiline="true"
+                                       @bind-Value="postLogoutRedirectUrisText" />
+                    <IdentityTextField T="string"
+                                       Id="edit-native-returns"
+                                       Name="nativeReturnUris"
+                                       Label="@OptionalLabel(L["Clients.Detail.NativeReturnsHeading"].Value)"
+                                       HelperText="@($"{L["Clients.Edit.NativeReturnsHintPrefix"].Value} meuapp://auth-complete{L["Clients.Edit.NativeReturnsHintSuffix"].Value}")"
+                                       Multiline="true"
+                                       @bind-Value="nativeReturnUrisText" />
+                    <SUIFormGrid Columns="2" Spacing="4" LabelLines="2">
+                        <SUIStack Spacing="2" data-sui-align-field>
+                            <IdentityTextField T="string"
+                                               Id="edit-frontchannel"
+                                               Name="frontchannelLogoutUri"
+                                               Label="@OptionalLabel(L["Clients.Edit.FrontchannelLogoutLabel"].Value)"
+                                               @bind-Value="frontchannelLogoutUri" />
+                            <SUISwitch Id="edit-frontchannel-session"
+                                       Name="frontchannelLogoutSessionRequired"
+                                       Label="@L["Clients.Edit.RequireSessionLabel"].Value"
+                                       HelperText="@L["Clients.Edit.FrontchannelSidHint"].Value"
+                                       @bind-Value="frontchannelLogoutSessionRequired" />
+                        </SUIStack>
+                        <SUIStack Spacing="2" data-sui-align-field>
+                            <IdentityTextField T="string"
+                                               Id="edit-backchannel"
+                                               Name="backchannelLogoutUri"
+                                               Label="@OptionalLabel(L["Clients.Edit.BackchannelLogoutLabel"].Value)"
+                                               @bind-Value="backchannelLogoutUri" />
+                            <SUISwitch Id="edit-backchannel-session"
+                                       Name="backchannelLogoutSessionRequired"
+                                       Label="@L["Clients.Edit.RequireSessionLabel"].Value"
+                                       HelperText="@L["Clients.Edit.BackchannelNotifyHint"].Value"
+                                       @bind-Value="backchannelLogoutSessionRequired" />
+                        </SUIStack>
+                    </SUIFormGrid>
+                </SUIStack>
             }
             else
             {
@@ -343,9 +332,9 @@ else
                                 @L["Clients.Edit.AppAuthDescription"]
                             </p>
                         </div>
-                        <span class="status-badge status-badge--@(HasConfiguredAuthentication ? "success" : "warning")">
+                        <SUIStatusBadge ToneValue="@(HasConfiguredAuthentication ? SUITone.Success : SUITone.Warning)">
                             @(HasConfiguredAuthentication ? L["Clients.Detail.ConfiguredBadge"] : L["Clients.Edit.PendingBadge"])
-                        </span>
+                        </SUIStatusBadge>
                     </header>
 
                     <div class="client-auth-methods" aria-label="@L["Clients.Edit.AvailableMethodsAriaLabel"].Value">
@@ -353,13 +342,13 @@ else
                         <div>
                             @if (AuthenticationMethods.Count is 0)
                             {
-                                <span class="status-badge status-badge--warning">@L["Clients.Edit.NoMethodBadge"]</span>
+                                <SUIStatusBadge ToneValue="SUITone.Warning">@L["Clients.Edit.NoMethodBadge"]</SUIStatusBadge>
                             }
                             else
                             {
                                 @foreach (var method in AuthenticationMethods)
                                 {
-                                    <span class="protocol-chip">@AuthenticationMethodLabel(method)</span>
+                                    <SUIChip SizeValue="SUISize.Small">@AuthenticationMethodLabel(method)</SUIChip>
                                 }
                             }
                         </div>
@@ -368,7 +357,7 @@ else
                     @if (credentialsLoading)
                     {
                         <div class="client-credential-loading" aria-busy="true">
-                            <span class="button-spinner" aria-hidden="true"></span>
+                            <SUIProgressCircular Indeterminate="true" SizeValue="SUISize.Small" />
                             <span>@L["Clients.Edit.LoadingCredentials"]</span>
                         </div>
                     }
@@ -414,17 +403,17 @@ else
                                                     }
                                                 </span>
                                             </div>
-                                            <span class="status-badge status-badge--@CredentialStatusTone(credential.Status)">
+                                            <SUIStatusBadge ToneValue="@IdentitySuiTone.From(CredentialStatusTone(credential.Status))">
                                                 @CredentialStatusLabel(credential.Status)
-                                            </span>
+                                            </SUIStatusBadge>
                                             @if (!credential.IsPrimary && credential.Status is "active" or "scheduled")
                                             {
-                                                <button class="button button--danger button--compact"
-                                                        type="button"
-                                                        disabled="@(revokingCredentialId is not null)"
-                                                        @onclick="() => BeginCredentialRevocation(credential)">
+                                                <SUIButton ColorValue="SUIColor.Error"
+                                                           SizeValue="SUISize.Small"
+                                                           Disabled="@(revokingCredentialId is not null)"
+                                                           OnClick="@(() => BeginCredentialRevocation(credential))">
                                                     @L["Clients.Edit.RevokeAction"]
-                                                </button>
+                                                </SUIButton>
                                             }
                                             else if (credential.IsPrimary)
                                             {
@@ -438,18 +427,18 @@ else
                                                         <strong>@L["Clients.Edit.RevokeCredentialConfirm"]</strong>
                                                         <span>@L["Clients.Edit.RevokeCredentialWarning"]</span>
                                                     </div>
-                                                    <input class="form-control"
-                                                           name="credentialRevocationReason"
-                                                           maxlength="256"
-                                                           placeholder="@L["Clients.Edit.OptionalReasonPlaceholder"].Value"
-                                                           aria-label="@L["Clients.Edit.RevocationReasonAriaLabel"].Value"
-                                                           @bind="credentialRevocationReason" />
-                                                    <div>
-                                                        <button class="button button--secondary button--compact" type="button" @onclick="CancelCredentialRevocation">@L["Clients.Detail.Cancel"]</button>
-                                                        <button class="button button--danger button--compact" type="button" disabled="@revokingCredential" @onclick="RevokeCredentialAsync">
+                                                    <IdentityTextField T="string"
+                                                                       Name="credentialRevocationReason"
+                                                                       MaxLength="256"
+                                                                       Placeholder="@L["Clients.Edit.OptionalReasonPlaceholder"].Value"
+                                                                       aria-label="@L["Clients.Edit.RevocationReasonAriaLabel"].Value"
+                                                                       @bind-Value="credentialRevocationReason" />
+                                                    <SUIStack Row="true" Wrap="true" Spacing="2" Justify="End">
+                                                        <SUIButton ColorValue="SUIColor.Secondary" SizeValue="SUISize.Small" OnClick="CancelCredentialRevocation">@L["Clients.Detail.Cancel"]</SUIButton>
+                                                        <SUIButton ColorValue="SUIColor.Error" SizeValue="SUISize.Small" Disabled="@revokingCredential" OnClick="RevokeCredentialAsync">
                                                             @(revokingCredential ? L["Clients.Edit.Revoking"] : L["Clients.Edit.ConfirmRevocation"])
-                                                        </button>
-                                                    </div>
+                                                        </SUIButton>
+                                                    </SUIStack>
                                                 </div>
                                             }
                                         </li>
@@ -461,10 +450,10 @@ else
 
                     @if (!configuringCredential && !string.IsNullOrWhiteSpace(credentialErrorMessage))
                     {
-                        <div class="inline-notice inline-notice--danger" role="alert">
-                            <SUIIcon Name="alert" Size="19" />
-                            <div><strong>@L["Clients.Edit.CredentialUpdateErrorTitle"]</strong><span>@credentialErrorMessage</span></div>
-                        </div>
+                        <SUIAlert ToneValue="SUITone.Danger" Icon="alert">
+                            <strong>@L["Clients.Edit.CredentialUpdateErrorTitle"]</strong>
+                            <span>@credentialErrorMessage</span>
+                        </SUIAlert>
                     }
 
                     @if (!configuringCredential)
@@ -474,18 +463,18 @@ else
                                 <strong>@L["Clients.Edit.ManageRotation"]</strong>
                                 <span>@L["Clients.Edit.RotationGuidance"]</span>
                             </div>
-                            <div>
-                                <button class="button button--primary" type="button" @onclick="BeginCredentialCreation">
+                            <SUIStack Row="true" Wrap="true" Spacing="2" Justify="End">
+                                <SUIButton ColorValue="SUIColor.Primary" OnClick="BeginCredentialCreation">
                                     <SUIIcon Name="plus" Size="17" />
                                     @L["Clients.Edit.AddCredentialAction"]
-                                </button>
+                                </SUIButton>
                                 @if (HasPrimaryCredential)
                                 {
-                                    <button class="button button--secondary" type="button" @onclick="BeginCredentialRotation">
+                                    <SUIButton ColorValue="SUIColor.Secondary" OnClick="BeginCredentialRotation">
                                         @L["Clients.Edit.ReplacePrimary"]
-                                    </button>
+                                    </SUIButton>
                                 }
-                            </div>
+                            </SUIStack>
                         </div>
                     }
                     else
@@ -504,90 +493,74 @@ else
 
                             @if (credentialOperation == "add")
                             {
-                                <div class="form-grid form-grid--two">
-                                    <div class="field-group">
-                                        <label for="credential-label">@L["Clients.Edit.CredentialNameLabel"]</label>
-                                        <input id="credential-label"
-                                               name="credentialLabel"
-                                               class="form-control"
-                                               maxlength="100"
-                                               placeholder="@L["Clients.Edit.CredentialNamePlaceholder"].Value"
-                                               @bind="credentialLabel"
-                                               @bind:event="oninput" />
-                                        <span class="field-hint">@L["Clients.Edit.CredentialNameHint"]</span>
-                                    </div>
-                                    <div class="field-group">
-                                        <label for="credential-expiration">@L["Clients.Edit.ExpirationLabel"] <span class="label-optional">@L["Clients.Edit.OptionalUtcTag"]</span></label>
-                                        <input id="credential-expiration"
-                                               name="credentialExpiration"
-                                               class="form-control"
-                                               type="date"
-                                               min="@MinimumCredentialExpirationDate"
-                                               max="@MaximumCredentialExpirationDate"
-                                               @bind="credentialExpirationDate"
-                                               @bind:format="yyyy-MM-dd" />
-                                        <span class="field-hint">@L["Clients.Edit.NoExpirationHint"]</span>
-                                    </div>
-                                </div>
+                                <SUIFormGrid Columns="2" Spacing="4" LabelLines="2">
+                                    <IdentityTextField T="string"
+                                                       Id="credential-label"
+                                                       Name="credentialLabel"
+                                                       Label="@L["Clients.Edit.CredentialNameLabel"].Value"
+                                                       HelperText="@L["Clients.Edit.CredentialNameHint"].Value"
+                                                       Placeholder="@L["Clients.Edit.CredentialNamePlaceholder"].Value"
+                                                       MaxLength="100"
+                                                       Immediate="true"
+                                                       @bind-Value="credentialLabel" />
+                                    <SUIDateField Id="credential-expiration"
+                                                  Name="credentialExpiration"
+                                                  Label="@($"{L["Clients.Edit.ExpirationLabel"].Value} ({L["Clients.Edit.OptionalUtcTag"].Value})")"
+                                                  HelperText="@L["Clients.Edit.NoExpirationHint"].Value"
+                                                  Min="@MinimumCredentialExpirationDate"
+                                                  Max="@MaximumCredentialExpirationDate"
+                                                  @bind-Value="credentialExpirationDate" />
+                                </SUIFormGrid>
                             }
 
                             <fieldset class="choice-fieldset">
                                 <legend>@L["Clients.Edit.HowToSetValueLegend"]</legend>
-                                <div class="choice-grid choice-grid--two">
-                                    <label class="choice-control">
-                                        <input type="radio"
-                                               name="credentialMode"
-                                               value="generated"
-                                               checked="@(credentialMode == "generated")"
-                                               @onchange="SetGeneratedCredentialMode" />
-                                        <span><strong>@L["Clients.Edit.GenerateAutomatically"]</strong><small>@L["Clients.Edit.GenerateAutomaticallyHint"]</small></span>
-                                    </label>
-                                    <label class="choice-control">
-                                        <input type="radio"
-                                               name="credentialMode"
-                                               value="custom"
-                                               checked="@(credentialMode == "custom")"
-                                               @onchange="SetCustomCredentialMode" />
-                                        <span><strong>@L["Clients.Edit.EnterCredentialManually"]</strong><small>@L["Clients.Edit.EnterCredentialHint"]</small></span>
-                                    </label>
-                                </div>
+                                <SUIFormGrid Columns="2" Spacing="3" LabelLines="1">
+                                    <SUIChoiceCard TValue="string"
+                                                   Name="credentialMode"
+                                                   Value="@("generated")"
+                                                   SelectedValue="@credentialMode"
+                                                   SelectedValueChanged="SetCredentialMode"
+                                                   Title="@L["Clients.Edit.GenerateAutomatically"].Value"
+                                                   Description="@L["Clients.Edit.GenerateAutomaticallyHint"].Value" />
+                                    <SUIChoiceCard TValue="string"
+                                                   Name="credentialMode"
+                                                   Value="@("custom")"
+                                                   SelectedValue="@credentialMode"
+                                                   SelectedValueChanged="SetCredentialMode"
+                                                   Title="@L["Clients.Edit.EnterCredentialManually"].Value"
+                                                   Description="@L["Clients.Edit.EnterCredentialHint"].Value" />
+                                </SUIFormGrid>
                             </fieldset>
 
                             @if (credentialMode == "custom")
                             {
-                                <div class="form-grid form-grid--two">
-                                    <div class="field-group">
-                                        <label for="custom-client-secret">@L["Clients.Edit.NewCredentialLabel"]</label>
-                                        <input id="custom-client-secret"
-                                               name="customClientSecret"
-                                               class="form-control technical-value"
-                                               type="password"
-                                               minlength="32"
-                                               maxlength="512"
-                                               autocomplete="new-password"
-                                               spellcheck="false"
-                                               @bind="customClientSecret"
-                                               @bind:event="oninput" />
-                                        <span class="field-hint">@L["Clients.Edit.CredentialLengthHint"]</span>
-                                    </div>
-                                    <div class="field-group">
-                                        <label for="custom-client-secret-confirmation">@L["Clients.Edit.ConfirmCredentialLabel"]</label>
-                                        <input id="custom-client-secret-confirmation"
-                                               name="customClientSecretConfirmation"
-                                               class="form-control technical-value"
-                                               type="password"
-                                               minlength="32"
-                                               maxlength="512"
-                                               autocomplete="new-password"
-                                               spellcheck="false"
-                                               @bind="customClientSecretConfirmation"
-                                               @bind:event="oninput" />
-                                        @if (!string.IsNullOrEmpty(customClientSecretConfirmation) && !CustomCredentialsMatch)
-                                        {
-                                            <span class="field-error">@L["Clients.Edit.ValuesDoNotMatch"]</span>
-                                        }
-                                    </div>
-                                </div>
+                                <SUIFormGrid Columns="2" Spacing="4" LabelLines="2">
+                                    <IdentityTextField T="string"
+                                                       Id="custom-client-secret"
+                                                       Name="customClientSecret"
+                                                       InputType="password"
+                                                       Label="@L["Clients.Edit.NewCredentialLabel"].Value"
+                                                       HelperText="@L["Clients.Edit.CredentialLengthHint"].Value"
+                                                       MaxLength="512"
+                                                       Immediate="true"
+                                                       minlength="32"
+                                                       autocomplete="new-password"
+                                                       spellcheck="false"
+                                                       @bind-Value="customClientSecret" />
+                                    <IdentityTextField T="string"
+                                                       Id="custom-client-secret-confirmation"
+                                                       Name="customClientSecretConfirmation"
+                                                       InputType="password"
+                                                       Label="@L["Clients.Edit.ConfirmCredentialLabel"].Value"
+                                                       ErrorText="@(!string.IsNullOrEmpty(customClientSecretConfirmation) && !CustomCredentialsMatch ? L["Clients.Edit.ValuesDoNotMatch"].Value : null)"
+                                                       MaxLength="512"
+                                                       Immediate="true"
+                                                       minlength="32"
+                                                       autocomplete="new-password"
+                                                       spellcheck="false"
+                                                       @bind-Value="customClientSecretConfirmation" />
+                                </SUIFormGrid>
                             }
 
                             <div class="client-credential-confirmation">
@@ -599,39 +572,35 @@ else
                                             : L["Clients.Edit.PrimaryReplacedNote"])
                                     </span>
                                 </div>
-                                <div class="field-group">
-                                    <label for="credential-client-id-confirmation">@L["Clients.Detail.DeleteConfirmPrefix"] <code>@client.ClientId</code> @L["Clients.Detail.DeleteConfirmSuffix"]</label>
-                                    <input id="credential-client-id-confirmation"
-                                           name="credentialClientIdConfirmation"
-                                           class="form-control technical-value"
-                                           autocomplete="off"
-                                           spellcheck="false"
-                                           @bind="credentialClientIdConfirmation"
-                                           @bind:event="oninput" />
-                                </div>
+                                <IdentityTextField T="string"
+                                                   Id="credential-client-id-confirmation"
+                                                   Name="credentialClientIdConfirmation"
+                                                   Label="@($"{L["Clients.Detail.DeleteConfirmPrefix"].Value} {client.ClientId} {L["Clients.Detail.DeleteConfirmSuffix"].Value}")"
+                                                   Immediate="true"
+                                                   autocomplete="off"
+                                                   spellcheck="false"
+                                                   @bind-Value="credentialClientIdConfirmation" />
                             </div>
 
                             @if (!string.IsNullOrWhiteSpace(credentialErrorMessage))
                             {
-                                <div class="inline-notice inline-notice--danger" role="alert">
-                                    <SUIIcon Name="alert" Size="19" />
-                                    <div><strong>@L["Clients.Draft.OperationErrorTitle"]</strong><span>@credentialErrorMessage</span></div>
-                                </div>
+                                <SUIAlert ToneValue="SUITone.Danger" Icon="alert">
+                                    <strong>@L["Clients.Draft.OperationErrorTitle"]</strong>
+                                    <span>@credentialErrorMessage</span>
+                                </SUIAlert>
                             }
 
-                            <div class="client-credential-editor__actions">
-                                <button class="button button--secondary" type="button" disabled="@rotatingCredential" @onclick="CancelCredentialRotation">@L["Clients.Detail.Cancel"]</button>
-                                <button class="button button--primary" type="button" disabled="@(!CanSubmitCredential)" @onclick="SubmitCredentialAsync">
-                                    @if (rotatingCredential)
-                                    {
-                                        <span class="button-spinner" aria-hidden="true"></span><span>@L["Clients.Draft.Saving"]</span>
-                                    }
-                                    else
-                                    {
-                                        <SUIIcon Name="key" Size="17" /><span>@(credentialOperation == "add" ? L["Clients.Edit.AddCredentialAction"] : L["Clients.Edit.ConfirmReplacement"])</span>
-                                    }
-                                </button>
-                            </div>
+                            <SUIStack Row="true" Wrap="true" Spacing="2" Justify="End">
+                                <SUIButton ColorValue="SUIColor.Secondary" Disabled="@rotatingCredential" OnClick="CancelCredentialRotation">@L["Clients.Detail.Cancel"]</SUIButton>
+                                <SUILoadingButton ColorValue="SUIColor.Primary"
+                                                  IsLoading="@rotatingCredential"
+                                                  Disabled="@(!CanSubmitCredential)"
+                                                  aria-label="@(rotatingCredential ? L["Clients.Draft.Saving"].Value : null)"
+                                                  OnClick="SubmitCredentialAsync">
+                                    <SUIIcon Name="key" Size="17" />
+                                    <span>@(credentialOperation == "add" ? L["Clients.Edit.AddCredentialAction"] : L["Clients.Edit.ConfirmReplacement"])</span>
+                                </SUILoadingButton>
+                            </SUIStack>
                         </div>
                     }
 
@@ -642,20 +611,17 @@ else
                                 <strong>@L["Clients.Edit.TlsCertificatesTitle"]</strong>
                                 <small>@L["Clients.Edit.TlsCertificatesDescription"]</small>
                             </span>
-                            <span class="status-badge status-badge--@(HasActiveTlsCertificate ? "success" : "neutral")">
+                            <SUIStatusBadge ToneValue="@(HasActiveTlsCertificate ? SUITone.Success : SUITone.Neutral)">
                                 @(HasActiveTlsCertificate ? L["Clients.List.ClientStatusActive"] : L["Clients.Edit.OptionalBadge"])
-                            </span>
+                            </SUIStatusBadge>
                         </summary>
                         <div class="client-key-method__body">
                             @if (credentialOverview?.MtlsRuntimeEnabled is false)
                             {
-                                <div class="inline-notice inline-notice--info" role="note">
-                                    <SUIIcon Name="info" Size="18" />
-                                    <div>
-                                        <strong>@L["Clients.Edit.MtlsNotEnabledTitle"]</strong>
-                                        <span>@L["Clients.Edit.MtlsNotEnabledMessage"]</span>
-                                    </div>
-                                </div>
+                                <SUIAlert ToneValue="SUITone.Info" Icon="info" role="note">
+                                    <strong>@L["Clients.Edit.MtlsNotEnabledTitle"]</strong>
+                                    <span>@L["Clients.Edit.MtlsNotEnabledMessage"]</span>
+                                </SUIAlert>
                             }
 
                             <div class="client-credential-catalog">
@@ -692,17 +658,17 @@ else
                                                     </span>
                                                     <code class="client-certificate-thumbprint">SHA-256 @FormatCertificateThumbprint(certificate.Sha256Thumbprint)</code>
                                                 </div>
-                                                <span class="status-badge status-badge--@CredentialStatusTone(certificate.Status)">
+                                                <SUIStatusBadge ToneValue="@IdentitySuiTone.From(CredentialStatusTone(certificate.Status))">
                                                     @CredentialStatusLabel(certificate.Status)
-                                                </span>
+                                                </SUIStatusBadge>
                                                 @if (certificate.Status is "active" or "scheduled")
                                                 {
-                                                    <button class="button button--danger button--compact"
-                                                            type="button"
-                                                            disabled="@(revokingTlsKeyId is not null)"
-                                                            @onclick="() => BeginTlsCertificateRevocation(certificate.KeyId)">
+                                                    <SUIButton ColorValue="SUIColor.Error"
+                                                               SizeValue="SUISize.Small"
+                                                               Disabled="@(revokingTlsKeyId is not null)"
+                                                               OnClick="@(() => BeginTlsCertificateRevocation(certificate.KeyId))">
                                                         @L["Clients.Edit.RevokeAction"]
-                                                    </button>
+                                                    </SUIButton>
                                                 }
 
                                                 @if (revokingTlsKeyId == certificate.KeyId)
@@ -712,12 +678,12 @@ else
                                                             <strong>@L["Clients.Edit.RevokeCertConfirm"]</strong>
                                                             <span>@L["Clients.Edit.RevokeCertWarning"]</span>
                                                         </div>
-                                                        <div>
-                                                            <button class="button button--secondary button--compact" type="button" @onclick="CancelTlsCertificateRevocation">@L["Clients.Detail.Cancel"]</button>
-                                                            <button class="button button--danger button--compact" type="button" disabled="@revokingTlsCertificate" @onclick="RevokeTlsCertificateAsync">
+                                                        <SUIStack Row="true" Wrap="true" Spacing="2" Justify="End">
+                                                            <SUIButton ColorValue="SUIColor.Secondary" SizeValue="SUISize.Small" OnClick="CancelTlsCertificateRevocation">@L["Clients.Detail.Cancel"]</SUIButton>
+                                                            <SUIButton ColorValue="SUIColor.Error" SizeValue="SUISize.Small" Disabled="@revokingTlsCertificate" OnClick="RevokeTlsCertificateAsync">
                                                                 @(revokingTlsCertificate ? L["Clients.Edit.Revoking"] : L["Clients.Edit.ConfirmRevocation"])
-                                                            </button>
-                                                        </div>
+                                                            </SUIButton>
+                                                        </SUIStack>
                                                     </div>
                                                 }
                                             </li>
@@ -728,101 +694,93 @@ else
 
                             @if (!configuringTlsCertificate)
                             {
-                                <div class="client-key-method__actions">
-                                    <button class="button button--primary" type="button" @onclick="BeginTlsCertificateRegistration">
+                                <SUIStack Row="true" Wrap="true" Spacing="2" Justify="End">
+                                    <SUIButton ColorValue="SUIColor.Primary" OnClick="BeginTlsCertificateRegistration">
                                         <SUIIcon Name="plus" Size="17" />
                                         @L["Clients.Edit.AddCertificateAction"]
-                                    </button>
-                                </div>
+                                    </SUIButton>
+                                </SUIStack>
                             }
                             else
                             {
                                 <div class="client-credential-editor__form client-certificate-form">
                                     <fieldset class="choice-fieldset">
                                         <legend>@L["Clients.Edit.TrustModelLegend"]</legend>
-                                        <div class="choice-grid choice-grid--two">
-                                            <label class="choice-control">
-                                                <input type="radio"
-                                                       name="tlsAuthenticationMethod"
-                                                       value="self_signed_tls_client_auth"
-                                                       checked="@(tlsAuthenticationMethod == "self_signed_tls_client_auth")"
-                                                       @onchange="UseSelfSignedTlsAuthentication" />
-                                                <span><strong>@L["Clients.Edit.SelfSignedCertOption"]</strong><small>@L["Clients.Edit.SelfSignedCertHint"]</small></span>
-                                            </label>
-                                            <label class="choice-control">
-                                                <input type="radio"
-                                                       name="tlsAuthenticationMethod"
-                                                       value="tls_client_auth"
-                                                       checked="@(tlsAuthenticationMethod == "tls_client_auth")"
-                                                       @onchange="UsePkiTlsAuthentication" />
-                                                <span><strong>@L["Clients.Edit.TrustedPkiOption"]</strong><small>@L["Clients.Edit.TrustedPkiHint"]</small></span>
-                                            </label>
-                                        </div>
+                                        <SUIFormGrid Columns="2" Spacing="3" LabelLines="1">
+                                            <SUIChoiceCard TValue="string"
+                                                           Name="tlsAuthenticationMethod"
+                                                           Value="@("self_signed_tls_client_auth")"
+                                                           @bind-SelectedValue="tlsAuthenticationMethod"
+                                                           Title="@L["Clients.Edit.SelfSignedCertOption"].Value"
+                                                           Description="@L["Clients.Edit.SelfSignedCertHint"].Value" />
+                                            <SUIChoiceCard TValue="string"
+                                                           Name="tlsAuthenticationMethod"
+                                                           Value="@("tls_client_auth")"
+                                                           @bind-SelectedValue="tlsAuthenticationMethod"
+                                                           Title="@L["Clients.Edit.TrustedPkiOption"].Value"
+                                                           Description="@L["Clients.Edit.TrustedPkiHint"].Value" />
+                                        </SUIFormGrid>
                                     </fieldset>
 
                                     @if (tlsAuthenticationMethod == "tls_client_auth" && credentialOverview?.PkiAuthenticationEnabled is false)
                                     {
-                                        <div class="inline-notice inline-notice--info" role="note">
-                                            <SUIIcon Name="info" Size="18" />
-                                            <div>
-                                                <strong>@L["Clients.Edit.PkiNoRootTitle"]</strong>
-                                                <span>@L["Clients.Edit.PkiNoRootMessage"]</span>
-                                            </div>
-                                        </div>
+                                        <SUIAlert ToneValue="SUITone.Info" Icon="info" role="note">
+                                            <strong>@L["Clients.Edit.PkiNoRootTitle"]</strong>
+                                            <span>@L["Clients.Edit.PkiNoRootMessage"]</span>
+                                        </SUIAlert>
                                     }
 
-                                    <div class="form-grid form-grid--two">
-                                        <div class="field-group">
-                                            <label for="tls-certificate-kid">@L["Clients.Edit.KeyIdLabel"] <span class="label-optional">@L["Clients.Edit.OptionalTag"]</span></label>
-                                            <input id="tls-certificate-kid"
-                                                   name="tlsCertificateKid"
-                                                   class="form-control technical-value"
-                                                   maxlength="100"
-                                                   placeholder="@L["Clients.Edit.KeyIdPlaceholder"].Value"
-                                                   spellcheck="false"
-                                                   @bind="tlsCertificateKeyId"
-                                                   @bind:event="oninput" />
-                                            <span class="field-hint">@L["Clients.Edit.KeyIdHint"]</span>
-                                        </div>
-                                        <div class="field-group">
-                                            <label for="tls-client-id-confirmation">@L["Clients.Edit.ConfirmClientIdLabel"]</label>
-                                            <input id="tls-client-id-confirmation"
-                                                   name="tlsClientIdConfirmation"
-                                                   class="form-control technical-value"
-                                                   autocomplete="off"
-                                                   spellcheck="false"
-                                                   @bind="tlsClientIdConfirmation"
-                                                   @bind:event="oninput" />
-                                            <span class="field-hint">@L["Clients.Detail.DeleteConfirmPrefix"] <code>@client.ClientId</code> @L["Clients.Edit.LinkMaterialSuffix"]</span>
-                                        </div>
-                                    </div>
-
-                                    <div class="field-group">
-                                        <label for="tls-certificate-pem">@L["Clients.Edit.CertificatePemLabel"]</label>
-                                        <textarea id="tls-certificate-pem"
-                                                  name="tlsCertificatePem"
-                                                  class="form-control form-control--textarea technical-value client-key-method__textarea"
-                                                  spellcheck="false"
-                                                  placeholder="-----BEGIN CERTIFICATE-----&#10;...&#10;-----END CERTIFICATE-----"
-                                                  @bind="tlsCertificatePem"
-                                                  @bind:event="oninput"></textarea>
-                                        <span class="field-hint">@L["Clients.Edit.CertificatePemHint"]</span>
-                                    </div>
+                                    <SUIFormGrid Columns="2" Spacing="4" LabelLines="2">
+                                        <ChildContent>
+                                            <IdentityTextField T="string"
+                                                               Id="tls-certificate-kid"
+                                                               Name="tlsCertificateKid"
+                                                               Label="@OptionalLabel(L["Clients.Edit.KeyIdLabel"].Value)"
+                                                               HelperText="@L["Clients.Edit.KeyIdHint"].Value"
+                                                               Placeholder="@L["Clients.Edit.KeyIdPlaceholder"].Value"
+                                                               MaxLength="100"
+                                                               Immediate="true"
+                                                               spellcheck="false"
+                                                               @bind-Value="tlsCertificateKeyId" />
+                                            <IdentityTextField T="string"
+                                                               Id="tls-client-id-confirmation"
+                                                               Name="tlsClientIdConfirmation"
+                                                               Label="@L["Clients.Edit.ConfirmClientIdLabel"].Value"
+                                                               HelperText="@($"{L["Clients.Detail.DeleteConfirmPrefix"].Value} {client.ClientId} {L["Clients.Edit.LinkMaterialSuffix"].Value}")"
+                                                               Immediate="true"
+                                                               autocomplete="off"
+                                                               spellcheck="false"
+                                                               @bind-Value="tlsClientIdConfirmation" />
+                                        </ChildContent>
+                                        <FullWidthContent>
+                                            <IdentityTextField T="string"
+                                                               Id="tls-certificate-pem"
+                                                               Name="tlsCertificatePem"
+                                                               Label="@L["Clients.Edit.CertificatePemLabel"].Value"
+                                                               HelperText="@L["Clients.Edit.CertificatePemHint"].Value"
+                                                               Placeholder="@CertificatePemPlaceholder"
+                                                               Multiline="true"
+                                                               Rows="8"
+                                                               Immediate="true"
+                                                               spellcheck="false"
+                                                               @bind-Value="tlsCertificatePem" />
+                                        </FullWidthContent>
+                                    </SUIFormGrid>
 
                                     @if (!string.IsNullOrWhiteSpace(tlsCertificateErrorMessage))
                                     {
-                                        <div class="inline-notice inline-notice--danger" role="alert">
-                                            <SUIIcon Name="alert" Size="19" />
-                                            <div><strong>@L["Clients.Edit.RegisterCertErrorTitle"]</strong><span>@tlsCertificateErrorMessage</span></div>
-                                        </div>
+                                        <SUIAlert ToneValue="SUITone.Danger" Icon="alert">
+                                            <strong>@L["Clients.Edit.RegisterCertErrorTitle"]</strong>
+                                            <span>@tlsCertificateErrorMessage</span>
+                                        </SUIAlert>
                                     }
 
-                                    <div class="client-credential-editor__actions">
-                                        <button class="button button--secondary" type="button" disabled="@savingTlsCertificate" @onclick="CancelTlsCertificateRegistration">@L["Clients.Detail.Cancel"]</button>
-                                        <button class="button button--primary" type="button" disabled="@(!CanSubmitTlsCertificate)" @onclick="RegisterTlsCertificateAsync">
+                                    <SUIStack Row="true" Wrap="true" Spacing="2" Justify="End">
+                                        <SUIButton ColorValue="SUIColor.Secondary" Disabled="@savingTlsCertificate" OnClick="CancelTlsCertificateRegistration">@L["Clients.Detail.Cancel"]</SUIButton>
+                                        <SUIButton ColorValue="SUIColor.Primary" Disabled="@(!CanSubmitTlsCertificate)" OnClick="RegisterTlsCertificateAsync">
                                             @(savingTlsCertificate ? L["Clients.Edit.Registering"] : L["Clients.Edit.RegisterCertificateAction"])
-                                        </button>
-                                    </div>
+                                        </SUIButton>
+                                    </SUIStack>
                                 </div>
                             }
                         </div>
@@ -835,37 +793,31 @@ else
                                 <strong>@L["Clients.Edit.PublicKeysTitle"]</strong>
                                 <small>@L["Clients.Edit.PublicKeysDescription"]</small>
                             </span>
-                            <span class="status-badge status-badge--@(HasPrivateKeyJwt ? "success" : "neutral")">
+                            <SUIStatusBadge ToneValue="@(HasPrivateKeyJwt ? SUITone.Success : SUITone.Neutral)">
                                 @(HasPrivateKeyJwt ? L["Clients.List.ClientStatusActive"] : L["Clients.Edit.OptionalBadge"])
-                            </span>
+                            </SUIStatusBadge>
                         </summary>
                         <div class="client-key-method__body">
-                            <div class="inline-notice" role="note">
-                                <SUIIcon Name="info" Size="18" />
-                                <div>
-                                    <strong>@L["Clients.Edit.PublicMaterialOnlyTitle"]</strong>
-                                    <span>@L["Clients.Edit.PublicMaterialOnlyMessage"]</span>
-                                </div>
-                            </div>
-                            <div class="field-group">
-                                <label for="client-public-jwks">@L["Clients.Edit.JwksLabel"]</label>
-                                <textarea id="client-public-jwks"
-                                          name="clientPublicJwks"
-                                          class="form-control form-control--textarea technical-value client-key-method__textarea"
-                                          spellcheck="false"
-                                          placeholder='{"keys":[{"kty":"EC","kid":"...","use":"sig","crv":"P-256","x":"...","y":"..."}]}'
-                                          @bind="publicJwksJson"></textarea>
-                                <span class="field-hint">@L["Clients.Edit.JwksHint"]</span>
-                            </div>
-                            @if (!string.IsNullOrWhiteSpace(jwksErrorMessage))
-                            {
-                                <span class="field-error" role="alert">@jwksErrorMessage</span>
-                            }
-                            <div class="client-key-method__actions">
-                                <button class="button button--primary" type="button" disabled="@savingJwks" @onclick="SavePublicJwksAsync">
+                            <SUIAlert ToneValue="SUITone.Neutral" Icon="info" role="note">
+                                <strong>@L["Clients.Edit.PublicMaterialOnlyTitle"]</strong>
+                                <span>@L["Clients.Edit.PublicMaterialOnlyMessage"]</span>
+                            </SUIAlert>
+                            <IdentityTextField T="string"
+                                               Id="client-public-jwks"
+                                               Name="clientPublicJwks"
+                                               Label="@L["Clients.Edit.JwksLabel"].Value"
+                                               HelperText="@L["Clients.Edit.JwksHint"].Value"
+                                               ErrorText="@(string.IsNullOrWhiteSpace(jwksErrorMessage) ? null : jwksErrorMessage)"
+                                               Placeholder="@JwksPlaceholder"
+                                               Multiline="true"
+                                               Rows="8"
+                                               spellcheck="false"
+                                               @bind-Value="publicJwksJson" />
+                            <SUIStack Row="true" Wrap="true" Spacing="2" Justify="End">
+                                <SUIButton ColorValue="SUIColor.Primary" Disabled="@savingJwks" OnClick="SavePublicJwksAsync">
                                     @(savingJwks ? L["Clients.Draft.Saving"] : L["Clients.Edit.SaveJwksAction"])
-                                </button>
-                            </div>
+                                </SUIButton>
+                            </SUIStack>
                         </div>
                     </details>
                 </section>
@@ -873,22 +825,25 @@ else
 
             @if (!string.IsNullOrWhiteSpace(errorMessage))
             {
-                <div class="inline-notice inline-notice--danger" role="alert">
-                    <SUIIcon Name="alert" Size="19" />
-                    <div><strong>@L["Clients.Edit.ReviewConfigErrorTitle"]</strong><span>@errorMessage</span></div>
-                </div>
+                <SUIAlert ToneValue="SUITone.Danger" Icon="alert">
+                    <strong>@L["Clients.Edit.ReviewConfigErrorTitle"]</strong>
+                    <span>@errorMessage</span>
+                </SUIAlert>
             }
 
             @if (activeSection != 4)
             {
-                <div class="wizard-actions">
-                    <div>
-                        <button class="button button--primary" type="button" disabled="@saving" @onclick="SaveAsync">
-                            @if (saving) { <span class="button-spinner" aria-hidden="true"></span><span>@L["Clients.Draft.Saving"]</span> } else { <SUIIcon Name="check" Size="17" /><span>@L["Clients.Edit.SaveChangesAction"]</span> }
-                        </button>
-                    </div>
+                <SUIStack Row="true" Wrap="true" AlignItems="Center" Justify="Between" Class="wizard-actions">
+                    <SUILoadingButton ColorValue="SUIColor.Primary"
+                                      IsLoading="@saving"
+                                      Disabled="@saving"
+                                      aria-label="@(saving ? L["Clients.Draft.Saving"].Value : null)"
+                                      OnClick="SaveAsync">
+                        <SUIIcon Name="check" Size="17" />
+                        <span>@L["Clients.Edit.SaveChangesAction"]</span>
+                    </SUILoadingButton>
                     <span class="field-hint">@L["Clients.Edit.AuditVersionNote", client.Version ?? string.Empty]</span>
-                </div>
+                </SUIStack>
             }
         </main>
     </div>
@@ -938,7 +893,7 @@ else
     private string credentialOperation = "add";
     private string credentialMode = "generated";
     private string credentialLabel = string.Empty;
-    private DateTime? credentialExpirationDate;
+    private DateOnly? credentialExpirationDate;
     private string credentialRevocationReason = string.Empty;
     private string customClientSecret = string.Empty;
     private string customClientSecretConfirmation = string.Empty;
@@ -1030,13 +985,20 @@ else
         && (string.IsNullOrWhiteSpace(tlsCertificateKeyId)
             || tlsCertificateKeyId.Trim().Length <= 100);
 
-    private string MinimumCredentialExpirationDate =>
-        DateTime.UtcNow.AddDays(1).ToString("yyyy-MM-dd",
-            System.Globalization.CultureInfo.InvariantCulture);
+    private static DateOnly MinimumCredentialExpirationDate =>
+        DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1));
 
-    private string MaximumCredentialExpirationDate =>
-        DateTime.UtcNow.AddDays(730).ToString("yyyy-MM-dd",
-            System.Globalization.CultureInfo.InvariantCulture);
+    private static DateOnly MaximumCredentialExpirationDate =>
+        DateOnly.FromDateTime(DateTime.UtcNow.AddDays(730));
+
+    private const string CertificatePemPlaceholder =
+        "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----";
+
+    private const string JwksPlaceholder =
+        "{\"keys\":[{\"kty\":\"EC\",\"kid\":\"...\",\"use\":\"sig\",\"crv\":\"P-256\",\"x\":\"...\",\"y\":\"...\"}]}";
+
+    private string OptionalLabel(string label) =>
+        $"{label} ({L["Clients.Edit.OptionalTag"].Value})";
 
     private string SectionDescription => activeSection switch
     {
@@ -1232,12 +1194,6 @@ else
         }
     }
 
-    private void SetGeneratedCredentialMode(ChangeEventArgs _) =>
-        SetCredentialMode("generated");
-
-    private void SetCustomCredentialMode(ChangeEventArgs _) =>
-        SetCredentialMode("custom");
-
     private async Task SubmitCredentialAsync()
     {
         if (!CanSubmitCredential || client is null)
@@ -1338,10 +1294,10 @@ else
             return true;
         }
 
-        var date = DateOnly.FromDateTime(credentialExpirationDate.Value);
+        var date = credentialExpirationDate.Value;
 
-        var minimum = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1));
-        var maximum = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(730));
+        var minimum = MinimumCredentialExpirationDate;
+        var maximum = MaximumCredentialExpirationDate;
         if (date < minimum || date > maximum)
         {
             return false;
@@ -1458,12 +1414,6 @@ else
         tlsCertificatePem = string.Empty;
         tlsClientIdConfirmation = string.Empty;
     }
-
-    private void UseSelfSignedTlsAuthentication(ChangeEventArgs _) =>
-        tlsAuthenticationMethod = "self_signed_tls_client_auth";
-
-    private void UsePkiTlsAuthentication(ChangeEventArgs _) =>
-        tlsAuthenticationMethod = "tls_client_auth";
 
     private async Task RegisterTlsCertificateAsync()
     {
