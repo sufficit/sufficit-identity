@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using OpenIddict.Abstractions;
 using OpenIddict.Server.AspNetCore;
 using Sufficit.Identity.Core.Entities;
+using Sufficit.Identity.Core.Services;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace Sufficit.Identity.STS.Grants;
@@ -384,8 +385,11 @@ public sealed class DeviceCodeGrantHandler : ITokenGrantHandler
     }
 }
 
-/// <summary>client_credentials: no user, only the client identity itself.</summary>
-public sealed class ClientCredentialsGrantHandler : ITokenGrantHandler
+/// <summary>
+/// client_credentials: the client identity itself, or the system user the
+/// client is bound to (<see cref="SystemUserClientBinding"/>).
+/// </summary>
+public sealed class ClientCredentialsGrantHandler(SystemUserStore systemUsers) : ITokenGrantHandler
 {
     public IReadOnlyCollection<string> HandledGrantTypes { get; } =
         [GrantTypes.ClientCredentials];
@@ -393,10 +397,18 @@ public sealed class ClientCredentialsGrantHandler : ITokenGrantHandler
     public async Task<IActionResult> HandleAsync(TokenGrantContext context)
     {
         var (request, proof, ops) = (context.Request, context.Proof, context.Operations);
+        var ct = context.HttpContext.RequestAborted;
 
-        var application = await ops.ApplicationManager.FindByClientIdAsync(request.ClientId!)
+        var application = await ops.ApplicationManager.FindByClientIdAsync(request.ClientId!, ct)
             ?? throw new InvalidOperationException(
                 "The application cannot be found.");
+
+        var boundUserId = SystemUserClientBinding.Read(
+            await ops.ApplicationManager.GetPropertiesAsync(application, ct));
+        if (boundUserId is not null)
+        {
+            return await SignInAsSystemUserAsync(context, boundUserId, ct);
+        }
 
         var identity = await ops.BuildClientIdentityAsync(
             application, request.ClientId!);
@@ -409,6 +421,34 @@ public sealed class ClientCredentialsGrantHandler : ITokenGrantHandler
             identity,
             request,
             GrantOperations.RestrictEntitlementsToAccessToken);
+    }
+
+    /// <summary>
+    /// The token names the bound system user. A missing, disabled or no
+    /// longer system user (it gained a way to sign in) refuses the client
+    /// instead of falling back to a client token: the binding says this
+    /// software acts as that user and nothing else.
+    /// </summary>
+    private async Task<IActionResult> SignInAsSystemUserAsync(
+        TokenGrantContext context, string userId, CancellationToken ct)
+    {
+        var (request, proof, ops) = (context.Request, context.Proof, context.Operations);
+
+        var user = await ops.UserManager.FindByIdAsync(userId);
+        if (user is null || !await systemUsers.IsSystemUserAsync(user.Id, ct)
+            || await ops.UserManager.IsLockedOutAsync(user))
+        {
+            return TokenGrantDispatcher.ForbidError(Errors.UnauthorizedClient,
+                "The system user this client acts as is unavailable.");
+        }
+
+        var identity = await ops.BuildIdentityAsync(user);
+        identity.SetScopes(request.GetScopes());
+        identity.SetResources(await ops.ResolveResourcesAsync(identity, request));
+        identity.SetPresenters(request.ClientId!);
+        GrantOperations.ApplyDpopBinding(identity, proof);
+
+        return ops.SignIn(identity, request);
     }
 }
 

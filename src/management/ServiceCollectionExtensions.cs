@@ -137,9 +137,15 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<IServicePrincipalRoleSource,
             OpenIddictServicePrincipalRoleSource>();
         services.TryAddScoped<ScopeAndRoleManagementEntitlementResolver>();
+        services.TryAddSingleton<Sufficit.Identity.Core.Services.SystemUserStore>();
         services.TryAddScoped<IManagementEntitlementResolver>(provider =>
-            new ServicePrincipalEntitlementResolver(
-                provider.GetRequiredService<ScopeAndRoleManagementEntitlementResolver>(),
+            new SystemUserEntitlementResolver(
+                new ServicePrincipalEntitlementResolver(
+                    provider.GetRequiredService<ScopeAndRoleManagementEntitlementResolver>(),
+                    provider.GetRequiredService<IServicePrincipalRoleSource>(),
+                    provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<ManagementOptions>>()),
+                provider.GetRequiredService<Sufficit.Identity.Core.Services.SystemUserStore>(),
+                provider.GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<Sufficit.Identity.Core.Entities.ApplicationUser>>(),
                 provider.GetRequiredService<IServicePrincipalRoleSource>(),
                 provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<ManagementOptions>>()));
         services.TryAddScoped<IManagementAccessPolicyProvider,
@@ -407,40 +413,29 @@ public sealed class MfaHandler(
             return;
         }
 
-        // MACHINE principal with a role declared in the database: the
-        // policy's MFA gate does not apply to it, because it CANNOT apply —
-        // whoever authenticates with a client secret never carries `amr`,
-        // and requiring the impossible here protects nothing: it just turns
-        // every service grant into a permanent denial, before the capability
-        // evaluator even runs.
+        // Software (a system user, or during the transition a client with
+        // roles of its own) never carries `amr`: requiring a second factor
+        // from it is a permanent denial, not a gate. It passes here only when
+        // the entitlement resolver granted it something MFA-exempt — a
+        // deliberate grant in the database, revocable with an UPDATE — and
+        // passing grants nothing by itself: every operation still requires
+        // its capability. Software without such a grant stays barred here.
         //
-        // The gate stays narrow on both hinges: only whoever has at least
-        // one role in `identity:client:roles` gets in (a deliberate grant,
-        // in the database, revocable with an UPDATE), and passing through
-        // here grants no access by itself — every management operation still
-        // requires the capability that ServicePrincipalEntitlementResolver
-        // derives from those same roles. A machine without a role stays
-        // barred at this gate, as it always has.
-        if (!Authorization.ManagementPrincipal.IsService(context.User))
+        // Only a token carries a client: no client, nothing to resolve.
+        if (string.IsNullOrWhiteSpace(Authorization.ManagementPrincipal.ClientId(context.User)))
         {
             return;
         }
 
-        var clientId = Authorization.ManagementPrincipal.ClientId(context.User);
-        if (string.IsNullOrWhiteSpace(clientId))
-        {
-            return;
-        }
-
-        // The handler is a singleton and the role source is scoped (it talks
-        // to the database); the short-lived scope here is the price of not
-        // downgrading the source.
+        // The handler is a singleton and the resolver is scoped (it talks to
+        // the database); the short-lived scope is the price of not
+        // downgrading it.
         await using var scope = scopeFactory.CreateAsyncScope();
-        var roles = await scope.ServiceProvider
-            .GetRequiredService<Authorization.IServicePrincipalRoleSource>()
-            .RolesAsync(clientId);
+        var grants = await scope.ServiceProvider
+            .GetRequiredService<Authorization.IManagementEntitlementResolver>()
+            .ResolveAsync(context.User);
 
-        if (roles.Count > 0)
+        if (grants.MultiFactorExempt is { Count: > 0 })
         {
             context.Succeed(requirement);
         }
