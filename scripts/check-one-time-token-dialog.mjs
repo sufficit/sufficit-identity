@@ -103,6 +103,27 @@ try {
   await page.locator('.registration-tokens').waitFor();
   assert.equal(await page.locator('.registrations-footer nav.sui-pagination').count(), 1, 'registrations pagination');
 
+  // Capability help: SUITooltip keeps title and body permanently described
+  // on the help button (aria-describedby), not only while hovered.
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto(`${origin}/management/tokens?action=issue&capability=identity.clients.read`);
+  await page.waitForLoadState('networkidle');
+  const help = page.locator('[data-capability-help="identity.clients.read"]').first();
+  await help.waitFor({ state: 'attached' });
+  await page.waitForFunction(() => {
+    const button = document.querySelector('[data-capability-help="identity.clients.read"]');
+    return (button?.getAttribute('aria-describedby') || '').trim().length > 0;
+  });
+  const describedBy = (await help.getAttribute('aria-describedby')).split(/\s+/).filter(Boolean);
+  const description = await page.evaluate(ids => ids.map(id => document.getElementById(id)?.textContent || '').join(' '), describedBy);
+  assert.match(description, /Consultar aplicações|clients/i, 'capability help described permanently');
+  const visibleHelp = page.locator('[data-capability-help]:visible').first();
+  if (await visibleHelp.count() > 0) {
+    await visibleHelp.hover();
+    await page.locator('.sui-tooltip.is-visible').waitFor();
+  }
+  await page.screenshot({ path: `${output}/capability-help.png`, animations: 'disabled' });
+
   assert.deepEqual(errors, []);
 } finally {
   await browser.close();

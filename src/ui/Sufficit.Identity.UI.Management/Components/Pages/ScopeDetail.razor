@@ -10,8 +10,7 @@
 <SUIPageHeader Title="@HeaderTitle"
             Description="@L["Scopes.Detail.HeaderDescription"].Value">
     <Actions>
-        <SUIButton Href="scopes" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">
-            <SUIIcon Name="arrow-left" Size="17" />
+        <SUIButton Href="scopes" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" StartIcon="arrow-left">
             @L["Scopes.BackToScopes"]
         </SUIButton>
     </Actions>
@@ -92,6 +91,7 @@
             <SUIFormGrid Columns="2" Spacing="4" LabelLines="2">
                 <IdentityTextField T="string"
                               id="scope-name"
+                              Monospace="true"
                               Label="@L["Scopes.Field.Name.Label"].Value"
                               HelperText="@L["Scopes.Field.Name.ImmutableHelper"].Value"
                               Value="@scope.Name"
@@ -99,6 +99,8 @@
                 <IdentityTextField T="string"
                               id="scope-display-name"
                               Label="@L["Scopes.Field.DisplayName.Label"].Value"
+                              Optional="true"
+                              OptionalText="@L["Scopes.Field.OptionalMarker"].Value"
                               HelperText="@L["Scopes.Field.DisplayName.Helper"].Value"
                               MaxLength="200"
                               Disabled="@scope.IsManifestManaged"
@@ -109,6 +111,8 @@
                 <IdentityTextField T="string"
                               id="scope-description"
                               Label="@L["Scopes.Field.Description.Label"].Value"
+                              Optional="true"
+                              OptionalText="@L["Scopes.Field.OptionalMarker"].Value"
                               HelperText="@L["Scopes.Field.Description.Helper"].Value"
                               Multiline
                               MaxLength="1000"
@@ -117,6 +121,7 @@
                               @bind-Value="model.Description" />
                 <IdentityTextField T="string"
                               id="scope-resources"
+                              Monospace="true"
                               Label="@L["Scopes.Field.Resources.DetailLabel"].Value"
                               HelperText="@L["Scopes.Field.Resources.DetailHelper"].Value"
                               Multiline
@@ -149,14 +154,13 @@
         {
             <SUIStack Row="true" AlignItems="center" Justify="end" Spacing="2" Wrap="true">
                 <SUIButton Href="scopes" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">@L["Scopes.Cancel"]</SUIButton>
-                <SUIButton ButtonTypeValue="SUIButtonType.Submit" Disabled="@submitting">
+                <SUIButton ButtonTypeValue="SUIButtonType.Submit" Disabled="@submitting" StartIcon="@(submitting ? null : "check")">
                     @if (submitting)
                     {
                         @L["Scopes.Save.Saving"]
                     }
                     else
                     {
-                        <SUIIcon Name="check" Size="17" />
                         @L["Scopes.Save.Submit"]
                     }
                 </SUIButton>
@@ -182,8 +186,8 @@
                          @bind-Value="deleteConfirmed" />
             <SUIButton ColorValue="SUIColor.Error"
                        Disabled="@(!deleteConfirmed || deleting || scope.ClientIds.Count > 0)"
+                       StartIcon="trash"
                        OnClick="DeleteAsync">
-                <SUIIcon Name="trash" Size="17" />
                 @(deleting ? L["Scopes.Delete.Deleting"] : L["Scopes.Delete.Title"])
             </SUIButton>
         </div>

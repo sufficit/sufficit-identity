@@ -9,8 +9,7 @@
 
 <SUIPageHeader Title="@HeaderTitle" Description="@L["Users.Detail.Actions.AccessDescription"].Value">
     <Actions>
-        <SUIButton Href="@DetailHref" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">
-            <SUIIcon Name="arrow-left" Size="17" />
+        <SUIButton Href="@DetailHref" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" StartIcon="arrow-left">
             @L["Users.Actions.BackToUser"]
         </SUIButton>
     </Actions>
@@ -71,7 +70,8 @@
         {
             <SUICheckbox Id="confirm-account-lockout"
                          ColorValue="SUIColor.Error"
-                         Label="@LockoutConfirmationLabel"
+                         Label="@L["Users.Detail.Access.ConfirmLabel"].Value"
+                         HelperText="@L["Users.Detail.Access.ConfirmHint"].Value"
                          @bind-Value="lockoutConfirmed" />
         }
 
@@ -80,6 +80,7 @@
             <SUIButton ColorValue="@(currentlyLocked ? SUIColor.Default : SUIColor.Error)"
                        VariantValue="@(currentlyLocked ? SUIVariant.Outlined : SUIVariant.Filled)"
                        Disabled="@(busy || (!currentlyLocked && !lockoutConfirmed))"
+                       StartIcon="@(busy ? null : currentlyLocked ? "refresh" : "lock")"
                        OnClick="() => SetLockoutAsync(!currentlyLocked)">
                 @if (busy)
                 {
@@ -87,7 +88,6 @@
                 }
                 else
                 {
-                    <SUIIcon Name="@(currentlyLocked ? "refresh" : "lock")" Size="17" />
                     @(currentlyLocked ? L["Users.Detail.Access.UnlockButton"] : L["Users.Detail.Access.LockButton"])
                 }
             </SUIButton>
@@ -120,7 +120,6 @@ else
     private bool? lastLockoutState;
     private string DetailHref => $"users/{Uri.EscapeDataString(Id)}";
     private string HeaderTitle => result?.Value?.UserName ?? result?.Value?.Email ?? L["Users.Detail.Actions.Access"].Value;
-    private string LockoutConfirmationLabel => $"{L["Users.Detail.Access.ConfirmLabel"].Value}. {L["Users.Detail.Access.ConfirmHint"].Value}";
     private string OperationErrorTitle => operation?.Outcome is ManagementDataOutcome.StepUpRequired
         ? L["Users.Detail.Access.Error.StepUp"].Value
         : operation?.Outcome is ManagementDataOutcome.Forbidden

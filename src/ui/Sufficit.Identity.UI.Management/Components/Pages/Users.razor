@@ -12,8 +12,7 @@
     <Actions>
         @if (accessResult?.IsSuccess is true && Access.CanCreate)
         {
-            <SUIButton Href="users/new">
-                <SUIIcon Name="plus" Size="17" />
+            <SUIButton Href="users/new" StartIcon="plus">
                 @L["Users.Actions.New"]
             </SUIButton>
         }
@@ -122,23 +121,25 @@
             </div>
             @if (IsStaleUnverifiedReview)
             {
-                <SUIButton Href="@BaseUri" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" aria-current="page">
-                    <SUIIcon Name="x" Size="15" /> @L["Users.Investigation.End"]
+                <SUIButton Href="@BaseUri" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" aria-current="page" StartIcon="x">
+                    @L["Users.Investigation.End"]
                 </SUIButton>
             }
             else
             {
-                <SUIButton Href="@RiskReviewUrl" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">
-                    @L["Users.Investigation.Review"] <SUIIcon Name="arrow-right" Size="15" />
+                <SUIButton Href="@RiskReviewUrl" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" EndIcon="arrow-right">
+                    @L["Users.Investigation.Review"]
                 </SUIButton>
             }
         </div>
 
-        <details class="users-filter-panel" open>
-            <summary>
-                <span><SUIIcon Name="search" Size="18" /> @L["Users.Filters.Heading"]</span>
-                <span class="users-filter-count">@ActiveFilterLabel</span>
-            </summary>
+        <SUIExpansionPanel Class="users-filter-panel"
+                           Title="@L["Users.Filters.Heading"].Value"
+                           StartIcon="search"
+                           Expanded="true"
+                           KeepContentMounted="true">
+            <HeaderContent><span class="users-filter-count">@ActiveFilterLabel</span></HeaderContent>
+            <ChildContent>
             <form class="users-filter-form" data-sui-align-row @onsubmit="ApplyFilters" @onsubmit:preventDefault>
                 <IdentityTextField T="string" Class="users-field users-field--search"
                               Id="users-search" name="search" autocomplete="off"
@@ -202,7 +203,8 @@
                     <SUIButton ColorValue="SUIColor.Default" VariantValue="SUIVariant.Outlined" Disabled="@usersLoading" OnClick="ClearFilters">@L["Users.Filters.Clear"]</SUIButton>
                 </SUIStack>
             </form>
-        </details>
+            </ChildContent>
+        </SUIExpansionPanel>
 
         <div class="table-panel users-results" aria-labelledby="users-list-heading">
             <div class="data-toolbar users-results__header">
@@ -237,7 +239,9 @@
                                                    AllowUnsorted="false"
                                                    SortDirection="@SortDirectionFor(ManagementUserSort.NameAscending, ManagementUserSort.NameDescending)"
                                                    SortDirectionChanged="_ => SortBy(ToggleNameSort)"
-                                                   StateDescriptionFactory="NoSortStateDescription">@L["Users.Table.User"]</SUITableSortLabel>
+                                                   AscendingLabel="@L["Users.Table.SortedAscending"].Value"
+                                                   DescendingLabel="@L["Users.Table.SortedDescending"].Value"
+                                                   UnsortedLabel="@L["Users.Table.NotSorted"].Value">@L["Users.Table.User"]</SUITableSortLabel>
                             </SUITh>
                             <SUITh>@L["Users.Common.Email"]</SUITh>
                             <SUITh>
@@ -246,7 +250,9 @@
                                                    AllowUnsorted="false"
                                                    SortDirection="@SortDirectionFor(ManagementUserSort.CreatedOldest, ManagementUserSort.CreatedNewest)"
                                                    SortDirectionChanged="_ => SortBy(ToggleCreatedSort)"
-                                                   StateDescriptionFactory="NoSortStateDescription">@L["Users.Table.Registered"]</SUITableSortLabel>
+                                                   AscendingLabel="@L["Users.Table.SortedAscending"].Value"
+                                                   DescendingLabel="@L["Users.Table.SortedDescending"].Value"
+                                                   UnsortedLabel="@L["Users.Table.NotSorted"].Value">@L["Users.Table.Registered"]</SUITableSortLabel>
                             </SUITh>
                             <SUITh>@L["Users.Table.ExternalAccess"]</SUITh>
                             <SUITh>@L["Users.Filters.Mfa"]</SUITh>
@@ -290,8 +296,8 @@
                             <SUITd DataLabel="@L["Users.Filters.State"]"><span class="registration-state"><span class="status-dot @(user.IsLockedOut ? "status-dot--danger" : "status-dot--success")" aria-hidden="true"></span>@(user.IsLockedOut ? L["Users.Table.Locked"] : L["Users.Filters.Active"])</span></SUITd>
                             <SUITd DataLabel="@L["Users.Table.Actions"]">
                                 <SUIButton Href="@UserHref(user.Id)" VariantValue="SUIVariant.Text" SizeValue="SUISize.Small"
-                                           aria-label="@L["Users.Table.OpenDetails", DisplayUserName(user)].Value">
-                                    @L["Users.Table.Details"]<SUIIcon Name="arrow-right" Size="15" />
+                                           aria-label="@L["Users.Table.OpenDetails", DisplayUserName(user)].Value" EndIcon="arrow-right">
+                                    @L["Users.Table.Details"]
                                 </SUIButton>
                             </SUITd>
                         </RowTemplate>
@@ -299,21 +305,17 @@
                 }
                 </Success>
             </ManagementDataView>
-            <footer class="table-footer table-footer--paginated">
-                <span>@PaginationLabel</span>
-                @if (TotalPages > 1)
-                {
-                    <nav class="pagination" aria-label="@L["Users.Pagination.AriaLabel"]">
-                        <SUIButton Href="@(Page.Page > 1 ? UrlFor(page: Page.Page - 1) : null)"
-                                   VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" SizeValue="SUISize.Small"
-                                   Disabled="@(Page.Page <= 1)">@L["Users.Pagination.Previous"]</SUIButton>
-                        <span>@L["Users.Pagination.PageOf", Page.Page, TotalPages]</span>
-                        <SUIButton Href="@(Page.Page < TotalPages ? UrlFor(page: Page.Page + 1) : null)"
-                                   VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" SizeValue="SUISize.Small"
-                                   Disabled="@(Page.Page >= TotalPages)">@L["Users.Pagination.Next"]</SUIButton>
-                    </nav>
-                }
-            </footer>
+            <SUIPagination Class="table-footer table-footer--paginated"
+                           TotalItems="@Page.TotalCount"
+                           PageSize="@Page.PageSize"
+                           PageIndex="@(Page.Page - 1)"
+                           PageHref="@(index => UrlFor(page: index + 1))"
+                           AriaLabel="@L["Users.Pagination.AriaLabel"].Value"
+                           PreviousLabel="@L["Users.Pagination.Previous"].Value"
+                           NextLabel="@L["Users.Pagination.Next"].Value"
+                           PageLabel="@((page, total) => L["Users.Pagination.PageOf", page, total].Value)"
+                           RangeFormatter="@((first, last, total) => L["Users.Pagination.Showing", first.ToString("N0"), last.ToString("N0"), total.ToString("N0")].Value)"
+                           EmptyText="@L["Users.Pagination.NoResults"].Value" />
         </div>
     </main>
     </Success>
@@ -365,7 +367,6 @@
     private ManagementUserSort QuerySort => ParseEnum(QuerySortValue, ManagementUserSort.CreatedNewest);
     private ManagementUserReviewFilter QueryReview => ParseEnum(QueryReviewValue, ManagementUserReviewFilter.All);
     private bool IsStaleUnverifiedReview => QueryReview is ManagementUserReviewFilter.StaleUnverifiedWithoutExternal;
-    private int TotalPages => Math.Max(1, (int)Math.Ceiling(Page.TotalCount / (double)Page.PageSize));
     private int AnomalyCount => Analytics.Days.Count(day => day.IsAnomaly);
     private int ChartMax => Math.Max(1, Analytics.Days.Count > 0 ? Analytics.Days.Max(day => day.Count) : 1);
     private ManagementUserSort ToggleCreatedSort => QuerySort == ManagementUserSort.CreatedNewest ? ManagementUserSort.CreatedOldest : ManagementUserSort.CreatedNewest;
@@ -373,7 +374,6 @@
     private string AnalyticsRangeLabel => L["Users.Overview.RangeLabel", analyticsDays];
     private string ResultContextLabel => IsStaleUnverifiedReview ? L["Users.Results.StaleContext"] : SelectedDay is { } day ? L["Users.Results.DayContext", BrowserTime.FormatDay(day)] : L["Users.Results.DefaultContext"];
     private string ResultCountLabel => usersLoading ? L["Users.Results.Updating"] : $"{Page.TotalCount:N0} {Pluralize(Page.TotalCount, L["Users.Count.AccountSingular"], L["Users.Count.AccountPlural"])}";
-    private string PaginationLabel => Page.TotalCount == 0 ? L["Users.Pagination.NoResults"] : L["Users.Pagination.Showing", ((Page.Page - 1) * Page.PageSize + 1).ToString("N0"), Math.Min(Page.Page * Page.PageSize, Page.TotalCount).ToString("N0"), Page.TotalCount.ToString("N0")];
     private string ActiveFilterLabel { get { var count = 0; if (!string.IsNullOrWhiteSpace(QuerySearch)) count++; if (QueryFrom is not null || QueryTo is not null) count++; if (QueryDay is not null) count++; if (QueryState != ManagementUserStateFilter.All) count++; if (QueryEmail != ManagementUserBooleanFilter.All) count++; if (QueryMfa != ManagementUserBooleanFilter.All) count++; if (QueryReview != ManagementUserReviewFilter.All) count++; return count == 0 ? L["Users.Filters.None"] : $"{count} {Pluralize(count, L["Users.Filters.ActiveSingular"], L["Users.Filters.ActivePlural"])}"; } }
     private string StaleUnverifiedCountLabel => $"{Analytics.StaleUnverifiedWithoutExternalTotal:N0} {Pluralize(Analytics.StaleUnverifiedWithoutExternalTotal, L["Users.Count.PendingAccountSingular"], L["Users.Count.PendingAccountPlural"])}";
     private string EmptyStateTitle => IsStaleUnverifiedReview ? L["Users.Empty.PendingTitle"] : L["Users.Empty.DefaultTitle"];
@@ -463,7 +463,6 @@
     private SUISortDirection SortDirectionFor(ManagementUserSort ascending, ManagementUserSort descending) => QuerySort == ascending ? SUISortDirection.Ascending : QuerySort == descending ? SUISortDirection.Descending : SUISortDirection.None;
     // The header keeps its localized aria-label (which already names the action),
     // so the library's built-in English state suffix is suppressed.
-    private static string NoSortStateDescription(SUISortDirection _) => string.Empty;
     private void SortBy(ManagementUserSort value) => Navigation.NavigateTo(UrlFor(sort: value, page: 1));
     private void ClearSelectedDay() => Navigation.NavigateTo(UrlFor(day: null, clearDay: true, page: 1));
     private string DayAriaLabel(ManagementUserRegistrationDay day) => L["Users.Chart.DayAriaLabel", day.Date.ToString("dd 'de' MMMM", PtBr), day.Count, Pluralize(day.Count, L["Users.Count.RegistrationSingular"], L["Users.Count.RegistrationPlural"]), day.IsAnomaly ? L["Users.Chart.DayAnomalySuffix"] : string.Empty];

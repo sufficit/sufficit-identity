@@ -328,6 +328,9 @@
   <data name="Users.Table.SortByName" xml:space="preserve"><value>Ordenar por nome</value></data>
   <data name="Users.Table.User" xml:space="preserve"><value>Usuário</value></data>
   <data name="Users.Table.SortByCreated" xml:space="preserve"><value>Ordenar por data de cadastro</value></data>
+  <data name="Users.Table.SortedAscending" xml:space="preserve"><value>, em ordem crescente</value></data>
+  <data name="Users.Table.SortedDescending" xml:space="preserve"><value>, em ordem decrescente</value></data>
+  <data name="Users.Table.NotSorted" xml:space="preserve"><value>, sem ordenação</value></data>
   <data name="Users.Table.Registered" xml:space="preserve"><value>Cadastro</value></data>
   <data name="Users.Table.ExternalAccess" xml:space="preserve"><value>Acesso externo</value></data>
   <data name="Users.Table.Actions" xml:space="preserve"><value>Ações</value></data>
@@ -339,9 +342,9 @@
   <data name="Users.Table.Details" xml:space="preserve"><value>Detalhes</value></data>
   <data name="Users.Table.EmailUnset" xml:space="preserve"><value>Não informado</value></data>
   <data name="Users.Pagination.AriaLabel" xml:space="preserve"><value>Paginação de usuários</value></data>
-  <data name="Users.Pagination.Previous" xml:space="preserve"><value>Anterior</value></data>
+  <data name="Users.Pagination.Previous" xml:space="preserve"><value>Página anterior</value></data>
   <data name="Users.Pagination.PageOf" xml:space="preserve"><value>Página {0} de {1}</value></data>
-  <data name="Users.Pagination.Next" xml:space="preserve"><value>Próxima</value></data>
+  <data name="Users.Pagination.Next" xml:space="preserve"><value>Próxima página</value></data>
   <data name="Users.Pagination.NoResults" xml:space="preserve"><value>Nenhum resultado</value></data>
   <data name="Users.Pagination.Showing" xml:space="preserve"><value>Exibindo {0}–{1} de {2}</value></data>
   <data name="Clients.Detail.TypeLabel" xml:space="preserve"><value>Tipo</value></data>
@@ -832,7 +835,7 @@
   <data name="Users.Edit.Field.UserName" xml:space="preserve"><value>Nome de usuário</value></data>
   <data name="Users.Edit.Field.Email" xml:space="preserve"><value>E-mail</value></data>
   <data name="Users.Edit.Field.Phone" xml:space="preserve"><value>Telefone</value></data>
-  <data name="Users.Edit.Field.PhoneOptional" xml:space="preserve"><value>Opcional</value></data>
+  <data name="Users.Edit.Field.PhoneOptional" xml:space="preserve"><value>(opcional)</value></data>
   <data name="Users.Edit.Field.PhoneHint" xml:space="preserve"><value>Use o formato reconhecido pelo provedor de confirmação configurado para este runtime.</value></data>
   <data name="Users.Edit.Cancel" xml:space="preserve"><value>Cancelar</value></data>
   <data name="Users.Edit.Submitting" xml:space="preserve"><value>Salvando perfil…</value></data>
@@ -1234,15 +1237,16 @@
   <data name="Scopes.Create.Error.Title" xml:space="preserve"><value>Não foi possível criar o scope</value></data>
   <data name="Scopes.Identification.Title" xml:space="preserve"><value>Identificação</value></data>
   <data name="Scopes.Identification.Description" xml:space="preserve"><value>O nome faz parte do contrato OAuth e não poderá ser alterado após a criação.</value></data>
+  <data name="Scopes.Field.OptionalMarker" xml:space="preserve"><value>(opcional)</value></data>
   <data name="Scopes.Field.Name.Label" xml:space="preserve"><value>Nome</value></data>
   <data name="Scopes.Field.Name.Helper" xml:space="preserve"><value>Exemplo: calendar.read ou urn:example:orders.write</value></data>
-  <data name="Scopes.Field.DisplayName.Label" xml:space="preserve"><value>Nome de exibição (opcional)</value></data>
+  <data name="Scopes.Field.DisplayName.Label" xml:space="preserve"><value>Nome de exibição</value></data>
   <data name="Scopes.Field.DisplayName.Helper" xml:space="preserve"><value>Rótulo apresentado ao usuário no consentimento.</value></data>
-  <data name="Scopes.Field.Description.Label" xml:space="preserve"><value>Descrição (opcional)</value></data>
+  <data name="Scopes.Field.Description.Label" xml:space="preserve"><value>Descrição</value></data>
   <data name="Scopes.Field.Description.Helper" xml:space="preserve"><value>Explique de forma concreta o acesso concedido ao cliente.</value></data>
   <data name="Scopes.Resources.Title" xml:space="preserve"><value>Recursos protegidos</value></data>
   <data name="Scopes.Resources.Description" xml:space="preserve"><value>Informe os audiences que recebem este scope, um por linha.</value></data>
-  <data name="Scopes.Field.Resources.Label" xml:space="preserve"><value>Resources / audiences (opcional)</value></data>
+  <data name="Scopes.Field.Resources.Label" xml:space="preserve"><value>Resources / audiences</value></data>
   <data name="Scopes.Field.Resources.Helper" xml:space="preserve"><value>Exemplo: https://api.example.com/calendar</value></data>
   <data name="Scopes.Cancel" xml:space="preserve"><value>Cancelar</value></data>
   <data name="Scopes.Create.Submitting" xml:space="preserve"><value>Criando scope…</value></data>
@@ -2146,7 +2150,8 @@
   <data name="SystemUsers.Field.UserName" xml:space="preserve"><value>Nome de usuário</value></data>
   <data name="SystemUsers.Field.UserNameHelp" xml:space="preserve"><value>Identificador único, por exemplo agente-github-engineer.</value></data>
   <data name="SystemUsers.Field.DisplayName" xml:space="preserve"><value>Nome de exibição</value></data>
-  <data name="SystemUsers.Field.DisplayNameHelp" xml:space="preserve"><value>Opcional. É o nome que as aplicações mostram.</value></data>
+  <data name="SystemUsers.Field.DisplayNameHelp" xml:space="preserve"><value>É o nome que as aplicações mostram.</value></data>
+  <data name="SystemUsers.Field.OptionalMarker" xml:space="preserve"><value>(opcional)</value></data>
   <data name="SystemUsers.Cancel" xml:space="preserve"><value>Cancelar</value></data>
   <data name="SystemUsers.Create.Submit" xml:space="preserve"><value>Criar usuário de sistema</value></data>
   <data name="SystemUsers.Loading" xml:space="preserve"><value>Carregando usuários de sistema…</value></data>

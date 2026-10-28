@@ -11,8 +11,7 @@
 
 <SUIPageHeader Title="@HeaderTitle" Description="@L["Users.ExternalLogins.Description"].Value">
     <Actions>
-        <SUIButton Href="@DetailHref" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">
-            <SUIIcon Name="arrow-left" Size="17" />
+        <SUIButton Href="@DetailHref" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" StartIcon="arrow-left">
             @L["Users.Actions.BackToUser"]
         </SUIButton>
     </Actions>
@@ -68,16 +67,10 @@ else
                     {
                         <SUIButton ColorValue="SUIColor.Error"
                                    Disabled="@(busyKey is not null)"
+                                   StartIcon="@(removing ? null : "trash")"
+                                   AutoLoading="false"
                                    OnClick="() => RemoveAsync(current)">
-                            @if (removing)
-                            {
-                                @L["Users.ExternalLogins.Removing"]
-                            }
-                            else
-                            {
-                                <SUIIcon Name="trash" Size="17" />
-                                @L["Users.ExternalLogins.RemoveButton"]
-                            }
+                            @(removing ? L["Users.ExternalLogins.Removing"] : L["Users.ExternalLogins.RemoveButton"])
                         </SUIButton>
                     }
                 </li>

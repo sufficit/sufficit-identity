@@ -19,13 +19,11 @@
            @onkeydown="HandleNavigationKeyDown">
         <div class="sidebar-mobile-header">
             <span>@L["Layout.Navigation"]</span>
-            <SUIButton VariantValue="SUIVariant.Text"
-                       ColorValue="SUIColor.Inherit"
-                       aria-label="@L["Layout.CloseNavigation"].Value"
-                       @ref="closeNavigationButton"
-                       OnClick="CloseNavigationAsync">
-                <SUIIcon Name="x" />
-            </SUIButton>
+            <SUIIconButton ColorValue="SUIColor.Inherit"
+                           Icon="x"
+                           Title="@L["Layout.CloseNavigation"].Value"
+                           @ref="closeNavigationButton"
+                           OnClick="CloseNavigationAsync" />
         </div>
         <div class="sidebar-content" @onclick="CloseNavigationAsync">
             <NavMenu Overview="@overviewResult" ServerHostName="@ServerHostName" />
@@ -35,16 +33,14 @@
     <div class="app-workspace">
         <header class="app-topbar">
             <div class="topbar-leading">
-                <SUIButton Class="topbar-menu"
-                           VariantValue="SUIVariant.Text"
-                           ColorValue="SUIColor.Default"
-                           aria-label="@L["Layout.OpenNavigation"].Value"
-                           aria-controls="management-navigation"
-                           aria-expanded="@(navigationOpen ? "true" : "false")"
-                           @ref="openNavigationButton"
-                           OnClick="OpenNavigationAsync">
-                    <SUIIcon Name="menu" />
-                </SUIButton>
+                <SUIIconButton Class="topbar-menu"
+                               ColorValue="SUIColor.Default"
+                               Icon="menu"
+                               Title="@L["Layout.OpenNavigation"].Value"
+                               aria-controls="management-navigation"
+                               aria-expanded="@(navigationOpen ? "true" : "false")"
+                               @ref="openNavigationButton"
+                               OnClick="OpenNavigationAsync" />
                 <div class="topbar-context">
                     <span>@L["Layout.Environment"]</span>
                     <strong>@EnvironmentLabel</strong>
@@ -102,8 +98,8 @@
     private bool avatarLoadFailed;
     private string? avatarUrl;
     private ManagementDataResult<ManagementOverview>? overviewResult;
-    private SUIButton? openNavigationButton;
-    private SUIButton? closeNavigationButton;
+    private SUIIconButton? openNavigationButton;
+    private SUIIconButton? closeNavigationButton;
 
     private string ServerHostName =>
         Configuration["Sufficit:Runtime:ServerHostName"]?.Trim()
@@ -202,7 +198,7 @@
         await InvokeAsync(StateHasChanged);
         if (closeNavigationButton is not null)
         {
-            await closeNavigationButton.FocusAsync();
+            await closeNavigationButton.FocusAsync(preventScroll: true);
         }
     }
 
@@ -217,7 +213,7 @@
         await InvokeAsync(StateHasChanged);
         if (openNavigationButton is not null)
         {
-            await openNavigationButton.FocusAsync();
+            await openNavigationButton.FocusAsync(preventScroll: true);
         }
     }
 }

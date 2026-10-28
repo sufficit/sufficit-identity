@@ -14,14 +14,12 @@
         <SUIButton ButtonTypeValue="SUIButtonType.Button"
                    ColorValue="SUIColor.Secondary"
                    OnClick="LoadAsync"
-                   Disabled="@loading">
-            <SUIIcon Name="refresh" Size="17" />
+                   Disabled="@loading" StartIcon="refresh">
             @L["SystemUsers.Reload"]
         </SUIButton>
         <SUIButton ButtonTypeValue="SUIButtonType.Button"
                    OnClick="BeginCreate"
-                   Disabled="@(loading || creating)">
-            <SUIIcon Name="plus" Size="17" />
+                   Disabled="@(loading || creating)" StartIcon="plus">
             @L["SystemUsers.New"]
         </SUIButton>
     </Actions>
@@ -54,6 +52,8 @@
                                id="system-user-display-name"
                                Immediate="true"
                                Label="@L["SystemUsers.Field.DisplayName"].Value"
+                               Optional="true"
+                               OptionalText="@L["SystemUsers.Field.OptionalMarker"].Value"
                                HelperText="@L["SystemUsers.Field.DisplayNameHelp"].Value"
                                MaxLength="200"
                                Disabled="@creating"
@@ -107,14 +107,14 @@ else
             <SUITh><span class="visually-hidden">@L["SystemUsers.Table.Actions"]</span></SUITh>
         </HeaderContent>
         <RowTemplate Context="item">
-            <SUITd DataLabel="@L["SystemUsers.Table.Name"]"><div>
+            <SUITd DataLabel="@L["SystemUsers.Table.Name"]">
                 <strong>@(item.DisplayName ?? item.UserName)</strong>
                 <small><code>@item.UserName</code> · <a href="users/@item.UserId">@item.UserId</a></small>
-            </div></SUITd>
-            <SUITd DataLabel="@L["SystemUsers.Table.Created"]"><div>
+            </SUITd>
+            <SUITd DataLabel="@L["SystemUsers.Table.Created"]">
                 <span>@Time.Format(item.CreatedAtUtc)</span>
                 <small>@item.CreatedBy</small>
-            </div></SUITd>
+            </SUITd>
             <SUITd DataLabel="@L["SystemUsers.Table.Credentials"]">@item.ActiveCredentials</SUITd>
             <SUITd DataLabel="@L["SystemUsers.Table.State"]">
                 <SUIStatusBadge ToneValue="@(item.Disabled ? SUITone.Neutral : SUITone.Success)">
@@ -126,14 +126,15 @@ else
                     <SUIButton ButtonTypeValue="SUIButtonType.Button"
                                VariantValue="SUIVariant.Outlined"
                                ColorValue="SUIColor.Primary"
+                               StartIcon="key"
                                OnClick="@(() => SelectAsync(item))">
-                        <SUIIcon Name="key" Size="16" />
                         @L["SystemUsers.Action.Credentials"]
                     </SUIButton>
                     <SUIButton ButtonTypeValue="SUIButtonType.Button"
                                VariantValue="SUIVariant.Text"
                                ColorValue="@(item.Disabled ? SUIColor.Primary : SUIColor.Error)"
                                Disabled="@(toggling == item.UserId)"
+                               AutoLoading="false"
                                OnClick="@(() => ToggleAsync(item))">
                         @(item.Disabled ? L["SystemUsers.Action.Enable"] : L["SystemUsers.Action.Disable"])
                     </SUIButton>
@@ -169,6 +170,7 @@ else
             <div class="system-user-credentials__issue" data-sui-align-row>
                 <IdentityTextField T="string"
                                    id="system-user-enrollment-client" Immediate="true"
+                                   Monospace="true"
                                    Label="@L["SystemUsers.Issue.Client"].Value"
                                    HelperText="@L["SystemUsers.Issue.ClientHelp"].Value"
                                    MaxLength="100"
@@ -228,18 +230,18 @@ else
                 </HeaderContent>
                 <RowTemplate Context="enrollment">
                     <SUITd DataLabel="@L["SystemUsers.Credentials.Client"]"><code>@enrollment.ClientId</code></SUITd>
-                    <SUITd DataLabel="@L["SystemUsers.Credentials.Label"]"><div>
+                    <SUITd DataLabel="@L["SystemUsers.Credentials.Label"]">
                         @enrollment.Label
                         <small>#@enrollment.CodeHint</small>
-                    </div></SUITd>
-                    <SUITd DataLabel="@L["SystemUsers.Credentials.State"]"><div>
+                    </SUITd>
+                    <SUITd DataLabel="@L["SystemUsers.Credentials.State"]">
                         <SUIStatusBadge ToneValue="@StatusTone(enrollment.Status)">@StatusText(enrollment.Status)</SUIStatusBadge>
                         <small>@StatusDetail(enrollment)</small>
-                    </div></SUITd>
-                    <SUITd DataLabel="@L["SystemUsers.Credentials.Issued"]"><div>
+                    </SUITd>
+                    <SUITd DataLabel="@L["SystemUsers.Credentials.Issued"]">
                         <span>@Time.Format(enrollment.CreatedAtUtc)</span>
                         <small>@enrollment.IssuedBy</small>
-                    </div></SUITd>
+                    </SUITd>
                     <SUITd Class="system-users-table__actions">
                         <SUIStack Row="true" AlignItems="Center" Justify="End" Spacing="2" Wrap="false">
                             @if (enrollment.Status is SystemUserEnrollmentStatus.Pending or SystemUserEnrollmentStatus.Active)
@@ -247,6 +249,7 @@ else
                                 <SUIButton ButtonTypeValue="SUIButtonType.Button"
                                            VariantValue="SUIVariant.Text"
                                            ColorValue="SUIColor.Error"
+                                           AutoLoading="false"
                                            OnClick="@(() => RevokeAsync(enrollment))">
                                     @L["SystemUsers.Credentials.Revoke"]
                                 </SUIButton>
@@ -263,6 +266,7 @@ else
             <div class="system-user-credentials__issue" data-sui-align-row>
                 <IdentityTextField T="string"
                                    id="system-user-bind-client" Immediate="true"
+                                   Monospace="true"
                                    Label="@L["SystemUsers.Clients.Field"].Value"
                                    HelperText="@L["SystemUsers.Clients.FieldHelp"].Value"
                                    MaxLength="100"
@@ -289,18 +293,19 @@ else
                           StackOnMobile="true"
                           aria-label="@L["SystemUsers.Clients.TableAriaLabel"].Value">
                     <RowTemplate Context="client">
-                        <SUITd DataLabel="@L["SystemUsers.Clients.Field"]"><div>
+                        <SUITd DataLabel="@L["SystemUsers.Clients.Field"]">
                             <code>@client.ClientId</code>
                             @if (!string.IsNullOrWhiteSpace(client.DisplayName))
                             {
                                 <small>@client.DisplayName</small>
                             }
-                        </div></SUITd>
+                        </SUITd>
                         <SUITd Class="system-users-table__actions">
                             <SUIStack Row="true" AlignItems="Center" Justify="End" Spacing="2" Wrap="false">
                                 <SUIButton ButtonTypeValue="SUIButtonType.Button"
                                            VariantValue="SUIVariant.Text"
                                            ColorValue="SUIColor.Error"
+                                           AutoLoading="false"
                                            OnClick="@(() => UnbindClientAsync(client))">
                                     @L["SystemUsers.Clients.Unbind"]
                                 </SUIButton>

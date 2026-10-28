@@ -8,7 +8,7 @@
 
 <SUIPageHeader Title="@HeaderTitle" Description="@L["Users.Detail.Actions.DeleteDescription"].Value">
     <Actions>
-        <SUIButton Href="@DetailHref" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default"><SUIIcon Name="arrow-left" Size="17" />@L["Users.Actions.BackToUser"]</SUIButton>
+        <SUIButton Href="@DetailHref" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" StartIcon="arrow-left">@L["Users.Actions.BackToUser"]</SUIButton>
     </Actions>
 </SUIPageHeader>
 
@@ -33,15 +33,15 @@
         <div><h2 id="delete-user-heading">@L["Users.Detail.Delete.Heading"]</h2><p>@L["Users.Detail.Delete.Description"]</p></div>
         <SUITextField TValue="string"
                       Id="delete-user-confirmation"
-                      Label="@ConfirmationLabel"
                       HelperText="@L["Users.Detail.Delete.Help"].Value"
                       Immediate="true"
                       autocomplete="off"
                       spellcheck="false"
-                      @bind-Value="confirmation" />
-        <SUIButton ColorValue="SUIColor.Error" Disabled="@(!CanSubmit)" OnClick="DeleteAsync">
-            @if (busy) { @L["Users.Detail.Delete.Submitting"] }
-            else { <SUIIcon Name="trash" Size="17" />@L["Users.Detail.Delete.Submit"] }
+                      @bind-Value="confirmation">
+            <LabelContent>@L["Users.Detail.Delete.ConfirmLabelPrefix"] <strong>@ConfirmationValue</strong> @L["Users.Detail.Delete.ConfirmLabelSuffix"]</LabelContent>
+        </SUITextField>
+        <SUIButton ColorValue="SUIColor.Error" Disabled="@(!CanSubmit)" OnClick="DeleteAsync" StartIcon="@(busy ? null : "trash")">
+            @(busy ? L["Users.Detail.Delete.Submitting"] : L["Users.Detail.Delete.Submit"])
         </SUIButton>
         @if (operation?.IsSuccess is false)
         {
@@ -75,7 +75,6 @@ else
     private string DetailHref => $"users/{Uri.EscapeDataString(Id)}";
     private string HeaderTitle => result?.Value?.UserName ?? result?.Value?.Email ?? L["Users.Detail.Delete.Heading"].Value;
     private string ConfirmationValue => result?.Value?.UserName ?? result?.Value?.Email ?? Id;
-    private string ConfirmationLabel => $"{L["Users.Detail.Delete.ConfirmLabelPrefix"].Value} {ConfirmationValue} {L["Users.Detail.Delete.ConfirmLabelSuffix"].Value}";
     private bool CanSubmit => !busy && string.Equals(confirmation.Trim(), ConfirmationValue, StringComparison.Ordinal);
     private string OperationErrorTitle => operation?.Outcome is ManagementDataOutcome.StepUpRequired
         ? L["Users.Detail.Delete.Error.StepUp"].Value

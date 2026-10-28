@@ -10,8 +10,7 @@
 
 <SUIPageHeader Title="@HeaderTitle" Description="@L["Users.Detail.Actions.ResendConfirmationDescription"].Value">
     <Actions>
-        <SUIButton Href="@DetailHref" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">
-            <SUIIcon Name="arrow-left" Size="17" />
+        <SUIButton Href="@DetailHref" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" StartIcon="arrow-left">
             @L["Users.Actions.BackToUser"]
         </SUIButton>
     </Actions>
@@ -57,14 +56,13 @@ else if (user.Actions.CanResendConfirmation)
 
         <SUIStack Row="true" AlignItems="center" Justify="between" Spacing="2" Wrap="true" Class="account-access-panel__actions">
             <span>@L["Users.Confirmation.ActionNote"]</span>
-            <SUIButton Disabled="@busy" OnClick="ResendAsync">
+            <SUIButton Disabled="@busy" OnClick="ResendAsync" StartIcon="@(busy ? null : "inbox")">
                 @if (busy)
                 {
                     @L["Users.Confirmation.Sending"]
                 }
                 else
                 {
-                    <SUIIcon Name="inbox" Size="17" />
                     @L["Users.Confirmation.SendButton"]
                 }
             </SUIButton>

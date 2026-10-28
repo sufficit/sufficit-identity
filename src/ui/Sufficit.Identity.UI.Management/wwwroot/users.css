@@ -331,30 +331,6 @@
     overflow: hidden;
 }
 
-.users-filter-panel summary {
-    display: flex;
-    min-height: 58px;
-    cursor: pointer;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 12px 18px;
-    color: var(--ink-strong);
-    font-size: 13px;
-    font-weight: 650;
-    list-style: none;
-}
-
-.users-filter-panel summary::-webkit-details-marker {
-    display: none;
-}
-
-.users-filter-panel summary > span:first-child {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-}
-
 .users-filter-count {
     color: var(--ink-subtle);
     font-size: 10px;
@@ -365,9 +341,6 @@
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 14px;
-    padding: 16px 18px 18px;
-    border-top: 1px solid var(--line);
-    background: var(--surface-page);
 }
 
 .users-field {
@@ -535,14 +508,8 @@
         margin-left: 0;
     }
 
-    .users-filter-panel summary {
-        min-height: 64px;
-        padding-inline: 16px;
-    }
-
     .users-filter-form {
         grid-template-columns: minmax(0, 1fr);
-        padding: 14px 16px 16px;
     }
 
     .users-filter-actions {

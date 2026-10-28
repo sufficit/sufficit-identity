@@ -136,12 +136,14 @@ public sealed partial class ManagementUiRoutingTests
             "Usada nas telas de Aplicações e detalhes do cliente",
             html,
             StringComparison.Ordinal);
+        // SUITooltip keeps the help permanently in the DOM and links it to the
+        // button through aria-describedby once connected (browser check).
         Assert.Contains(
-            "role=\"tooltip\"",
+            "data-sui-tooltip-persistent=\"true\"",
             html,
             StringComparison.Ordinal);
         Assert.Contains(
-            "aria-describedby=\"capability-help-identity-clients-read\"",
+            "data-capability-help=\"identity.clients.read\"",
             html,
             StringComparison.Ordinal);
         Assert.Contains("Confirmar e gerar token", html, StringComparison.Ordinal);

@@ -9,8 +9,7 @@
 <SUIPageHeader Title="@L["Users.Create.HeaderTitle"].Value"
             Description="@L["Users.Create.HeaderDescription"].Value">
     <Actions>
-        <SUIButton Href="users" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">
-            <SUIIcon Name="arrow-left" Size="17" />
+        <SUIButton Href="users" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" StartIcon="arrow-left">
             @L["Users.Create.BackToUsers"]
         </SUIButton>
     </Actions>
@@ -125,14 +124,13 @@ else
 
         <SUIStack Row="true" AlignItems="center" Justify="end" Spacing="2" Wrap="true">
             <SUIButton Href="users" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">@L["Users.Create.Cancel"]</SUIButton>
-            <SUIButton ButtonTypeValue="SUIButtonType.Submit" Disabled="@submitting">
+            <SUIButton ButtonTypeValue="SUIButtonType.Submit" Disabled="@submitting" StartIcon="@(submitting ? null : "plus")">
                 @if (submitting)
                 {
                     @L["Users.Create.Submitting"]
                 }
                 else
                 {
-                    <SUIIcon Name="plus" Size="17" />
                     @L["Users.Create.Submit"]
                 }
             </SUIButton>

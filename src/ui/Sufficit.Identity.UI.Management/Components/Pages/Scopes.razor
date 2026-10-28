@@ -8,8 +8,7 @@
 <SUIPageHeader Title="Scopes"
             Description="@L["Scopes.PageDescription"].Value">
     <Actions>
-        <SUIButton Href="scopes/new">
-            <SUIIcon Name="plus" Size="17" />
+        <SUIButton Href="scopes/new" StartIcon="plus">
             @L["Scopes.NewScope"]
         </SUIButton>
     </Actions>
@@ -110,9 +109,8 @@
                         <SUITd DataLabel="@L["Scopes.Table.Resources"].Value">@scope.ResourceCount</SUITd>
                         <SUITd DataLabel="@L["Scopes.Table.Clients"].Value">@scope.ClientCount</SUITd>
                         <SUITd DataLabel="@L["Scopes.Table.Actions"].Value">
-                            <SUIButton Href="@ScopeHref(scope.Id)" VariantValue="SUIVariant.Text" SizeValue="SUISize.Small">
+                            <SUIButton Href="@ScopeHref(scope.Id)" VariantValue="SUIVariant.Text" SizeValue="SUISize.Small" EndIcon="arrow-right">
                                 @L["Scopes.Details"]
-                                <SUIIcon Name="arrow-right" Size="15" />
                             </SUIButton>
                         </SUITd>
                     </RowTemplate>

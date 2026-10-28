@@ -9,46 +9,40 @@
 <SUIPageHeader Title="@HeaderTitle"
             Description="@L["Users.Detail.HeaderDescription"].Value">
     <Actions>
-        <SUIButton Href="@BackHref" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">
-            <SUIIcon Name="arrow-left" Size="17" />
+        <SUIButton Href="@BackHref" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" StartIcon="arrow-left">
             @L["Users.Detail.BackToUsers"]
         </SUIButton>
         <AuthorizeView Policy="@ManagementUiPolicies.ManageClaims">
             <Authorized>
-                <SUIButton Href="@ClaimsHref" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">
-                    <SUIIcon Name="shield" Size="17" />
+                <SUIButton Href="@ClaimsHref" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" StartIcon="shield">
                     @L["Users.Detail.ClaimsLink"]
                 </SUIButton>
             </Authorized>
         </AuthorizeView>
         <AuthorizeView Policy="@ManagementUiPolicies.ManageSessions">
             <Authorized>
-                <SUIButton Href="@SessionsHref" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">
-                    <SUIIcon Name="clock" Size="17" />
+                <SUIButton Href="@SessionsHref" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" StartIcon="clock">
                     @L["Users.Detail.SessionsLink"]
                 </SUIButton>
             </Authorized>
         </AuthorizeView>
         <AuthorizeView Policy="@ManagementUiPolicies.ManageMetrics">
             <Authorized>
-                <SUIButton Href="@UsageHref" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">
-                    <SUIIcon Name="chart" Size="17" />
+                <SUIButton Href="@UsageHref" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" StartIcon="chart">
                     @L["Users.Detail.UsageLink"]
                 </SUIButton>
             </Authorized>
         </AuthorizeView>
         <AuthorizeView Policy="@ManagementUiPolicies.ManageAuthorizations">
             <Authorized>
-                <SUIButton Href="@AuthorizationsHref" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default">
-                    <SUIIcon Name="shield" Size="17" />
+                <SUIButton Href="@AuthorizationsHref" VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" StartIcon="shield">
                     @L["Users.Detail.AuthorizationsLink"]
                 </SUIButton>
             </Authorized>
         </AuthorizeView>
         @if (result?.Value?.Actions.CanUpdateProfile is true)
         {
-            <SUIButton Href="@EditHref">
-                <SUIIcon Name="edit" Size="17" />
+            <SUIButton Href="@EditHref" StartIcon="edit">
                 @L["Users.Detail.EditProfileLink"]
             </SUIButton>
         }
