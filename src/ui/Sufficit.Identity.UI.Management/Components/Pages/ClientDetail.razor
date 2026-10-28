@@ -450,8 +450,8 @@
                                       IsLoading="@deleting"
                                       Disabled="@(!CanDelete)"
                                       aria-label="@(deleting ? L["Clients.Detail.Deleting"].Value : null)"
-                                      OnClick="DeleteAsync">
-                        <SUIIcon Name="trash" Size="17" />
+                                      OnClick="DeleteAsync"
+                    StartIcon="trash">
                         <span>@L["Clients.Detail.ConfirmDelete"]</span>
                     </SUILoadingButton>
                 </SUIStack>

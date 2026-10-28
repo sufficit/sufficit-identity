@@ -153,16 +153,6 @@
     --sui-fs-field: 16px;
 }
 
-.client-edit-choice-field {
-    display: grid;
-    min-width: 0;
-    gap: 7px;
-}
-
-.client-edit-par-choice {
-    align-self: end;
-    min-height: 72px;
-}
 .profile-context { margin-top: 22px; padding: 14px; border-left: 3px solid var(--brand); background: var(--brand-soft); }
 .profile-context div { display: grid; gap: 3px; }
 .uri-editor + .uri-editor { margin-top: 26px; }
@@ -5178,11 +5168,6 @@ h3 {
     user-select: none;
 }
 
-/* Menu size as a variable, not SUISelect's MenuMaxWidth: that renders an
-   inline style attribute, which the CSP does not allow. */
-.client-edit-consent-select .sui-select__menu {
-    --sui-select-menu-max-width: min(30rem, calc(100vw - 24px));
-}
 
 /* Audit before/after JSON keeps its line breaks and wraps long tokens. */
 .audit-json {

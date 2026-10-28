@@ -70,8 +70,8 @@
             </SUIButton>
             <SUILoadingButton IsLoading="@creating"
                               Disabled="@(creating || string.IsNullOrWhiteSpace(draftUserName))"
-                              OnClick="CreateAsync">
-                <SUIIcon Name="plus" Size="17" />
+                              OnClick="CreateAsync"
+                    StartIcon="plus">
                 <span>@L["SystemUsers.Create.Submit"]</span>
             </SUILoadingButton>
         </SUIStack>
@@ -200,8 +200,8 @@ else
                 </IdentitySelect>
                 <SUILoadingButton IsLoading="@issuing"
                                   Disabled="@(issuing || string.IsNullOrWhiteSpace(draftClientId) || string.IsNullOrWhiteSpace(draftLabel))"
-                                  OnClick="IssueAsync">
-                    <SUIIcon Name="key" Size="17" />
+                                  OnClick="IssueAsync"
+                    StartIcon="key">
                     <span>@L["SystemUsers.Issue.Submit"]</span>
                 </SUILoadingButton>
             </div>
@@ -276,8 +276,8 @@ else
                                    autocomplete="off" />
                 <SUILoadingButton IsLoading="@binding"
                                   Disabled="@(binding || string.IsNullOrWhiteSpace(draftBindClientId))"
-                                  OnClick="BindClientAsync">
-                    <SUIIcon Name="plus" Size="17" />
+                                  OnClick="BindClientAsync"
+                    StartIcon="plus">
                     <span>@L["SystemUsers.Clients.Bind"]</span>
                 </SUILoadingButton>
             </div>

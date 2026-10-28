@@ -103,21 +103,18 @@ else
                                name="consentType"
                                Label="@L["Clients.Detail.ConsentLabel"].Value"
                                @bind-Value="consentType"
-                               Class="client-edit-consent-select">
+                               MenuMaxWidth="min(30rem, calc(100vw - 24px))">
                         <SUISelectItem Value="@("explicit")">@L["Clients.Draft.ConsentExplicitOption"]</SUISelectItem>
                         <SUISelectItem Value="@("implicit")">@L["Clients.Draft.ConsentImplicitOption"]</SUISelectItem>
                         <SUISelectItem Value="@("external")">@L["Clients.Edit.ConsentExternalOption"]</SUISelectItem>
                         <SUISelectItem Value="@("systematic")">@L["Clients.Draft.ConsentSystematicOption"]</SUISelectItem>
                     </IdentitySelect>
-                    <div class="client-edit-choice-field" data-sui-align-field>
-                        <span class="client-edit-choice-field__label" data-sui-field-label aria-hidden="true"></span>
-                        <SUISwitch Id="edit-require-par"
-                                   Name="requirePar"
-                                   Class="client-edit-par-choice"
-                                   Label="@L["Clients.Draft.RequireParLabel"].Value"
-                                   HelperText="@L["Clients.Edit.RequireParHint"].Value"
-                                   @bind-Value="requirePar" />
-                    </div>
+                    <SUISwitch Id="edit-require-par"
+                               Name="requirePar"
+                               AlignWithFields="true"
+                               Label="@L["Clients.Draft.RequireParLabel"].Value"
+                               HelperText="@L["Clients.Edit.RequireParHint"].Value"
+                               @bind-Value="requirePar" />
                 </SUIFormGrid>
             }
             else if (activeSection == 1)
@@ -617,8 +614,8 @@ else
                                                   IsLoading="@rotatingCredential"
                                                   Disabled="@(!CanSubmitCredential)"
                                                   aria-label="@(rotatingCredential ? L["Clients.Draft.Saving"].Value : null)"
-                                                  OnClick="SubmitCredentialAsync">
-                                    <SUIIcon Name="key" Size="17" />
+                                                  OnClick="SubmitCredentialAsync"
+                    StartIcon="key">
                                     <span>@(credentialOperation == "add" ? L["Clients.Edit.AddCredentialAction"] : L["Clients.Edit.ConfirmReplacement"])</span>
                                 </SUILoadingButton>
                             </SUIStack>
@@ -863,8 +860,8 @@ else
                                       IsLoading="@saving"
                                       Disabled="@saving"
                                       aria-label="@(saving ? L["Clients.Draft.Saving"].Value : null)"
-                                      OnClick="SaveAsync">
-                        <SUIIcon Name="check" Size="17" />
+                                      OnClick="SaveAsync"
+                    StartIcon="check">
                         <span>@L["Clients.Edit.SaveChangesAction"]</span>
                     </SUILoadingButton>
                     <span class="field-hint">@L["Clients.Edit.AuditVersionNote", client.Version ?? string.Empty]</span>

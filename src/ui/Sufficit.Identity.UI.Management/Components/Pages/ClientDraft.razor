@@ -197,7 +197,7 @@ else
                             <SUISelectItem Value="@("external")">@L["Clients.Draft.ConsentExternalOption"]</SUISelectItem>
                             <SUISelectItem Value="@("systematic")">@L["Clients.Draft.ConsentSystematicOption"]</SUISelectItem>
                         </IdentitySelect>
-                        <SUISwitch Id="require-par" Name="requirePar"
+                        <SUISwitch Id="require-par" Name="requirePar" AlignWithFields="true"
                                    Label="@L["Clients.Draft.RequireParLabel"].Value" HelperText="@L["Clients.Draft.RequireParHint"].Value"
                                    Value="@draft.Values.RequirePar" ValueChanged="RequireParChangedAsync" />
                     </SUIFormGrid>

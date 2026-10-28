@@ -144,11 +144,11 @@
         _ => "alert"
     };
 
-    private string FailureTone => FailureOutcome switch
+    private SUITone FailureToneValue => FailureOutcome switch
     {
-        ManagementDataOutcome.Forbidden or ManagementDataOutcome.StepUpRequired => "warning",
-        ManagementDataOutcome.NotFound => "neutral",
-        _ => "danger"
+        ManagementDataOutcome.Forbidden or ManagementDataOutcome.StepUpRequired => SUITone.Warning,
+        ManagementDataOutcome.NotFound => SUITone.Neutral,
+        _ => SUITone.Danger
     };
 
     private string FailureTitleText => FailureOutcome switch
@@ -184,7 +184,8 @@
         <SUIEmptyState Icon="@FailureIcon"
                        Title="@FailureTitleText"
                        Description="@FailureDescriptionText"
-                       Class="@($"management-data-state management-data-state--{FailureTone}")"
+                       Class="management-data-state"
+                       ToneValue="@FailureToneValue"
                        data-outcome="@OutcomeName">
             <Actions>
                 @if (FailureOutcome is ManagementDataOutcome.StepUpRequired)

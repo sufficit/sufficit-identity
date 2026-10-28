@@ -579,7 +579,7 @@
   <data name="Clients.Draft.FlowsLabel" xml:space="preserve"><value>Flows</value></data>
   <data name="Clients.Draft.RequiredLabel" xml:space="preserve"><value>Required</value></data>
   <data name="Clients.Draft.OptionalLabel" xml:space="preserve"><value>Optional</value></data>
-  <data name="Clients.Draft.OptionalMarker" xml:space="preserve"><value> (optional)</value></data>
+  <data name="Clients.Draft.OptionalMarker" xml:space="preserve"><value>(optional)</value></data>
   <data name="Clients.Draft.TokensLabel" xml:space="preserve"><value>Tokens</value></data>
   <data name="Clients.Draft.NoScopeSelected" xml:space="preserve"><value>No permission selected.</value></data>
   <data name="Clients.Draft.ReturnsHeading" xml:space="preserve"><value>Returns</value></data>

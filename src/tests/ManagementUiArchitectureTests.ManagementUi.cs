@@ -169,13 +169,14 @@ public sealed partial class ManagementUiArchitectureTests
             StringComparison.Ordinal);
         Assert.Contains("<IdentitySelect T=\"string\"", editor,
             StringComparison.Ordinal);
-        Assert.Contains("data-sui-align-field", editor,
+        // The PAR switch lines up with the consent select through SUI itself.
+        Assert.Contains("AlignWithFields=\"true\"", editor,
             StringComparison.Ordinal);
         Assert.DoesNotContain("<select id=\"edit-consent\"", editor,
             StringComparison.Ordinal);
         Assert.Contains(".client-edit-form-grid--consent", styles,
             StringComparison.Ordinal);
-        Assert.Contains(".client-edit-par-choice", styles,
+        Assert.DoesNotContain(".client-edit-par-choice", styles,
             StringComparison.Ordinal);
     }
 
