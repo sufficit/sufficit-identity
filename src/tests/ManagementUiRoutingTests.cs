@@ -233,7 +233,22 @@ public sealed partial class ManagementUiRoutingTests
         configureServices?.Invoke(builder.Services);
 
         var app = builder.Build();
-        if (useKestrel) app.UseStaticFiles();
+        if (useKestrel)
+        {
+            // The browser checks run under production's CSP: an inline style
+            // attribute that production ignores must not pass here.
+            Sufficit.Identity.STS.SecurityHeadersMiddlewareExtensions.UseSufficitSecurityHeaders(app, new Sufficit.Identity.STS.SufficitIdentityOptions
+            {
+                Csp = new Sufficit.Identity.STS.CspOptions
+                {
+                    Enabled = true,
+                    ReportOnly = false,
+                    UseNonce = true,
+                    StyleAttributes = Sufficit.Identity.STS.CspStyleAttributes.Block,
+                },
+            });
+            app.UseStaticFiles();
+        }
         app.UseRequestLocalization(new RequestLocalizationOptions()
             .SetDefaultCulture("pt-BR")
             .AddSupportedCultures("pt-BR", "en-US")
