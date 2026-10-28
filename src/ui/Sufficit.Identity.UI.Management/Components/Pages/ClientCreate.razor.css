@@ -1,6 +1,4 @@
-/* Layout of the profile cards: the grid between the SUI buttons and the
- * arrangement of the content each button carries. The button itself keeps
- * its SUI look. */
+/* Layout of the profile cards: only the grid between the SUI choice cards. */
 .profile-grid {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
@@ -15,30 +13,7 @@
     .profile-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
-.profile-card {
-    display: grid;
-    width: 100%;
-    min-height: 96px;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    gap: 14px;
-    align-items: center;
-    padding-block: 10px;
+.profile-grid ::deep .profile-card__outcome {
+    color: var(--ink-subtle);
+    font-size: 12px;
 }
-
-.profile-card__icon {
-    display: grid;
-    width: 44px;
-    height: 44px;
-    place-items: center;
-    border-radius: var(--radius);
-    background: var(--brand-soft);
-    color: var(--brand);
-}
-
-.profile-card__body { display: grid; gap: 4px; font-weight: 400; }
-.profile-card__body strong { color: var(--ink-strong); font-size: 15px; font-weight: 600; }
-.profile-card__body span { color: var(--ink-muted); font-size: 13px; }
-.profile-card__body small { color: var(--ink-subtle); font-size: 12px; }
-.profile-card__action { color: var(--brand); }
-.profile-card--unavailable .profile-card__icon,
-.profile-card--unavailable .profile-card__action { color: var(--ink-subtle); }

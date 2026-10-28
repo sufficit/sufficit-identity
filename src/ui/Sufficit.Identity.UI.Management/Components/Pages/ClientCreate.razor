@@ -8,8 +8,7 @@
 <SUIPageHeader Title="@L["Clients.Create.Title"].Value"
             Description="@L["Clients.Create.Description"].Value">
     <Actions>
-        <SUIButton Href="clients" ColorValue="SUIColor.Secondary">
-            <SUIIcon Name="arrow-left" Size="17" />
+        <SUIButton Href="clients" ColorValue="SUIColor.Secondary" StartIcon="arrow-left">
             @L["Clients.Create.Back"]
         </SUIButton>
     </Actions>
@@ -61,36 +60,28 @@ else
     <div class="profile-grid" aria-label="@L["Clients.Create.ProfilesAriaLabel"].Value">
         @foreach (var profile in profiles)
         {
-            <SUIButton VariantValue="SUIVariant.Outlined"
-                       ColorValue="SUIColor.Default"
-                       FullWidth="true"
-                       Style="justify-content:flex-start;text-align:start"
-                       Disabled="@(creatingProfile is not null || !profile.IsAvailable)"
-                       aria-busy="@(creatingProfile == profile.Id ? "true" : null)"
-                       OnClick="@(() => CreateDraftAsync(profile.Id))">
-                <span class="profile-card @(profile.IsAvailable ? string.Empty : "profile-card--unavailable")">
-                <span class="profile-card__icon"><SUIIcon Name="@profile.Icon" Size="23" /></span>
-                <span class="profile-card__body">
-                    <strong>@profile.DisplayName</strong>
-                    <span>@profile.Description</span>
-                    <small>@(profile.IsAvailable ? profile.Outcome : profile.UnavailableReason)</small>
-                </span>
-                <span class="profile-card__action">
-                    @if (!profile.IsAvailable)
-                    {
-                        <SUIIcon Name="lock" Size="17" />
-                    }
-                    else if (creatingProfile == profile.Id)
+            <SUIChoiceCard TValue="string"
+                           Value="@profile.Id"
+                           Title="@profile.DisplayName"
+                           Description="@profile.Description"
+                           LeadingTone="@(profile.IsAvailable ? SUITone.Info : SUITone.Neutral)"
+                           Disabled="@(creatingProfile is not null || !profile.IsAvailable)"
+                           aria-busy="@(creatingProfile == profile.Id ? "true" : null)"
+                           OnClick="CreateDraftAsync">
+                <IconContent>
+                    @if (creatingProfile == profile.Id)
                     {
                         <SUIProgressCircular Indeterminate="true" SizeValue="SUISize.Small" AriaLabel="@L["Clients.Create.CreatingDraft"].Value" />
                     }
                     else
                     {
-                        <SUIIcon Name="arrow-right" Size="18" />
+                        <SUIIcon Name="@(profile.IsAvailable ? profile.Icon : "lock")" Size="23" />
                     }
-                </span>
-                </span>
-            </SUIButton>
+                </IconContent>
+                <ChildContent>
+                    <small class="profile-card__outcome">@(profile.IsAvailable ? profile.Outcome : profile.UnavailableReason)</small>
+                </ChildContent>
+            </SUIChoiceCard>
         }
     </div>
 }

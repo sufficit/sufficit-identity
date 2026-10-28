@@ -9,12 +9,10 @@
 <SUIPageHeader Title="@L["Clients.List.PageTitle"].Value"
             Description="@L["Clients.List.Description"].Value">
     <Actions>
-        <SUIButton Href="clients/registrations" ColorValue="SUIColor.Secondary">
-            <SUIIcon Name="shield" Size="17" />
+        <SUIButton Href="clients/registrations" ColorValue="SUIColor.Secondary" StartIcon="shield">
             @L["Clients.Registrations.Title"]
         </SUIButton>
-        <SUIButton Href="clients/new" ColorValue="SUIColor.Primary">
-            <SUIIcon Name="plus" Size="17" />
+        <SUIButton Href="clients/new" ColorValue="SUIColor.Primary" StartIcon="plus">
             @L["Clients.Create.Title"]
         </SUIButton>
     </Actions>
@@ -52,27 +50,26 @@
             <div><h2 id="drafts-heading">@L["Clients.List.ContinueConfigHeading"]</h2><p>@L["Clients.List.DraftsProtectedDescription"]</p></div>
             <SUIStatusBadge ToneValue="SUITone.Info">@Drafts.Count @(Drafts.Count == 1 ? L["Clients.List.DraftSingular"] : L["Clients.List.DraftPlural"])</SUIStatusBadge>
         </div>
-        <SUIStack Spacing="0" Class="draft-list">
+        <SUIStack Spacing="2" Class="draft-list">
             @foreach (var item in Drafts)
             {
-                <SUIButton Href="@DraftHref(item)"
-                           VariantValue="SUIVariant.Text"
-                           ColorValue="SUIColor.Default"
-                           FullWidth="true"
-                           Style="justify-content:flex-start;text-align:start">
-                    <span class="draft-item">
-                        <span class="draft-item__icon"><SUIIcon Name="edit" Size="19" /></span>
-                        <span class="draft-item__body">
-                            <strong>@DraftName(item)</strong>
-                            <span>@item.ProfileDisplayName · @L["Clients.List.StepLabel"] @DraftStepLabel(item.CurrentStep)</span>
-                            <small>@L["Clients.List.UpdatedLabel"] @FormatRelative(item.UpdatedAt) · @L["Clients.List.ExpiresInLabel"] @Time.Format(item.ExpiresAt, TimeStyle.Date)</small>
-                        </span>
+                <SUIChoiceCard TValue="Guid"
+                               Value="@item.Id"
+                               Href="@DraftHref(item)"
+                               Title="@DraftName(item)"
+                               Description="@($"{item.ProfileDisplayName} · {L["Clients.List.StepLabel"].Value} {DraftStepLabel(item.CurrentStep)}")"
+                               LeadingTone="SUITone.Info">
+                    <IconContent><SUIIcon Name="edit" Size="19" /></IconContent>
+                    <TrailingContent>
                         <span class="draft-item__status">
                             <SUIStatusBadge ToneValue="@(item.IsReady ? SUITone.Success : SUITone.Neutral)">@(item.IsReady ? L["Clients.List.ReadyStatus"] : L["Clients.List.InProgressStatus"])</SUIStatusBadge>
                         </span>
-                        <SUIIcon Name="arrow-right" Size="17" />
-                    </span>
-                </SUIButton>
+                        <SUIIcon Name="chevron-right" Size="17" />
+                    </TrailingContent>
+                    <ChildContent>
+                        <small class="draft-item__meta">@L["Clients.List.UpdatedLabel"] @FormatRelative(item.UpdatedAt) · @L["Clients.List.ExpiresInLabel"] @Time.Format(item.ExpiresAt, TimeStyle.Date)</small>
+                    </ChildContent>
+                </SUIChoiceCard>
             }
         </SUIStack>
     </div>
@@ -87,13 +84,11 @@
         <div class="clients-filters">
             @if (CanFilter)
             {
-                <div class="clients-filter--search">
-                    <SUIIcon Name="search" Size="18" />
-                    <IdentityTextField T="string" Class="clients-filter"
-                              Id="client-search" name="q" InputType="search" aria-label="@L["Clients.List.SearchAriaLabel"].Value"
-                              Placeholder="@L["Clients.List.SearchPlaceholder"].Value" autocomplete="off"
-                              Value="@search" ValueChanged="SearchChanged" />
-                </div>
+                <IdentityTextField T="string" Class="clients-filter clients-filter--search"
+                          Id="client-search" name="q" InputType="search" aria-label="@L["Clients.List.SearchAriaLabel"].Value"
+                          AdornmentIcon="search"
+                          Placeholder="@L["Clients.List.SearchPlaceholder"].Value" autocomplete="off"
+                          Value="@search" ValueChanged="SearchChanged" />
                 <IdentitySelect T="string" id="client-type-filter" name="type" Label="@L["Clients.Detail.TypeLabel"].Value" Class="clients-filter" Value="@typeFilter" ValueChanged="TypeSelected">
                     <SUISelectItem Value="@("all")">@L["Clients.List.All"]</SUISelectItem>
                     <SUISelectItem Value="@("public")">@L["Clients.List.FilterPublic"]</SUISelectItem>
@@ -116,7 +111,7 @@
                     <SUISelectItem Value="@("active")">@L["Clients.List.StatusActive"]</SUISelectItem>
                     <SUISelectItem Value="@("disabled")">@L["Clients.State.Disabled"]</SUISelectItem>
                 </IdentitySelect>
-                <IdentityTextField T="string" Class="clients-filter" Label="Scope"
+                <IdentityTextField T="string" Class="clients-filter" Label="Scope" Monospace="true"
                               Id="client-scope-filter" name="scope" Value="@scopeFilter"
                               Placeholder="@L["Clients.List.ScopePlaceholder"].Value" ValueChanged="ScopeChanged" />
             }
@@ -197,9 +192,9 @@
                             <SUIButton Href="@ClientHref(client.Id)"
                                        VariantValue="SUIVariant.Text"
                                        SizeValue="SUISize.Small"
+                                       EndIcon="arrow-right"
                                        aria-label="@L["Clients.List.OpenDetailsAriaLabel", client.ClientId].Value">
                                 @L["Clients.Registrations.Details"]
-                                <SUIIcon Name="arrow-right" Size="15" />
                             </SUIButton>
                         </SUITd>
                     </RowTemplate>
@@ -208,29 +203,25 @@
         </Success>
     </ManagementDataView>
 
-    <footer class="table-footer table-footer--paginated">
-        <span aria-live="polite" aria-atomic="true">@ResultCountLabel</span>
-        @if (HasPages)
+    <footer class="table-footer table-footer--paginated clients-footer">
+        @if (result?.IsSuccess is true)
         {
-            <nav class="pagination" aria-label="@L["Clients.List.PaginationAriaLabel"].Value">
-                <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" SizeValue="SUISize.Small"
-                        Disabled="@(CurrentPage <= 1 || loading)"
-                        OnClick="() => GoToPage(CurrentPage - 1)">
-                    <SUIIcon Name="arrow-left" Size="15" />
-                    @L["Clients.Registrations.Previous"]
-                </SUIButton>
-                <span class="pagination__status">@L["Clients.Registrations.PageOf", CurrentPage, PageCount]</span>
-                <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" SizeValue="SUISize.Small"
-                        Disabled="@(CurrentPage >= PageCount || loading)"
-                        OnClick="() => GoToPage(CurrentPage + 1)">
-                    @L["Clients.Registrations.Next"]
-                    <SUIIcon Name="arrow-right" Size="15" />
-                </SUIButton>
-            </nav>
+            <SUIPagination Class="clients-pagination"
+                           TotalItems="TotalCount"
+                           PageSize="PageSize"
+                           PageIndex="@(CurrentPage - 1)"
+                           PageIndexChanged="@((int index) => GoToPage(index + 1))"
+                           Disabled="loading"
+                           AriaLabel="@L["Clients.List.PaginationAriaLabel"].Value"
+                           PreviousLabel="@L["Clients.Registrations.Previous"].Value"
+                           NextLabel="@L["Clients.Registrations.Next"].Value"
+                           PageLabel="@((current, count) => L["Clients.Registrations.PageOf", current, count].Value)"
+                           RangeFormatter="FormatRange"
+                           EmptyText="@L["Clients.List.ZeroRecords"].Value" />
         }
         else
         {
-            <span class="pagination__status">@L["Clients.List.SinglePage"]</span>
+            <span aria-live="polite" aria-atomic="true">@ResultCountLabel</span>
         }
     </footer>
 </div>
@@ -315,9 +306,7 @@
     private string ResultCountLabel =>
         loading
             ? L["Clients.Registrations.LoadingRegistrations"].Value
-            : result?.IsSuccess is true
-                ? ResultRangeLabel
-                : L["Clients.List.NoRecordsLoaded"].Value;
+            : L["Clients.List.NoRecordsLoaded"].Value;
 
     private string EmptyTitle =>
         HasActiveClientFilters
@@ -341,21 +330,10 @@
     private int CurrentPage => result?.Value?.Page ?? page;
     private int PageSize => result?.Value?.PageSize ?? pageSize;
     private int PageCount => result?.Value?.PageCount ?? 0;
-    private bool HasPages => PageCount > 1;
-    private string ResultRangeLabel
+    private string FormatRange(int first, int last, int total)
     {
-        get
-        {
-            if (TotalCount is 0)
-            {
-                return L["Clients.List.ZeroRecords"].Value;
-            }
-
-            var first = ((CurrentPage - 1) * PageSize) + 1;
-            var last = Math.Min(CurrentPage * PageSize, TotalCount);
-            var unit = Pluralize(TotalCount, L["Clients.List.RecordSingular"].Value, L["Clients.List.RecordPlural"].Value);
-            return L["Clients.List.RangeFormat", first, last, TotalCount, unit].Value;
-        }
+        var unit = Pluralize(total, L["Clients.List.RecordSingular"].Value, L["Clients.List.RecordPlural"].Value);
+        return L["Clients.List.RangeFormat", first, last, total, unit].Value;
     }
 
     protected override async Task OnParametersSetAsync()

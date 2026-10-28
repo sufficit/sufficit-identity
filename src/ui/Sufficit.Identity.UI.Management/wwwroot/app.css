@@ -139,8 +139,7 @@
     margin-top: 20px;
 }
 
-.client-edit-form-grid > .sui-field,
-.client-edit-form-grid > .client-edit-choice-field {
+.client-edit-form-grid > * {
     min-width: 0;
 }
 
@@ -152,36 +151,6 @@
 .client-edit-form-grid {
     --sui-control-h-md: 44px;
     --sui-fs-field: 16px;
-}
-
-.client-edit-form-grid .sui-field__label,
-.client-edit-form-grid [data-sui-field-label] {
-    color: var(--ink-strong);
-    font-size: 13px;
-    font-weight: 600;
-    line-height: 1.2;
-}
-
-.client-edit-form-grid .sui-field__input {
-    height: auto;
-    min-height: var(--sui-control-h-md);
-    padding: 9px 12px;
-    line-height: 1.4;
-}
-
-.client-edit-form-grid .sui-select__trigger {
-    font-size: var(--sui-fs-field);
-}
-
-.client-edit-form-grid .sui-field__helper {
-    color: var(--ink-muted);
-    font-size: 12px;
-    line-height: 1.45;
-}
-
-.client-edit-technical-field .sui-field__input {
-    font-family: var(--font-mono);
-    font-size: 13px;
 }
 
 .client-edit-choice-field {
@@ -475,64 +444,6 @@
 .client-credential-form-heading > div {
     display: grid;
     gap: 4px;
-}
-
-.client-key-method {
-    min-width: 0;
-    padding-top: 18px;
-    border-top: 1px solid var(--line);
-}
-
-.client-key-method > summary {
-    display: grid;
-    grid-template-columns: 40px minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 12px;
-    cursor: pointer;
-    list-style: none;
-}
-
-.client-key-method > summary::-webkit-details-marker {
-    display: none;
-}
-
-.client-key-method > summary:focus-visible {
-    border-radius: var(--radius-sm);
-    outline: 2px solid var(--brand);
-    outline-offset: 4px;
-}
-
-.client-key-method__icon {
-    display: grid;
-    width: 40px;
-    height: 40px;
-    place-items: center;
-    border-radius: var(--radius);
-    background: var(--surface-sunken);
-    color: var(--brand);
-}
-
-.client-key-method > summary > span:nth-child(2) {
-    display: grid;
-    min-width: 0;
-    gap: 3px;
-}
-
-.client-key-method > summary strong {
-    color: var(--ink-strong);
-    font-size: 12px;
-}
-
-.client-key-method > summary small {
-    color: var(--ink-muted);
-    font-size: 11px;
-}
-
-.client-key-method__body {
-    display: grid;
-    min-width: 0;
-    gap: 16px;
-    padding-top: 18px;
 }
 
 .client-certificate-form {
@@ -1855,43 +1766,7 @@ h3 {
 }
 
 .clients-filter {
-    display: grid;
     min-width: 0;
-    gap: 5px;
-    align-content: end;
-    color: var(--ink-muted);
-    font-size: 11px;
-    font-weight: 650;
-    letter-spacing: 0.035em;
-    text-transform: uppercase;
-}
-
-.clients-filter .sui-field,
-.clients-filter .sui-select__trigger {
-    width: 100%;
-    min-width: 0;
-}
-
-.clients-filter .sui-select__trigger,
-.clients-filter .sui-field__input {
-    min-height: 44px;
-    font-size: 13px;
-    letter-spacing: normal;
-    text-transform: none;
-}
-
-.clients-filter .sui-select__trigger {
-    padding-inline: 12px;
-    border-color: var(--line-strong);
-    border-radius: var(--radius);
-    background: var(--surface);
-    color: var(--ink);
-}
-
-.clients-filter .sui-select__trigger:focus-visible {
-    border-color: var(--brand);
-    outline: 3px solid var(--brand-ring);
-    outline-offset: 0;
 }
 
 .clients-filter--search {
@@ -5130,16 +5005,6 @@ h3 {
         justify-self: start;
     }
 
-    .client-key-method > summary {
-        grid-template-columns: 40px minmax(0, 1fr);
-    }
-
-    .client-key-method > summary > .status-badge,
-    .client-key-method > summary > .sui-status-badge {
-        grid-column: 2;
-        justify-self: start;
-    }
-
     .permission-group {
         grid-template-columns: minmax(0, 1fr);
         gap: 6px;
@@ -5312,16 +5177,6 @@ h3 {
        grudada no nome. */
     user-select: none;
 }
-
-/* Filter composition: labels belong to SUI; align the controls at the row end. */
-.clients-filter .sui-field__label { font-size: 11px; font-weight: 650; line-height: 1.2; }
-.clients-filter .sui-field__input { border-color: var(--line-strong); border-radius: var(--radius); background: var(--surface); color: var(--ink); }
-
-/* Package 1.28.0 has no adornment API; keep the decorative search icon outside the field. */
-.clients-filter--search { position: relative; }
-.clients-filter--search > svg { position: absolute; inset-inline-start: 12px; inset-block-end: 13px; z-index: 1; pointer-events: none; color: var(--ink-muted); }
-.clients-filter--search .sui-field__input { padding-inline-start: 40px; }
-.clients-filter :is(.sui-field__input, .sui-select__trigger) { font-weight: 400; }
 
 /* Menu size as a variable, not SUISelect's MenuMaxWidth: that renders an
    inline style attribute, which the CSP does not allow. */

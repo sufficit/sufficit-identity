@@ -478,7 +478,6 @@
   <data name="Clients.List.QueryErrorTitle" xml:space="preserve"><value>Could not query clients</value></data>
   <data name="Clients.List.QueryErrorDescription" xml:space="preserve"><value>The identity service could not read the records right now. Check the database and try again.</value></data>
   <data name="Clients.List.PaginationAriaLabel" xml:space="preserve"><value>Applications pagination</value></data>
-  <data name="Clients.List.SinglePage" xml:space="preserve"><value>Single page</value></data>
   <data name="Clients.List.GuardrailsHeading" xml:space="preserve"><value>Applied safeguards</value></data>
   <data name="Clients.List.GuardrailsDescription" xml:space="preserve"><value>Every change is validated, authorized, and audited before reaching the OAuth record.</value></data>
   <data name="Clients.List.GuardrailCapabilities" xml:space="preserve"><value>Operations require provider-specific capabilities</value></data>
@@ -694,7 +693,6 @@
   <data name="Clients.Edit.CredentialNamePlaceholder" xml:space="preserve"><value>E.g.: production — August 2026</value></data>
   <data name="Clients.Edit.CredentialNameHint" xml:space="preserve"><value>Identify the environment, instance, or rotation period.</value></data>
   <data name="Clients.Edit.ExpirationLabel" xml:space="preserve"><value>Expiration</value></data>
-  <data name="Clients.Edit.OptionalUtcTag" xml:space="preserve"><value>optional, UTC</value></data>
   <data name="Clients.Edit.NoExpirationHint" xml:space="preserve"><value>Without a date, it remains valid until revoked.</value></data>
   <data name="Clients.Edit.HowToSetValueLegend" xml:space="preserve"><value>How to set the value</value></data>
   <data name="Clients.Edit.GenerateAutomatically" xml:space="preserve"><value>Generate automatically</value></data>

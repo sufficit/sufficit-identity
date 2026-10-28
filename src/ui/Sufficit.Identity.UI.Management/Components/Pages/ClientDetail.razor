@@ -12,31 +12,27 @@
 <SUIPageHeader Title="@HeaderTitle"
             Description="@L["Clients.Detail.Description"].Value">
     <Actions>
-        <SUIButton Href="clients" ColorValue="SUIColor.Secondary">
-            <SUIIcon Name="arrow-left" Size="17" />
+        <SUIButton Href="clients" ColorValue="SUIColor.Secondary" StartIcon="arrow-left">
             @L["Clients.Detail.Back"]
         </SUIButton>
         @if (result?.Value is { } selectedClient)
         {
             @if (!selectedClient.IsManifestManaged)
             {
-                <SUIButton Href="@EditHref(selectedClient.Id)" ColorValue="SUIColor.Primary">
-                    <SUIIcon Name="edit" Size="17" />
+                <SUIButton Href="@EditHref(selectedClient.Id)" ColorValue="SUIColor.Primary" StartIcon="edit">
                     @L["Clients.Detail.Edit"]
                 </SUIButton>
             }
             <AuthorizeView Policy="@ManagementUiPolicies.ManageSessions">
                 <Authorized>
-                    <SUIButton Href="@SessionsHref(selectedClient.ClientId)" ColorValue="SUIColor.Secondary">
-                        <SUIIcon Name="clock" Size="17" />
+                    <SUIButton Href="@SessionsHref(selectedClient.ClientId)" ColorValue="SUIColor.Secondary" StartIcon="clock">
                         @L["Clients.Detail.Sessions"]
                     </SUIButton>
                 </Authorized>
             </AuthorizeView>
             <AuthorizeView Policy="@ManagementUiPolicies.ManageAuthorizations">
                 <Authorized>
-                    <SUIButton Href="@AuthorizationsHref(selectedClient.ClientId)" ColorValue="SUIColor.Secondary">
-                        <SUIIcon Name="shield" Size="17" />
+                    <SUIButton Href="@AuthorizationsHref(selectedClient.ClientId)" ColorValue="SUIColor.Secondary" StartIcon="shield">
                         @L["Clients.Detail.Authorizations"]
                     </SUIButton>
                 </Authorized>
@@ -381,15 +377,13 @@
 
         @if (IsDisabled(client))
         {
-            <SUIButton ColorValue="SUIColor.Primary" Disabled="@changingState" OnClick="EnableAsync">
-                <SUIIcon Name="check-circle" Size="17" />
+            <SUIButton ColorValue="SUIColor.Primary" Disabled="@changingState" AutoLoading="false" OnClick="EnableAsync" StartIcon="check-circle">
                 @L["Clients.State.Enable"]
             </SUIButton>
         }
         else if (!editingState)
         {
-            <SUIButton ColorValue="SUIColor.Error" OnClick="@(() => editingState = true)">
-                <SUIIcon Name="lock" Size="17" />
+            <SUIButton ColorValue="SUIColor.Error" StartIcon="lock" OnClick="@(() => editingState = true)">
                 @L["Clients.State.Disable"]
             </SUIButton>
         }
@@ -403,8 +397,8 @@
                                    Immediate="true"
                                    autocomplete="off"
                                    @bind-Value="stateReason" />
-                <SUISwitch Label="@L["Clients.State.RevokeTokens"].Value"
-                           @bind-Value="stateRevokeTokens" />
+                <SUICheckbox Label="@L["Clients.State.RevokeTokens"].Value"
+                             @bind-Value="stateRevokeTokens" />
                 <SUIStack Row="true" Wrap="true" Spacing="2" Justify="End">
                     <SUIButton ColorValue="SUIColor.Secondary" Disabled="@changingState"
                                OnClick="@(() => editingState = false)">
@@ -412,8 +406,7 @@
                     </SUIButton>
                     <SUIButton ColorValue="SUIColor.Error"
                                Disabled="@(changingState || string.IsNullOrWhiteSpace(stateReason))"
-                               OnClick="DisableAsync">
-                        <SUIIcon Name="lock" Size="17" />
+                               OnClick="DisableAsync" StartIcon="lock">
                         @L["Clients.State.ConfirmDisable"]
                     </SUIButton>
                 </SUIStack>
@@ -431,8 +424,7 @@
 
         @if (!confirmingDelete)
         {
-            <SUIButton ColorValue="SUIColor.Error" OnClick="BeginDelete">
-                <SUIIcon Name="trash" Size="17" />
+            <SUIButton ColorValue="SUIColor.Error" OnClick="BeginDelete" StartIcon="trash">
                 @L["Clients.Detail.DeleteClient"]
             </SUIButton>
         }
@@ -441,11 +433,13 @@
             <SUIStack Spacing="3" Class="client-detail-confirmation">
                 <IdentityTextField T="string"
                                    Id="delete-confirmation"
-                                   Label="@($"{L["Clients.Detail.DeleteConfirmPrefix"].Value} {client.ClientId} {L["Clients.Detail.DeleteConfirmSuffix"].Value}")"
+                                   Monospace="true"
                                    ErrorText="@(deleteResult?.IsSuccess is false ? deleteResult.ErrorMessage : null)"
                                    Immediate="true"
                                    autocomplete="off"
-                                   @bind-Value="deleteConfirmation" />
+                                   @bind-Value="deleteConfirmation">
+                    <LabelContent>@L["Clients.Detail.DeleteConfirmPrefix"] <code>@client.ClientId</code> @L["Clients.Detail.DeleteConfirmSuffix"]</LabelContent>
+                </IdentityTextField>
                 <SUIStack Row="true" Wrap="true" Spacing="2" Justify="End">
                     <SUIButton ColorValue="SUIColor.Secondary"
                                Disabled="@deleting"
