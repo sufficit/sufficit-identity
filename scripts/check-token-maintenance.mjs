@@ -24,8 +24,8 @@ try {
   assert.equal(await run.isDisabled(), true);
   await page.getByText('Ativar limpeza agendada', { exact: true }).click();
   assert.equal(await page.getByLabel('Ativar limpeza agendada').isChecked(), true);
-  await page.getByLabel('Retenção (dias)').fill('20');
-  await page.getByLabel('Intervalo (minutos)').fill('60');
+  await page.getByLabel('Retenção', { exact: true }).fill('20');
+  await page.getByLabel('Intervalo', { exact: true }).fill('60');
   await page.getByRole('button', { name: 'Salvar política' }).click();
   await page.getByText('Política salva.').waitFor();
   await run.click();
@@ -33,7 +33,7 @@ try {
   assert.equal(await run.isDisabled(), true);
   await page.getByRole('cell', { name: '251', exact: true }).waitFor();
   await page.getByRole('button', { name: 'Atualizar', exact: true }).click();
-  assert.equal(await page.getByLabel('Retenção (dias)').inputValue(), '20');
+  assert.equal(await page.getByLabel('Retenção', { exact: true }).inputValue(), '20');
   await page.screenshot({ path: `${output}/desktop.png`, fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();

@@ -14,16 +14,16 @@
 <SUIPageHeader Title="@L["OperatorTokens.Header.Title"].Value"
                Description="@L["OperatorTokens.Header.Description"].Value" />
 
-<div class="contract-strip @(ShowMfaWarning ? "contract-strip--warning" : "contract-strip--info")">
-    <SUIIcon Name="shield" Size="20" />
-    <div>
-        <strong>@L["OperatorTokens.LinkPrepares.Title"]</strong>
-        <span>@L["OperatorTokens.LinkPrepares.Description"]</span>
-    </div>
-    @if (ShowMfaWarning)
-    {
-        <SUIStatusBadge ToneValue="SUITone.Warning">@L["OperatorTokens.MfaRequiredBadge"]</SUIStatusBadge>
-    }
+<div class="page-notices">
+    <SUIAlert ToneValue="@(ShowMfaWarning ? SUITone.Warning : SUITone.Info)" Icon="shield" role="note">
+        <SUIStack Row Wrap AlignItems="Center" Justify="Between" Spacing="2">
+            <div><strong>@L["OperatorTokens.LinkPrepares.Title"]</strong> <span>@L["OperatorTokens.LinkPrepares.Description"]</span></div>
+            @if (ShowMfaWarning)
+            {
+                <SUIStatusBadge ToneValue="SUITone.Warning">@L["OperatorTokens.MfaRequiredBadge"]</SUIStatusBadge>
+            }
+        </SUIStack>
+    </SUIAlert>
 </div>
 
 <ManagementDataView Result="workspaceResult"
@@ -103,13 +103,12 @@
     }
     else if (revokedPurpose is not null)
     {
-        <div class="inline-notice inline-notice--success" role="status">
-            <SUIIcon Name="check" Size="19" />
-            <div>
+        <SUIAlert ToneValue="SUITone.Success" Icon="check" role="status" Class="operator-token-alert">
+            <div class="operator-token-alert__copy">
                 <strong>@L["OperatorTokens.Revoked.Title"]</strong>
                 <span>@L["OperatorTokens.Revoked.Description", revokedPurpose]</span>
             </div>
-        </div>
+        </SUIAlert>
     }
 
     <div class="operator-token-layout">
@@ -152,8 +151,10 @@
                 </IdentitySelect>
             </div>
 
-            <details class="operator-token-capability-picker" open="@capabilityPickerOpen">
-                <summary>@L["OperatorTokens.CapabilityPicker.Summary"]</summary>
+            <SUIExpansionPanel Title="@L["OperatorTokens.CapabilityPicker.Summary"].Value"
+                               @bind-Expanded="capabilityPickerOpen"
+                               KeepContentMounted="true"
+                               Class="operator-token-capability-picker">
                 <div class="operator-token-capability-picker__body">
                     <IdentityTextField T="string"
                                   Id="capability-filter"
@@ -174,13 +175,12 @@
                                 @foreach (var capability in group.Capabilities)
                                 {
                                     <div class="operator-token-capability">
-                                        <div class="operator-token-capability__selection">
-                                            <SUICheckbox Label="@CapabilityLabel(capability)"
-                                                         Value="@selectedCapabilities.Contains(capability)"
-                                                         ValueChanged="selected => ToggleCapability(capability, selected)"
-                                                         Disabled="@issuing" />
-                                            <code>@capability</code>
-                                        </div>
+                                        <SUICheckbox Label="@CapabilityLabel(capability)"
+                                                     Value="@selectedCapabilities.Contains(capability)"
+                                                     ValueChanged="selected => ToggleCapability(capability, selected)"
+                                                     Disabled="@issuing">
+                                            <HelperContent><code>@capability</code></HelperContent>
+                                        </SUICheckbox>
                                         <ManagementCapabilityHelp Capability="@capability" />
                                     </div>
                                 }
@@ -193,7 +193,7 @@
                         <p class="operator-token-capability-picker__empty">@L["OperatorTokens.CapabilityPicker.Empty"]</p>
                     }
                 </div>
-            </details>
+            </SUIExpansionPanel>
 
             <footer class="operator-token-issue-actions">
                 <div class="operator-token-issue-summary">
@@ -205,10 +205,10 @@
                         <SUILoadingButton IsLoading="@issuing"
                                           Disabled="@(!CanIssue)"
                                           ColorValue="SUIColor.Primary"
+                                          StartIcon="key"
                                           OnClick="IssueAsync"
                                           aria-busy="@issuing">
-                            <SUIIcon Name="key" Size="17" />
-                            <span>@(queryPrepared ? L["OperatorTokens.Issue.ConfirmButton"] : L["OperatorTokens.Issue.GenerateButton"])</span>
+                            @(queryPrepared ? L["OperatorTokens.Issue.ConfirmButton"] : L["OperatorTokens.Issue.GenerateButton"])
                         </SUILoadingButton>
                     </Authorized>
                     <NotAuthorized>

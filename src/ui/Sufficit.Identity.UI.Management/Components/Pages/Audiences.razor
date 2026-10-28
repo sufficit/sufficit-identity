@@ -14,29 +14,28 @@
     </Actions>
 </SUIPageHeader>
 
-<div class="contract-strip contract-strip--info">
-    <SUIIcon Name="scope" Size="20" />
-    <div>
-        <strong>@L["Audiences.InfoTitle"]</strong>
-        <span>@L["Audiences.InfoDescription"]</span>
-    </div>
-</div>
+<div class="page-notices">
+    <SUIAlert ToneValue="SUITone.Info" Icon="scope" role="note">
+        <div><strong>@L["Audiences.InfoTitle"]</strong> <span>@L["Audiences.InfoDescription"]</span></div>
+    </SUIAlert>
 
-@if (notice is not null)
-{
-    <div class="inline-notice inline-notice--success" role="status"><SUIIcon Name="check" Size="19" /><span>@notice</span></div>
-}
-@if (submission?.IsSuccess is false)
-{
-    <div class="inline-notice inline-notice--danger" role="alert">
-        <SUIIcon Name="alert" Size="19" />
-        <div><strong>@L["Audiences.BindingNotAlteredTitle"]</strong><span>@submission.ErrorMessage</span></div>
-        @if (submission.Outcome is ManagementDataOutcome.Conflict)
-        {
-            <SUIButton ColorValue="SUIColor.Secondary" Disabled="@(loading || busy)" OnClick="ReloadForReviewAsync">@L["Audiences.ReloadToReview"]</SUIButton>
-        }
-    </div>
-}
+    @if (notice is not null)
+    {
+        <SUIAlert ToneValue="SUITone.Success" Icon="check" role="status">@notice</SUIAlert>
+    }
+    @if (submission?.IsSuccess is false)
+    {
+        <SUIAlert ToneValue="SUITone.Danger" Icon="alert">
+            <SUIStack Row Wrap AlignItems="Center" Justify="Between" Spacing="2">
+                <div><strong>@L["Audiences.BindingNotAlteredTitle"]</strong> <span>@submission.ErrorMessage</span></div>
+                @if (submission.Outcome is ManagementDataOutcome.Conflict)
+                {
+                    <SUIButton ColorValue="SUIColor.Secondary" Disabled="@(loading || busy)" OnClick="ReloadForReviewAsync">@L["Audiences.ReloadToReview"]</SUIButton>
+                }
+            </SUIStack>
+        </SUIAlert>
+    }
+</div>
 
 @if (showBinding)
 {
@@ -46,27 +45,29 @@
                 <h2 id="audience-binding-heading" tabindex="-1" @ref="actionHeading">@L["Audiences.BindAudience"]</h2>
                 <p>@L["Audiences.BindingHelp"]</p>
             </div>
-            @if (EditableScopes.Count is 0)
-            {
-                <p>@L["Audiences.NoScopesAvailable"] <a href="scopes/new">@L["Audiences.CreateScopeLink"]</a> @L["Audiences.NoScopesAvailableSuffix"]</p>
-            }
-            else
-            {
-                <SUIFormGrid Columns="2" Spacing="4" LabelLines="2">
-                    <IdentityTextField T="string" Id="audience-name" Label="@L["Audiences.FieldIdentifier"].Value" HelperText="@L["Audiences.FieldIdentifierHelp"].Value" MaxLength="512" Disabled="@(busy || loading)" @bind-Value="audienceName" />
-                    <IdentitySelect T="string" Id="audience-scope" Label="@L["Audiences.FieldScope"].Value" Disabled="@(busy || loading)" @bind-Value="selectedScopeId">
-                        <SUISelectItem Value="@(string.Empty)">@L["Audiences.SelectScope"]</SUISelectItem>
-                        @foreach (var scope in EditableScopes)
-                        {
-                            <SUISelectItem Value="@scope.Id">@scope.Name</SUISelectItem>
-                        }
-                    </IdentitySelect>
-                </SUIFormGrid>
-                <p class="audience-binding-impact">@L["Audiences.BindingImpact"]</p>
-            }
-            <SUIStack Row Wrap AlignItems="Center" Justify="End" Spacing="2" Class="form-actions">
-                <SUILoadingButton ColorValue="SUIColor.Primary" IsLoading="@busy" Disabled="@(!CanSubmit)" OnClick="AddBindingAsync">@(busy ? L["Audiences.Saving"].Value : L["Audiences.SaveBinding"].Value)</SUILoadingButton>
-                <SUIButton ColorValue="SUIColor.Secondary" Disabled="@busy" OnClick="CloseBinding">@L["Audiences.Cancel"]</SUIButton>
+            <SUIStack Spacing="4">
+                @if (EditableScopes.Count is 0)
+                {
+                    <p>@L["Audiences.NoScopesAvailable"] <a href="scopes/new">@L["Audiences.CreateScopeLink"]</a> @L["Audiences.NoScopesAvailableSuffix"]</p>
+                }
+                else
+                {
+                    <SUIFormGrid Columns="2" Spacing="4" LabelLines="2">
+                        <IdentityTextField T="string" Id="audience-name" Monospace="true" Label="@L["Audiences.FieldIdentifier"].Value" HelperText="@L["Audiences.FieldIdentifierHelp"].Value" MaxLength="512" Disabled="@(busy || loading)" @bind-Value="audienceName" />
+                        <IdentitySelect T="string" Id="audience-scope" Label="@L["Audiences.FieldScope"].Value" Disabled="@(busy || loading)" @bind-Value="selectedScopeId">
+                            <SUISelectItem Value="@(string.Empty)">@L["Audiences.SelectScope"]</SUISelectItem>
+                            @foreach (var scope in EditableScopes)
+                            {
+                                <SUISelectItem Value="@scope.Id">@scope.Name</SUISelectItem>
+                            }
+                        </IdentitySelect>
+                    </SUIFormGrid>
+                    <p class="audience-binding-impact">@L["Audiences.BindingImpact"]</p>
+                }
+                <SUIStack Row Wrap AlignItems="Center" Justify="End" Spacing="2">
+                    <SUILoadingButton ColorValue="SUIColor.Primary" IsLoading="@busy" Disabled="@(!CanSubmit)" OnClick="AddBindingAsync">@(busy ? L["Audiences.Saving"].Value : L["Audiences.SaveBinding"].Value)</SUILoadingButton>
+                    <SUIButton ColorValue="SUIColor.Secondary" Disabled="@busy" OnClick="CloseBinding">@L["Audiences.Cancel"]</SUIButton>
+                </SUIStack>
             </SUIStack>
         </div>
     </AuthorizeView>
@@ -75,12 +76,16 @@
 @if (removal is not null)
 {
     <div class="form-section" role="region" aria-labelledby="audience-remove-heading">
-        <h2 id="audience-remove-heading" tabindex="-1" @ref="actionHeading">@L["Audiences.RemoveHeading"]</h2>
-        <p>@L["Audiences.RemoveImpactPrefix"] <code>@removal.Scope.Name</code> @L["Audiences.RemoveImpactMiddle"] <code>@removal.Audience</code> @L["Audiences.RemoveImpactSuffix"]</p>
-        <p>@L["Audiences.LastBindingNotice"]</p>
-        <SUIStack Row Wrap AlignItems="Center" Justify="End" Spacing="2" Class="form-actions">
-            <SUILoadingButton ColorValue="SUIColor.Error" IsLoading="@busy" Disabled="@(busy || loading)" OnClick="RemoveBindingAsync">@(busy ? L["Audiences.Removing"].Value : L["Audiences.ConfirmRemoval"].Value)</SUILoadingButton>
-            <SUIButton ColorValue="SUIColor.Secondary" Disabled="@busy" OnClick="CancelRemoval">@L["Audiences.Cancel"]</SUIButton>
+        <SUIStack Spacing="4">
+            <div>
+                <h2 id="audience-remove-heading" tabindex="-1" @ref="actionHeading">@L["Audiences.RemoveHeading"]</h2>
+                <p>@L["Audiences.RemoveImpactPrefix"] <code>@removal.Scope.Name</code> @L["Audiences.RemoveImpactMiddle"] <code>@removal.Audience</code> @L["Audiences.RemoveImpactSuffix"]</p>
+                <p>@L["Audiences.LastBindingNotice"]</p>
+            </div>
+            <SUIStack Row Wrap AlignItems="Center" Justify="End" Spacing="2">
+                <SUILoadingButton ColorValue="SUIColor.Error" IsLoading="@busy" Disabled="@(busy || loading)" OnClick="RemoveBindingAsync">@(busy ? L["Audiences.Removing"].Value : L["Audiences.ConfirmRemoval"].Value)</SUILoadingButton>
+                <SUIButton ColorValue="SUIColor.Secondary" Disabled="@busy" OnClick="CancelRemoval">@L["Audiences.Cancel"]</SUIButton>
+            </SUIStack>
         </SUIStack>
     </div>
 }
@@ -155,9 +160,11 @@
                     @if (audience.ClientIds.Count is 0) { <span>@L["Audiences.NoClients"]</span> }
                     else
                     {
-                        @* Native disclosure: the client list stays in the document while
-                           collapsed (find-in-page, prerender); SUIExpansionPanel drops it. *@
-                        <details><summary>@L["Audiences.ClientCountSummary", audience.ClientIds.Count]</summary><ul class="audience-clients">@foreach (var clientId in audience.ClientIds) { <li><code>@clientId</code></li> }</ul></details>
+                        @* Kept mounted: the client list stays in the document while
+                           collapsed (find-in-page, prerender). *@
+                        <SUIExpansionPanel Title="@L["Audiences.ClientCountSummary", audience.ClientIds.Count].Value" KeepContentMounted="true">
+                            <ul class="audience-clients">@foreach (var clientId in audience.ClientIds) { <li><code>@clientId</code></li> }</ul>
+                        </SUIExpansionPanel>
                     }
                 </SUITd>
             </RowTemplate>

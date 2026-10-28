@@ -1,0 +1,11 @@
+/* Layout between components only: the notice keeps the gap the strip had
+   below it, and the change disclosure sits under the capability code. */
+.page-notices {
+    display: grid;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.table-panel ::deep .audit-change-details {
+    margin-top: 6px;
+}

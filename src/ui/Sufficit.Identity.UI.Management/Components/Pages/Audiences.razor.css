@@ -1,3 +1,11 @@
+/* Layout between components only: the notices keep the gap the page had
+   between its banners. */
+.page-notices {
+    display: grid;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
 .audience-bindings, .audience-clients {
     list-style: none;
     padding: 0;
@@ -16,11 +24,6 @@
     overflow-wrap: anywhere;
 }
 
-.audience-panel summary {
-    cursor: pointer;
-    padding-block: .375rem;
-}
-
 .audience-clients li {
     padding-block: .25rem;
 }
@@ -28,7 +31,7 @@
 .audience-binding-impact {
     color: var(--ink-muted);
     font-size: .8125rem;
-    margin-block: 1rem;
+    margin: 0;
 }
 
 .form-section + .audience-panel {

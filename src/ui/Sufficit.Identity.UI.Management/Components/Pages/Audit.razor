@@ -8,13 +8,13 @@
 <SUIPageHeader Title="@L["Audit.HeaderTitle"].Value"
             Description="@L["Audit.HeaderDescription"].Value" />
 
-<div class="contract-strip contract-strip--success">
-    <SUIIcon Name="audit" Size="20" />
-    <div>
-        <strong>@L["Audit.PersistentEvents.Title"]</strong>
-        <span>@L["Audit.PersistentEvents.Description"]</span>
-    </div>
-    <SUIStatusBadge ToneValue="SUITone.Success">@L["Audit.Active"]</SUIStatusBadge>
+<div class="page-notices">
+    <SUIAlert ToneValue="SUITone.Success" Icon="audit" role="note">
+        <SUIStack Row Wrap AlignItems="Center" Justify="Between" Spacing="2">
+            <div><strong>@L["Audit.PersistentEvents.Title"]</strong> <span>@L["Audit.PersistentEvents.Description"]</span></div>
+            <SUIStatusBadge ToneValue="SUITone.Success">@L["Audit.Active"]</SUIStatusBadge>
+        </SUIStack>
+    </SUIAlert>
 </div>
 
 <div class="table-panel" aria-labelledby="audit-list-heading" aria-busy="@loading">
@@ -100,12 +100,13 @@
                                         <code>@CapabilityLabel(entry.Capability)</code>
                                         @if (entry.BeforeJson is not null || entry.AfterJson is not null)
                                         {
-                                            @* Native disclosure keeps the JSON in the document while collapsed. *@
-                                            <details class="audit-change-details">
-                                                <summary>@L["Audit.ViewChange"]</summary>
+                                            @* Kept mounted: the JSON stays in the document while collapsed. *@
+                                            <SUIExpansionPanel Title="@L["Audit.ViewChange"].Value"
+                                                               KeepContentMounted="true"
+                                                               Class="audit-change-details">
                                                 <strong>@L["Audit.Before"]</strong><pre class="audit-json">@entry.BeforeJson</pre>
                                                 <strong>@L["Audit.After"]</strong><pre class="audit-json">@entry.AfterJson</pre>
-                                            </details>
+                                            </SUIExpansionPanel>
                                         }
                                     </SUITd>
                                     <SUITd DataLabel="@L["Audit.Table.Target"].Value">

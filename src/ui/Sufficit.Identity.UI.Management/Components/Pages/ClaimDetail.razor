@@ -18,12 +18,10 @@
 
 @if (updated)
 {
-    <div class="inline-notice inline-notice--success" role="status">
-        <SUIIcon Name="check" Size="19" />
-        <div>
-            <strong>@L["ClaimDetail.Updated.Title"]</strong>
-            <span>@L["ClaimDetail.Updated.Description"]</span>
-        </div>
+    <div class="page-notices">
+        <SUIAlert ToneValue="SUITone.Success" Icon="check" role="status">
+            <div><strong>@L["ClaimDetail.Updated.Title"]</strong> <span>@L["ClaimDetail.Updated.Description"]</span></div>
+        </SUIAlert>
     </div>
 }
 
@@ -57,25 +55,21 @@ else
         <SUIButton ColorValue="SUIColor.Secondary" Href="@BackHref">@L["ClaimDetail.BackToClaims"]</SUIButton>
     </FailureActions>
     <Success Context="_">
-    <div class="contract-strip contract-strip--warning">
-        <SUIIcon Name="refresh" Size="20" />
-        <div>
-            <strong>@L["ClaimDetail.ContractStrip.Title"]</strong>
-            <span>@string.Format(L["ClaimDetail.ContractStrip.DescriptionFormat"].Value, AccountLabel(claim))</span>
-        </div>
-        <SUIStatusBadge ToneValue="SUITone.Warning">@L["ClaimDetail.ContractStrip.Badge"]</SUIStatusBadge>
-    </div>
+    <div class="page-notices">
+        <SUIAlert ToneValue="SUITone.Warning" Icon="refresh" role="note">
+            <SUIStack Row Wrap AlignItems="Center" Justify="Between" Spacing="2">
+                <div><strong>@L["ClaimDetail.ContractStrip.Title"]</strong> <span>@string.Format(L["ClaimDetail.ContractStrip.DescriptionFormat"].Value, AccountLabel(claim))</span></div>
+                <SUIStatusBadge ToneValue="SUITone.Warning">@L["ClaimDetail.ContractStrip.Badge"]</SUIStatusBadge>
+            </SUIStack>
+        </SUIAlert>
 
-    @if (submission?.IsSuccess is false)
-    {
-        <div class="inline-notice inline-notice--danger" role="alert">
-            <SUIIcon Name="alert" Size="19" />
-            <div>
-                <strong>@L["ClaimDetail.SubmitError.Title"]</strong>
-                <span>@submission.ErrorMessage</span>
-            </div>
-        </div>
-    }
+        @if (submission?.IsSuccess is false)
+        {
+            <SUIAlert ToneValue="SUITone.Danger" Icon="alert">
+                <div><strong>@L["ClaimDetail.SubmitError.Title"]</strong> <span>@submission.ErrorMessage</span></div>
+            </SUIAlert>
+        }
+    </div>
 
     <div>
     <EditForm Model="model"
@@ -111,6 +105,7 @@ else
                 <IdentityTextField T="string"
                                    Id="claim-type"
                                    Label="@L["ClaimDetail.Field.Type"].Value"
+                                   Monospace="true"
                                    autocomplete="off"
                                    @bind-Value="model.Type" />
                 <IdentityTextField T="string"
@@ -122,7 +117,7 @@ else
             </SUIStack>
         </div>
 
-        <SUIStack Row Wrap AlignItems="Center" Justify="End" Spacing="2" Class="form-actions">
+        <SUIStack Row Wrap AlignItems="Center" Justify="End" Spacing="2">
             <SUIButton ColorValue="SUIColor.Secondary" Href="@BackHref">@L["ClaimDetail.Cancel"]</SUIButton>
             <SUILoadingButton ButtonTypeValue="SUIButtonType.Submit"
                               ColorValue="SUIColor.Primary"
@@ -142,13 +137,9 @@ else
         </div>
         @if (deletion?.IsSuccess is false)
         {
-            <div class="inline-notice inline-notice--danger" role="alert">
-                <SUIIcon Name="alert" Size="19" />
-                <div>
-                    <strong>@L["ClaimDetail.Delete.ErrorTitle"]</strong>
-                    <span>@deletion.ErrorMessage</span>
-                </div>
-            </div>
+            <SUIAlert ToneValue="SUITone.Danger" Icon="alert">
+                <div><strong>@L["ClaimDetail.Delete.ErrorTitle"]</strong> <span>@deletion.ErrorMessage</span></div>
+            </SUIAlert>
         }
         <SUICheckbox Id="claim-delete-confirmation"
                      Label="@L["ClaimDetail.Delete.ConfirmLabel"].Value"

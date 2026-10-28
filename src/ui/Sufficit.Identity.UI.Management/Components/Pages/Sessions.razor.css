@@ -1,0 +1,15 @@
+/* Layout between components only: the notices keep the gap the page had
+   between its banners, and an error spans the whole confirmation row. */
+.page-notices {
+    display: grid;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.delete-zone ::deep > .sui-alert {
+    grid-column: 1 / -1;
+}
+
+.table-footer ::deep > .sui-pagination {
+    flex: 1 1 auto;
+}

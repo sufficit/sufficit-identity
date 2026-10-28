@@ -10,13 +10,13 @@
 <SUIPageHeader Title="@L["Database.HeaderTitle"].Value"
             Description="@L["Database.HeaderDescription"].Value">
     <Actions>
-        <SUIButton ColorValue="SUIColor.Secondary"
-                   aria-pressed="@(liveUpdatesEnabled ? "true" : "false")"
-                   OnClick="ToggleLiveUpdatesAsync">
+        <SUISwitchButton FullWidth="false"
+                         Checked="liveUpdatesEnabled"
+                         CheckedChanged="SetLiveUpdatesAsync">
             <span class="status-dot @LiveStatusDotClass"
                   aria-hidden="true"></span>
             @LiveControlLabel
-        </SUIButton>
+        </SUISwitchButton>
         <SUILoadingButton ColorValue="SUIColor.Secondary"
                           StartIcon="refresh"
                           IsLoading="@refreshing"
@@ -37,26 +37,21 @@
         </div>
     </LoadingContent>
     <Success Context="snapshot">
-    <div class="contract-strip @WatchdogStripClass"
-             aria-live="polite">
-        <SUIIcon Name="database" Size="20" />
-        <div>
-            <strong>@WatchdogTitle</strong>
-            <span>@WatchdogDescription</span>
-        </div>
-        <SUIStatusBadge ToneValue="@IdentitySuiTone.From(WatchdogTone)">@WatchdogBadge</SUIStatusBadge>
-    </div>
+    <div class="page-notices">
+        <SUIAlert ToneValue="@IdentitySuiTone.From(WatchdogTone)" Icon="database" role="status">
+            <SUIStack Row Wrap AlignItems="Center" Justify="Between" Spacing="2">
+                <div><strong>@WatchdogTitle</strong> <span>@WatchdogDescription</span></div>
+                <SUIStatusBadge ToneValue="@IdentitySuiTone.From(WatchdogTone)">@WatchdogBadge</SUIStatusBadge>
+            </SUIStack>
+        </SUIAlert>
 
-    @if (!string.IsNullOrWhiteSpace(refreshError))
-    {
-        <div class="inline-notice inline-notice--danger" role="status">
-            <SUIIcon Name="alert" Size="19" />
-            <div>
-                <strong>@L["Database.StaleData.Title"]</strong>
-                <span>@refreshError @L["Database.StaleData.Suffix"]</span>
-            </div>
-        </div>
-    }
+        @if (!string.IsNullOrWhiteSpace(refreshError))
+        {
+            <SUIAlert ToneValue="SUITone.Danger" Icon="alert" role="status">
+                <div><strong>@L["Database.StaleData.Title"]</strong> <span>@refreshError @L["Database.StaleData.Suffix"]</span></div>
+            </SUIAlert>
+        }
+    </div>
 
     <div class="database-capacity-stack" aria-label="@L["Database.Capacity.Aria"].Value">
         @foreach (var pool in EffectivePools)
@@ -279,8 +274,6 @@
         _ => "info"
     };
 
-    private string WatchdogStripClass => $"contract-strip--{WatchdogTone}";
-
     private string WatchdogTitle => Watchdog.Status switch
     {
         "healthy" => L["Database.Watchdog.Title.Healthy"].Value,
@@ -443,9 +436,9 @@
         initialSnapshot.TrySetResult(false);
     }
 
-    private async Task ToggleLiveUpdatesAsync()
+    private async Task SetLiveUpdatesAsync(bool enabled)
     {
-        liveUpdatesEnabled = !liveUpdatesEnabled;
+        liveUpdatesEnabled = enabled;
         if (liveUpdatesEnabled)
         {
             await RefreshAsync();

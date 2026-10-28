@@ -1,0 +1,11 @@
+/* Layout between components only: the notices keep the gap the page had
+   between its banners, and the pagination fills the table footer. */
+.page-notices {
+    display: grid;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.table-footer ::deep > .sui-pagination {
+    flex: 1 1 auto;
+}

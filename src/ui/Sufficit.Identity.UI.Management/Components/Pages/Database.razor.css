@@ -1,0 +1,7 @@
+/* Layout between components only: the notices keep the gap the page had
+   between its banners. */
+.page-notices {
+    display: grid;
+    gap: 12px;
+    margin-bottom: 20px;
+}

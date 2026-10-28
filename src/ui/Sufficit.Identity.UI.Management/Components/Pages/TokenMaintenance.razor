@@ -27,8 +27,10 @@
                         <fieldset disabled="@busy">
                             <SUISwitch Id="maintenance-enabled" Label="@L["Maintenance.Enable"].Value" @bind-Value="model.Enabled" />
                             <IdentityNumericField T="int" Id="maintenance-retention" Label="@L["Maintenance.Retention"].Value"
+                                                  Suffix="@L["Maintenance.RetentionUnit"].Value"
                                                   Min="@(1)" Max="@(3650)" @bind-Value="model.RetentionDays" />
                             <IdentityNumericField T="int" Id="maintenance-interval" Label="@L["Maintenance.Interval"].Value"
+                                                  Suffix="@L["Maintenance.IntervalUnit"].Value"
                                                   Min="@(5)" Max="@(10080)" @bind-Value="model.IntervalMinutes" />
                             <SUIStack Row Wrap AlignItems="Center" Justify="End" Spacing="2">
                                 <SUIButton ButtonTypeValue="SUIButtonType.Submit" ColorValue="SUIColor.Primary" Disabled="@busy">@L["Maintenance.Save"]</SUIButton>
@@ -40,8 +42,8 @@
                 <NotAuthorized>
                     <p>@L["Maintenance.ReadOnly"]</p>
                     <dl class="config-list">
-                        <div><dt>@L["Maintenance.Retention"]</dt><dd>@snapshot.RetentionDays</dd></div>
-                        <div><dt>@L["Maintenance.Interval"]</dt><dd>@snapshot.IntervalMinutes</dd></div>
+                        <div><dt>@L["Maintenance.Retention"]</dt><dd>@snapshot.RetentionDays @L["Maintenance.RetentionUnit"]</dd></div>
+                        <div><dt>@L["Maintenance.Interval"]</dt><dd>@snapshot.IntervalMinutes @L["Maintenance.IntervalUnit"]</dd></div>
                     </dl>
                 </NotAuthorized>
             </AuthorizeView>
@@ -49,7 +51,9 @@
         </section>
         @if (message is not null)
         {
-            <div role="status" aria-live="polite"><SUIAlert ToneValue="@(error ? SUITone.Danger : SUITone.Success)">@message</SUIAlert></div>
+            <SUIAlert ToneValue="@(error ? SUITone.Danger : SUITone.Success)"
+                      Icon="@(error ? "alert" : "check")"
+                      role="@(error ? "alert" : "status")">@message</SUIAlert>
         }
         <section class="table-panel" aria-labelledby="maintenance-history">
             <div class="panel-header"><h2 id="maintenance-history">@L["Maintenance.History"]</h2></div>

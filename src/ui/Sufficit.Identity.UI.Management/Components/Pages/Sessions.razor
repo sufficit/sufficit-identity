@@ -9,36 +9,28 @@
             Description="@L["Sessions.HeaderDescription"].Value">
 </SUIPageHeader>
 
-<div class="contract-strip contract-strip--info">
-    <SUIIcon Name="clock" Size="20" />
-    <div>
-        <strong>@L["Sessions.ContractStrip.Title"]</strong>
-        <span>@L["Sessions.ContractStrip.Description"]</span>
-    </div>
-    <SUIStatusBadge ToneValue="SUITone.Info">@L["Sessions.ContractStrip.Badge"]</SUIStatusBadge>
+<div class="page-notices">
+    <SUIAlert ToneValue="SUITone.Info" Icon="clock" role="note">
+        <SUIStack Row Wrap AlignItems="Center" Justify="Between" Spacing="2">
+            <div><strong>@L["Sessions.ContractStrip.Title"]</strong> <span>@L["Sessions.ContractStrip.Description"]</span></div>
+            <SUIStatusBadge ToneValue="SUITone.Info">@L["Sessions.ContractStrip.Badge"]</SUIStatusBadge>
+        </SUIStack>
+    </SUIAlert>
+
+    @if (revoked)
+    {
+        <SUIAlert ToneValue="SUITone.Success" Icon="check" role="status">
+            <div><strong>@L["Sessions.Revoked.Title"]</strong> <span>@L["Sessions.Revoked.Description"]</span></div>
+        </SUIAlert>
+    }
+
+    @if (revokedAll is not null)
+    {
+        <SUIAlert ToneValue="SUITone.Success" Icon="check" role="status">
+            <div><strong>@L["Sessions.RevokedAll.Title"]</strong> <span>@string.Format(L["Sessions.RevokedAll.DescriptionFormat"].Value, revokedAll.RevokedTokens, revokedAll.RevokedAuthorizations)</span></div>
+        </SUIAlert>
+    }
 </div>
-
-@if (revoked)
-{
-    <div class="inline-notice inline-notice--success" role="status">
-        <SUIIcon Name="check" Size="19" />
-        <div>
-            <strong>@L["Sessions.Revoked.Title"]</strong>
-            <span>@L["Sessions.Revoked.Description"]</span>
-        </div>
-    </div>
-}
-
-@if (revokedAll is not null)
-{
-    <div class="inline-notice inline-notice--success" role="status">
-        <SUIIcon Name="check" Size="19" />
-        <div>
-            <strong>@L["Sessions.RevokedAll.Title"]</strong>
-            <span>@string.Format(L["Sessions.RevokedAll.DescriptionFormat"].Value, revokedAll.RevokedTokens, revokedAll.RevokedAuthorizations)</span>
-        </div>
-    </div>
-}
 
 <div class="table-panel" aria-labelledby="sessions-list-heading" aria-busy="@loading">
     <div class="data-toolbar data-toolbar--users">
@@ -161,24 +153,23 @@
     </ManagementDataView>
 
     <footer class="table-footer table-footer--paginated">
-        <span>@ResultCountLabel</span>
-        @if (result?.IsSuccess is true && Page.TotalCount > Page.PageSize)
+        @if (result?.IsSuccess is true)
         {
-            <SUIStack Row AlignItems="Center" Spacing="2" aria-label="@L["Sessions.PaginationAriaLabel"].Value">
-                <SUIButton ColorValue="SUIColor.Secondary"
-                           SizeValue="SUISize.Small"
-                           Disabled="@(Page.Page <= 1 || loading)"
-                           OnClick="PreviousPageAsync">
-                    @L["Sessions.Previous"]
-                </SUIButton>
-                <span>@string.Format(L["Sessions.PageOfFormat"].Value, Page.Page, TotalPages)</span>
-                <SUIButton ColorValue="SUIColor.Secondary"
-                           SizeValue="SUISize.Small"
-                           Disabled="@(Page.Page >= TotalPages || loading)"
-                           OnClick="NextPageAsync">
-                    @L["Sessions.Next"]
-                </SUIButton>
-            </SUIStack>
+            <SUIPagination TotalItems="Page.TotalCount"
+                           PageSize="Page.PageSize"
+                           PageIndex="@(Page.Page - 1)"
+                           PageIndexChanged="GoToPageAsync"
+                           Disabled="loading"
+                           AriaLabel="@L["Sessions.PaginationAriaLabel"].Value"
+                           PreviousLabel="@L["Sessions.Previous"].Value"
+                           NextLabel="@L["Sessions.Next"].Value"
+                           PageLabel="@((current, count) => string.Format(L["Sessions.PageOfFormat"].Value, current, count))"
+                           RangeFormatter="@((first, last, total) => string.Format(L["Sessions.RangeFormat"].Value, first, last, total))"
+                           EmptyText="@string.Format(L["Sessions.ResultCount.Format"].Value, 0)" />
+        }
+        else
+        {
+            <span>@ResultCountLabel</span>
         }
     </footer>
 </div>
@@ -192,10 +183,9 @@
         </div>
         @if (revocation?.IsSuccess is false)
         {
-            <div class="inline-notice inline-notice--danger" role="alert">
-                <SUIIcon Name="alert" Size="19" />
-                <div><strong>@L["Sessions.RevokeConfirm.ErrorTitle"]</strong><span>@revocation.ErrorMessage</span></div>
-            </div>
+            <SUIAlert ToneValue="SUITone.Danger" Icon="alert">
+                <div><strong>@L["Sessions.RevokeConfirm.ErrorTitle"]</strong> <span>@revocation.ErrorMessage</span></div>
+            </SUIAlert>
         }
         <SUIButton ColorValue="SUIColor.Secondary" OnClick="CancelRevocation">@L["Sessions.Cancel"]</SUIButton>
         <SUILoadingButton ColorValue="SUIColor.Error"
@@ -270,9 +260,7 @@
     private string ResultCountLabel =>
         loading
             ? L["Sessions.ResultCount.Loading"].Value
-            : result?.IsSuccess is true
-                ? string.Format(L["Sessions.ResultCount.Format"].Value, Page.TotalCount)
-                : L["Sessions.ResultCount.NoneLoaded"].Value;
+            : L["Sessions.ResultCount.NoneLoaded"].Value;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -300,15 +288,9 @@
         await LoadAsync();
     }
 
-    private async Task PreviousPageAsync()
+    private async Task GoToPageAsync(int pageIndex)
     {
-        currentPage = Math.Max(1, currentPage - 1);
-        await LoadAsync();
-    }
-
-    private async Task NextPageAsync()
-    {
-        currentPage = Math.Min(TotalPages, currentPage + 1);
+        currentPage = Math.Clamp(pageIndex + 1, 1, TotalPages);
         await LoadAsync();
     }
 

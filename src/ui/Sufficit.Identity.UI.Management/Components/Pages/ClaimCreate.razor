@@ -29,25 +29,21 @@
 }
 else
 {
-    <div class="contract-strip contract-strip--warning">
-        <SUIIcon Name="refresh" Size="20" />
-        <div>
-            <strong>@L["ClaimCreate.ContractStrip.Title"]</strong>
-            <span>@L["ClaimCreate.ContractStrip.Description"]</span>
-        </div>
-        <SUIStatusBadge ToneValue="SUITone.Warning">@L["ClaimCreate.ContractStrip.Badge"]</SUIStatusBadge>
-    </div>
+    <div class="page-notices">
+        <SUIAlert ToneValue="SUITone.Warning" Icon="refresh" role="note">
+            <SUIStack Row Wrap AlignItems="Center" Justify="Between" Spacing="2">
+                <div><strong>@L["ClaimCreate.ContractStrip.Title"]</strong> <span>@L["ClaimCreate.ContractStrip.Description"]</span></div>
+                <SUIStatusBadge ToneValue="SUITone.Warning">@L["ClaimCreate.ContractStrip.Badge"]</SUIStatusBadge>
+            </SUIStack>
+        </SUIAlert>
 
-    @if (submission?.IsSuccess is false)
-    {
-        <div class="inline-notice inline-notice--danger" role="alert">
-            <SUIIcon Name="alert" Size="19" />
-            <div>
-                <strong>@L["ClaimCreate.SubmitError.Title"]</strong>
-                <span>@submission.ErrorMessage</span>
-            </div>
-        </div>
-    }
+        @if (submission?.IsSuccess is false)
+        {
+            <SUIAlert ToneValue="SUITone.Danger" Icon="alert">
+                <div><strong>@L["ClaimCreate.SubmitError.Title"]</strong> <span>@submission.ErrorMessage</span></div>
+            </SUIAlert>
+        }
+    </div>
 
     <ManagementDataView Result="userResult" OnRetry="LoadAsync">
     <Success Context="_">
@@ -86,21 +82,17 @@ else
             </div>
 
             <SUIStack Spacing="4">
-                @* Free text with suggestions: SUIAutocomplete only commits a
-                   listed item, so the field keeps the native datalist hint. *@
+                @* Free text with suggestions: the type is not limited to the
+                   listed ones, so the field offers them without committing. *@
                 <IdentityTextField T="string"
                                    Id="claim-type"
                                    Label="@L["ClaimCreate.Field.Type"].Value"
-                                   HelperText="@TypeHint"
-                                   list="claim-type-suggestions"
+                                   Monospace="true"
+                                   Suggestions="SuggestedTypes"
                                    autocomplete="off"
-                                   @bind-Value="model.Type" />
-                <datalist id="claim-type-suggestions">
-                    @foreach (var type in SuggestedTypes)
-                    {
-                        <option value="@type"></option>
-                    }
-                </datalist>
+                                   @bind-Value="model.Type">
+                    <HelperContent>@L["ClaimCreate.Field.TypeHintPrefix"] <code>locale</code>, <code>zoneinfo</code> @L["ClaimCreate.Field.TypeHintSuffix"]</HelperContent>
+                </IdentityTextField>
                 <IdentityTextField T="string"
                                    Id="claim-value"
                                    Label="@L["ClaimCreate.Field.Value"].Value"
@@ -110,7 +102,7 @@ else
             </SUIStack>
         </div>
 
-        <SUIStack Row Wrap AlignItems="Center" Justify="End" Spacing="2" Class="form-actions">
+        <SUIStack Row Wrap AlignItems="Center" Justify="End" Spacing="2">
             <SUIButton ColorValue="SUIColor.Secondary" Href="@BackHref">@L["ClaimCreate.Cancel"]</SUIButton>
             <SUILoadingButton ButtonTypeValue="SUIButtonType.Submit"
                               ColorValue="SUIColor.Primary"
@@ -138,9 +130,6 @@ else
 
     private bool HasUserContext =>
         !string.IsNullOrWhiteSpace(UserId);
-
-    private string TypeHint =>
-        $"{L["ClaimCreate.Field.TypeHintPrefix"].Value} locale, zoneinfo {L["ClaimCreate.Field.TypeHintSuffix"].Value}";
 
     private IReadOnlyList<string> SuggestedTypes =>
         metadataResult?.Value?.SuggestedTypes ?? [];

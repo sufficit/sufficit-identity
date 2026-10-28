@@ -9,25 +9,21 @@
             Description="@L["Authorizations.HeaderDescription"].Value">
 </SUIPageHeader>
 
-<div class="contract-strip contract-strip--info">
-    <SUIIcon Name="shield" Size="20" />
-    <div>
-        <strong>@L["Authorizations.ContractStrip.Title"]</strong>
-        <span>@L["Authorizations.ContractStrip.Description"]</span>
-    </div>
-    <SUIStatusBadge ToneValue="SUITone.Info">OAuth &amp; OIDC</SUIStatusBadge>
-</div>
+<div class="page-notices">
+    <SUIAlert ToneValue="SUITone.Info" Icon="shield" role="note">
+        <SUIStack Row Wrap AlignItems="Center" Justify="Between" Spacing="2">
+            <div><strong>@L["Authorizations.ContractStrip.Title"]</strong> <span>@L["Authorizations.ContractStrip.Description"]</span></div>
+            <SUIStatusBadge ToneValue="SUITone.Info">OAuth &amp; OIDC</SUIStatusBadge>
+        </SUIStack>
+    </SUIAlert>
 
-@if (revoked)
-{
-    <div class="inline-notice inline-notice--success" role="status">
-        <SUIIcon Name="check" Size="19" />
-        <div>
-            <strong>@L["Authorizations.Revoked.Title"]</strong>
-            <span>@L["Authorizations.Revoked.Description"]</span>
-        </div>
-    </div>
-}
+    @if (revoked)
+    {
+        <SUIAlert ToneValue="SUITone.Success" Icon="check" role="status">
+            <div><strong>@L["Authorizations.Revoked.Title"]</strong> <span>@L["Authorizations.Revoked.Description"]</span></div>
+        </SUIAlert>
+    }
+</div>
 
 <div class="table-panel" aria-labelledby="authorizations-list-heading" aria-busy="@loading">
     <div class="data-toolbar data-toolbar--users">
@@ -165,24 +161,23 @@
     </ManagementDataView>
 
     <footer class="table-footer table-footer--paginated">
-        <span>@ResultCountLabel</span>
-        @if (result?.IsSuccess is true && Page.TotalCount > Page.PageSize)
+        @if (result?.IsSuccess is true)
         {
-            <SUIStack Row AlignItems="Center" Spacing="2" aria-label="@L["Authorizations.PaginationAriaLabel"].Value">
-                <SUIButton ColorValue="SUIColor.Secondary"
-                           SizeValue="SUISize.Small"
-                           Disabled="@(Page.Page <= 1 || loading)"
-                           OnClick="PreviousPageAsync">
-                    @L["Authorizations.Previous"]
-                </SUIButton>
-                <span>@string.Format(L["Authorizations.PageOfFormat"].Value, Page.Page, TotalPages)</span>
-                <SUIButton ColorValue="SUIColor.Secondary"
-                           SizeValue="SUISize.Small"
-                           Disabled="@(Page.Page >= TotalPages || loading)"
-                           OnClick="NextPageAsync">
-                    @L["Authorizations.Next"]
-                </SUIButton>
-            </SUIStack>
+            <SUIPagination TotalItems="Page.TotalCount"
+                           PageSize="Page.PageSize"
+                           PageIndex="@(Page.Page - 1)"
+                           PageIndexChanged="GoToPageAsync"
+                           Disabled="loading"
+                           AriaLabel="@L["Authorizations.PaginationAriaLabel"].Value"
+                           PreviousLabel="@L["Authorizations.Previous"].Value"
+                           NextLabel="@L["Authorizations.Next"].Value"
+                           PageLabel="@((current, count) => string.Format(L["Authorizations.PageOfFormat"].Value, current, count))"
+                           RangeFormatter="@((first, last, total) => string.Format(L["Authorizations.RangeFormat"].Value, first, last, total))"
+                           EmptyText="@string.Format(L["Authorizations.ResultCount.Format"].Value, 0)" />
+        }
+        else
+        {
+            <span>@ResultCountLabel</span>
         }
     </footer>
 </div>
@@ -196,10 +191,9 @@
         </div>
         @if (revocation?.IsSuccess is false)
         {
-            <div class="inline-notice inline-notice--danger" role="alert">
-                <SUIIcon Name="alert" Size="19" />
-                <div><strong>@L["Authorizations.RevokeConfirm.ErrorTitle"]</strong><span>@revocation.ErrorMessage</span></div>
-            </div>
+            <SUIAlert ToneValue="SUITone.Danger" Icon="alert">
+                <div><strong>@L["Authorizations.RevokeConfirm.ErrorTitle"]</strong> <span>@revocation.ErrorMessage</span></div>
+            </SUIAlert>
         }
         <SUIButton ColorValue="SUIColor.Secondary" OnClick="CancelRevocation">@L["Authorizations.Cancel"]</SUIButton>
         <SUILoadingButton ColorValue="SUIColor.Error"
@@ -249,9 +243,7 @@
     private string ResultCountLabel =>
         loading
             ? L["Authorizations.ResultCount.Loading"].Value
-            : result?.IsSuccess is true
-                ? string.Format(L["Authorizations.ResultCount.Format"].Value, Page.TotalCount)
-                : L["Authorizations.ResultCount.NoneLoaded"].Value;
+            : L["Authorizations.ResultCount.NoneLoaded"].Value;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -279,15 +271,9 @@
         await LoadAsync();
     }
 
-    private async Task PreviousPageAsync()
+    private async Task GoToPageAsync(int pageIndex)
     {
-        currentPage = Math.Max(1, currentPage - 1);
-        await LoadAsync();
-    }
-
-    private async Task NextPageAsync()
-    {
-        currentPage = Math.Min(TotalPages, currentPage + 1);
+        currentPage = Math.Clamp(pageIndex + 1, 1, TotalPages);
         await LoadAsync();
     }
 

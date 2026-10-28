@@ -2,6 +2,12 @@
    Children rendered by SUI or Identity components are reached with ::deep. */
 
 /* Temporary operator tokens */
+.page-notices {
+    display: grid;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
 .operator-token-loading {
     display: flex;
     min-height: 180px;
@@ -152,47 +158,17 @@
     font-size: 10px;
 }
 
-.operator-token-capability-picker {
+/* The picker is a SUIExpansionPanel: the page only frames it inside the
+   issuer card; header, chevron and content padding belong to the panel. */
+.operator-token-issuer ::deep .operator-token-capability-picker {
     margin: 14px 18px 18px;
-    overflow: visible;
     border: 1px solid var(--line);
     border-radius: var(--radius);
 }
 
-.operator-token-capability-picker > summary {
-    position: relative;
-    min-height: 44px;
-    cursor: pointer;
-    padding: 13px 40px 11px 14px;
-    color: var(--ink-strong);
-    font-size: 11px;
-    font-weight: 650;
-    list-style: none;
-}
-
-.operator-token-capability-picker > summary::-webkit-details-marker { display: none; }
-
-.operator-token-capability-picker > summary::after {
-    position: absolute;
-    top: 50%;
-    right: 15px;
-    width: 8px;
-    height: 8px;
-    border-right: 1.5px solid currentColor;
-    border-bottom: 1.5px solid currentColor;
-    content: "";
-    transform: translateY(-65%) rotate(45deg);
-    transition: transform var(--duration) var(--ease);
-}
-
-.operator-token-capability-picker[open] > summary::after { transform: translateY(-20%) rotate(225deg); }
-
 .operator-token-capability-picker__body {
     display: grid;
     gap: 16px;
-    padding: 14px;
-    border-top: 1px solid var(--line);
-    background: var(--surface-page);
 }
 
 .operator-token-capability-picker fieldset {
@@ -239,21 +215,11 @@
 .operator-token-capability:has(.management-capability-help:hover),
 .operator-token-capability:has(.management-capability-help:focus-within) { z-index: 8; }
 
-.operator-token-capability__selection {
-    display: grid;
-    min-width: 0;
-    min-height: 42px;
-    align-content: center;
-    gap: 2px;
-}
-
 .operator-token-capability code {
-    overflow: hidden;
     color: var(--ink-subtle);
     font-family: var(--font-mono);
     font-size: 9px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow-wrap: anywhere;
 }
 
 .operator-token-capability-picker__empty {

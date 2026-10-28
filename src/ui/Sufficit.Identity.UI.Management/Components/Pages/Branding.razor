@@ -26,47 +26,35 @@
     </Actions>
 </SUIPageHeader>
 
-<div class="contract-strip contract-strip--success">
-    <SUIIcon Name="shield" Size="20" />
-    <div>
-        <strong>@L["Branding.SingleSourceOfTruth.Title"]</strong>
-        <span>@L["Branding.SingleSourceOfTruth.Description"]</span>
-    </div>
-    <SUIStatusBadge ToneValue="SUITone.Success">@L["Branding.Integrated"]</SUIStatusBadge>
+<div class="page-notices">
+    <SUIAlert ToneValue="SUITone.Success" Icon="shield" role="note">
+        <SUIStack Row Wrap AlignItems="Center" Justify="Between" Spacing="2">
+            <div><strong>@L["Branding.SingleSourceOfTruth.Title"]</strong> <span>@L["Branding.SingleSourceOfTruth.Description"]</span></div>
+            <SUIStatusBadge ToneValue="SUITone.Success">@L["Branding.Integrated"]</SUIStatusBadge>
+        </SUIStack>
+    </SUIAlert>
+
+    @if (ActiveThemeCount > 1)
+    {
+        <SUIAlert ToneValue="SUITone.Danger" Icon="alert">
+            <div><strong>@L["Branding.MultipleActiveThemes.Title"]</strong> <span>@L["Branding.MultipleActiveThemes.Description"]</span></div>
+        </SUIAlert>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(successMessage))
+    {
+        <SUIAlert ToneValue="SUITone.Success" Icon="check" role="status">
+            <div><strong>@L["Branding.Updated"]</strong> <span>@successMessage</span></div>
+        </SUIAlert>
+    }
+
+    @if (operation?.IsSuccess is false)
+    {
+        <SUIAlert ToneValue="SUITone.Danger" Icon="alert">
+            <div><strong>@L["Branding.OperationError.Title"]</strong> <span>@operation.ErrorMessage</span></div>
+        </SUIAlert>
+    }
 </div>
-
-@if (ActiveThemeCount > 1)
-{
-    <div class="inline-notice inline-notice--danger" role="alert">
-        <SUIIcon Name="alert" Size="19" />
-        <div>
-            <strong>@L["Branding.MultipleActiveThemes.Title"]</strong>
-            <span>@L["Branding.MultipleActiveThemes.Description"]</span>
-        </div>
-    </div>
-}
-
-@if (!string.IsNullOrWhiteSpace(successMessage))
-{
-    <div class="inline-notice inline-notice--success" role="status">
-        <SUIIcon Name="check" Size="19" />
-        <div>
-            <strong>@L["Branding.Updated"]</strong>
-            <span>@successMessage</span>
-        </div>
-    </div>
-}
-
-@if (operation?.IsSuccess is false)
-{
-    <div class="inline-notice inline-notice--danger" role="alert">
-        <SUIIcon Name="alert" Size="19" />
-        <div>
-            <strong>@L["Branding.OperationError.Title"]</strong>
-            <span>@operation.ErrorMessage</span>
-        </div>
-    </div>
-}
 
 <div class="branding-workspace">
     <div class="panel branding-themes" aria-labelledby="themes-heading">
@@ -278,22 +266,26 @@
             <SUIFormGrid Columns="2">
                 <IdentityTextField T="string"
                                    Id="logo-url"
+                                   Monospace="true"
                                    Label="@L["Branding.Field.MainLogo"].Value"
                                    @bind-Value="model.LogoUrl"
                                    autocomplete="url" />
                 <IdentityTextField T="string"
                                    Id="header-icon-url"
+                                   Monospace="true"
                                    Label="@L["Branding.Field.HeaderIcon"].Value"
                                    @bind-Value="model.HeaderIconUrl"
                                    autocomplete="url" />
                 <IdentityTextField T="string"
                                    Id="favicon-url"
+                                   Monospace="true"
                                    Label="Favicon"
                                    @bind-Value="model.FaviconUrl"
                                    autocomplete="url" />
                 @* Immediate: the preview background follows every keystroke. *@
                 <IdentityTextField T="string"
                                    Id="background-url"
+                                   Monospace="true"
                                    Label="@L["Branding.Field.BackgroundImage"].Value"
                                    HelperText="@L["Branding.Form.BackgroundHint"].Value"
                                    Immediate="true"
@@ -311,24 +303,28 @@
             <SUIFormGrid Columns="4" MinColumnWidth="10rem">
                 <IdentityTextField T="string"
                                    Id="brand-color"
+                                   Monospace="true"
                                    Label="@L["Branding.Field.Brand"].Value"
                                    Placeholder="#cc0000"
                                    @bind-Value="model.BrandColor"
                                    autocomplete="off" />
                 <IdentityTextField T="string"
                                    Id="brand-hover-color"
+                                   Monospace="true"
                                    Label="@L["Branding.Field.Interaction"].Value"
                                    Placeholder="#a30000"
                                    @bind-Value="model.BrandHoverColor"
                                    autocomplete="off" />
                 <IdentityTextField T="string"
                                    Id="brand-soft-color"
+                                   Monospace="true"
                                    Label="@L["Branding.Field.SoftBackground"].Value"
                                    Placeholder="#fbe9e9"
                                    @bind-Value="model.BrandSoftColor"
                                    autocomplete="off" />
                 <IdentityTextField T="string"
                                    Id="theme-color"
+                                   Monospace="true"
                                    Label="@L["Branding.Field.Browser"].Value"
                                    Placeholder="#cc0000"
                                    @bind-Value="model.ThemeColor"
@@ -343,12 +339,13 @@
             </div>
             <IdentityTextField T="string"
                                Id="avatar-url-template"
+                               Monospace="true"
                                Label="@L["Branding.Field.AvatarUrlTemplate"].Value"
                                @bind-Value="model.AvatarUrlTemplate"
                                autocomplete="off" />
         </div>
 
-        <SUIStack Row Wrap AlignItems="Center" Justify="End" Spacing="2" Class="form-actions">
+        <SUIStack Row Wrap AlignItems="Center" Justify="End" Spacing="2">
             <SUIButton ColorValue="SUIColor.Secondary"
                        Disabled="@saving"
                        OnClick="CancelEdit">
@@ -388,10 +385,11 @@
             <SUIStack Spacing="2">
                 <IdentityTextField T="string"
                                    Id="delete-theme-confirmation"
-                                   Label="@($"{L["Branding.DeleteConfirmPrefix"].Value} {selectedTheme.Name} {L["Branding.DeleteConfirmSuffix"].Value}")"
                                    Immediate="true"
                                    @bind-Value="deleteConfirmation"
-                                   autocomplete="off" />
+                                   autocomplete="off">
+                    <LabelContent>@L["Branding.DeleteConfirmPrefix"] <code>@selectedTheme.Name</code> @L["Branding.DeleteConfirmSuffix"]</LabelContent>
+                </IdentityTextField>
                 <SUIStack Row Wrap AlignItems="Center" Justify="End" Spacing="2">
                     <SUIButton ColorValue="SUIColor.Secondary"
                                Disabled="@deleting"

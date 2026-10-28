@@ -987,9 +987,9 @@
   <data name="Sessions.ExpiresPrefix" xml:space="preserve"><value>expires</value></data>
   <data name="Sessions.RevokeAction" xml:space="preserve"><value>Revoke</value></data>
   <data name="Sessions.PaginationAriaLabel" xml:space="preserve"><value>Sessions pagination</value></data>
-  <data name="Sessions.Previous" xml:space="preserve"><value>Previous</value></data>
+  <data name="Sessions.Previous" xml:space="preserve"><value>Previous page</value></data>
   <data name="Sessions.PageOfFormat" xml:space="preserve"><value>Page {0} of {1}</value></data>
-  <data name="Sessions.Next" xml:space="preserve"><value>Next</value></data>
+  <data name="Sessions.Next" xml:space="preserve"><value>Next page</value></data>
   <data name="Sessions.RevokeConfirm.Heading" xml:space="preserve"><value>Revoke this credential?</value></data>
   <data name="Sessions.RevokeConfirm.IssuedAt" xml:space="preserve"><value>issued</value></data>
   <data name="Sessions.RevokeConfirm.ErrorTitle" xml:space="preserve"><value>Could not revoke</value></data>
@@ -1009,6 +1009,7 @@
   <data name="Sessions.Error.Generic" xml:space="preserve"><value>Could not query the sessions</value></data>
   <data name="Sessions.ResultCount.Loading" xml:space="preserve"><value>Loading sessions</value></data>
   <data name="Sessions.ResultCount.Format" xml:space="preserve"><value>{0} credential(s)</value></data>
+  <data name="Sessions.RangeFormat" xml:space="preserve"><value>{0:N0}–{1:N0} of {2:N0} credential(s)</value></data>
   <data name="Sessions.ResultCount.NoneLoaded" xml:space="preserve"><value>No result loaded</value></data>
   <data name="Sessions.NoUser" xml:space="preserve"><value>No user</value></data>
   <data name="Sessions.Application" xml:space="preserve"><value>Application</value></data>
@@ -1045,9 +1046,9 @@
   <data name="Authorizations.NoScopes" xml:space="preserve"><value>No scopes</value></data>
   <data name="Authorizations.RevokeAction" xml:space="preserve"><value>Revoke</value></data>
   <data name="Authorizations.PaginationAriaLabel" xml:space="preserve"><value>Authorizations pagination</value></data>
-  <data name="Authorizations.Previous" xml:space="preserve"><value>Previous</value></data>
+  <data name="Authorizations.Previous" xml:space="preserve"><value>Previous page</value></data>
   <data name="Authorizations.PageOfFormat" xml:space="preserve"><value>Page {0} of {1}</value></data>
-  <data name="Authorizations.Next" xml:space="preserve"><value>Next</value></data>
+  <data name="Authorizations.Next" xml:space="preserve"><value>Next page</value></data>
   <data name="Authorizations.RevokeConfirm.Heading" xml:space="preserve"><value>Revoke this authorization?</value></data>
   <data name="Authorizations.RevokeConfirm.CredentialCountFormat" xml:space="preserve"><value>{0} associated credential(s).</value></data>
   <data name="Authorizations.RevokeConfirm.ErrorTitle" xml:space="preserve"><value>Could not revoke</value></data>
@@ -1062,6 +1063,7 @@
   <data name="Authorizations.Error.Generic" xml:space="preserve"><value>Could not query the authorizations</value></data>
   <data name="Authorizations.ResultCount.Loading" xml:space="preserve"><value>Loading authorizations</value></data>
   <data name="Authorizations.ResultCount.Format" xml:space="preserve"><value>{0} authorization(s)</value></data>
+  <data name="Authorizations.RangeFormat" xml:space="preserve"><value>{0:N0}–{1:N0} of {2:N0} authorization(s)</value></data>
   <data name="Authorizations.ResultCount.NoneLoaded" xml:space="preserve"><value>No result loaded</value></data>
   <data name="Authorizations.Status.Active" xml:space="preserve"><value>Active</value></data>
   <data name="Authorizations.Status.Revoked" xml:space="preserve"><value>Revoked</value></data>
@@ -1094,9 +1096,9 @@
   <data name="Claims.AssignedBadge" xml:space="preserve"><value>Assigned</value></data>
   <data name="Claims.Edit" xml:space="preserve"><value>Edit</value></data>
   <data name="Claims.PaginationAriaLabel" xml:space="preserve"><value>Claims pagination</value></data>
-  <data name="Claims.Previous" xml:space="preserve"><value>Previous</value></data>
+  <data name="Claims.Previous" xml:space="preserve"><value>Previous page</value></data>
   <data name="Claims.PageOfFormat" xml:space="preserve"><value>Page {0} of {1}</value></data>
-  <data name="Claims.Next" xml:space="preserve"><value>Next</value></data>
+  <data name="Claims.Next" xml:space="preserve"><value>Next page</value></data>
   <data name="Claims.Boundary.Heading" xml:space="preserve"><value>Protocol attributes, not business rules</value></data>
   <data name="Claims.Boundary.Description" xml:space="preserve"><value>The provider stores the values; each application decides how to interpret them.</value></data>
   <data name="Claims.Boundary.ReservedProtected" xml:space="preserve"><value>Reserved claims remain protected</value></data>
@@ -1118,6 +1120,7 @@
   <data name="Claims.ResultCount.NoneLoaded" xml:space="preserve"><value>No result loaded</value></data>
   <data name="Claims.ResultCount.Singular" xml:space="preserve"><value>assignment</value></data>
   <data name="Claims.ResultCount.Plural" xml:space="preserve"><value>assignments</value></data>
+  <data name="Claims.RangeFormat" xml:space="preserve"><value>{0:N0}–{1:N0} of {2:N0} {3}</value></data>
   <data name="ClaimCreate.PageTitle" xml:space="preserve"><value>Assign claim | Sufficit Identity</value></data>
   <data name="ClaimCreate.HeaderTitle" xml:space="preserve"><value>Assign claim</value></data>
   <data name="ClaimCreate.BackToClaims" xml:space="preserve"><value>Back to claims</value></data>
@@ -2224,8 +2227,10 @@
   <data name="Maintenance.Pending" xml:space="preserve"><value>Pending</value></data>
   <data name="Maintenance.NoRequest" xml:space="preserve"><value>None</value></data>
   <data name="Maintenance.Enable" xml:space="preserve"><value>Enable scheduled cleanup</value></data>
-  <data name="Maintenance.Retention" xml:space="preserve"><value>Retention (days)</value></data>
-  <data name="Maintenance.Interval" xml:space="preserve"><value>Interval (minutes)</value></data>
+  <data name="Maintenance.Retention" xml:space="preserve"><value>Retention</value></data>
+  <data name="Maintenance.RetentionUnit" xml:space="preserve"><value>days</value></data>
+  <data name="Maintenance.Interval" xml:space="preserve"><value>Interval</value></data>
+  <data name="Maintenance.IntervalUnit" xml:space="preserve"><value>min</value></data>
   <data name="Maintenance.Save" xml:space="preserve"><value>Save policy</value></data>
   <data name="Maintenance.Run" xml:space="preserve"><value>Request execution</value></data>
   <data name="Maintenance.ReadOnly" xml:space="preserve"><value>You can view this policy. Editing requires maintenance permission.</value></data>
