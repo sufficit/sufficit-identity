@@ -101,6 +101,14 @@ public static class ServiceCollectionExtensions
             ClientScopeGrantPolicy>();
         services.TryAddSingleton<IClientDefinitionValidator,
             ClientDefinitionValidator>();
+        // Composition fails on a privileged scope mapped to a capability
+        // outside the catalog. The STS registers the same decision first from
+        // the same section; this covers a host that composes Management alone.
+        options.ClientScopeGrants.ResolvePrivilegedScopes();
+        services.TryAddSingleton<IClientScopeGrantAuthorization>(provider =>
+            new ClientScopeGrantAuthorization(
+                provider.GetRequiredService<IReservedScopePolicy>(),
+                options.ClientScopeGrants));
         services.TryAddSingleton<IIdentityRuntimeCapabilityCatalog,
             DisabledIdentityRuntimeCapabilityCatalog>();
 
@@ -168,6 +176,9 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<ManagementOperationGuard>();
         services.TryAddScoped<ClientCredentialRegistry>();
         services.TryAddScoped<IClientManagementService, ClientManagementService>();
+        services.TryAddScoped<IManagementClientSecretReferenceResolver,
+            VaultClientSecretReferenceResolver>();
+        services.TryAddScoped<PlaintextClientSecretAdapter>();
         services.TryAddScoped<IClientConfigurationDraftService,
             ClientConfigurationDraftService>();
         services.TryAddSingleton(TimeProvider.System);

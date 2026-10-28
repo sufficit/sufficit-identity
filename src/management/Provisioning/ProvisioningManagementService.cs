@@ -13,7 +13,9 @@ internal sealed class ProvisioningManagementService(
     IManagementAuthorizationEvaluator authorization,
     IReservedScopePolicy reservedScopePolicy,
     IClientDefinitionValidator clientDefinitionValidator,
-    ILogger<ProvisioningManagementService> logger)
+    ILogger<ProvisioningManagementService> logger,
+    IManagementEntitlementResolver entitlements,
+    IClientScopeGrantAuthorization scopeGrants)
     : IProvisioningManagementService
 {
     private static readonly ManagementResource ManifestResource =
@@ -36,6 +38,15 @@ internal sealed class ProvisioningManagementService(
 
         try
         {
+            IdentityProvisioningManifestValidator.ValidateAndThrow(
+                manifest,
+                reservedScopePolicy,
+                clientDefinitionValidator);
+            await AuthorizeScopeGrantsAsync(
+                manifest,
+                context,
+                ManagementCapabilities.ProvisioningPreview,
+                cancellationToken);
             var plan = await provisioner.PreviewAsync(
                 manifest,
                 cancellationToken,
@@ -75,6 +86,11 @@ internal sealed class ProvisioningManagementService(
         }
         catch (OperationCanceledException)
         {
+            throw;
+        }
+        catch (ManagementAccessException)
+        {
+            // Recorded per client by the scope-grant decision.
             throw;
         }
         catch (Exception exception)
@@ -172,6 +188,11 @@ internal sealed class ProvisioningManagementService(
                 manifest,
                 reservedScopePolicy,
                 clientDefinitionValidator);
+            await AuthorizeScopeGrantsAsync(
+                manifest,
+                context,
+                ManagementCapabilities.ProvisioningApply,
+                cancellationToken);
         }
         catch (IdentityProvisioningManifestException)
         {
@@ -280,6 +301,101 @@ internal sealed class ProvisioningManagementService(
                 "provisioning_apply_failed",
                 cancellationToken);
             throw;
+        }
+    }
+
+    /// <summary>
+    /// Plan A2: the operator applying a manifest may only put on its clients
+    /// the privileged scopes they could grant by hand. A provisioning token
+    /// carries only the two provisioning capabilities, so it grants no
+    /// privileged scope a client does not already hold.
+    /// </summary>
+    private async Task AuthorizeScopeGrantsAsync(
+        IdentityProvisioningManifest manifest,
+        ManagementRequestContext context,
+        string operationCapability,
+        CancellationToken cancellationToken)
+    {
+        if (manifest.Clients is not { Count: > 0 })
+        {
+            return;
+        }
+
+        var resolved = await entitlements.ResolveAsync(
+            context.Operator,
+            cancellationToken);
+        var grantOperator = new ClientScopeGrantOperator(
+            context.Operator.Identity?.IsAuthenticated is true
+                ? context.OperatorSubject
+                : null,
+            resolved.Capabilities);
+        ManagementAccessException? refusal = null;
+
+        foreach (var client in manifest.Clients.OrderBy(
+                     client => client.ClientId,
+                     StringComparer.Ordinal))
+        {
+            var request = new ClientScopeGrantRequest(
+                ClientDefinitionSource.Provisioning,
+                grantOperator,
+                client.ClientId,
+                client.GrantTypes ?? [],
+                client.Scopes ?? [],
+                await provisioner.GetClientScopesAsync(
+                    client.ClientId,
+                    cancellationToken));
+            var grant = scopeGrants.Decide(request);
+            if (grant.Denials.Count == 0)
+            {
+                continue;
+            }
+
+            var primary = grant.Primary!;
+            logger.LogWarning(
+                "Manifest client scope grant {Outcome}: {ReasonCode} for scopes {Scopes} "
+                + "(mode {Mode}). ClientId={ClientId} OperatorSubject={OperatorSubject} "
+                + "CorrelationId={CorrelationId}",
+                Sufficit.Identity.Core.Services.ClientScopeGrantAudit.OperationOutcome(grant),
+                primary.ReasonCode,
+                string.Join(' ', grant.Denials.Select(denial => denial.Scope)),
+                grant.Mode,
+                client.ClientId,
+                context.OperatorSubject,
+                context.CorrelationId);
+            try
+            {
+                database.ManagementAuditEvents.Add(
+                    Sufficit.Identity.Core.Services.ClientScopeGrantAudit.Create(
+                        request,
+                        grant,
+                        operationCapability,
+                        context.CorrelationId,
+                        context.AuthenticationMethods));
+                await database.SaveChangesAsync(cancellationToken);
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                database.ChangeTracker.Clear();
+                logger.LogError(
+                    exception,
+                    "Unable to persist the manifest scope-grant audit row. CorrelationId={CorrelationId}",
+                    context.CorrelationId);
+            }
+
+            if (!grant.IsAllowed)
+            {
+                refusal ??= new ManagementAccessException(
+                    ManagementAuthorizationDecision.Denied(
+                        primary.ReasonCode,
+                        primary.RequiredCapability));
+            }
+        }
+
+        // Every client is recorded before refusing, so one attempt shows the
+        // whole manifest's expansion rather than only its first client.
+        if (refusal is not null)
+        {
+            throw refusal;
         }
     }
 

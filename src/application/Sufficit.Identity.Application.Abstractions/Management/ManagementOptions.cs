@@ -115,6 +115,43 @@ public sealed class ManagementOptions
             "scim",
             RetiredIdentityScopes.SkorubaIdentityAdminApi
         ];
+
+    /// <summary>
+    /// Operator-aware scope-grant decision (plan A2): deployment-defined
+    /// privileged scopes, the capability each one requires, and the rollout
+    /// mode. <see cref="ReservedApiScopes"/> stays the non-bypassable floor
+    /// underneath it. Dynamic registration reads the same section.
+    /// </summary>
+    public ClientScopeGrantOptions ClientScopeGrants { get; init; } = new();
+
+    /// <summary>How the Management HTTP contract accepts client secrets.</summary>
+    public ManagementClientSecretOptions ClientSecrets { get; init; } = new();
+}
+
+/// <summary>
+/// The Management create/update client contract takes a
+/// <c>secretReference</c> to a vault named secret. The raw
+/// <c>clientSecret</c> field survives only as a deprecated compatibility
+/// adapter, and only until <see cref="PlaintextExpiresAtUtc"/>.
+/// </summary>
+public sealed class ManagementClientSecretOptions
+{
+    /// <summary>
+    /// The default end of the plaintext <c>clientSecret</c> adapter: one
+    /// release window after <c>secretReference</c> shipped.
+    /// </summary>
+    public static readonly DateTimeOffset DefaultPlaintextExpiresAtUtc =
+        new(2027, 4, 30, 0, 0, 0, TimeSpan.Zero);
+
+    /// <summary>
+    /// From this instant on, a Management HTTP request carrying a plaintext
+    /// <c>clientSecret</c> is refused (<c>client_secret_plaintext_expired</c>);
+    /// before it, it is accepted with an audit warning
+    /// (<c>client_secret_plaintext_deprecated</c>). Configure it at
+    /// <c>Sufficit:Identity:Management:ClientSecrets:PlaintextExpiresAtUtc</c>.
+    /// </summary>
+    public DateTimeOffset PlaintextExpiresAtUtc { get; set; } =
+        DefaultPlaintextExpiresAtUtc;
 }
 
 public sealed class TemporaryProvisioningTokenOptions

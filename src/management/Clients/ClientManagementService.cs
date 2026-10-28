@@ -31,6 +31,9 @@ internal sealed partial class ClientManagementService(
     ManagementOperationGuard guard,
     ClientCredentialRegistry credentials,
     ILogger<ClientManagementService> logger,
+    IManagementEntitlementResolver entitlements,
+    IClientScopeGrantAuthorization scopeGrants,
+    IManagementClientSecretReferenceResolver secretReferences,
     IDisabledClientRegistry? disabledClients = null) : IClientManagementService
 {
 

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.WebUtilities;
 using System.Security.Cryptography;
 using Sufficit.Identity.STS.Dpop;
@@ -57,16 +58,28 @@ public sealed class RegistrationController : ControllerBase
     private readonly DcrOptions _options;
     private readonly IClientDefinitionValidator _validator;
     private readonly Sufficit.Identity.Core.Services.DcrInitialAccessTokenStore _initialAccessTokens;
+    private readonly IClientScopeGrantAuthorization _scopeGrants;
+    private readonly Sufficit.Identity.Core.Data.AppDbContext _database;
+    private readonly ISecurityDecisionTelemetry _telemetry;
+    private readonly ILogger<RegistrationController> _logger;
 
     public RegistrationController(
         IOpenIddictApplicationManager applications,
         IConfiguration configuration,
         IClientDefinitionValidator validator,
-        Sufficit.Identity.Core.Services.DcrInitialAccessTokenStore initialAccessTokens)
+        Sufficit.Identity.Core.Services.DcrInitialAccessTokenStore initialAccessTokens,
+        IClientScopeGrantAuthorization scopeGrants,
+        Sufficit.Identity.Core.Data.AppDbContext database,
+        ISecurityDecisionTelemetry telemetry,
+        ILogger<RegistrationController> logger)
     {
         _applications = applications;
         _validator = validator;
         _initialAccessTokens = initialAccessTokens;
+        _scopeGrants = scopeGrants;
+        _database = database;
+        _telemetry = telemetry;
+        _logger = logger;
         var root = configuration.GetSection("Sufficit:Identity")
             .Get<SufficitIdentityOptions>() ?? new SufficitIdentityOptions();
         _options = root.Mcp.Dcr;
@@ -156,6 +169,14 @@ public sealed class RegistrationController : ControllerBase
                 error = issue.Code,
                 error_description = issue.Message,
             });
+        }
+
+        // Plan A2: the same scope-grant decision as Management and
+        // provisioning. A registration has no operator, so it is the most
+        // restricted principal: it can grant no privileged scope.
+        if (await AuthorizeScopeGrantAsync(clientId, request, ct) is { } scopeIssue)
+        {
+            return BadRequest(scopeIssue);
         }
 
         // The operator may narrow what a registration with this particular
@@ -283,6 +304,66 @@ public sealed class RegistrationController : ControllerBase
             jwks_uri = request.JwksUri?.AbsoluteUri,
             client_id_issued_at = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
         });
+    }
+
+    private async Task<object?> AuthorizeScopeGrantAsync(
+        string clientId,
+        DcrRequest request,
+        CancellationToken cancellationToken)
+    {
+        var grantRequest = new ClientScopeGrantRequest(
+            ClientDefinitionSource.DynamicRegistration,
+            ClientScopeGrantOperator.None,
+            clientId,
+            request.GrantTypes ?? [],
+            request.Scopes ?? []);
+        var decision = _scopeGrants.Decide(grantRequest);
+        _telemetry.Record(
+            "client_scope_grant",
+            decision.Mode.ToString().ToLowerInvariant(),
+            wouldReject: decision.Denials.Count > 0,
+            rejected: !decision.IsAllowed,
+            decision.Denials.Select(denial => denial.ReasonCode));
+        if (decision.Denials.Count == 0)
+        {
+            return null;
+        }
+
+        var primary = decision.Primary!;
+        _logger.LogWarning(
+            "Dynamic registration scope grant {Outcome}: {ReasonCode} for scopes {Scopes} (mode {Mode}). ClientId={ClientId}",
+            Sufficit.Identity.Core.Services.ClientScopeGrantAudit.OperationOutcome(decision),
+            primary.ReasonCode,
+            string.Join(' ', decision.Denials.Select(denial => denial.Scope)),
+            decision.Mode,
+            clientId);
+        try
+        {
+            _database.ManagementAuditEvents.Add(
+                Sufficit.Identity.Core.Services.ClientScopeGrantAudit.Create(
+                    grantRequest,
+                    decision,
+                    "identity.clients.create",
+                    HttpContext.TraceIdentifier));
+            await _database.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            _database.ChangeTracker.Clear();
+            _logger.LogError(
+                exception,
+                "Unable to persist the dynamic registration scope-grant audit row.");
+        }
+
+        return decision.IsAllowed
+            ? null
+            : new
+            {
+                error = "invalid_client_metadata",
+                error_description =
+                    $"The scope '{primary.Scope}' cannot be granted to a dynamically registered client.",
+                reason_code = primary.ReasonCode,
+            };
     }
 
     /// <summary>

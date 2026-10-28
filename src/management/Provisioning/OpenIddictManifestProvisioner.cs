@@ -44,6 +44,35 @@ public sealed partial class OpenIddictManifestProvisioner
             ?? new ClientDefinitionValidator(_reservedScopePolicy);
     }
 
+    /// <summary>
+    /// The scopes an existing client holds now, or null when it does not
+    /// exist. The operator-aware scope-grant decision (plan A2) treats only
+    /// scopes outside this set as an expansion.
+    /// </summary>
+    public async Task<IReadOnlyCollection<string>?> GetClientScopesAsync(
+        string clientId,
+        CancellationToken cancellationToken = default)
+    {
+        var application = await _applications.FindByClientIdAsync(
+            clientId,
+            cancellationToken);
+        if (application is null)
+        {
+            return null;
+        }
+
+        var permissions = await _applications.GetPermissionsAsync(
+            application,
+            cancellationToken);
+        return permissions
+            .Where(permission => permission.StartsWith(
+                OpenIddictConstants.Permissions.Prefixes.Scope,
+                StringComparison.Ordinal))
+            .Select(permission =>
+                permission[OpenIddictConstants.Permissions.Prefixes.Scope.Length..])
+            .ToArray();
+    }
+
     public Task<IdentityProvisioningPlan> PreviewAsync(
         IdentityProvisioningManifest manifest,
         CancellationToken cancellationToken = default,

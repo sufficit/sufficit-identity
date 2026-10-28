@@ -43,10 +43,23 @@ internal sealed partial class ClientManagementService
         try
         {
             ClientCredentialPolicy.ValidateClientId(clientId);
+            if (command.SecretReference is not null
+                && !string.IsNullOrEmpty(command.ClientSecret))
+            {
+                throw new ManagementValidationException(
+                    PlaintextClientSecretAdapter.AmbiguousReasonCode,
+                    "Send either secretReference or the deprecated clientSecret, not both.",
+                    "secretReference");
+            }
+
+            // A secret named in the vault counts as a secret for every rule
+            // below; it is resolved only once the request has validated.
+            var hasSecret = !string.IsNullOrEmpty(command.ClientSecret)
+                || command.SecretReference is not null;
             var redirectUris = ClientUriPolicy.ValidateRedirectUris(
                 command.RedirectUris,
                 "redirectUris",
-                allowPrivateUseScheme: string.IsNullOrEmpty(command.ClientSecret)
+                allowPrivateUseScheme: !hasSecret
                     && string.IsNullOrWhiteSpace(command.JwksJson));
             var postLogoutRedirectUris = ClientUriPolicy.ValidateRedirectUris(
                 command.PostLogoutRedirectUris,
@@ -125,7 +138,7 @@ internal sealed partial class ClientManagementService
                     : command.ClientSecret,
                 DisplayName = NullIfWhiteSpace(command.DisplayName),
                 ConsentType = consentType,
-                ClientType = string.IsNullOrEmpty(command.ClientSecret)
+                ClientType = !hasSecret
                     && publicJwks is null
                     ? OpenIddictConstants.ClientTypes.Public
                     : OpenIddictConstants.ClientTypes.Confidential,
@@ -164,7 +177,7 @@ internal sealed partial class ClientManagementService
                 new ClientDefinitionRequest(
                     ClientDefinitionSource.Management,
                     clientId,
-                    string.IsNullOrEmpty(command.ClientSecret)
+                    !hasSecret
                         && publicJwks is null
                         ? OpenIddictConstants.ClientTypes.Public
                         : OpenIddictConstants.ClientTypes.Confidential,
@@ -173,7 +186,7 @@ internal sealed partial class ClientManagementService
                     redirectUris,
                     RequirePkce: clientDefinitionValidator
                         .RequiresProofKeyForCodeExchange(grantTypes),
-                    HasClientSecret: !string.IsNullOrEmpty(command.ClientSecret)));
+                    HasClientSecret: hasSecret));
             if (!definitionValidation.IsValid)
             {
                 var issue = definitionValidation.Issues[0];
@@ -202,6 +215,26 @@ internal sealed partial class ClientManagementService
                     "scope_reserved",
                     $"The scope '{forbidden}' protects an administrative surface and cannot be assigned to a client through the management API.",
                     "scopes");
+            }
+
+            // Plan A2: a deployment-defined privileged scope needs the
+            // capability mapped to it, held by this operator.
+            await AuthorizeScopeGrantAsync(
+                context,
+                ManagementCapabilities.ClientsCreate,
+                clientId,
+                grantTypes,
+                normalizedScopes,
+                currentScopes: null,
+                cancellationToken);
+
+            if (command.SecretReference is not null)
+            {
+                descriptor.ClientSecret = await secretReferences.ResolveAsync(
+                    command.SecretReference,
+                    context,
+                    cancellationToken);
+                SetSecretReference(descriptor.Properties, command.SecretReference);
             }
 
             foreach (var scope in normalizedScopes)
@@ -298,6 +331,11 @@ internal sealed partial class ClientManagementService
                 "rejected",
                 exception.ReasonCode,
                 cancellationToken);
+            throw;
+        }
+        catch (ManagementAccessException)
+        {
+            // Already recorded where it was decided (scope grant, vault).
             throw;
         }
         catch (Exception exception)
@@ -479,6 +517,34 @@ internal sealed partial class ClientManagementService
                     "scopes");
             }
 
+            // Plan A2: only scopes the client does not hold yet are an
+            // expansion that needs the operator's authority.
+            await AuthorizeScopeGrantAsync(
+                context,
+                ManagementCapabilities.ClientsUpdate,
+                clientId,
+                grantTypes,
+                normalizedScopes,
+                ScopePermissions(descriptor.Permissions),
+                cancellationToken);
+
+            if (command.SecretReference is not null)
+            {
+                if (clientType != OpenIddictConstants.ClientTypes.Confidential)
+                {
+                    throw new ManagementValidationException(
+                        "client_secret_reference_requires_confidential",
+                        "Only a confidential client's secret can be replaced on update; rotate the credential to convert a public client.",
+                        "secretReference");
+                }
+
+                descriptor.ClientSecret = await secretReferences.ResolveAsync(
+                    command.SecretReference,
+                    context,
+                    cancellationToken);
+                SetSecretReference(descriptor.Properties, command.SecretReference);
+            }
+
             descriptor.DisplayName = NullIfWhiteSpace(command.DisplayName);
             descriptor.ConsentType = consentType;
             ClientPermissionPolicy.RemoveManagedPermissions(descriptor);
@@ -628,6 +694,11 @@ internal sealed partial class ClientManagementService
             throw new ManagementConflictException(
                 "client_changed",
                 "The client was changed by another operation. Reload the data before saving.");
+        }
+        catch (ManagementAccessException)
+        {
+            // Already recorded where it was decided (scope grant, vault).
+            throw;
         }
         catch (Exception exception)
         {

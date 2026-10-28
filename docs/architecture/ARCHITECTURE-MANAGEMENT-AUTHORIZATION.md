@@ -167,7 +167,7 @@ The generic management application evaluates this catalog
 | Branding | `identity.branding.read` `identity.branding.manage` |
 | Users | `identity.users.read` `.create` `.update` `.disable` `.delete` `.reset` `.confirmation` `.system`, `identity.users.mfa.reset` |
 | Claims | `identity.claims.read` `.create` `.update` `.delete` `.system` |
-| Scopes | `identity.scopes.read` `.create` `.update` `.delete` |
+| Scopes | `identity.scopes.read` `.create` `.update` `.delete` `.grant` |
 | Sessions | `identity.sessions.read` `identity.sessions.revoke` |
 | Authorizations | `identity.authorizations.read` `identity.authorizations.revoke` |
 | Audit | `identity.audit.read` |
@@ -236,6 +236,46 @@ Console authority never comes from something the console itself can hand out:
   authority of its own: a token without a bound user gets no management
   capability, and no production path reads roles from a client registration
   (`ClientAuthorityContractTests`).
+
+### Client scope grants: an operator grants only what they hold
+
+Putting a scope on a client hands that client authority, so it is decided as a
+grant by the operator, not as a field edit. One decision,
+`IClientScopeGrantAuthorization`, is asked by every entry point that writes a
+client's scopes — Management create/update (API and console), provisioning
+manifest preview/apply, dynamic registration and CIMD. Its input is the
+operator (subject and **resolved** capabilities, the same set the evaluator
+uses: role mapping, capability claims, an operator token's delegated subset, a
+system user's roles), the target client, the grant types, the requested scopes
+and the scopes the client already holds.
+
+Per requested scope, in order:
+
+| Rule | Reason code | Rollout |
+| --- | --- | --- |
+| In `ReservedApiScopes` (the floor) | `scope_reserved` | refused always |
+| Not privileged, or already on the client | — | allowed |
+| Privileged, no operator (registration, CIMD, no session) | `scope_grant_operator_required` | Observe/Enforce |
+| Privileged, operator lacks the mapped capability | `scope_grant_capability_missing` | Observe/Enforce |
+
+Privileged scopes are deployment configuration
+(`Management:ClientScopeGrants:PrivilegedScopes`, each a scope and an optional
+capability defaulting to `identity.scopes.grant`); a capability outside the
+catalog fails composition. Only scopes outside the client's current set are an
+expansion, so an operator can still edit a client that holds a scope they could
+not grant. `Mode` defaults to `Observe`; the posture check reports
+`management-client-scope-grants-observe` (advisory) while privileged scopes are
+configured and the mode is still `Observe`. Every denial, observed or enforced,
+writes one audit row whose `Capability` is the capability that was missing.
+
+The Management create/update contract names a client secret instead of sending
+it: `secretReference` (`name`, `contextId`) is resolved through the Management
+Vault service under the operator's own Vault authorization
+(`identity.secrets.resolve` plus the namespace grant), so an operator cannot
+turn a secret they may not read into a credential. The plaintext `clientSecret`
+remains only as a compatibility adapter, audited on every use and refused from
+`Management:ClientSecrets:PlaintextExpiresAtUtc` on.
+Usage: [`USAGE-CLIENT-SCOPE-GRANTS.md`](../usage/USAGE-CLIENT-SCOPE-GRANTS.md).
 
 Break-glass against a protected principal is recorded the same way whichever
 path reaches the user — the user itself, a claim, a session or an

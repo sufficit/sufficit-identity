@@ -32,5 +32,24 @@ public sealed class ManagementProductionPostureContributor(
                 "Set Management:Authorization:ProtectedPrincipals:Mode=Enforce after tier inventory.",
                 protectedPrincipals.AcknowledgeObserveInProduction);
         }
+
+        // Plan A2. Without privileged scopes the mode decides nothing (the
+        // reserved floor is enforced in both), so only a deployment that
+        // declared some is reported. Advisory: Observe is the documented
+        // rollout step, and switching to Enforce needs the denial inventory
+        // the audit rows provide.
+        var scopeGrants = options.ClientScopeGrants;
+        if (scopeGrants.Mode == ClientDefinitionRolloutMode.Observe
+            && scopeGrants.PrivilegedScopes is { Count: > 0 })
+        {
+            yield return new(
+                "management-client-scope-grants-observe",
+                "The operator-aware client scope-grant decision is in Observe mode: "
+                + "an operator lacking a privileged scope's capability can still grant it, "
+                + "and only an audit row (operationOutcome=observed) records it.",
+                "Reconcile the observed scope-grant denials, then set "
+                + "Sufficit:Identity:Management:ClientScopeGrants:Mode=Enforce.",
+                Severity: ProductionPostureSeverity.Advisory);
+        }
     }
 }

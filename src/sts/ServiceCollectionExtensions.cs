@@ -172,6 +172,20 @@ public static partial class ServiceCollectionExtensions
                     .Concat(RetiredIdentityScopes.Names)));
         services.AddSingleton<IClientScopeGrantPolicy,
             ClientScopeGrantPolicy>();
+        // One operator-aware scope-grant decision for every client-definition
+        // entry point (plan A2). Dynamic registration has no operator and is
+        // decided as the most restricted principal; Management and
+        // provisioning hand in the operator's resolved capabilities. The
+        // section lives under Management because that is where operators and
+        // their capabilities are configured.
+        var clientScopeGrants = configuration
+            .GetSection(ClientScopeGrantOptions.ConfigurationSection)
+            .Get<ClientScopeGrantOptions>() ?? new ClientScopeGrantOptions();
+        clientScopeGrants.ResolvePrivilegedScopes();
+        services.TryAddSingleton<IClientScopeGrantAuthorization>(provider =>
+            new ClientScopeGrantAuthorization(
+                provider.GetRequiredService<IReservedScopePolicy>(),
+                clientScopeGrants));
         services.AddSingleton<ILegacyGrantAvailability>(
             new LegacyGrantAvailability(options.LegacyGrants));
         services.AddSingleton<IClientDefinitionValidator,

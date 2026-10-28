@@ -334,6 +334,14 @@ public sealed partial class ClientsControllerTests
             events,
             entry =>
             {
+                // Plan A2: the plaintext secret on the wire is the deprecated
+                // compatibility adapter, and every use of it is recorded.
+                Assert.Equal("identity.clients.create", entry.Capability);
+                Assert.Equal("warning", entry.OperationOutcome);
+                Assert.Equal("client_secret_plaintext_deprecated", entry.ReasonCode);
+            },
+            entry =>
+            {
                 Assert.Equal("identity.clients.create", entry.Capability);
                 Assert.Equal("succeeded", entry.OperationOutcome);
             },

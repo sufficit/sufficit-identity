@@ -14,6 +14,7 @@
   <data name="Capability.Fallback.Description" xml:space="preserve"><value>Authorizes the administrative operation identified by this capability. Review the module documentation before delegating it to an automation.</value></data>
   <data name="Capability.Label.Read" xml:space="preserve"><value>View</value></data>
   <data name="Capability.Label.Create" xml:space="preserve"><value>Create</value></data>
+  <data name="Capability.Label.Grant" xml:space="preserve"><value>Grant</value></data>
   <data name="Capability.Label.Update" xml:space="preserve"><value>Update</value></data>
   <data name="Capability.Label.Delete" xml:space="preserve"><value>Delete</value></data>
   <data name="Capability.Label.Manage" xml:space="preserve"><value>Manage</value></data>
@@ -81,6 +82,8 @@
   <data name="Capability.identity.scopes.update.Description" xml:space="preserve"><value>Used to change a scope's description, resources, claims, and other properties. The change can affect tokens later issued to authorized applications.</value></data>
   <data name="Capability.identity.scopes.delete.Title" xml:space="preserve"><value>Delete OAuth and OIDC scopes</value></data>
   <data name="Capability.identity.scopes.delete.Description" xml:space="preserve"><value>Used to remove a scope from the provider. It can break requests from applications that still depend on it and should follow an inventory review.</value></data>
+  <data name="Capability.identity.scopes.grant.Title" xml:space="preserve"><value>Grant privileged scopes to clients</value></data>
+  <data name="Capability.identity.scopes.grant.Description" xml:space="preserve"><value>Used to put a scope the deployment marked as privileged on an application. Creating or editing clients is not enough: an operator may only grant authority they hold.</value></data>
 
   <data name="Capability.identity.sessions.read.Title" xml:space="preserve"><value>View sessions</value></data>
   <data name="Capability.identity.sessions.read.Description" xml:space="preserve"><value>Used in Sessions to find active sign-ins and inspect the client, user, dates, and state. It does not end any session.</value></data>

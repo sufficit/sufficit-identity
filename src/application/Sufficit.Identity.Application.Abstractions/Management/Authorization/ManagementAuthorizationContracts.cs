@@ -62,6 +62,14 @@ public static class ManagementCapabilities
     public const string ScopesCreate = "identity.scopes.create";
     public const string ScopesUpdate = "identity.scopes.update";
     public const string ScopesDelete = "identity.scopes.delete";
+    /// <summary>
+    /// Puts a deployment-defined privileged scope on a client (plan A2). The
+    /// default capability of every entry in
+    /// <c>Management:ClientScopeGrants:PrivilegedScopes</c> without one of its
+    /// own. Holding <see cref="ClientsCreate"/> or <see cref="ClientsUpdate"/>
+    /// is not enough: an operator may only grant authority they hold.
+    /// </summary>
+    public const string ScopesGrant = "identity.scopes.grant";
     public const string SessionsRead = "identity.sessions.read";
     public const string SessionsRevoke = "identity.sessions.revoke";
     public const string AuthorizationsRead = "identity.authorizations.read";
@@ -158,6 +166,7 @@ public static class ManagementCapabilities
                 ScopesCreate,
                 ScopesUpdate,
                 ScopesDelete,
+                ScopesGrant,
                 SessionsRead,
                 SessionsRevoke,
                 AuthorizationsRead,

@@ -14,6 +14,7 @@
   <data name="Capability.Fallback.Description" xml:space="preserve"><value>Autoriza a operação administrativa identificada por esta capability. Consulte a documentação do módulo antes de delegá-la a uma automação.</value></data>
   <data name="Capability.Label.Read" xml:space="preserve"><value>Consultar</value></data>
   <data name="Capability.Label.Create" xml:space="preserve"><value>Criar</value></data>
+  <data name="Capability.Label.Grant" xml:space="preserve"><value>Conceder</value></data>
   <data name="Capability.Label.Update" xml:space="preserve"><value>Atualizar</value></data>
   <data name="Capability.Label.Delete" xml:space="preserve"><value>Excluir</value></data>
   <data name="Capability.Label.Manage" xml:space="preserve"><value>Administrar</value></data>
@@ -81,6 +82,8 @@
   <data name="Capability.identity.scopes.update.Description" xml:space="preserve"><value>Usada para alterar descrição, recursos, claims e demais propriedades de um scope. A mudança pode afetar tokens emitidos futuramente para aplicações autorizadas.</value></data>
   <data name="Capability.identity.scopes.delete.Title" xml:space="preserve"><value>Excluir scopes OAuth e OIDC</value></data>
   <data name="Capability.identity.scopes.delete.Description" xml:space="preserve"><value>Usada para remover um scope do provedor. Pode interromper solicitações de aplicações que ainda dependem dele e deve ser precedida por inventário.</value></data>
+  <data name="Capability.identity.scopes.grant.Title" xml:space="preserve"><value>Conceder scopes privilegiados a aplicações</value></data>
+  <data name="Capability.identity.scopes.grant.Description" xml:space="preserve"><value>Usada para incluir em uma aplicação um scope que a implantação marcou como privilegiado. Criar ou editar clientes não basta: um operador só concede a autoridade que ele próprio tem.</value></data>
 
   <data name="Capability.identity.sessions.read.Title" xml:space="preserve"><value>Consultar sessões</value></data>
   <data name="Capability.identity.sessions.read.Description" xml:space="preserve"><value>Usada na área de Sessões para localizar logins ativos e inspecionar cliente, usuário, datas e estado. Não encerra nenhuma sessão.</value></data>

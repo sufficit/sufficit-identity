@@ -131,6 +131,7 @@ found it.
 - [Rate limiting by operation and browser errors](networking/USAGE-RATE-LIMITING.md)
 
 - [Managed client credentials](usage/USAGE-MANAGED-CLIENT-CREDENTIALS.md) — validade, rotação e emissão de tokens de aplicação
+- [Privileged client scopes and vault secret references](usage/USAGE-CLIENT-SCOPE-GRANTS.md) — quem pode conceder escopo privilegiado e `secretReference` no cadastro de aplicações
 
 - [Embedded public and Management UIs](usage/USAGE-EMBEDDED-UI.md)
 - [Identity MCP — Vault and self-service](usage/USAGE-IDENTITY-MCP.md)

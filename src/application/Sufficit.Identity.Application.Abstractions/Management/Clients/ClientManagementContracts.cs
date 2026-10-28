@@ -251,7 +251,29 @@ public sealed record CreateManagementClientCommand(
     string? JwksJson = null,
     IReadOnlyList<string>? NativeReturnUris = null,
     string? DeviceCloseFallbackUrl = null,
-    int? DelegationMaxAuthAgeHours = null);
+    int? DelegationMaxAuthAgeHours = null,
+    ManagementClientSecretReference? SecretReference = null);
+
+/// <summary>
+/// A client secret held by the vault, named instead of sent (plan A2). The
+/// Management service resolves it server-side, under the operator's own
+/// Vault authorization (<c>identity.secrets.resolve</c> plus the namespace
+/// grant), hashes it onto the client and never returns or logs it.
+/// </summary>
+/// <param name="Name">Named-secret path, e.g. <c>clients/reporting/secret</c>.</param>
+/// <param name="ContextId">Vault context; <c>global</c> when omitted.</param>
+public sealed record ManagementClientSecretReference(
+    string Name,
+    string? ContextId = null)
+{
+    public const string GlobalContextId = "global";
+
+    public string EffectiveContextId =>
+        string.IsNullOrWhiteSpace(ContextId) ? GlobalContextId : ContextId.Trim();
+
+    /// <summary>The non-secret text form recorded on the client.</summary>
+    public override string ToString() => $"{EffectiveContextId}:{Name.Trim()}";
+}
 
 public sealed record UpdateManagementClientCommand(
     string ClientId,
@@ -278,7 +300,8 @@ public sealed record UpdateManagementClientCommand(
     IReadOnlyList<string>? NativeReturnUris = null,
     string? DeviceCloseFallbackUrl = null,
     int? DelegationMaxAuthAgeHours = null,
-    bool ClearDelegationMaxAuthAge = false);
+    bool ClearDelegationMaxAuthAge = false,
+    ManagementClientSecretReference? SecretReference = null);
 
 public sealed record RotateManagementClientSecretCommand(
     string ClientId,

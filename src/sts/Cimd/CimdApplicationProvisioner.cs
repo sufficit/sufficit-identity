@@ -30,7 +30,8 @@ public sealed class CimdApplicationProvisioner(
     IOpenIddictApplicationManager applications,
     ClientIdMetadataResolver resolver,
     SufficitIdentityOptions rootOptions,
-    ILogger<CimdApplicationProvisioner> logger)
+    ILogger<CimdApplicationProvisioner> logger,
+    Sufficit.Identity.Application.Security.IClientScopeGrantAuthorization? scopeGrants = null)
 {
     /// <summary>
     /// Returns the existing application for <paramref name="clientId"/>, or
@@ -102,12 +103,41 @@ public sealed class CimdApplicationProvisioner(
         }
         descriptor.Permissions.Add(Permissions.Endpoints.Token);
 
-        foreach (var scope in document.Scopes)
+        // Plan A2: the shared scope-grant decision, with no operator — the
+        // most restricted principal. Like the allowlist above, an enforced
+        // denial narrows the client instead of failing the sign-in.
+        var allowedScopes = document.Scopes
+            .Where(dcrPolicy.AllowedScopes.Contains)
+            .ToArray();
+        var refusedScopes = new HashSet<string>(StringComparer.Ordinal);
+        if (scopeGrants is not null)
         {
-            if (dcrPolicy.AllowedScopes.Contains(scope))
+            var decision = scopeGrants.Decide(
+                new Sufficit.Identity.Application.Security.ClientScopeGrantRequest(
+                    Sufficit.Identity.Application.Security.ClientDefinitionSource.DynamicRegistration,
+                    Sufficit.Identity.Application.Security.ClientScopeGrantOperator.None,
+                    document.ClientId,
+                    document.GrantTypes,
+                    allowedScopes));
+            foreach (var denial in decision.Denials)
             {
-                descriptor.Permissions.Add(Permissions.Prefixes.Scope + scope);
+                logger.LogWarning(
+                    "CIMD client {ClientId} scope {Scope} {Outcome}: {ReasonCode} (mode {Mode}).",
+                    document.ClientId,
+                    denial.Scope,
+                    denial.Enforced ? "dropped" : "would be dropped",
+                    denial.ReasonCode,
+                    decision.Mode);
+                if (denial.Enforced)
+                {
+                    refusedScopes.Add(denial.Scope);
+                }
             }
+        }
+
+        foreach (var scope in allowedScopes.Where(scope => !refusedScopes.Contains(scope)))
+        {
+            descriptor.Permissions.Add(Permissions.Prefixes.Scope + scope);
         }
 
         foreach (var redirect in document.RedirectUris)

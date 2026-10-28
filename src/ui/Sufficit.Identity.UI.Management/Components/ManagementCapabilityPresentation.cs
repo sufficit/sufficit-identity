@@ -43,6 +43,7 @@ public static class ManagementCapabilityPresentation
             [ManagementCapabilities.ScopesCreate] = "Capability.Label.Create",
             [ManagementCapabilities.ScopesUpdate] = "Capability.Label.Update",
             [ManagementCapabilities.ScopesDelete] = "Capability.Label.Delete",
+            [ManagementCapabilities.ScopesGrant] = "Capability.Label.Grant",
             [ManagementCapabilities.SessionsRead] = "Capability.Label.Read",
             [ManagementCapabilities.SessionsRevoke] = "Capability.Label.Revoke",
             [ManagementCapabilities.AuthorizationsRead] = "Capability.Label.Read",

@@ -78,25 +78,30 @@ anything belonging to a principal of equal or higher tier without break-glass.
 
 ### A2 — Operator-aware client scope and secret authorization
 
-- [ ] Extend the scope-grant boundary to evaluate operator, target client,
+- [x] Extend the scope-grant boundary to evaluate operator, target client,
   grant type and requested scopes; keep `ReservedApiScopes` a non-bypassable
   floor and add deployment-defined privileged scopes
-- [ ] Define operator-specific scope-minting entitlements and negative
+- [x] Define operator-specific scope-minting entitlements and negative
   decisions for privilege expansion, with stable reason codes and audit records
-- [ ] Add `SecretReference` to the Management HTTP create/update contract;
+- [x] Add `SecretReference` to the Management HTTP create/update contract;
   retain raw `ClientSecret` only as a deprecated compatibility adapter with a
   PII-free audit warning and an explicit expiry
-- [ ] Run the validator and the new entitlement decision in shadow mode by
-  client/operator cohort, reconcile expected denials, enforce, then remove the
-  expired plaintext adapter
+- [x] Run the validator and the new entitlement decision in shadow mode by
+  client/operator cohort (`ClientScopeGrants:Mode=Observe`, default)
+- [ ] **(operational)** Declare the deployment's privileged scopes, reconcile
+  the observed denials (audit `reasonCode like 'scope_grant_%'`), set
+  `ClientScopeGrants:Mode=Enforce`, migrate plaintext-secret callers
+  (`client_secret_plaintext_deprecated`) and remove the adapter after
+  `ClientSecrets:PlaintextExpiresAtUtc`
 - [ ] **(operational)** Inventory the real production manifests and adopt
   existing managed clients explicitly before enabling client-definition
   enforcement
 
-`IClientDefinitionValidator`, `IReservedScopePolicy` and
-`IClientScopeGrantPolicy` already govern the three client-definition entry
-points with `Observe`/`Enforce` rollout; what is missing is the operator
-dimension and the manifest adoption pass.
+Operator dimension, privileged scopes, `secretReference` and the plaintext
+adapter delivered 2026-10-28 —
+[`202610281800`](../activities/202610281800-operator-scope-grant.md). One
+decision, `IClientScopeGrantAuthorization`, serves Management, provisioning,
+dynamic registration and CIMD; what is left is operational.
 
 **Done when:** no operator can grant authority they do not hold, every client
 entry point shares one decision, and new Management requests carry no plaintext

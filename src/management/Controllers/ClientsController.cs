@@ -13,7 +13,9 @@ namespace Sufficit.Identity.Management.Controllers;
 [ApiController]
 [Authorize(Policy = "sufficit-identity-management")]
 [Route("api/clients")]
-public sealed class ClientsController(IClientManagementService clients)
+public sealed class ClientsController(
+    IClientManagementService clients,
+    PlaintextClientSecretAdapter plaintextSecrets)
     : ControllerBase
 {
     /// <summary>Lists registered clients with bounded server-side paging.</summary>
@@ -57,6 +59,18 @@ public sealed class ClientsController(IClientManagementService clients)
         [FromBody] CreateClientRequest request,
         CancellationToken cancellationToken)
     {
+        // Deprecated compatibility adapter (plan A2): a plaintext secret is
+        // accepted with an audit warning until the configured expiry, then
+        // refused. secretReference is the contract going forward.
+        if (!string.IsNullOrEmpty(request.ClientSecret))
+        {
+            await plaintextSecrets.AcceptAsync(
+                request.ClientId,
+                request.SecretReference is not null,
+                RequestContext(),
+                cancellationToken);
+        }
+
         var result = await clients.CreateAsync(
             new CreateManagementClientCommand(
                 request.ClientId,
@@ -79,7 +93,8 @@ public sealed class ClientsController(IClientManagementService clients)
                 request.JwksJson,
                 request.NativeReturnUris,
                 request.DeviceCloseFallbackUrl,
-                request.DelegationMaxAuthAgeHours),
+                request.DelegationMaxAuthAgeHours,
+                request.SecretReference?.ToCommand()),
             RequestContext(),
             cancellationToken);
 
@@ -122,7 +137,8 @@ public sealed class ClientsController(IClientManagementService clients)
                 request.NativeReturnUris,
                 request.DeviceCloseFallbackUrl,
                 request.DelegationMaxAuthAgeHours,
-                request.ClearDelegationMaxAuthAge),
+                request.ClearDelegationMaxAuthAge,
+                request.SecretReference?.ToCommand()),
             RequestContext(),
             cancellationToken);
 
@@ -315,7 +331,19 @@ public sealed class CreateClientRequest
     [Required]
     public string ClientId { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Deprecated: a plaintext secret on the wire. Accepted, with an audit
+    /// warning, only until
+    /// <c>Management:ClientSecrets:PlaintextExpiresAtUtc</c>; send
+    /// <see cref="SecretReference"/> instead.
+    /// </summary>
     public string? ClientSecret { get; set; }
+
+    /// <summary>
+    /// The vault named secret that becomes this client's secret. Makes the
+    /// client confidential.
+    /// </summary>
+    public ClientSecretReferenceRequest? SecretReference { get; set; }
 
     public string? DisplayName { get; set; }
 
@@ -427,6 +455,25 @@ public sealed class UpdateClientRequest
 
     /// <summary>Removes the application's own limit; it follows the deployment default again.</summary>
     public bool ClearDelegationMaxAuthAge { get; set; }
+
+    /// <summary>
+    /// Replaces a confidential client's secret with the vault named secret it
+    /// names. Null leaves the secret untouched. There is no plaintext
+    /// alternative on update.
+    /// </summary>
+    public ClientSecretReferenceRequest? SecretReference { get; set; }
+}
+
+/// <summary>A vault named secret, by name and context.</summary>
+public sealed class ClientSecretReferenceRequest
+{
+    [Required]
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>Vault context; <c>global</c> when omitted.</summary>
+    public string? ContextId { get; set; }
+
+    internal ManagementClientSecretReference ToCommand() => new(Name, ContextId);
 }
 
 public sealed class RotateClientSecretRequest
