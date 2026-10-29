@@ -1,4 +1,7 @@
-:root {
+/* This sheet is also linked by the public UI on every page (login, consent,
+   account), so nothing here may target :root, * or bare elements: every rule
+   stays under .vault-layout. */
+.vault-layout {
     --vault-bg: #f5f6f8;
     --vault-surface: #fff;
     --vault-ink: #242223;
@@ -9,13 +12,14 @@
     --vault-info-bg: #eef5ff;
     --vault-warning-bg: #fff7e7;
     --vault-success: #16743b;
-    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-family: var(--font-sans, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
     color: var(--vault-ink);
 }
 
-* { box-sizing: border-box; }
-::selection { background: rgba(201,0,0,.18); color: var(--vault-ink); }
-button, input { font: inherit; }
+/* :where() keeps these resets at zero specificity so SUI component rules win. */
+:where(.vault-layout, .vault-layout *, .vault-layout *::before, .vault-layout *::after) { box-sizing: border-box; }
+.vault-layout ::selection { background: rgba(201,0,0,.18); color: var(--vault-ink); }
+:where(.vault-layout) :where(button, input) { font: inherit; }
 .vault-layout { min-height: 100vh; background: var(--vault-bg); }
 .vault-topbar { display: flex; min-height: 64px; align-items: center; justify-content: space-between; gap: 16px; padding: 0 clamp(16px, 4vw, 48px); border-bottom: 1px solid var(--vault-line); background: var(--vault-surface); }
 .vault-brand { display: inline-flex; align-items: center; gap: 10px; color: inherit; font-size: 15px; font-weight: 600; text-decoration: none; }
@@ -74,11 +78,11 @@ button, input { font: inherit; }
 .vault-cleanup__confirm { display: grid; justify-items: end; gap: 8px; }
 .vault-cleanup__confirm > strong { color: #8d2020; font-size: 11px; }
 .vault-cleanup__confirm > div { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
-* { scrollbar-color: #b9bec7 transparent; scrollbar-width: thin; }
+.vault-layout :where(*) { scrollbar-color: #b9bec7 transparent; scrollbar-width: thin; }
 #blazor-error-ui { display: none; }
 @media (max-width: 760px) { .vault-user-row { grid-template-columns: 42px minmax(0, 1fr) 18px; } .vault-user-row__counts, .vault-user-row__activity { grid-column: 2; } .vault-user-row__counts { grid-auto-flow: column; justify-content: start; } .vault-user-summary { grid-template-columns: 42px minmax(0, 1fr); } .vault-user-summary dl { grid-column: 1 / -1; } .vault-user-summary dl > div:first-child { border-left: 0; padding-left: 0; } }
 @media (max-width: 640px) { .vault-shell { width: min(100% - 24px, 560px); gap: 16px; padding-top: 24px; } .vault-topbar { padding-inline: 12px; } .vault-topbar__context { display: none; } .vault-alert-row { align-items: stretch; flex-direction: column; } .vault-admin-entry .sui-btn, .vault-alert-row .sui-btn { align-self: flex-start; } .vault-list__item, .vault-list__item--managed { grid-template-columns: 38px minmax(0, 1fr); } .vault-list__item .sui-btn, .vault-list__status, .vault-confirm { grid-column: 2; justify-self: start; } .vault-list__status { justify-items: start; text-align: start; } .vault-admin-tabs { gap: 16px; overflow-x: auto; } .vault-admin-tab { flex: 0 0 auto; } .vault-search__controls { grid-template-columns: minmax(0, 1fr) auto; } .vault-search__controls > a.sui-btn { grid-column: 1 / -1; justify-self: start; } .vault-inventory-strip { grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 12px; } .vault-user-row { padding-inline: 16px; } .vault-user-summary dl { grid-template-columns: minmax(0, 1fr); width: 100%; } .vault-user-summary dl > div, .vault-user-summary dl > div:first-child { display: flex; justify-content: space-between; min-width: 0; padding: 8px 0; border-top: 1px solid var(--vault-line); border-left: 0; } .vault-user-summary dd { margin: 0; } .vault-cleanup__confirm { justify-items: stretch; } .vault-cleanup__confirm > div { display: grid; } }
-@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+@media (prefers-reduced-motion: reduce) { .vault-layout *, .vault-layout *::before, .vault-layout *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
 
 /* SUI owns field/button geometry and states. Vault only supplies its theme. */
 .vault-layout {
