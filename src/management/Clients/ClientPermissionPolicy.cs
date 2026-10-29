@@ -1,3 +1,4 @@
+using Sufficit.Identity.Management.SystemUsers;
 using OpenIddict.Abstractions;
 using Sufficit.Identity.Management.Authorization;
 
@@ -54,6 +55,9 @@ internal static class ClientPermissionPolicy
                     OpenIddictConstants.Permissions.GrantTypes.TokenExchange,
                 OpenIddictConstants.Permissions.GrantTypes.TokenExchange =>
                     OpenIddictConstants.Permissions.GrantTypes.TokenExchange,
+                SystemUserEnrollmentProtocol.GrantType or
+                    "gt:" + SystemUserEnrollmentProtocol.GrantType =>
+                    "gt:" + SystemUserEnrollmentProtocol.GrantType,
                 "password" =>
                     OpenIddictConstants.Permissions.GrantTypes.Password,
                 OpenIddictConstants.Permissions.GrantTypes.Password =>
@@ -113,6 +117,9 @@ internal static class ClientPermissionPolicy
                 StringComparer.Ordinal)
             || grantTypes.Contains(
                 OpenIddictConstants.Permissions.GrantTypes.Password,
+                StringComparer.Ordinal)
+            || grantTypes.Contains(
+                "gt:" + SystemUserEnrollmentProtocol.GrantType,
                 StringComparer.Ordinal)
             || grantTypes.Contains(
                 OpenIddictConstants.Permissions.GrantTypes.RefreshToken,

@@ -1,3 +1,5 @@
+using Sufficit.Identity.Management.SystemUsers;
+
 namespace Sufficit.Identity.Application.Security;
 
 public enum ClientDefinitionSource
@@ -247,6 +249,8 @@ public sealed class ClientDefinitionValidator(
     private static readonly IReadOnlySet<string> SupportedGrantTypes =
         new HashSet<string>(StringComparer.Ordinal)
         {
+            SystemUserEnrollmentProtocol.GrantType,
+            "gt:" + SystemUserEnrollmentProtocol.GrantType,
             "authorization_code",
             "client_credentials",
             "refresh_token",

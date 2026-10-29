@@ -36,6 +36,13 @@ precisa das permissões:
 
 Pode ser público (recomendado com DPoP) ou confidencial.
 
+A API de clientes aceita o grant nativo em `grantTypes`, tanto como
+`urn:sufficit:params:oauth:grant-type:system-user-enrollment` quanto com
+prefixo `gt:`. Ao editar scopes com `PUT /api/clients/{clientId}`, preserve
+os grants existentes e envie `expectedVersion`. Esse grant deriva a permissão
+`ept:token`; grants desconhecidos continuam recusados, assim como grants
+fora da lista permitida pela origem do cadastro.
+
 ## 2. Criar o usuário de sistema
 
 Management → **Usuários de sistema** → *Novo usuário de sistema* (nome de
