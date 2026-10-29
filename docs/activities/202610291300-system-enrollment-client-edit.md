@@ -20,3 +20,8 @@ Código publicado: bfaf3415b1ffc01a956316b60754fe5228a7c543. CI [40900832978](ht
 Pacote SHA-256: 96f3a2045a5c12e90af7b55c6bfc68d20d28228ce2eb57a3e1c8737f30e1ed18.
 Ativação sequencial pelo wrapper do cluster concluída nos dois nós ativos; ambos service=active, health=Healthy, ready=Healthy, mesma revisão, certificado e JWKS. Sem alteração de schema.
 A recuperação do consumidor permanece pendente: token temporário expirado (HTTP 401), exigindo novo token antes de editar o scope pela API. Nenhuma permissão ou credencial do consumidor foi alterada nesta publicação.
+
+## Recuperação do consumidor concluída
+Novo token temporário permitiu editar o cliente pela API com expectedVersion; leitura posterior confirmou apenas o acréscimo do scope MCP, preservando as outras permissões. Credencial renovada pelo enrollment nativo, sem alteração das claims.
+A verificação também revelou uma falha no consumidor: tratava access tokens opacos como chaves estáticas e omitia a prova DPoP. O mesmo token retornou 401 sem prova e 200 com prova; após corrigir/publicar o consumidor, MCP conectado e 12 ferramentas descobertas.
+Trabalho concluído; plano temporário removido e referências atualizadas. Tokens não registrados.

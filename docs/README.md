@@ -173,4 +173,4 @@ must never silently become the current roadmap.
 
 - [Limpeza centralizada de tokens e alerta de atraso](operations/RUNBOOK-TOKEN-PRUNING.md)
 
-Plano ativo: [edição do grant de usuários de sistema](PLAN-SYSTEM-USER-GRANT-EDIT.md).
+Entrega verificada: [edição do grant de usuários de sistema](activities/202610291300-system-enrollment-client-edit.md).
