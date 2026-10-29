@@ -5,7 +5,11 @@
 @inject ManagementMaintenanceDataSource MaintenanceData
 
 <PageTitle>@L["Maintenance.Title"]</PageTitle>
-<SUIPageHeader Title="@L["Maintenance.Title"].Value" Description="@L["Maintenance.Description"].Value" />
+<SUIPageHeader Title="@L["Maintenance.Title"].Value" Description="@L["Maintenance.Description"].Value">
+    <Actions>
+        <SUIButton OnClick="LoadAsync" ColorValue="SUIColor.Secondary" StartIcon="refresh" Disabled="@(busy || loading)">@L["Maintenance.Reload"]</SUIButton>
+    </Actions>
+</SUIPageHeader>
 <ManagementDataView Result="result" Loading="loading" OnRetry="LoadAsync"
                     UnavailableTitle="@L["Maintenance.LoadError"].Value">
     <Success Context="snapshot">
@@ -47,7 +51,6 @@
                     </dl>
                 </NotAuthorized>
             </AuthorizeView>
-            <div class="maintenance-refresh"><SUIButton OnClick="LoadAsync" VariantValue="SUIVariant.Outlined" Disabled="@busy">@L["Maintenance.Reload"]</SUIButton></div>
         </section>
         @if (message is not null)
         {
@@ -59,7 +62,7 @@
             <div class="panel-header"><h2 id="maintenance-history">@L["Maintenance.History"]</h2></div>
             @if (snapshot.Runs.Count == 0)
             {
-                <p>@L["Maintenance.Empty"]</p>
+                <SUIEmptyState Icon="clock" Title="@L["Maintenance.Empty"].Value" />
             }
             else
             {

@@ -1742,17 +1742,27 @@ h3 {
 
 .data-toolbar--clients {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     align-items: start;
     gap: 16px;
 }
 
+/* Search plus five filters. The single row only fits once the panel is wide
+   enough for "Todos os fluxos" to stay on one line; below that the six
+   controls form two even rows instead of overflowing the panel. */
 .clients-filters {
     display: grid;
-    grid-template-columns: minmax(220px, 1.45fr) repeat(4, minmax(132px, 1fr)) minmax(132px, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     align-items: end;
     justify-content: initial;
     width: 100%;
     gap: 12px;
+}
+
+@media (min-width: 1600px) {
+    .clients-filters {
+        grid-template-columns: minmax(0, 1.45fr) repeat(5, minmax(0, 1fr));
+    }
 }
 
 .clients-filter {
@@ -3005,6 +3015,7 @@ h3 {
 
 .config-list {
     margin: 0;
+    container-type: inline-size;
 }
 
 .config-list > div {
@@ -3052,6 +3063,15 @@ h3 {
     font-size: 11px;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+/* In a narrow panel (the overview side column) the 180px label column left
+   the value a few characters wide; stack label over value instead. */
+@container (max-width: 440px) {
+    .config-list > div {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 8px;
+    }
 }
 
 .config-value--empty {

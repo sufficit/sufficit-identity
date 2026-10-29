@@ -691,7 +691,10 @@ public sealed partial class ManagementUiArchitectureTests
         Assert.Contains("clients-filters", page, StringComparison.Ordinal);
         Assert.Equal(4, page.Split("<IdentitySelect T=\"string\" id=\"client-", StringSplitOptions.None).Length - 1);
         Assert.DoesNotContain("<select id=\"client-", page, StringComparison.Ordinal);
-        Assert.Contains("grid-template-columns: minmax(220px, 1.45fr)", stylesheet, StringComparison.Ordinal);
+        // Six controls only share one row on wide viewports; fixed minimums
+        // used to push the Scope field past the panel edge at 1280px.
+        Assert.DoesNotContain("minmax(220px, 1.45fr)", stylesheet, StringComparison.Ordinal);
+        Assert.Contains("@media (min-width: 1600px) {\n    .clients-filters {\n        grid-template-columns: minmax(0, 1.45fr) repeat(5, minmax(0, 1fr));", stylesheet, StringComparison.Ordinal);
         Assert.Contains(".clients-filter--search", stylesheet, StringComparison.Ordinal);
         Assert.Contains("grid-template-columns: repeat(3, minmax(0, 1fr));", stylesheet, StringComparison.Ordinal);
         Assert.Contains("grid-template-columns: minmax(0, 1fr);", stylesheet, StringComparison.Ordinal);
