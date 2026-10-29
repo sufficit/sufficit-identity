@@ -3,6 +3,7 @@
 @rendermode InteractiveServer
 @layout VaultLayout
 @inject VaultDataSource Data
+@inject ISUIToast Toast
 
 <PageTitle>@L["Vault.UserVault.PageTitle"].Value | Sufficit Identity</PageTitle>
 <SUIPageHeader Title="@L["Vault.UserVault.PageTitle"].Value"
@@ -10,47 +11,48 @@
     <Actions><SUIStatusBadge ToneValue="SUITone.Success" Icon="shield">@L["Vault.UserVault.EncryptedBadge"]</SUIStatusBadge></Actions>
 </SUIPageHeader>
 
-<div class="vault-note" role="note">
-    <SUIIcon Name="lock" Size="20" />
-    <div><strong>@L["Vault.UserVault.MetadataOnlyTitle"]</strong><span>@L["Vault.UserVault.MetadataOnlyBody"]</span></div>
-</div>
+@* Pages are their own interactive islands when embedded in the public UI
+   (per-page render mode), so the toast host lives with the page. *@
+<SUIToastHost />
+
+<SUIAlert ToneValue="SUITone.Info" Icon="lock" role="note">
+    <strong>@L["Vault.UserVault.MetadataOnlyTitle"]</strong> @L["Vault.UserVault.MetadataOnlyBody"]
+</SUIAlert>
 
 <AuthorizeView Policy="@VaultUiPolicies.Admin">
     <Authorized>
-        <section class="vault-admin-entry"
-                 aria-labelledby="vault-admin-entry-heading">
-            <div class="vault-admin-entry__copy">
-                <SUIIcon Name="shield" Size="22" />
+        <SUIAlert ToneValue="SUITone.Warning" Icon="shield" role="region" aria-labelledby="vault-admin-entry-heading" Class="vault-admin-entry">
+            <div class="vault-alert-row">
                 <div>
-                    <h2 id="vault-admin-entry-heading">@L["Vault.UserVault.AdminEntryHeading"]</h2>
+                    <strong id="vault-admin-entry-heading">@L["Vault.UserVault.AdminEntryHeading"]</strong>
                     <p>@L["Vault.UserVault.AdminEntryBody"]</p>
                 </div>
+                <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Warning" Href="/vault/admin">
+                    @L["Vault.UserVault.OpenAdminVault"]
+                    <SUIIcon Name="arrow-right" Size="16" />
+                </SUIButton>
             </div>
-            <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Warning"
-               Href="/vault/admin">
-                @L["Vault.UserVault.OpenAdminVault"]
-                <SUIIcon Name="arrow-right" Size="16" />
-            </SUIButton>
-        </section>
+        </SUIAlert>
     </Authorized>
 </AuthorizeView>
 
 @if (!string.IsNullOrWhiteSpace(loadError))
 {
-    <div class="vault-load-error" role="alert">
-        <div><strong>@L["Vault.UserVault.LoadErrorTitle"]</strong><span>@loadError</span></div>
-        <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" OnClick="LoadAsync" Disabled="@loading">@L["Vault.Common.Retry"]</SUIButton>
-    </div>
+    <SUIAlert ToneValue="SUITone.Danger" Icon="alert">
+        <div class="vault-alert-row">
+            <div><strong>@L["Vault.UserVault.LoadErrorTitle"]</strong><p>@loadError</p></div>
+            <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" OnClick="LoadAsync" Disabled="@loading">@L["Vault.Common.Retry"]</SUIButton>
+        </div>
+    </SUIAlert>
 }
 
-<section class="vault-panel" aria-labelledby="managed-credential-heading" aria-busy="@loading">
-    <div class="vault-panel__heading">
-        <div><h2 id="managed-credential-heading">@L["Vault.UserVault.ManagedCredentialHeading"]</h2><p>@L["Vault.UserVault.ManagedCredentialDescription"]</p></div>
-        <SUIStatusBadge ToneValue="SUITone.Info">@managedCredentials.Count @(managedCredentials.Count == 1 ? L["Vault.UserVault.CredentialSingular"].Value : L["Vault.UserVault.CredentialPlural"].Value)</SUIStatusBadge>
-    </div>
+<SUICard Elevation="0" aria-busy="@loading">
+    <SUICardHeader Title="@L["Vault.UserVault.ManagedCredentialHeading"].Value" Description="@L["Vault.UserVault.ManagedCredentialDescription"].Value">
+        <MetaContent><SUIStatusBadge ToneValue="SUITone.Info">@managedCredentials.Count @(managedCredentials.Count == 1 ? L["Vault.UserVault.CredentialSingular"].Value : L["Vault.UserVault.CredentialPlural"].Value)</SUIStatusBadge></MetaContent>
+    </SUICardHeader>
     @if (loading)
     {
-        <div class="vault-loading" aria-label="@L["Vault.UserVault.LoadingManagedAriaLabel"].Value"></div>
+        <SUICardContent aria-label="@L["Vault.UserVault.LoadingManagedAriaLabel"].Value"><SUISkeletonLoader Type="SUISkeletonType.Table" Rows="2" /></SUICardContent>
     }
     else if (string.IsNullOrWhiteSpace(loadError) && managedCredentials.Count == 0)
     {
@@ -81,37 +83,43 @@
                 </div>
             }
         </div>
-        <p class="vault-panel__hint">@L["Vault.UserVault.ManagedRemoveHint"]</p>
+        <SUICardActions><span class="vault-card-hint">@L["Vault.UserVault.ManagedRemoveHint"]</span></SUICardActions>
     }
-</section>
+</SUICard>
 
-<section class="vault-panel" aria-labelledby="personal-secret-heading">
-    <div class="vault-panel__heading"><div><h2 id="personal-secret-heading">@L["Vault.UserVault.AddOrReplaceHeading"]</h2><p>@L["Vault.UserVault.PersonalSecretHintPrefix"] <code>openai/api-key</code>.</p></div><SUIStatusBadge ToneValue="SUITone.Neutral">@L["Vault.UserVault.PersonalNamespaceBadge"]</SUIStatusBadge></div>
-    <EditForm Model="form" Context="editContext" OnValidSubmit="SaveAsync" class="vault-form" aria-busy="@saving">
+<SUICard Elevation="0">
+    <SUICardHeader Title="@L["Vault.UserVault.AddOrReplaceHeading"].Value"
+                   Description="@PersonalSecretHint">
+        <MetaContent><SUIStatusBadge ToneValue="SUITone.Neutral">@L["Vault.UserVault.PersonalNamespaceBadge"]</SUIStatusBadge></MetaContent>
+    </SUICardHeader>
+    <EditForm Model="form" Context="editContext" OnValidSubmit="SaveAsync" aria-busy="@saving">
         <DataAnnotationsValidator />
-        @* Keep EditContext notifications and validation explicit while consuming SUI 1.28.0. *@
-        <SUIFormGrid Columns="2" LabelLines="1">
-            <div>
-                <IdentityTextField T="string" Id="personal-secret-name" Label="@L["Vault.UserVault.NameLabel"].Value" Value="@form.Name"
-                              ValueChanged="value => { form.Name = value ?? string.Empty; editContext.NotifyFieldChanged(new(form, nameof(form.Name))); }"
-                              autocomplete="off" Placeholder="@L["Vault.UserVault.NamePlaceholder"].Value" MaxLength="128" HelperText="@L["Vault.UserVault.NameHelperText"].Value" />
-                <ValidationMessage For="() => form.Name" />
-            </div>
-            <div>
-                <IdentityTextField T="string" Id="personal-secret-value" Label="@L["Vault.UserVault.ValueLabel"].Value" Value="@form.Value"
-                              ValueChanged="value => { form.Value = value ?? string.Empty; editContext.NotifyFieldChanged(new(form, nameof(form.Value))); }"
-                              InputType="password" autocomplete="new-password" MaxLength="16384" Placeholder="@L["Vault.UserVault.ValuePlaceholder"].Value" />
-                <ValidationMessage For="() => form.Value" />
-            </div>
-        </SUIFormGrid>
-        <div class="vault-form__actions"><SUIButton ButtonTypeValue="SUIButtonType.Submit" Disabled="@saving">@(saving ? L["Vault.Common.Saving"].Value : L["Vault.UserVault.SaveSecret"].Value)</SUIButton></div>
+        <SUICardContent>
+            @* ValueChanged notifies the EditContext and ValidationMessage stays explicit (see docs/frontend/EVALUATION-SUI-ADOPTION.md). *@
+            <SUIFormGrid Columns="2" LabelLines="1">
+                <div>
+                    <IdentityTextField T="string" Id="personal-secret-name" Label="@L["Vault.UserVault.NameLabel"].Value" Value="@form.Name"
+                                  ValueChanged="value => { form.Name = value ?? string.Empty; editContext.NotifyFieldChanged(new(form, nameof(form.Name))); }"
+                                  autocomplete="off" Placeholder="@L["Vault.UserVault.NamePlaceholder"].Value" MaxLength="128" HelperText="@L["Vault.UserVault.NameHelperText"].Value" />
+                    <ValidationMessage For="() => form.Name" />
+                </div>
+                <div>
+                    <IdentityTextField T="string" Id="personal-secret-value" Label="@L["Vault.UserVault.ValueLabel"].Value" Value="@form.Value"
+                                  ValueChanged="value => { form.Value = value ?? string.Empty; editContext.NotifyFieldChanged(new(form, nameof(form.Value))); }"
+                                  InputType="password" autocomplete="new-password" MaxLength="16384" Placeholder="@L["Vault.UserVault.ValuePlaceholder"].Value" />
+                    <ValidationMessage For="() => form.Value" />
+                </div>
+            </SUIFormGrid>
+        </SUICardContent>
+        <SUICardActions AlignEnd="true"><SUIButton ButtonTypeValue="SUIButtonType.Submit" Disabled="@saving">@(saving ? L["Vault.Common.Saving"].Value : L["Vault.UserVault.SaveSecret"].Value)</SUIButton></SUICardActions>
     </EditForm>
-    @if (!string.IsNullOrWhiteSpace(message)) { <p class="vault-feedback @(success ? "vault-feedback--success" : "vault-feedback--error")" role="status">@message</p> }
-</section>
+</SUICard>
 
-<section class="vault-panel" aria-labelledby="personal-list-heading">
-    <div class="vault-panel__heading"><div><h2 id="personal-list-heading">@L["Vault.UserVault.AddedSecretsHeading"]</h2><p>@L["Vault.UserVault.AddedSecretsDescription"]</p></div><SUIStatusBadge ToneValue="SUITone.Info">@personalSecrets.Count @(personalSecrets.Count == 1 ? L["Vault.Common.ItemSingular"].Value : L["Vault.Common.ItemPlural"].Value)</SUIStatusBadge></div>
-    @if (loading) { <div class="vault-loading" aria-label="@L["Vault.UserVault.LoadingPersonalAriaLabel"].Value"></div> }
+<SUICard Elevation="0">
+    <SUICardHeader Title="@L["Vault.UserVault.AddedSecretsHeading"].Value" Description="@L["Vault.UserVault.AddedSecretsDescription"].Value">
+        <MetaContent><SUIStatusBadge ToneValue="SUITone.Info">@personalSecrets.Count @(personalSecrets.Count == 1 ? L["Vault.Common.ItemSingular"].Value : L["Vault.Common.ItemPlural"].Value)</SUIStatusBadge></MetaContent>
+    </SUICardHeader>
+    @if (loading) { <SUICardContent aria-label="@L["Vault.UserVault.LoadingPersonalAriaLabel"].Value"><SUISkeletonLoader Type="SUISkeletonType.Table" Rows="2" /></SUICardContent> }
     else if (string.IsNullOrWhiteSpace(loadError) && personalSecrets.Count == 0) { <SUIEmptyState Icon="key" Title="@L["Vault.UserVault.NoSecretAddedTitle"].Value" Description="@L["Vault.UserVault.NoSecretAddedDescription"].Value" /> }
     else if (string.IsNullOrWhiteSpace(loadError))
     {
@@ -122,17 +130,16 @@
             }
         </div>
     }
-</section>
+</SUICard>
 
 @code {
     private const string Namespace = "personal";
+    private string PersonalSecretHint => $"{L["Vault.UserVault.PersonalSecretHintPrefix"].Value} openai/api-key.";
     private readonly PersonalSecretForm form = new();
     private IReadOnlyList<UserVaultSecretMetadata> personalSecrets = [];
     private IReadOnlyList<UserVaultManagedCredentialMetadata> managedCredentials = [];
     private bool loading = true;
     private bool saving;
-    private bool success;
-    private string? message;
     private string? loadError;
 
     protected override async Task OnInitializedAsync()
@@ -162,10 +169,9 @@
 
     private async Task SaveAsync()
     {
-        saving = true; message = null;
+        saving = true;
         var result = await Data.PutPersonalAsync(Namespace, form.Name, form.Value);
-        success = result.IsSuccess;
-        message = result.IsSuccess ? L["Vault.UserVault.SecretSavedWithEnvelope"].Value : result.Error;
+        Notify(result.IsSuccess, L["Vault.UserVault.SecretSavedWithEnvelope"].Value, result.Error);
         if (result.IsSuccess) { form.Value = string.Empty; await LoadAsync(); }
         saving = false;
     }
@@ -174,10 +180,15 @@
     {
         saving = true;
         var result = await Data.DeletePersonalAsync(Namespace, name);
-        success = result.IsSuccess;
-        message = result.IsSuccess ? L["Vault.UserVault.SecretRemoved"].Value : result.Error;
+        Notify(result.IsSuccess, L["Vault.UserVault.SecretRemoved"].Value, result.Error);
         if (result.IsSuccess) await LoadAsync();
         saving = false;
+    }
+
+    private void Notify(bool succeeded, string successMessage, string? error)
+    {
+        if (succeeded) Toast.Success(successMessage);
+        else Toast.Error(error ?? L["Vault.Data.OperationFailed"].Value);
     }
 
     private sealed class PersonalSecretForm : IValidatableObject

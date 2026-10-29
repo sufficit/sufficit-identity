@@ -4,8 +4,11 @@
 @layout VaultLayout
 @inject VaultDataSource Data
 @inject IJSRuntime JS
+@inject ISUIToast Toast
 
 <PageTitle>@L["Vault.AdminUserVault.DefaultTitle"].Value | Sufficit Identity</PageTitle>
+
+<SUIToastHost />
 
 <a class="vault-back-link" href="/vault/admin"><SUIIcon Name="arrow-left" Size="16" /> @L["Vault.AdminUserVault.BackLink"]</a>
 
@@ -25,30 +28,28 @@
 
 @if (loading)
 {
-    <div class="vault-panel"><div class="vault-loading" aria-label="@L["Vault.AdminUserVault.LoadingAriaLabel"].Value"></div></div>
+    <SUICard Elevation="0"><SUICardContent aria-label="@L["Vault.AdminUserVault.LoadingAriaLabel"].Value"><SUISkeletonLoader Type="SUISkeletonType.Table" Rows="4" /></SUICardContent></SUICard>
 }
 else if (!string.IsNullOrWhiteSpace(loadError))
 {
-    <div class="vault-load-error" role="alert">
-        <div><strong>@L["Vault.AdminUserVault.LoadErrorTitle"]</strong><span>@loadError</span></div>
-        <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" OnClick="LoadAsync">@L["Vault.Common.Retry"]</SUIButton>
-    </div>
+    <SUIAlert ToneValue="SUITone.Danger" Icon="alert">
+        <div class="vault-alert-row">
+            <div><strong>@L["Vault.AdminUserVault.LoadErrorTitle"]</strong><p>@loadError</p></div>
+            <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" OnClick="LoadAsync">@L["Vault.Common.Retry"]</SUIButton>
+        </div>
+    </SUIAlert>
 }
 else if (detail is null)
 {
-    @if (!string.IsNullOrWhiteSpace(feedback))
-    {
-        <p class="vault-feedback vault-feedback--success" role="status">@feedback</p>
-    }
-    <section class="vault-panel">
+    <SUICard Elevation="0">
         <SUIEmptyState Icon="users" Title="@L["Vault.AdminUserVault.NotFoundTitle"].Value" Description="@L["Vault.AdminUserVault.NotFoundDescription"].Value">
             <Actions><SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" Href="/vault/admin">@L["Vault.AdminUserVault.BackToManagement"]</SUIButton></Actions>
         </SUIEmptyState>
-    </section>
+    </SUICard>
 }
 else
 {
-    <section class="vault-user-summary" aria-label="@L["Vault.AdminUserVault.IdentificationAriaLabel"].Value">
+    <SUICard Elevation="0" Class="vault-user-summary" aria-label="@L["Vault.AdminUserVault.IdentificationAriaLabel"].Value">
         <span class="vault-user-summary__icon"><SUIIcon Name="users" Size="21" /></span>
         <div>
             <strong>@(detail.User.Email ?? detail.User.UserName ?? detail.User.OwnerSubject)</strong>
@@ -59,23 +60,16 @@ else
             <div><dt>@L["Vault.AdminUserVault.ConnectedLabel"]</dt><dd>@detail.User.ManagedCredentialCount</dd></div>
             <div><dt>@L["Vault.AdminUserVault.LastActivityLabel"]</dt><dd>@(detail.User.LastUpdatedAtUtc is null ? L["Vault.Common.NoDate"].Value : FormatDate(detail.User.LastUpdatedAtUtc.Value))</dd></div>
         </dl>
-    </section>
+    </SUICard>
 
-    <div class="vault-note" role="note">
-        <SUIIcon Name="info" Size="20" />
-        <div><strong>@L["Vault.AdminUserVault.NoPasswordShown"]</strong><span>@L["Vault.AdminUserVault.NoteBody"]</span></div>
-    </div>
+    <SUIAlert ToneValue="SUITone.Info" Icon="info" role="note">
+        <strong>@L["Vault.AdminUserVault.NoPasswordShown"]</strong> @L["Vault.AdminUserVault.NoteBody"]
+    </SUIAlert>
 
-    @if (!string.IsNullOrWhiteSpace(feedback))
-    {
-        <p class="vault-feedback @(operationSucceeded ? "vault-feedback--success" : "vault-feedback--error")" role="status">@feedback</p>
-    }
-
-    <section class="vault-panel" aria-labelledby="managed-credentials-heading">
-        <div class="vault-panel__heading">
-            <div><h2 id="managed-credentials-heading">@L["Vault.AdminUserVault.ManagedCredentialsHeading"]</h2><p>@L["Vault.AdminUserVault.ManagedCredentialsDescription"]</p></div>
-            <SUIStatusBadge ToneValue="SUITone.Info">@detail.ManagedCredentials.Count</SUIStatusBadge>
-        </div>
+    <SUICard Elevation="0">
+        <SUICardHeader Title="@L["Vault.AdminUserVault.ManagedCredentialsHeading"].Value" Description="@L["Vault.AdminUserVault.ManagedCredentialsDescription"].Value">
+            <MetaContent><SUIStatusBadge ToneValue="SUITone.Info">@detail.ManagedCredentials.Count</SUIStatusBadge></MetaContent>
+        </SUICardHeader>
         @if (detail.ManagedCredentials.Count == 0)
         {
             <SUIEmptyState Icon="key" Title="@L["Vault.AdminUserVault.ManagedCredentialsEmptyTitle"].Value" Description="@L["Vault.AdminUserVault.ManagedCredentialsEmptyDescription"].Value" />
@@ -120,13 +114,12 @@ else
                 }
             </div>
         }
-    </section>
+    </SUICard>
 
-    <section class="vault-panel" aria-labelledby="personal-secrets-heading">
-        <div class="vault-panel__heading">
-            <div><h2 id="personal-secrets-heading">@L["Vault.AdminUserVault.PersonalSecretsHeading"]</h2><p>@L["Vault.AdminUserVault.PersonalSecretsDescription"]</p></div>
-            <SUIStatusBadge ToneValue="SUITone.Info">@detail.PersonalSecrets.Count</SUIStatusBadge>
-        </div>
+    <SUICard Elevation="0">
+        <SUICardHeader Title="@L["Vault.AdminUserVault.PersonalSecretsHeading"].Value" Description="@L["Vault.AdminUserVault.PersonalSecretsDescription"].Value">
+            <MetaContent><SUIStatusBadge ToneValue="SUITone.Info">@detail.PersonalSecrets.Count</SUIStatusBadge></MetaContent>
+        </SUICardHeader>
         @if (detail.PersonalSecrets.Count == 0)
         {
             <SUIEmptyState Icon="lock" Title="@L["Vault.AdminUserVault.PersonalSecretsEmptyTitle"].Value" Description="@L["Vault.AdminUserVault.PersonalSecretsEmptyDescription"].Value" />
@@ -161,7 +154,7 @@ else
                 }
             </div>
         }
-    </section>
+    </SUICard>
 
     <AuthorizeView Policy="@VaultUiPolicies.AdminManage">
         <SUISection Title="@L["Vault.AdminUserVault.CleanupHeading"].Value"
@@ -196,10 +189,8 @@ else
     private VaultUserDetail? detail;
     private bool loading = true;
     private bool working;
-    private bool operationSucceeded;
     private bool confirmClear;
     private string? pendingAction;
-    private string? feedback;
     private string? loadError;
 
     private string PageTitleText => detail is null
@@ -229,7 +220,6 @@ else
     {
         pendingAction = actionKey;
         confirmClear = false;
-        feedback = null;
     }
 
     private void CancelConfirmation() => pendingAction = null;
@@ -238,7 +228,6 @@ else
     {
         confirmClear = true;
         pendingAction = null;
-        feedback = null;
     }
 
     private void CancelClear() => confirmClear = false;
@@ -262,8 +251,7 @@ else
 
     private async Task FinishMutationAsync(VaultDataResult<bool> result, string successMessage)
     {
-        operationSucceeded = result.IsSuccess;
-        feedback = result.IsSuccess ? successMessage : result.Error;
+        Notify(result.IsSuccess, successMessage, result.Error);
         pendingAction = null;
         working = false;
         if (result.IsSuccess) await LoadAsync();
@@ -273,16 +261,24 @@ else
     {
         working = true;
         var result = await Data.ClearVaultUserAsync(OwnerSubject);
-        operationSucceeded = result.IsSuccess;
-        feedback = result.IsSuccess && result.Value is { } cleanup
-            ? string.Format(
-                L["Vault.AdminUserVault.VaultCleared"].Value,
-                cleanup.PersonalSecretsDeleted,
-                cleanup.ManagedCredentialsDeleted)
-            : result.Error;
+        Notify(
+            result.IsSuccess,
+            result.Value is { } cleanup
+                ? string.Format(
+                    L["Vault.AdminUserVault.VaultCleared"].Value,
+                    cleanup.PersonalSecretsDeleted,
+                    cleanup.ManagedCredentialsDeleted)
+                : string.Empty,
+            result.Error);
         confirmClear = false;
         working = false;
         if (result.IsSuccess) await LoadAsync();
+    }
+
+    private void Notify(bool succeeded, string successMessage, string? error)
+    {
+        if (succeeded) Toast.Success(successMessage);
+        else Toast.Error(error ?? L["Vault.Data.OperationFailed"].Value);
     }
 
     private string IdentityDescription(VaultUserInventoryItem item)

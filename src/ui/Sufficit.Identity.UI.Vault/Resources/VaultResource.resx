@@ -72,6 +72,7 @@
   <data name="Vault.AdminVault.NoVaultFoundDescription" xml:space="preserve"><value>Change the search or wait until a credential is stored.</value></data>
   <data name="Vault.AdminVault.NoVaultFoundTitle" xml:space="preserve"><value>No Vault found</value></data>
   <data name="Vault.AdminVault.PageOf" xml:space="preserve"><value>Page {0} of {1}</value></data>
+  <data name="Vault.AdminVault.RangeOf" xml:space="preserve"><value>{0}–{1} of {2} users</value></data>
   <data name="Vault.AdminVault.PageTitle" xml:space="preserve"><value>Vault management</value></data>
   <data name="Vault.AdminVault.PaginationAriaLabel" xml:space="preserve"><value>User Vault pagination</value></data>
   <data name="Vault.AdminVault.PersonalCountSuffix" xml:space="preserve"><value>personal</value></data>
