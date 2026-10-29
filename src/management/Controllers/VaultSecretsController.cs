@@ -11,7 +11,7 @@ namespace Sufficit.Identity.Management.Controllers;
 /// returned by this API; GET exposes metadata so operators can audit rotation.
 /// </summary>
 [ApiController]
-[Authorize(Policy = "sufficit-identity-management")]
+[Authorize(Policy = VaultScopeRequirement.PolicyName)]
 [Route("api/vault/secrets")]
 public sealed class VaultSecretsController(
     IVaultSecretsManagementService secrets) : ControllerBase

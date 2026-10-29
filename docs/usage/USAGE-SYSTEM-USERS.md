@@ -184,6 +184,23 @@ Na emissão, se o usuário vinculado não existir, estiver desativado ou tiver
 ganhado como entrar (e-mail, senha, login externo, passkey), o cliente é
 recusado (`unauthorized_client`) em vez de receber um token sem usuário.
 
+## 7. Serviço que lê o Vault compartilhado
+
+O Vault compartilhado (`/api/vault/secrets`, contextos como `global`) aceita o
+escopo de gestão **ou** o escopo estreito `identity.vault`, este **só quando o
+token é de um cliente vinculado a um usuário de sistema**. O serviço não precisa
+de `identity.management` (reservado, que nenhum cadastro novo recebe) nem de
+toda a superfície administrativa (menor privilégio, RFC 9700 §2.3).
+
+1. Cliente confidencial com `gt:client_credentials` e `scp:identity.vault`.
+2. Usuário de sistema com um papel cujas capacidades bastem, por exemplo
+   `identity.secrets.read` e `identity.secrets.resolve` para só ler.
+3. Vínculo do cliente ao usuário (seção 6).
+
+O escopo estreito na credencial delegada de uma pessoa (agente pessoal) continua
+limitado ao Vault pessoal: aqui ele é recusado. O que o serviço lê ou altera
+segue as capacidades dos papéis do usuário de sistema, avaliadas a cada chamada.
+
 ## Implantação
 
 Base nova: `001`. Base que tem `100-add-system-users.sql`: aplicar

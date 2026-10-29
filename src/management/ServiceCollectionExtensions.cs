@@ -249,6 +249,30 @@ public static class ServiceCollectionExtensions
                 policy.RequireAuthenticatedUser();
                 policy.Requirements.Add(new ScopeRequirement(mcpRequiredScope));
             });
+            // The shared Vault HTTP API (named secrets per context): the management scope, or the narrow
+            // Vault scope when the caller is a system user. A system user reaches the Vault without the
+            // whole administrative surface (least privilege, RFC 9700 §2.3); what it may read still comes
+            // from its roles' capabilities. The narrow scope of a person's delegated credential stays confined
+            // to the personal Vault: the requirement refuses it here.
+            builder.AddPolicy(VaultScopeRequirement.PolicyName, policy =>
+            {
+                if (options.RequireAuthorization)
+                {
+                    policy.AuthenticationSchemes.Add(
+                        OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme);
+                    policy.RequireAuthenticatedUser();
+                    policy.Requirements.Add(new VaultScopeRequirement(
+                        options.RequiredScope, Controllers.PersonalVaultController.NarrowScope));
+                    if (options.RequireMfa)
+                    {
+                        policy.Requirements.Add(new MfaRequirement());
+                    }
+                }
+                else
+                {
+                    policy.RequireAssertion(_ => true);
+                }
+            });
             // The personal Vault HTTP API: the full Identity MCP scope, or the narrow
             // personal Vault scope a delegated agent credential carries (the controller
             // confines that one to the agent namespaces).
@@ -263,6 +287,7 @@ public static class ServiceCollectionExtensions
         });
 
         services.AddSingleton<IAuthorizationHandler, ScopeHandler>();
+        services.AddSingleton<IAuthorizationHandler, VaultScopeHandler>();
         if (options.RequireAuthorization)
         {
             // MfaHandler evaluates the MfaRequirement added to the policy when
@@ -345,6 +370,41 @@ public sealed class ManagementRoutePrefixConvention(string routePrefix)
 }
 
 /// <summary>Policy requirement that checks for a specific OAuth scope (any of several).</summary>
+/// <summary>
+/// Shared Vault API access: the management scope, or the narrow Vault scope carried by a system user (a token
+/// issued to a client bound to a system user). The narrow scope alone, from a person, is not enough.
+/// </summary>
+public sealed class VaultScopeRequirement(string managementScope, string vaultScope) : IAuthorizationRequirement
+{
+    public const string PolicyName = "sufficit-identity-vault";
+    public string ManagementScope { get; } = managementScope;
+    public string VaultScope { get; } = vaultScope;
+}
+
+public sealed class VaultScopeHandler(IServiceScopeFactory scopeFactory) : AuthorizationHandler<VaultScopeRequirement>
+{
+    protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context, VaultScopeRequirement requirement)
+    {
+        if (ScopeHandler.HasAnyScope(context.User, [requirement.ManagementScope]))
+        {
+            context.Succeed(requirement);
+            return;
+        }
+        if (!ScopeHandler.HasAnyScope(context.User, [requirement.VaultScope])
+            || string.IsNullOrWhiteSpace(Authorization.ManagementPrincipal.ClientId(context.User)))
+        {
+            return;
+        }
+        var subject = context.User.FindFirst("sub")?.Value ?? context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrWhiteSpace(subject)) return;
+        await using var scope = scopeFactory.CreateAsyncScope();
+        if (await scope.ServiceProvider.GetRequiredService<Sufficit.Identity.Core.Services.SystemUserStore>().IsSystemUserAsync(subject))
+        {
+            context.Succeed(requirement);
+        }
+    }
+}
+
 public sealed class ScopeRequirement : IAuthorizationRequirement
 {
     public string Scope => Scopes[0];
@@ -366,20 +426,19 @@ public sealed class ScopeHandler : AuthorizationHandler<ScopeRequirement>
         // same information as the public RFC `scope` claim. Accept both
         // representations so a valid management token is not denied merely
         // because of the validation transport used by the host.
-        var hasPublicScope = context.User
-            .FindAll(ScopeClaimType)
-            .SelectMany(claim => claim.Value.Split(
-                ' ',
-                StringSplitOptions.RemoveEmptyEntries))
-            .Any(scope => requirement.Scopes.Contains(scope, StringComparer.Ordinal));
-
-        if (requirement.Scopes.Any(context.User.HasScope) || hasPublicScope)
+        if (HasAnyScope(context.User, requirement.Scopes))
         {
             context.Succeed(requirement);
         }
 
         return Task.CompletedTask;
     }
+
+    internal static bool HasAnyScope(System.Security.Claims.ClaimsPrincipal user, IReadOnlyList<string> scopes) =>
+        scopes.Any(user.HasScope) || user
+            .FindAll(ScopeClaimType)
+            .SelectMany(claim => claim.Value.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            .Any(scope => scopes.Contains(scope, StringComparer.Ordinal));
 }
 
 /// <summary>
