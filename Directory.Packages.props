@@ -41,6 +41,8 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.14" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.14" />
     <PackageVersion Include="Pomelo.EntityFrameworkCore.MySql" Version="10.0.0" />
+    <!-- Override the provider dependency affected by GHSA-473q-m89c-ghf8. -->
+    <PackageVersion Include="MySqlConnector" Version="2.6.2" />
 
     <!-- Health checks -->
     <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="10.0.14" />

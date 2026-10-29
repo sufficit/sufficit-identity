@@ -153,11 +153,6 @@
           "Microsoft.IdentityModel.Logging": "8.19.2"
         }
       },
-      "MySqlConnector": {
-        "type": "Transitive",
-        "resolved": "2.5.0",
-        "contentHash": "hoAwfHHF8DlRRqwHOhN3u1KLi+XbX/4LPS7Anfa+SYC97vRyIfdEOEEfj1L50q01Ik8aDNvmDrNmu/VPFiAiaQ=="
-      },
       "OpenIddict": {
         "type": "Transitive",
         "resolved": "7.7.2",
@@ -361,6 +356,7 @@
         "dependencies": {
           "Microsoft.AspNetCore.DataProtection.EntityFrameworkCore": "[10.0.14, )",
           "Microsoft.AspNetCore.Identity.EntityFrameworkCore": "[10.0.14, )",
+          "MySqlConnector": "[2.6.2, )",
           "OpenIddict.EntityFrameworkCore": "[7.7.2, )",
           "Pomelo.EntityFrameworkCore.MySql": "[10.0.0, )",
           "Sufficit.Identity.Application.Abstractions": "[0.4.0-alpha, )"
@@ -396,6 +392,12 @@
           "Microsoft.EntityFrameworkCore.Abstractions": "10.0.14",
           "Microsoft.EntityFrameworkCore.Analyzers": "10.0.14"
         }
+      },
+      "MySqlConnector": {
+        "type": "CentralTransitive",
+        "requested": "[2.6.2, )",
+        "resolved": "2.6.2",
+        "contentHash": "dlTc/tsBa42szdvpj4nrHvQVUb0gsMwR9HT6J0Zz2OSqfP0CdYlGw+qQPqCpbnO97idfvclSjKYtM6y5QaBQaQ=="
       },
       "OpenIddict.EntityFrameworkCore": {
         "type": "CentralTransitive",
