@@ -243,7 +243,7 @@
                               id="metrics-secret"
                               aria-label="@L["Metrics.Field.Secret.Aria"].Value"
                               Label="@L["Metrics.Field.Secret.Label"].Value"
-                              InputType="password"
+                              InputType="password" Revealable="true" RevealText="@L["Common.RevealValue"].Value" HideText="@L["Common.HideValue"].Value"
                               HelperText="@SecretHelperText"
                               @bind-Value="configuration.Secret"
                               autocomplete="new-password" />

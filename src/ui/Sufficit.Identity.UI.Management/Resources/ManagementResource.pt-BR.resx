@@ -2275,4 +2275,6 @@
   <data name="Error.system_user_client_not_allowed" xml:space="preserve"><value>O cliente precisa ser confidencial e ter permissão de client_credentials.</value></data>
   <data name="Error.system_user_client_bound_elsewhere" xml:space="preserve"><value>Este cliente já age como outro usuário de sistema. Desvincule lá primeiro.</value></data>
   <data name="Error.system_user_client_not_bound" xml:space="preserve"><value>Este cliente não age como este usuário de sistema.</value></data>
+  <data name="Common.RevealValue" xml:space="preserve"><value>Mostrar valor</value></data>
+  <data name="Common.HideValue" xml:space="preserve"><value>Ocultar valor</value></data>
 </root>

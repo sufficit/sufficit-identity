@@ -106,7 +106,7 @@
                 <div>
                     <IdentityTextField T="string" Id="personal-secret-value" Label="@L["Vault.UserVault.ValueLabel"].Value" Value="@form.Value"
                                   ValueChanged="value => { form.Value = value ?? string.Empty; editContext.NotifyFieldChanged(new(form, nameof(form.Value))); }"
-                                  InputType="password" autocomplete="new-password" MaxLength="16384" Placeholder="@L["Vault.UserVault.ValuePlaceholder"].Value" />
+                                  InputType="password" Revealable="true" RevealText="@L["Vault.Common.RevealValue"].Value" HideText="@L["Vault.Common.HideValue"].Value" autocomplete="new-password" MaxLength="16384" Placeholder="@L["Vault.UserVault.ValuePlaceholder"].Value" />
                     <ValidationMessage For="() => form.Value" />
                 </div>
             </SUIFormGrid>

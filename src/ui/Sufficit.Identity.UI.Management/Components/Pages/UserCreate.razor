@@ -107,7 +107,7 @@ else
             <SUIFormGrid Columns="2">
                 <IdentityTextField T="string"
                                    Id="initial-password"
-                                   InputType="password"
+                                   InputType="password" Revealable="true" RevealText="@L["Common.RevealValue"].Value" HideText="@L["Common.HideValue"].Value"
                                    autocomplete="new-password"
                                    Label="@L["Users.Create.Field.Password"].Value"
                                    HelperText="@L["Users.Create.Password.Hint"].Value"
@@ -115,7 +115,7 @@ else
                                    @bind-Value="model.InitialPassword" />
                 <IdentityTextField T="string"
                                    Id="confirm-password"
-                                   InputType="password"
+                                   InputType="password" Revealable="true" RevealText="@L["Common.RevealValue"].Value" HideText="@L["Common.HideValue"].Value"
                                    autocomplete="new-password"
                                    Label="@L["Users.Create.Field.ConfirmPassword"].Value"
                                    @bind-Value="model.ConfirmPassword" />

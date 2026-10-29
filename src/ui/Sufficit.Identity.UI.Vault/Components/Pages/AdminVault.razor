@@ -51,7 +51,7 @@
                         <div>
                             <IdentityTextField T="string" Id="admin-secret-value" Label="@L["Vault.AdminVault.ValueLabel"].Value" Value="@form.Value"
                                           ValueChanged="value => { form.Value = value ?? string.Empty; editContext.NotifyFieldChanged(new(form, nameof(form.Value))); }"
-                                          InputType="password" autocomplete="new-password" />
+                                          InputType="password" Revealable="true" RevealText="@L["Vault.Common.RevealValue"].Value" HideText="@L["Vault.Common.HideValue"].Value" autocomplete="new-password" />
                             <ValidationMessage For="() => form.Value" />
                         </div>
                     </SUIFormGrid>

@@ -2275,4 +2275,6 @@
   <data name="Error.system_user_client_not_allowed" xml:space="preserve"><value>The client must be confidential and allow the client_credentials grant.</value></data>
   <data name="Error.system_user_client_bound_elsewhere" xml:space="preserve"><value>This client already acts as another system user. Unbind it there first.</value></data>
   <data name="Error.system_user_client_not_bound" xml:space="preserve"><value>This client does not act as this system user.</value></data>
+  <data name="Common.RevealValue" xml:space="preserve"><value>Show value</value></data>
+  <data name="Common.HideValue" xml:space="preserve"><value>Hide value</value></data>
 </root>
