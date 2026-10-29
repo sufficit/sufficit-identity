@@ -193,9 +193,15 @@ de `identity.management` (reservado, que nenhum cadastro novo recebe) nem de
 toda a superfície administrativa (menor privilégio, RFC 9700 §2.3).
 
 1. Cliente confidencial com `gt:client_credentials` e `scp:identity.vault`.
-2. Usuário de sistema com um papel cujas capacidades bastem, por exemplo
-   `identity.secrets.read` e `identity.secrets.resolve` para só ler.
+2. Usuário de sistema com um papel cujas capacidades bastem. Papéis em uso:
+   `vault.secrets.reader` (`identity.secrets.read` e `identity.secrets.resolve`,
+   só lê) e `vault.secrets.manager` (os mesmos mais `identity.secrets.manage`,
+   lê e grava). Atribua no banco (`userroles`); as capacidades vêm de
+   `RoleCapabilities` na configuração dos nós.
 3. Vínculo do cliente ao usuário (seção 6).
+
+Nomes de segredo exigem ao menos uma `/` literal na rota
+(`PUT /api/vault/secrets/apps/meu-servico/token`); `%2F` não é aceito.
 
 O escopo estreito na credencial delegada de uma pessoa (agente pessoal) continua
 limitado ao Vault pessoal: aqui ele é recusado. O que o serviço lê ou altera
