@@ -108,6 +108,17 @@ public sealed class IntegrationOAuthCompletionTests
     }
 
     [Fact]
+    public async Task Popup_without_return_needs_no_registration()
+    {
+        var fixture = new Fixture(registeredReturns: false);
+        var ticket = await fixture.Begin("popup");
+        var page = Assert.IsType<ContentResult>(await fixture.Callback(ticket));
+        Assert.Contains("data-integration-connected=\"true\"", page.Content);
+        Assert.True((await fixture.Status()).Connected);
+        Assert.IsType<BadRequestObjectResult>(await fixture.Controller.Authorize(Provider, null, default, "app"));
+    }
+
+    [Fact]
     public async Task Tampered_ticket_cannot_complete_authorization()
     {
         var fixture = new Fixture();
@@ -121,7 +132,7 @@ public sealed class IntegrationOAuthCompletionTests
         public MemoryVault Vault { get; } = new();
         public IntegrationOAuthController Controller { get; }
         private readonly string scope;
-        public Fixture(bool grantRequiredScopes = true)
+        public Fixture(bool grantRequiredScopes = true, bool registeredReturns = true)
         {
             var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
             {
@@ -133,7 +144,7 @@ public sealed class IntegrationOAuthCompletionTests
             scope = string.Join(' ', registry.Find(Provider)!.Scopes);
             var authentication = new FakeAuthentication(grantRequiredScopes ? scope : "openid");
             Controller = new IntegrationOAuthController(registry, Vault, new EphemeralDataProtectionProvider(),
-                new RefreshHttpClient(), new ReturnResolver(), null!,
+                new RefreshHttpClient(), new ReturnResolver(registeredReturns), null!,
                 new Microsoft.Extensions.Localization.StringLocalizer<Sufficit.Identity.STS.Resources.AccountMessages>(
                     new Microsoft.Extensions.Localization.ResourceManagerStringLocalizerFactory(
                         Microsoft.Extensions.Options.Options.Create(
@@ -201,12 +212,12 @@ public sealed class IntegrationOAuthCompletionTests
         public Task SignInAsync(HttpContext c, string? s, ClaimsPrincipal u, AuthenticationProperties? p) => Task.CompletedTask;
         public Task SignOutAsync(HttpContext c, string? s, AuthenticationProperties? p) => Task.CompletedTask;
     }
-    private sealed class ReturnResolver : IClientNativeReturnUriResolver
+    private sealed class ReturnResolver(bool registered = true) : IClientNativeReturnUriResolver
     {
         public Task<IReadOnlyList<string>> ListAsync(string? clientId, CancellationToken ct = default) =>
-            Task.FromResult<IReadOnlyList<string>>(["test-app://auth-complete"]);
+            Task.FromResult<IReadOnlyList<string>>(registered ? ["test-app://auth-complete"] : []);
         public Task<string?> ResolveAsync(string? clientId, string? candidate, CancellationToken ct = default) =>
-            Task.FromResult(candidate is null or "test-app://auth-complete" ? "test-app://auth-complete" : null);
+            Task.FromResult(registered && candidate is null or "test-app://auth-complete" ? "test-app://auth-complete" : null);
     }
     private sealed class RefreshHttpClient : HttpMessageHandler, IHttpClientFactory
     {

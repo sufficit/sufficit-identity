@@ -100,10 +100,16 @@ public sealed partial class IntegrationOAuthController(
         // Where the browser goes when the provider is done is registration
         // data belonging to the calling client, never a value this server
         // knows in advance (RFC 8252, section 8.1).
+        var popup = string.Equals(launchMode, "popup", StringComparison.OrdinalIgnoreCase);
         var nativeReturnUri = await nativeReturnUris.ResolveAsync(
             CallerClientId(),
             returnUri,
             cancellationToken);
+        // A popup ends on a page that closes itself, so when the client asks for
+        // no return it needs no registration: a headless client (an agent
+        // running in the cloud) has nothing to bring back to the foreground.
+        if (nativeReturnUri is null && popup && string.IsNullOrWhiteSpace(returnUri))
+            nativeReturnUri = string.Empty;
         if (nativeReturnUri is null)
         {
             return BadRequest(new
@@ -128,7 +134,6 @@ public sealed partial class IntegrationOAuthController(
                 nativeReturnUri,
                 await CallerDisplayNameAsync(cancellationToken),
                 cancellationToken);
-        var popup = string.Equals(launchMode, "popup", StringComparison.OrdinalIgnoreCase);
         pending = pending with { Popup = popup };
         await secrets.PutAsync(
             PendingName(nonce),
