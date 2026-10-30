@@ -1222,13 +1222,6 @@
           "xunit.extensibility.core": "[2.9.3]"
         }
       },
-      "sufficit.blazor.ui": {
-        "type": "Project",
-        "dependencies": {
-          "Microsoft.AspNetCore.Components": "[10.0.14, )",
-          "Microsoft.AspNetCore.Components.Web": "[10.0.14, )"
-        }
-      },
       "sufficit.identity.application.abstractions": {
         "type": "Project"
       },
@@ -1273,7 +1266,7 @@
           "Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore": "[10.0.14, )",
           "NATS.Client": "[1.1.8, )",
           "Serilog.AspNetCore": "[10.0.0, )",
-          "Sufficit.Blazor.UI": "[2.99.0, )",
+          "Sufficit.Blazor.UI": "[2.*, )",
           "Sufficit.Identity.Application.Abstractions": "[0.4.0-alpha, )",
           "Sufficit.Identity.Core": "[0.4.0-alpha, )",
           "Sufficit.Identity.Hosting.Abstractions": "[0.4.0-alpha, )",
@@ -1307,7 +1300,7 @@
         "type": "Project",
         "dependencies": {
           "QRCoder": "[1.8.0, )",
-          "Sufficit.Blazor.UI": "[2.99.0, )",
+          "Sufficit.Blazor.UI": "[2.*, )",
           "Sufficit.Identity.Application.Abstractions": "[0.4.0-alpha, )",
           "Sufficit.Identity.UI.Abstractions": "[0.4.0-alpha, )",
           "Sufficit.Identity.UI.Components": "[0.4.0-alpha, )"
@@ -1319,13 +1312,13 @@
       "sufficit.identity.ui.components": {
         "type": "Project",
         "dependencies": {
-          "Sufficit.Blazor.UI": "[2.99.0, )"
+          "Sufficit.Blazor.UI": "[2.*, )"
         }
       },
       "sufficit.identity.ui.management": {
         "type": "Project",
         "dependencies": {
-          "Sufficit.Blazor.UI": "[2.99.0, )",
+          "Sufficit.Blazor.UI": "[2.*, )",
           "Sufficit.Identity.Application.Abstractions": "[0.4.0-alpha, )",
           "Sufficit.Identity.Hosting.Abstractions": "[0.4.0-alpha, )",
           "Sufficit.Identity.UI.Abstractions": "[0.4.0-alpha, )",
@@ -1335,7 +1328,7 @@
       "sufficit.identity.ui.vault": {
         "type": "Project",
         "dependencies": {
-          "Sufficit.Blazor.UI": "[2.99.0, )",
+          "Sufficit.Blazor.UI": "[2.*, )",
           "Sufficit.Identity.Application.Abstractions": "[0.4.0-alpha, )",
           "Sufficit.Identity.Hosting.Abstractions": "[0.4.0-alpha, )",
           "Sufficit.Identity.UI.Abstractions": "[0.4.0-alpha, )",
@@ -1530,6 +1523,16 @@
         "dependencies": {
           "Microsoft.Extensions.Logging.Abstractions": "6.0.0",
           "Pipelines.Sockets.Unofficial": "2.2.8"
+        }
+      },
+      "Sufficit.Blazor.UI": {
+        "type": "CentralTransitive",
+        "requested": "[2.*, )",
+        "resolved": "2.26.1029.2235",
+        "contentHash": "T7B6Ntp38Y3lR9hwS5K8fqARcWsUUFw26GSDo741Kdt/LkpSyD28APPyQSPdlggJOFg4aa6HqPA4/uyjR/Kgwg==",
+        "dependencies": {
+          "Microsoft.AspNetCore.Components": "10.0.14",
+          "Microsoft.AspNetCore.Components.Web": "10.0.14"
         }
       },
       "Swashbuckle.AspNetCore": {
