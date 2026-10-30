@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Management.Audit;
 using Sufficit.Identity.Management.Authorization;
+using Sufficit.Identity.Application.Diagnostics;
 
 namespace Sufficit.Identity.Management.Clients;
 
@@ -58,7 +59,7 @@ public sealed class PlaintextClientSecretAdapter(
             reasonCode,
             expired ? "expired" : "expires",
             ExpiresAtUtc,
-            clientId,
+            LogValue.Sanitize(clientId),
             context.OperatorSubject,
             context.CorrelationId);
 

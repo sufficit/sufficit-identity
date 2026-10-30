@@ -8,6 +8,7 @@ using static OpenIddict.Abstractions.OpenIddictConstants;
 using OAuthScopes = OpenIddict.Abstractions.OpenIddictConstants.Scopes;
 using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.Application.Security;
+using Sufficit.Identity.Application.Diagnostics;
 
 namespace Sufficit.Identity.Management.Scopes;
 
@@ -209,7 +210,7 @@ internal sealed partial class ScopeManagementService(
             logger.LogError(
                 exception,
                 "Unable to create OAuth scope {ScopeName}. CorrelationId={CorrelationId}",
-                name,
+                LogValue.Sanitize(name),
                 context.CorrelationId);
             throw new ManagementConflictException(
                 "scope_create_failed",
@@ -294,7 +295,7 @@ internal sealed partial class ScopeManagementService(
             logger.LogError(
                 exception,
                 "Unable to update OAuth scope {ScopeId}. CorrelationId={CorrelationId}",
-                id,
+                LogValue.Sanitize(id),
                 context.CorrelationId);
             throw new ManagementConflictException(
                 "scope_update_failed",
@@ -368,7 +369,7 @@ internal sealed partial class ScopeManagementService(
             logger.LogError(
                 exception,
                 "Unable to delete OAuth scope {ScopeId}. CorrelationId={CorrelationId}",
-                id,
+                LogValue.Sanitize(id),
                 context.CorrelationId);
             throw new ManagementConflictException(
                 "scope_delete_failed",

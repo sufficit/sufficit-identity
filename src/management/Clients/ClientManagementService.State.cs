@@ -6,6 +6,7 @@ using OpenIddict.EntityFrameworkCore.Models;
 using Sufficit.Identity.Core.Services;
 using Sufficit.Identity.Management.Audit;
 using Sufficit.Identity.Management.Authorization;
+using Sufficit.Identity.Application.Diagnostics;
 
 namespace Sufficit.Identity.Management.Clients;
 
@@ -91,7 +92,7 @@ internal sealed partial class ClientManagementService
 
         logger.LogInformation(
             "Client {ClientId} {State} by {Operator}; revoked {Tokens} tokens and {Authorizations} authorizations. CorrelationId={CorrelationId}",
-            clientId, State(after), context.OperatorSubject, revokedTokens, revokedAuthorizations, context.CorrelationId);
+            LogValue.Sanitize(clientId), State(after), context.OperatorSubject, revokedTokens, revokedAuthorizations, LogValue.Sanitize(context.CorrelationId));
 
         if (disabledClients is not null)
             await disabledClients.PublishChangeAsync(cancellationToken);

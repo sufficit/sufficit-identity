@@ -5,6 +5,7 @@ using Sufficit.Identity.Core.Services;
 using Sufficit.Identity.Management.Audit;
 using Sufficit.Identity.Management.Authorization;
 using static OpenIddict.Abstractions.OpenIddictConstants;
+using Sufficit.Identity.Application.Diagnostics;
 
 namespace Sufficit.Identity.Management.SystemUsers;
 
@@ -162,8 +163,8 @@ internal sealed partial class SystemUserManagementService
         await database.SaveChangesAsync(cancellationToken);
         logger.LogInformation(
             "Client {ClientId} {Action} system user {UserId} by {Subject}; correlation={CorrelationId}.",
-            clientId, reason == "system_user_client_bound" ? "bound to" : "unbound from",
-            userId, context.OperatorSubject, context.CorrelationId);
+            LogValue.Sanitize(clientId), reason == "system_user_client_bound" ? "bound to" : "unbound from",
+            LogValue.Sanitize(userId), context.OperatorSubject, LogValue.Sanitize(context.CorrelationId));
     }
 
     private async Task<SystemUserClientSummary> SummarizeClientAsync(

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Sufficit.Identity.STS;
+using Sufficit.Identity.Application.Diagnostics;
 
 namespace Sufficit.Identity.Server;
 
@@ -64,8 +65,8 @@ internal static class RateLimiterServiceCollectionExtensions
                     .CreateLogger("Sufficit.Identity.RateLimiting")
                     .LogWarning(
                         "Rate limit exceeded for {Method} {Path} from {RemoteIp}; retry after {RetryAfterSeconds}s.",
-                        httpContext.Request.Method,
-                        httpContext.Request.Path,
+                        LogValue.Sanitize(httpContext.Request.Method),
+                        LogValue.Sanitize(httpContext.Request.Path),
                         httpContext.Connection.RemoteIpAddress,
                         retryAfterSeconds);
 

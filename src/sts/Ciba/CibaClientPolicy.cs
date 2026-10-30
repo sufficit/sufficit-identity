@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using OpenIddict.Abstractions;
+using Sufficit.Identity.Application.Diagnostics;
 
 namespace Sufficit.Identity.STS.Ciba;
 
@@ -132,7 +133,7 @@ internal sealed class CibaClientPolicy(
                 "CIBA client policy {Mode} decision for operation {Operation} and client {ClientId}: {ReasonCodes}.",
                 options.ClientPolicyMode,
                 operation,
-                clientId,
+                LogValue.Sanitize(clientId),
                 string.Join(',', reasons));
         }
         var enforce = reasons.Count > 0

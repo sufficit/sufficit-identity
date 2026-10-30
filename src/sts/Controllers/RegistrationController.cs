@@ -11,6 +11,7 @@ using Sufficit.Identity.Vault;
 using OpenIddict.Abstractions;
 using System.Text.Json;
 using Sufficit.Identity.STS.Jar;
+using Sufficit.Identity.Application.Diagnostics;
 
 namespace Sufficit.Identity.STS.Controllers;
 
@@ -334,9 +335,9 @@ public sealed class RegistrationController : ControllerBase
             "Dynamic registration scope grant {Outcome}: {ReasonCode} for scopes {Scopes} (mode {Mode}). ClientId={ClientId}",
             Sufficit.Identity.Core.Services.ClientScopeGrantAudit.OperationOutcome(decision),
             primary.ReasonCode,
-            string.Join(' ', decision.Denials.Select(denial => denial.Scope)),
+            LogValue.Sanitize(string.Join(' ', decision.Denials.Select(denial => denial.Scope))),
             decision.Mode,
-            clientId);
+            LogValue.Sanitize(clientId));
         try
         {
             _database.ManagementAuditEvents.Add(

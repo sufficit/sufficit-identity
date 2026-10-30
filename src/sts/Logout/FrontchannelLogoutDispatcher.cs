@@ -6,6 +6,7 @@ using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 using OpenIddict.Abstractions;
 using static OpenIddict.Abstractions.OpenIddictConstants;
+using Sufficit.Identity.Application.Diagnostics;
 
 namespace Sufficit.Identity.STS.Logout;
 
@@ -230,7 +231,7 @@ internal sealed class FrontchannelLogoutDispatcher : IFrontchannelLogoutDispatch
         }
         catch (JsonException ex)
         {
-            _logger.LogWarning(ex, "Invalid front-channel logout context {ContextId} was discarded.", contextId);
+            _logger.LogWarning(ex, "Invalid front-channel logout context {ContextId} was discarded.", LogValue.Sanitize(contextId));
             return [];
         }
     }

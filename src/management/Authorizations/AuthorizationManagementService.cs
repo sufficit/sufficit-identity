@@ -6,6 +6,7 @@ using OpenIddict.EntityFrameworkCore.Models;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Management.Audit;
 using Sufficit.Identity.Management.Authorization;
+using Sufficit.Identity.Application.Diagnostics;
 
 namespace Sufficit.Identity.Management.Authorizations;
 
@@ -206,7 +207,7 @@ internal sealed class AuthorizationManagementService(
         await database.SaveChangesAsync(cancellationToken);
         logger.LogInformation(
             "Revoked authorization {AuthorizationId} and {TokenCount} related credentials. CorrelationId={CorrelationId}",
-            id,
+            LogValue.Sanitize(id),
             revokedCredentials,
             context.CorrelationId);
     }

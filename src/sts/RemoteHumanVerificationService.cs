@@ -46,6 +46,8 @@ public sealed class RemoteHumanVerificationService(
             return HumanVerificationResult.Success;
         }
 
+        var flowLabel = LogLabel(flow);
+
         if (string.IsNullOrWhiteSpace(responseToken))
         {
             return new(false, "missing-response");
@@ -92,7 +94,7 @@ public sealed class RemoteHumanVerificationService(
                 logger.LogWarning(
                     "Human verification provider returned HTTP {StatusCode} for {Flow}.",
                     (int)response.StatusCode,
-                    flow);
+                    flowLabel);
                 return new(false, "provider-http-error");
             }
 
@@ -102,7 +104,7 @@ public sealed class RemoteHumanVerificationService(
             {
                 logger.LogInformation(
                     "Human verification rejected for {Flow}; codes: {ErrorCodes}.",
-                    flow,
+                    flowLabel,
                     payload?.ErrorCodes is { Length: > 0 }
                         ? string.Join(',', payload.ErrorCodes)
                         : "none");
@@ -117,7 +119,7 @@ public sealed class RemoteHumanVerificationService(
             {
                 logger.LogWarning(
                     "Human verification returned an unexpected hostname for {Flow}.",
-                    flow);
+                    flowLabel);
                 return new(false, "hostname-mismatch");
             }
 
@@ -131,7 +133,7 @@ public sealed class RemoteHumanVerificationService(
             {
                 logger.LogWarning(
                     "Human verification returned an unexpected action for {Flow}.",
-                    flow);
+                    flowLabel);
                 return new(false, "action-mismatch");
             }
 
@@ -142,7 +144,7 @@ public sealed class RemoteHumanVerificationService(
         {
             logger.LogWarning(
                 "Human verification provider timed out for {Flow}.",
-                flow);
+                flowLabel);
             return new(false, "provider-timeout");
         }
         catch (HttpRequestException exception)
@@ -150,7 +152,7 @@ public sealed class RemoteHumanVerificationService(
             logger.LogWarning(
                 exception,
                 "Human verification provider was unavailable for {Flow}.",
-                flow);
+                flowLabel);
             return new(false, "provider-unavailable");
         }
         catch (System.Text.Json.JsonException exception)
@@ -158,7 +160,7 @@ public sealed class RemoteHumanVerificationService(
             logger.LogWarning(
                 exception,
                 "Human verification provider returned invalid JSON for {Flow}.",
-                flow);
+                flowLabel);
             return new(false, "provider-invalid-response");
         }
     }
@@ -170,6 +172,9 @@ public sealed class RemoteHumanVerificationService(
         _ => throw new InvalidOperationException(
             $"Unsupported human-verification provider '{options.Provider}'."),
     };
+
+    private static string LogLabel(HumanVerificationFlow flow) =>
+        Enum.IsDefined(flow) ? ToAction(flow) : "unknown";
 
     private static string ToAction(HumanVerificationFlow flow) => flow switch
     {

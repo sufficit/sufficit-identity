@@ -308,7 +308,7 @@ public static partial class ServiceCollectionExtensions
                 "External authentication failed for {Scheme} at {Path}. "
                     + "CorrelationFailure={CorrelationFailure}; returning to login.",
                 context.Scheme.Name,
-                context.HttpContext.Request.Path,
+                LogValue.Sanitize(context.HttpContext.Request.Path),
                 isCorrelationFailure);
 
             var returnUrl = ExtractLocalReturnUrl(

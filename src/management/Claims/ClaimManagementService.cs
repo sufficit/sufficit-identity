@@ -13,6 +13,7 @@ using Sufficit.Identity.Management.Audit;
 using Sufficit.Identity.Management.Users;
 using OidcClaims = OpenIddict.Abstractions.OpenIddictConstants.Claims;
 using Sufficit.Identity.Management.Authorization;
+using Sufficit.Identity.Application.Diagnostics;
 
 namespace Sufficit.Identity.Management.Claims;
 
@@ -315,8 +316,8 @@ internal sealed partial class ClaimManagementService(
 
             logger.LogInformation(
                 "Assigned custom claim {ClaimType} to identity account {UserId} and revoked {TokenCount} tokens. CorrelationId={CorrelationId}",
-                type,
-                userId,
+                LogValue.Sanitize(type),
+                LogValue.Sanitize(userId),
                 revokedTokens,
                 context.CorrelationId);
 
@@ -351,8 +352,8 @@ internal sealed partial class ClaimManagementService(
             logger.LogError(
                 exception,
                 "Unable to assign a custom claim. UserId={UserId} ClaimType={ClaimType} CorrelationId={CorrelationId}",
-                userId,
-                type,
+                LogValue.Sanitize(userId),
+                LogValue.Sanitize(type),
                 context.CorrelationId);
             await TryWriteFailureAuditAsync(
                 context,

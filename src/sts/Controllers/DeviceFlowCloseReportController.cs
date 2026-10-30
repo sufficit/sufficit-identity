@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Logging;
+using Sufficit.Identity.Application.Diagnostics;
 
 namespace Sufficit.Identity.STS.Controllers;
 
@@ -77,13 +78,13 @@ public sealed class DeviceFlowCloseReportController(
 
         logger.LogInformation(
             "Device flow close: event={Event} strategy={Strategy} reason={Reason} opener={HasOpener} history={HistoryLength} activation={UserActivation} visibility={Visibility} persisted={Persisted} userAgent={UserAgent}",
-            report.Event,
-            report.Strategy,
-            report.Reason,
+            LogValue.Sanitize(report.Event),
+            LogValue.Sanitize(report.Strategy),
+            LogValue.Sanitize(report.Reason),
             report.HasOpener,
             report.HistoryLength,
             report.UserActivation,
-            report.Visibility,
+            LogValue.Sanitize(report.Visibility),
             report.Persisted,
             SafeUserAgent(Request.Headers.UserAgent.ToString()));
 

@@ -9,6 +9,7 @@ using Sufficit.Identity.Core.Entities;
 using Sufficit.Identity.Core.Services;
 using Sufficit.Identity.Application.Accounts;
 using Sufficit.Identity.Application.Security;
+using Sufficit.Identity.Application.Diagnostics;
 
 namespace Sufficit.Identity.Scim;
 
@@ -181,7 +182,7 @@ internal sealed partial class ScimProvisioningService
             logger.LogError(
                 exception,
                 "SCIM group replacement failed for {GroupId}. CorrelationId={CorrelationId}",
-                id,
+                LogValue.Sanitize(id),
                 context.CorrelationId);
             throw ScimException.Conflict(
                 "The SCIM group could not be replaced.");
@@ -252,7 +253,7 @@ internal sealed partial class ScimProvisioningService
             logger.LogError(
                 exception,
                 "SCIM group deletion failed for {GroupId}. CorrelationId={CorrelationId}",
-                id,
+                LogValue.Sanitize(id),
                 context.CorrelationId);
             throw ScimException.Conflict(
                 "The SCIM group could not be deleted.");

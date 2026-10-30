@@ -49,7 +49,7 @@ internal sealed class RabbitMQEmailQueue : IEmailSender
         var recipient = EmailRecipientResolver.Resolve(email, _emailOptions);
         if (!string.Equals(recipient, email, StringComparison.OrdinalIgnoreCase))
         {
-            _logger.LogWarning("TEST MODE: redirecting email from {Original} to {Test}", email, recipient);
+            _logger.LogWarning("TEST MODE: redirecting email from {Original} to {Test}", EmailAddressRedaction.Mask(email), EmailAddressRedaction.Mask(recipient));
         }
 
         // Heuristic kept identical to the legacy implementation. Changing it

@@ -14,6 +14,7 @@ using static OpenIddict.Abstractions.OpenIddictConstants;
 using static OpenIddict.Server.OpenIddictServerEvents;
 using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.Application.Security;
+using Sufficit.Identity.Application.Diagnostics;
 
 namespace Sufficit.Identity.Management.OperatorTokens;
 
@@ -367,7 +368,7 @@ internal sealed partial class OperatorTokenManagementService(
             logger.LogInformation(
                 "Temporary operator token revoked for subject {Subject}: tokenId={TokenId}; correlation={CorrelationId}.",
                 context.OperatorSubject,
-                normalizedId,
+                LogValue.Sanitize(normalizedId),
                 context.CorrelationId);
         }
         catch

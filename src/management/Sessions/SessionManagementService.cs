@@ -10,6 +10,7 @@ using Sufficit.Identity.Application.Accounts;
 using Sufficit.Identity.Management.Audit;
 using Sufficit.Identity.Management.Users;
 using Sufficit.Identity.Management.Authorization;
+using Sufficit.Identity.Application.Diagnostics;
 
 namespace Sufficit.Identity.Management.Sessions;
 
@@ -200,7 +201,7 @@ internal sealed class SessionManagementService(
         await database.SaveChangesAsync(cancellationToken);
         logger.LogInformation(
             "Revoked provider-issued credential {SessionId}. CorrelationId={CorrelationId}",
-            id,
+            LogValue.Sanitize(id),
             context.CorrelationId);
     }
 
@@ -249,7 +250,7 @@ internal sealed class SessionManagementService(
         await database.SaveChangesAsync(cancellationToken);
         logger.LogInformation(
             "Invalidated account sessions for {UserId}; revoked {TokenCount} credentials, {AuthorizationCount} authorizations and {SessionCount} browser sessions. CorrelationId={CorrelationId}",
-            userId,
+            LogValue.Sanitize(userId),
             result.RevokedTokens,
             result.RevokedAuthorizations,
             result.RevokedBrowserSessions,

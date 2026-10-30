@@ -17,6 +17,7 @@ using System.Globalization;
 using Sufficit.Identity.Application.Accounts;
 using Sufficit.Identity.Application.Security;
 using Sufficit.Identity.Management.Authorization;
+using Sufficit.Identity.Application.Diagnostics;
 
 namespace Sufficit.Identity.Management.Clients;
 
@@ -115,7 +116,7 @@ internal sealed partial class ClientManagementService
             logger.LogError(
                 exception,
                 "OAuth client deletion failed. ClientId={ClientId} CorrelationId={CorrelationId}",
-                clientId,
+                LogValue.Sanitize(clientId),
                 context.CorrelationId);
             throw;
         }
@@ -259,7 +260,7 @@ internal sealed partial class ClientManagementService
             logger.LogWarning(
                 exception,
                 "OAuth client secret rotation lost a concurrency race. ClientId={ClientId} CorrelationId={CorrelationId}",
-                clientId,
+                LogValue.Sanitize(clientId),
                 context.CorrelationId);
             throw new ManagementConflictException(
                 "client_changed",
@@ -270,7 +271,7 @@ internal sealed partial class ClientManagementService
             logger.LogError(
                 exception,
                 "OAuth client secret rotation failed. ClientId={ClientId} CorrelationId={CorrelationId}",
-                clientId,
+                LogValue.Sanitize(clientId),
                 context.CorrelationId);
             throw;
         }

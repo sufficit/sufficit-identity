@@ -142,10 +142,10 @@ public sealed class ExternalLoginController(
                 "/manage/externallogins",
                 StringComparison.OrdinalIgnoreCase))
         {
-            return Redirect(returnUrl);
+            return LocalRedirect(returnUrl);
         }
 
-        return Redirect(QueryHelpers.AddQueryString(
+        return LocalRedirect(QueryHelpers.AddQueryString(
             returnUrl,
             new Dictionary<string, string?>
             {
@@ -167,10 +167,10 @@ public sealed class ExternalLoginController(
                 ["returnUrl"] = returnUrl,
             }));
 
-    private RedirectResult SignedIn(string returnUrl)
+    private IActionResult SignedIn(string returnUrl)
     {
         LoginErrorLocation.Reset(HttpContext);
-        return Redirect(returnUrl);
+        return LocalRedirect(returnUrl);
     }
 
     private RedirectResult LoginError(string error, string returnUrl) =>

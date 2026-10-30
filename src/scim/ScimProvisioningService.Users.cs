@@ -9,6 +9,7 @@ using Sufficit.Identity.Core.Entities;
 using Sufficit.Identity.Core.Services;
 using Sufficit.Identity.Application.Accounts;
 using Sufficit.Identity.Application.Security;
+using Sufficit.Identity.Application.Diagnostics;
 
 namespace Sufficit.Identity.Scim;
 
@@ -229,7 +230,7 @@ internal sealed partial class ScimProvisioningService
             logger.LogError(
                 exception,
                 "SCIM user replacement failed for {UserId}. CorrelationId={CorrelationId}",
-                id,
+                LogValue.Sanitize(id),
                 context.CorrelationId);
             throw ScimException.Conflict(
                 "The SCIM user could not be replaced.");
@@ -309,7 +310,7 @@ internal sealed partial class ScimProvisioningService
             logger.LogError(
                 exception,
                 "SCIM user deletion failed for {UserId}. CorrelationId={CorrelationId}",
-                id,
+                LogValue.Sanitize(id),
                 context.CorrelationId);
             throw ScimException.Conflict(
                 "The SCIM user could not be deleted.");

@@ -97,8 +97,8 @@ public sealed class SmtpEmailSender : IEmailSender, IDisposable
         {
             _logger.LogWarning(
                 "Test mode redirected email from {Original} to {Test}.",
-                email,
-                recipient);
+                EmailAddressRedaction.Mask(email),
+                EmailAddressRedaction.Mask(recipient));
         }
 
         var from = new MailAddress(
@@ -155,8 +155,8 @@ public sealed class LoggingEmailSender(
         {
             logger.LogWarning(
                 "Test mode redirected email from {Original} to {Test}.",
-                email,
-                recipient);
+                EmailAddressRedaction.Mask(email),
+                EmailAddressRedaction.Mask(recipient));
         }
 
         if (environment.IsDevelopment())

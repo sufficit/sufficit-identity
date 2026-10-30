@@ -9,6 +9,7 @@ using Sufficit.Identity.Core.Services;
 using Sufficit.Identity.Management.Audit;
 using Sufficit.Identity.Management.Authorization;
 using static OpenIddict.Abstractions.OpenIddictConstants;
+using Sufficit.Identity.Application.Diagnostics;
 
 namespace Sufficit.Identity.Management.SystemUsers;
 
@@ -155,7 +156,7 @@ internal sealed partial class SystemUserManagementService(
 
         logger.LogInformation(
             "System user {UserId} ({UserName}) created by {Subject}; correlation={CorrelationId}.",
-            user.Id, userName, context.OperatorSubject, context.CorrelationId);
+            user.Id, LogValue.Sanitize(userName), context.OperatorSubject, LogValue.Sanitize(context.CorrelationId));
         return await SummarizeAsync(user, cancellationToken);
     }
 
@@ -206,7 +207,7 @@ internal sealed partial class SystemUserManagementService(
 
         logger.LogInformation(
             "System user {UserId} {State} by {Subject}; credentials revoked={Revoked}; correlation={CorrelationId}.",
-            userId, enable ? "enabled" : "disabled", context.OperatorSubject, revoked, context.CorrelationId);
+            LogValue.Sanitize(userId), enable ? "enabled" : "disabled", context.OperatorSubject, revoked, LogValue.Sanitize(context.CorrelationId));
         return await SummarizeAsync(record, cancellationToken);
     }
 
@@ -307,7 +308,7 @@ internal sealed partial class SystemUserManagementService(
 
         logger.LogInformation(
             "Enrollment {EnrollmentId} for system user {UserId} and client {ClientId} issued by {Subject}; expiresAt={ExpiresAtUtc}; correlation={CorrelationId}.",
-            enrollment.Id, userId, clientId, context.OperatorSubject, enrollment.ExpiresAtUtc, context.CorrelationId);
+            enrollment.Id, LogValue.Sanitize(userId), LogValue.Sanitize(clientId), context.OperatorSubject, enrollment.ExpiresAtUtc, LogValue.Sanitize(context.CorrelationId));
         return new SystemUserEnrollmentIssueResult(
             ToSummary(enrollment, now), code, SystemUserEnrollmentProtocol.GrantType);
     }
@@ -343,7 +344,7 @@ internal sealed partial class SystemUserManagementService(
 
         logger.LogInformation(
             "Enrollment {EnrollmentId} of system user {UserId} revoked by {Subject}; correlation={CorrelationId}.",
-            enrollmentId, userId, context.OperatorSubject, context.CorrelationId);
+            enrollmentId, LogValue.Sanitize(userId), context.OperatorSubject, LogValue.Sanitize(context.CorrelationId));
     }
 
     /// <summary>Marks the enrollment revoked and ends the credential it produced, if any.</summary>
@@ -429,7 +430,7 @@ internal sealed partial class SystemUserManagementService(
 
         logger.LogInformation(
             "Entitlements of system user {UserId} set by {Subject}: {Entitlements}; correlation={CorrelationId}.",
-            userId, context.OperatorSubject, string.Join(",", wanted), context.CorrelationId);
+            LogValue.Sanitize(userId), context.OperatorSubject, LogValue.Sanitize(string.Join(",", wanted)), LogValue.Sanitize(context.CorrelationId));
         return [.. wanted];
     }
 

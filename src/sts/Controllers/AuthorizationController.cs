@@ -385,7 +385,7 @@ public partial class AuthorizationController : Controller
                 }
 
                 var forwardedQuery = QueryString.Create(Request.HasFormContentType ? Request.Form : Request.Query);
-                return Redirect("/consent" + forwardedQuery);
+                return LocalRedirect("/consent" + forwardedQuery);
             }
         }
 

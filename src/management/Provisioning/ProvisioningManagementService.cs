@@ -4,6 +4,7 @@ using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Management.Audit;
 using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.Application.Security;
+using Sufficit.Identity.Application.Diagnostics;
 
 namespace Sufficit.Identity.Management.Provisioning;
 
@@ -357,9 +358,9 @@ internal sealed class ProvisioningManagementService(
                 + "CorrelationId={CorrelationId}",
                 Sufficit.Identity.Core.Services.ClientScopeGrantAudit.OperationOutcome(grant),
                 primary.ReasonCode,
-                string.Join(' ', grant.Denials.Select(denial => denial.Scope)),
+                LogValue.Sanitize(string.Join(' ', grant.Denials.Select(denial => denial.Scope))),
                 grant.Mode,
-                client.ClientId,
+                LogValue.Sanitize(client.ClientId),
                 context.OperatorSubject,
                 context.CorrelationId);
             try

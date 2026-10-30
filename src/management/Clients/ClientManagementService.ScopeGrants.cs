@@ -3,6 +3,7 @@ using OpenIddict.Abstractions;
 using Sufficit.Identity.Application.Security;
 using Sufficit.Identity.Core.Services;
 using Sufficit.Identity.Management.Authorization;
+using Sufficit.Identity.Application.Diagnostics;
 
 namespace Sufficit.Identity.Management.Clients;
 
@@ -55,7 +56,7 @@ internal sealed partial class ClientManagementService
             primary.ReasonCode,
             string.Join(' ', decision.Denials.Select(denial => denial.Scope)),
             decision.Mode,
-            clientId,
+            LogValue.Sanitize(clientId),
             context.OperatorSubject,
             context.CorrelationId);
 

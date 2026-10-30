@@ -4,6 +4,7 @@ using System.Text;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
+using Sufficit.Identity.Application.Diagnostics;
 
 namespace Sufficit.Identity.STS.Dpop;
 
@@ -211,7 +212,7 @@ public sealed class DpopProofValidator
         if (!jwt.TryGetPayloadValue("htm", out string htm)
             || !string.Equals(htm, httpMethod, StringComparison.Ordinal))
         {
-            _logger.LogWarning("DPoP proof htm claim mismatch: got '{Got}', expected '{Expected}'.", htm, httpMethod);
+            _logger.LogWarning("DPoP proof htm claim mismatch: got '{Got}', expected '{Expected}'.", LogValue.Sanitize(htm), LogValue.Sanitize(httpMethod));
             return null;
         }
 
@@ -220,7 +221,7 @@ public sealed class DpopProofValidator
         if (!jwt.TryGetPayloadValue("htu", out string htu)
             || !UrisMatch(htu, httpUrl))
         {
-            _logger.LogWarning("DPoP proof htu claim mismatch: got '{Got}', expected '{Expected}'.", htu, httpUrl);
+            _logger.LogWarning("DPoP proof htu claim mismatch: got '{Got}', expected '{Expected}'.", LogValue.Sanitize(htu), LogValue.Sanitize(httpUrl));
             return null;
         }
 

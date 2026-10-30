@@ -41,7 +41,7 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
     /// </summary>
     internal static readonly TimeSpan PublicEmailRequestFloor = TimeSpan.FromSeconds(1.5);
 
-    private const int PasswordResetRevocationAttempts = 3;
+    private const int ResetRevocationAttempts = 3;
     private static readonly Meter SecurityMeter = new(
         "Sufficit.Identity.Security",
         "1.0.0");
@@ -459,7 +459,7 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
             string userId,
             CancellationToken cancellationToken)
     {
-        for (var attempt = 1; attempt <= PasswordResetRevocationAttempts; attempt++)
+        for (var attempt = 1; attempt <= ResetRevocationAttempts; attempt++)
         {
             try
             {
@@ -479,7 +479,7 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
             }
             catch (Exception exception)
             {
-                var finalAttempt = attempt == PasswordResetRevocationAttempts;
+                var finalAttempt = attempt == ResetRevocationAttempts;
                 PasswordResetRevocationCounter.Add(
                     1,
                     new KeyValuePair<string, object?>(
@@ -501,7 +501,7 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
                         + "after {AttemptCount} attempts. Existing OAuth sessions "
                         + "may remain valid and require operational intervention.",
                         userId,
-                        PasswordResetRevocationAttempts);
+                        ResetRevocationAttempts);
                     return null;
                 }
 
@@ -511,7 +511,7 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
                     + "on attempt {Attempt}/{AttemptCount}; retrying.",
                     userId,
                     attempt,
-                    PasswordResetRevocationAttempts);
+                    ResetRevocationAttempts);
                 await Task.Delay(
                     TimeSpan.FromMilliseconds(50 * attempt),
                     cancellationToken);

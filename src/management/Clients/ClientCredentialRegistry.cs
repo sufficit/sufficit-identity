@@ -12,6 +12,7 @@ using Sufficit.Identity.Core.Services;
 using Sufficit.Identity.Management.Audit;
 using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.Management.Provisioning;
+using Sufficit.Identity.Application.Diagnostics;
 
 namespace Sufficit.Identity.Management.Clients;
 
@@ -259,7 +260,7 @@ internal sealed class ClientCredentialRegistry(
             logger.LogWarning(
                 exception,
                 "OAuth client credential creation lost a persistence race. ClientId={ClientId} CorrelationId={CorrelationId}",
-                clientId,
+                LogValue.Sanitize(clientId),
                 context.CorrelationId);
             throw new ManagementConflictException(
                 "client_credential_changed",
@@ -391,7 +392,7 @@ internal sealed class ClientCredentialRegistry(
             logger.LogWarning(
                 exception,
                 "OAuth client credential revocation lost a concurrency race. ClientId={ClientId} CredentialId={CredentialId}",
-                clientId,
+                LogValue.Sanitize(clientId),
                 command.CredentialId);
             throw new ManagementConflictException(
                 "client_credential_changed",
