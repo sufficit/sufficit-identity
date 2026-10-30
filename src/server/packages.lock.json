@@ -68,12 +68,6 @@
           "Serilog.Sinks.File": "7.0.0"
         }
       },
-      "Sufficit.Blazor.UI": {
-        "type": "Direct",
-        "requested": "[2.*, )",
-        "resolved": "2.26.1029.2235",
-        "contentHash": "T7B6Ntp38Y3lR9hwS5K8fqARcWsUUFw26GSDo741Kdt/LkpSyD28APPyQSPdlggJOFg4aa6HqPA4/uyjR/Kgwg=="
-      },
       "Swashbuckle.AspNetCore": {
         "type": "Direct",
         "requested": "[10.2.3, )",
@@ -675,6 +669,9 @@
           "Microsoft.Win32.SystemEvents": "6.0.0"
         }
       },
+      "sufficit.blazor.ui": {
+        "type": "Project"
+      },
       "sufficit.identity.application.abstractions": {
         "type": "Project"
       },
@@ -731,7 +728,7 @@
         "type": "Project",
         "dependencies": {
           "QRCoder": "[1.8.0, )",
-          "Sufficit.Blazor.UI": "[2.*, )",
+          "Sufficit.Blazor.UI": "[2.99.0, )",
           "Sufficit.Identity.Application.Abstractions": "[0.4.0-alpha, )",
           "Sufficit.Identity.UI.Abstractions": "[0.4.0-alpha, )",
           "Sufficit.Identity.UI.Components": "[0.4.0-alpha, )"
@@ -743,13 +740,13 @@
       "sufficit.identity.ui.components": {
         "type": "Project",
         "dependencies": {
-          "Sufficit.Blazor.UI": "[2.*, )"
+          "Sufficit.Blazor.UI": "[2.99.0, )"
         }
       },
       "sufficit.identity.ui.management": {
         "type": "Project",
         "dependencies": {
-          "Sufficit.Blazor.UI": "[2.*, )",
+          "Sufficit.Blazor.UI": "[2.99.0, )",
           "Sufficit.Identity.Application.Abstractions": "[0.4.0-alpha, )",
           "Sufficit.Identity.Hosting.Abstractions": "[0.4.0-alpha, )",
           "Sufficit.Identity.UI.Abstractions": "[0.4.0-alpha, )",
@@ -759,7 +756,7 @@
       "sufficit.identity.ui.vault": {
         "type": "Project",
         "dependencies": {
-          "Sufficit.Blazor.UI": "[2.*, )",
+          "Sufficit.Blazor.UI": "[2.99.0, )",
           "Sufficit.Identity.Application.Abstractions": "[0.4.0-alpha, )",
           "Sufficit.Identity.Hosting.Abstractions": "[0.4.0-alpha, )",
           "Sufficit.Identity.UI.Abstractions": "[0.4.0-alpha, )",
