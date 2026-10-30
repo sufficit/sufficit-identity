@@ -3,7 +3,7 @@ r"""
 Generic .NET Application Deployment Script - PROJECT COPY (sufficit-identity)
 Version: 202608160430
 Revision: R018-identity - fork of R017 with Step 4d: carry excluded persistent FILES (appsettings*, certificate*.pfx) from live to staging before the atomic swap, in addition to folders
-Last Modified UTC: 20260619163000
+Last Modified UTC: 20261030153000
 Central Repository: sufficit-ci/scripts/dotnet/deploy.py
 
 IMPORTANT: This is a COPY from the centralized version. To check if it is up to date,
@@ -133,8 +133,10 @@ import sys
 import subprocess
 import time
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
+import re
+import shutil
 
 # SSH options shared across all ssh/scp calls.
 # ServerAliveInterval + ServerAliveCountMax: kill the connection if the remote
@@ -815,6 +817,48 @@ def get_publish_output_folder(base_publish_folder):
     return str(base_folder.parent / f"{base_folder.name}-{timestamp}")
 
 
+def cleanup_old_publish_folders(config, max_age_hours=24, keep=None):
+    """Remove local publish artifacts older than max_age_hours.
+
+    Covers run folders ('publish-net10.0-<YYYYMMDDHHMMSS>') and the ad-hoc folders
+    agents create ('publish-<label>', '.publish-<label>'). Age comes
+    from a trailing 14-digit run timestamp when present, otherwise from mtime.
+    The reusable 'publish' folder and the folder being deployed are kept.
+    """
+    project_root = resolve_project_root(config)
+    cutoff = datetime.now() - timedelta(hours=max_age_hours)
+    keep_path = Path(keep).resolve() if keep else None
+    removed = 0
+
+    for entry in project_root.iterdir():
+        if not entry.is_dir() or entry.is_symlink():
+            continue
+        name = entry.name
+        if not re.match(r"^\.?publish-.+", name):
+            continue
+        if keep_path and entry.resolve() == keep_path:
+            continue
+        match = re.search(r"-(\d{14})$", name)
+        try:
+            folder_time = datetime.strptime(match.group(1), "%Y%m%d%H%M%S") if match else None
+        except ValueError:
+            folder_time = None
+        if folder_time is None:
+            folder_time = datetime.fromtimestamp(entry.stat().st_mtime)
+        if folder_time >= cutoff:
+            continue
+        try:
+            shutil.rmtree(entry)
+            removed += 1
+            print_progress(f"Removed stale publish folder (>{max_age_hours}h): {name}", "\U0001F9F9")
+        except OSError as exc:
+            print_progress(f"Could not remove {name}: {exc}", "\u26A0\uFE0F")
+
+    if removed:
+        print_progress(f"Cleaned {removed} stale publish folder(s) older than {max_age_hours}h", "\U0001F9F9")
+
+
+
 def run_dotnet_publish(config, publish_folder):
     """Run dotnet publish to prepare the publish folder before deploying.
     Discovers the .csproj from config.json 'project_file' field or auto-scans src/."""
@@ -978,6 +1022,9 @@ def main():
     print()
 
     publish_folder = get_publish_folder(config, server)
+
+    # Prune local publish artifacts older than 24h to avoid disk buildup (central R019).
+    cleanup_old_publish_folders(config, max_age_hours=24, keep=publish_folder)
 
     # --publish: run dotnet publish before deploying
     if run_publish:
