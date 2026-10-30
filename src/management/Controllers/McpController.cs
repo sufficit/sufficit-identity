@@ -82,7 +82,9 @@ public sealed class McpController(
                 id,
                 -32000,
                 "Session not found, expired, or bound to another subject. Re-initialize the MCP connection.",
-                StatusCodes.Status401Unauthorized);
+                // MCP Streamable HTTP: an unknown session is 404, so clients start a new one.
+                // 401 would read as a credential failure.
+                StatusCodes.Status404NotFound);
         }
 
         try

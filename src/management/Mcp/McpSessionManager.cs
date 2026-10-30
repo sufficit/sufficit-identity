@@ -1,101 +1,57 @@
-using System.Collections.Concurrent;
+using System.Security.Cryptography;
+using Microsoft.AspNetCore.DataProtection;
 
 namespace Sufficit.Identity.Management.Mcp;
 
 /// <summary>
-/// Short-lived MCP transport sessions. A session is bound to the authenticated
-/// subject that initialized it, so a stolen <c>mcp-session-id</c> cannot be
-/// replayed with another user's bearer token.
+/// MCP transport sessions. A session id is the subject that initialized it, protected with
+/// the Data Protection keys every node shares (persisted in the database), so any node
+/// validates it and it survives restarts; a stolen <c>mcp-session-id</c> still cannot be
+/// replayed with another user's bearer token. The bearer token authenticates every request;
+/// the session only binds the transport to that subject.
 /// </summary>
-public sealed class McpSessionManager : IDisposable
+/// <remarks>
+/// Sessions used to live in one node's memory with a 30-minute idle expiry: behind the
+/// load balancer a request reaching another node, a pause in the conversation or a deploy
+/// answered "Session not found", which clients reported as stale credentials.
+/// </remarks>
+public sealed class McpSessionManager
 {
-    private static readonly TimeSpan SessionLifetime = TimeSpan.FromMinutes(30);
-    private static readonly TimeSpan CleanupInterval = TimeSpan.FromMinutes(5);
+    /// <summary>Upper bound for one transport session; clients re-initialize after it.</summary>
+    public static readonly TimeSpan SessionLifetime = TimeSpan.FromHours(24);
 
-    private readonly ConcurrentDictionary<string, Session> sessions =
-        new(StringComparer.Ordinal);
-    private readonly Timer cleanupTimer;
+    private readonly ITimeLimitedDataProtector protector;
 
-    public McpSessionManager()
-    {
-        cleanupTimer = new Timer(
-            _ => RemoveExpired(),
-            state: null,
-            dueTime: CleanupInterval,
-            period: CleanupInterval);
-    }
+    public McpSessionManager(IDataProtectionProvider provider) =>
+        protector = provider.CreateProtector("Sufficit.Identity.Mcp.Session.v1").ToTimeLimitedDataProtector();
 
     public string Create(string subject)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(subject);
-        var id = Guid.NewGuid().ToString("N");
-        var now = DateTimeOffset.UtcNow;
-        sessions[id] = new Session(subject, now, initialized: true);
-        return id;
+        // A random part keeps two sessions of the same subject distinct.
+        var payload = $"{Convert.ToHexString(RandomNumberGenerator.GetBytes(8))}:{subject}";
+        return protector.Protect(payload, SessionLifetime);
     }
 
-    /// <summary>
-    /// Reuses a requested session only when it already belongs to the same
-    /// subject. Unknown or cross-subject ids result in a fresh session.
-    /// </summary>
+    /// <summary>Reuses a requested session that belongs to the same subject; otherwise a fresh one.</summary>
     public string Initialize(string? requestedId, string subject)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(subject);
-        if (!string.IsNullOrWhiteSpace(requestedId)
-            && sessions.TryGetValue(requestedId.Trim(), out var existing)
-            && string.Equals(existing.Subject, subject, StringComparison.Ordinal)
-            && Touch(existing))
-        {
-            existing.Initialized = true;
-            return requestedId.Trim();
-        }
-
-        return Create(subject);
+        return Validate(requestedId, subject) ? requestedId!.Trim() : Create(subject);
     }
 
     public bool Validate(string? id, string subject)
     {
-        if (string.IsNullOrWhiteSpace(id)
-            || string.IsNullOrWhiteSpace(subject)
-            || !sessions.TryGetValue(id.Trim(), out var session)
-            || !session.Initialized
-            || !string.Equals(session.Subject, subject, StringComparison.Ordinal))
+        if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(subject)) return false;
+        try
         {
-            return false;
+            var payload = protector.Unprotect(id.Trim());
+            var separator = payload.IndexOf(':');
+            return separator > 0 && string.Equals(payload[(separator + 1)..], subject, StringComparison.Ordinal);
         }
-
-        return Touch(session);
-    }
-
-    public void Dispose() => cleanupTimer.Dispose();
-
-    private static bool Touch(Session session)
-    {
-        var now = DateTimeOffset.UtcNow;
-        if (now - session.LastAccessedAtUtc > SessionLifetime)
-            return false;
-
-        session.LastAccessedAtUtc = now;
-        return true;
-    }
-
-    private void RemoveExpired()
-    {
-        var cutoff = DateTimeOffset.UtcNow - SessionLifetime;
-        foreach (var pair in sessions)
+        catch (CryptographicException)
         {
-            if (pair.Value.LastAccessedAtUtc < cutoff)
-                sessions.TryRemove(pair.Key, out _);
+            return false; // expired, tampered or from another key ring
         }
-    }
-
-    private sealed class Session(
-        string subject,
-        DateTimeOffset lastAccessedAtUtc,
-        bool initialized)
-    {
-        public string Subject { get; } = subject;
-        public DateTimeOffset LastAccessedAtUtc { get; set; } = lastAccessedAtUtc;
-        public bool Initialized { get; set; } = initialized;
     }
 }

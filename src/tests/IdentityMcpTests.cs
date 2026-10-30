@@ -21,12 +21,28 @@ public sealed partial class IdentityMcpTests
     [Fact]
     public void Sessions_are_bound_to_the_authenticated_subject()
     {
-        using var manager = new McpSessionManager();
+        var manager = new McpSessionManager(new Microsoft.AspNetCore.DataProtection.EphemeralDataProtectionProvider());
 
         var session = manager.Create("alice");
 
         Assert.True(manager.Validate(session, "alice"));
         Assert.False(manager.Validate(session, "bob"));
+    }
+
+    [Fact]
+    public void Sessions_validate_on_every_node_that_shares_the_keys()
+    {
+        // Nodes behind the load balancer share the Data Protection key ring (database).
+        var keys = new Microsoft.AspNetCore.DataProtection.EphemeralDataProtectionProvider();
+        var nodeA = new McpSessionManager(keys);
+        var nodeB = new McpSessionManager(keys);
+
+        var session = nodeA.Create("alice");
+
+        Assert.True(nodeB.Validate(session, "alice"));
+        Assert.Equal(session, nodeB.Initialize(session, "alice"));
+        Assert.False(nodeB.Validate("not-a-session", "alice"));
+        Assert.NotEqual(session, nodeA.Create("alice"));
     }
 
     [Fact]
