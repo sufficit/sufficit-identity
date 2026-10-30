@@ -466,6 +466,25 @@ central metadata validation and public-client PKCE are already covered.
 - [ ] Review security comments against executable tests and delete the
   historical "item fixed" narratives that no longer describe current behaviour
 
+### F15 — Multiple email addresses per account
+
+Design: [`ARCHITECTURE-ACCOUNT-EMAILS.md`](../architecture/ARCHITECTURE-ACCOUNT-EMAILS.md).
+Motivated by [`202610301530`](../activities/202610301530-nilza-username-empresarial.md),
+where a primary address had to be swapped in the database and the old one was lost.
+
+- [ ] Migration 110 `useremails` (primary mirrored as a row, unique normalized
+  address) with backfill from `users.Email`
+- [ ] `IAccountEmailService` as the only writer; dual-write `users.Email`;
+  `UpdateProfile` email change routed through it
+- [ ] Parity check between `users.Email` and the primary row as a posture finding
+- [ ] `AccountLookupPolicy` reads confirmed rows only, behind a flag
+- [ ] Management routes under `api/users/{id}/emails` (`identity.users.update`)
+  and console page
+- [ ] Self-service `/manage/emails` with confirmation link, recent
+  authentication and notification of the previous primary
+- [ ] SCIM full `emails[]` mapping per client trust
+- [ ] Race and non-resolution tests listed in the design (extends F9)
+
 ---
 
 ## G. Observability, conformance and cutover
@@ -550,7 +569,7 @@ Deliberately after everything above; none of it is required for production.
 2. **C1** — the re-wrap race test and the reader/KEK authority split
 3. **B3, B5** — DPoP-bound subject token exchange and CIBA abuse tests
 4. **E6** — the mobile pass on the creation and edit flows
-5. **E2, E4, E7, F1–F14** — as capacity allows, in the order the team prefers;
+5. **E2, E4, E7, F1–F15** — as capacity allows, in the order the team prefers;
    none of them blocks another
 6. **G** — conformance, audit, cutover and rehearsals, continuously, and G4
    before anyone calls the legacy migration finished
