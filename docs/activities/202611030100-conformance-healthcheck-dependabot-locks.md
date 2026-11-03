@@ -27,6 +27,12 @@ stale accepted result: `oidcc-ensure-request-with-acr-values-succeeds` expected 
 when `c2b754a` made the server honour `acr_values` on 2026-09-19. That entry was removed, which makes the
 gate stricter.
 
+The FAPI 2.0 plan ran next: 57 modules, 4100 successful conditions, no failures, and one module that never
+finished. `par-attempt-to-use-expired-request_uri` accepts the server's own error page as an alternative to a
+redirect, and then waits for a screenshot of it. The browser task was configured not to upload one, so the
+module waited until the runner gave up. The task now uploads it, and the expected failure on
+`EnsureInvalidRequestUriError`, which no longer happens, was removed.
+
 The container reports exit 139 for an unhandled startup exception. Why it is not the usual 134 was not
 investigated.
 
