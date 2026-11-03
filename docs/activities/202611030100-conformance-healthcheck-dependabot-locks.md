@@ -43,6 +43,17 @@ Reproduced: the same unhandled startup exception exits 134 under `sh` or `docker
 The kernel does not deliver a default-action SIGABRT to a namespace's PID 1, so glibc's `abort()` falls through
 to an invalid instruction. There is no memory fault. The conformance `identity` service now uses `init: true`.
 
+## Verification of the stricter checks
+
+- Both plans passed on `4ad2436` with the new marker.
+- A throwaway branch pointed one module at a selector that does not exist, and that run failed, so the gate
+  does reject a page without the marker.
+- A throwaway PR on a `dependabot/nuget/` branch with a stale dependent lock (#109, closed unmerged): the
+  workflow committed the two missing locks through `workflow_dispatch`, and CI passed on the new head. It
+  also found that workflow-level concurrency let a skipped run cancel the one doing the work, now fixed.
+- Not exercised: `pull_request_target` from Dependabot's own account. Its token rules differ, so the next real
+  NuGet PR is the first proof; `workflow_dispatch` with the PR number is the fallback.
+
 ## What REVIEW results prove
 
 Of the 14 modules finishing as REVIEW:
