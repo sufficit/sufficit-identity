@@ -21,7 +21,7 @@
             </div>
         </header>
         <main class="content">
-            <section class="auth-card authorization-error" aria-labelledby="authorization-error-title">
+            <section class="auth-card authorization-error" aria-labelledby="authorization-error-title" data-authorization-error="@(RetryAfterSeconds.HasValue ? null : "refused")">
                 <h1 id="authorization-error-title">@L[$"{ResourcePrefix}.Title"]</h1>
                 <p>@L[$"{ResourcePrefix}.Explanation"]</p>
                 <p>@L[$"{ResourcePrefix}.Recovery", RetryAfterSeconds ?? 0]</p>

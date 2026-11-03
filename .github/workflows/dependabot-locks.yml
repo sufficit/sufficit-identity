@@ -12,42 +12,69 @@ on:
   pull_request_target:
     types: [opened, reopened, synchronize]
     branches: [main]
+  # Recovery, and the only way to exercise this without waiting for Dependabot.
+  workflow_dispatch:
+    inputs:
+      pull_request:
+        description: Pull request number, on a dependabot/nuget/ branch
+        required: true
+        type: number
 
 permissions:
   contents: write
   actions: write
 
 concurrency:
-  group: dependabot-locks-${{ github.event.pull_request.number }}
+  group: dependabot-locks-${{ inputs.pull_request || github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
   propagate:
     if: >-
-      github.event.pull_request.user.login == 'dependabot[bot]'
+      github.event_name == 'workflow_dispatch'
+      || (github.event.pull_request.user.login == 'dependabot[bot]'
       && github.event.pull_request.head.repo.full_name == github.repository
-      && startsWith(github.event.pull_request.head.ref, 'dependabot/nuget/')
+      && startsWith(github.event.pull_request.head.ref, 'dependabot/nuget/'))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - name: Resolve pull request
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NUMBER: ${{ inputs.pull_request || github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          read -r head_repo branch head_sha base_sha < <(gh api "repos/${GITHUB_REPOSITORY}/pulls/${NUMBER}" \
+            --jq '[.head.repo.full_name, .head.ref, .head.sha, .base.sha] | @tsv')
+          if [[ "${head_repo}" != "${GITHUB_REPOSITORY}" || "${branch}" != dependabot/nuget/* ]]; then
+            echo "::error::#${NUMBER} is not a dependabot/nuget/ branch of this repository."
+            exit 1
+          fi
+          {
+            echo "branch=${branch}"
+            echo "head_sha=${head_sha}"
+            echo "base_sha=${base_sha}"
+          } >> "${GITHUB_OUTPUT}"
+
       - name: Checkout trusted script
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.pull_request.base.sha }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.sha || steps.pr.outputs.base_sha }}
           path: trusted
           persist-credentials: false
 
       - name: Checkout pull request as data
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ steps.pr.outputs.head_sha }}
           path: pr
           fetch-depth: 0
 
       - name: Propagate bumped versions
         working-directory: pr
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE_SHA: ${{ steps.pr.outputs.base_sha }}
         run: |
           set -euo pipefail
           git fetch --quiet origin "${BASE_SHA}"
@@ -58,7 +85,7 @@ jobs:
         working-directory: pr
         env:
           GH_TOKEN: ${{ github.token }}
-          BRANCH: ${{ github.event.pull_request.head.ref }}
+          BRANCH: ${{ steps.pr.outputs.branch }}
         run: |
           set -euo pipefail
           if git diff --quiet; then

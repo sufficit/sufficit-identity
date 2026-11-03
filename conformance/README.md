@@ -101,7 +101,12 @@ page is for. Two details are easy to get wrong:
 - Some modules ask for a screenshot: the second login page of
   `oidcc-prompt-login`, and the error pages of the modules listed under
   `override`. A `wait` command ending in `update-image-placeholder-optional`
-  uploads one whenever the module is waiting for it.
+  uploads one whenever the module is waiting for it. Error pages are waited for by
+  `[data-authorization-error]`, so a module whose request was not refused fails
+  instead of uploading whatever page it reached.
+- REVIEW does not mean unverified. The login modules type into the form; the error
+  modules require the marker above; and the long `nonce`/`state` and inside/outside
+  modules finish through the successful path, whose returned values the suite checks.
 
 ## Expected failures
 

@@ -91,6 +91,8 @@ public sealed class BrowserAuthorizationErrorTests(SufficitIdentityTestFactory f
             Assert.Contains("Não foi possível continuar este acesso", WebUtility.HtmlDecode(content));
             Assert.Contains("Volte ao aplicativo e inicie o acesso novamente", WebUtility.HtmlDecode(content));
             Assert.Contains("authorization-error.css", content);
+            // The conformance plans wait for this marker: it is what proves a refusal.
+            Assert.Contains("data-authorization-error=\"refused\"", content);
             Assert.Contains("href=\"/\"", content);
             Assert.DoesNotContain(userCode, content);
             Assert.DoesNotContain("error_description", content);
@@ -119,6 +121,7 @@ public sealed class BrowserAuthorizationErrorTests(SufficitIdentityTestFactory f
         Assert.Equal("text/html", response.Content.Headers.ContentType?.MediaType);
         var html = await response.Content.ReadAsStringAsync();
         Assert.Contains("Não foi possível continuar este acesso", WebUtility.HtmlDecode(html));
+        Assert.Contains("data-authorization-error=\"refused\"", html);
         Assert.DoesNotContain("private-reference", html);
         Assert.DoesNotContain("untrusted.invalid", html);
         Assert.DoesNotContain("error_description", html);

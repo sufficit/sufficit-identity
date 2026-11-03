@@ -67,6 +67,9 @@ services:
       retries: 30
 
   identity:
+    # As PID 1 an abort cannot deliver SIGABRT, so glibc ends in SIGSEGV and an
+    # ordinary unhandled startup exception reads as exit 139. With init it is 134.
+    init: true
     build:
       context: ..
       dockerfile: Dockerfile

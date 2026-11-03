@@ -152,7 +152,7 @@ internal static class BrowserAuthorizationErrorPage
                     .Append(HtmlEncoder.Default.Encode(productName))
                     .Append("</title>")
                 .Append("</head><body>")
-                .Append("<main data-openiddict-error=\"")
+                .Append("<main data-authorization-error=\"refused\" data-openiddict-error=\"")
                     .Append(HtmlEncoder.Default.Encode(error))
                     .Append("\">")
                 .Append("<h1>").Append(HtmlEncoder.Default.Encode(heading)).Append("</h1>")

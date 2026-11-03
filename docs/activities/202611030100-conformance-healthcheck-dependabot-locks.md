@@ -37,8 +37,21 @@ Both plans then passed on `eee5df9`: Basic with 23 PASSED, 6 WARNING, 4 REVIEW a
 42 PASSED, 1 WARNING, 10 REVIEW and 3 SKIPPED. REVIEW modules are finished by an uploaded screenshot that
 nobody inspects, and the export does not include the image.
 
-The container reports exit 139 for an unhandled startup exception. Why it is not the usual 134 was not
-investigated.
+## Exit 139 is not a crash
+
+Reproduced: the same unhandled startup exception exits 134 under `sh` or `docker run --init` and 139 as PID 1.
+The kernel does not deliver a default-action SIGABRT to a namespace's PID 1, so glibc's `abort()` falls through
+to an invalid instruction. There is no memory fault. The conformance `identity` service now uses `init: true`.
+
+## What REVIEW results prove
+
+Of the 14 modules finishing as REVIEW:
+
+- 3 ask for a login page, and the browser types into the form, so a different page fails them.
+- 5 (long `nonce`/`state`, inside/outside request object) took the successful path their summary allows, and
+  the suite checks the returned values. The upload is a leftover of the login page.
+- 6 expect an error page and were weak: `css body` with `.*` accepts any page. Both error renderers now carry
+  `data-authorization-error`, and the tasks wait for it.
 
 ## Dependabot PRs failing with NU1004
 
@@ -55,7 +68,8 @@ The script reproduces the validated lock files of #107 and #108 from their origi
 
 ### Limits
 
-- A bump that adds a new transitive package to a dependent project is not handled; that PR stays red.
+- A bump that removes a transitive package leaves it in dependent locks, and that PR stays red. New transitive
+  packages are added.
 - After this commit, Dependabot no longer rebases the branch by itself; comment `@dependabot rebase`.
-- The workflow itself first runs on the next Dependabot NuGet PR, since `pull_request_target` cannot be
-  exercised without one.
+- `pull_request_target` from Dependabot can only run on a real Dependabot PR. `workflow_dispatch` runs the same
+  steps for recovery.

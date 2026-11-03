@@ -113,7 +113,7 @@
                 [
                   "wait",
                   "css",
-                  "body",
+                  "[data-authorization-error]",
                   10,
                   ".*",
                   "update-image-placeholder-optional"
@@ -169,7 +169,7 @@
                 [
                   "wait",
                   "css",
-                  "body",
+                  "[data-authorization-error]",
                   10,
                   ".*",
                   "update-image-placeholder-optional"
@@ -225,7 +225,7 @@
                 [
                   "wait",
                   "css",
-                  "body",
+                  "[data-authorization-error]",
                   10,
                   ".*",
                   "update-image-placeholder-optional"
