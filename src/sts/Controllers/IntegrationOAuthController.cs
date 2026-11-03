@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.Logging;
 using OpenIddict.Abstractions;
 using Sufficit.Identity.Application.Accounts;
 using Sufficit.Identity.STS.Integrations;
@@ -35,7 +36,8 @@ public sealed partial class IntegrationOAuthController(
     IHttpClientFactory httpClients,
     IClientNativeReturnUriResolver nativeReturnUris,
     IOpenIddictApplicationManager applications,
-    Microsoft.Extensions.Localization.IStringLocalizer<Sufficit.Identity.STS.Resources.AccountMessages> messages)
+    Microsoft.Extensions.Localization.IStringLocalizer<Sufficit.Identity.STS.Resources.AccountMessages> messages,
+    ILogger<IntegrationOAuthController> logger)
     : ControllerBase
 {
     private const string McpPolicy = "sufficit-identity-mcp";
@@ -221,6 +223,10 @@ public sealed partial class IntegrationOAuthController(
         }
         catch (Exception exception) when (exception is CryptographicException or FormatException)
         {
+            logger.LogWarning(
+                "Integration OAuth callback for {Provider} rejected: unreadable or expired ticket; TraceId={TraceId}.",
+                definition.Id,
+                HttpContext.TraceIdentifier);
             // Nothing here is trustworthy: an unreadable ticket names no
             // client, so there is no registered callback to send the browser
             // to and inventing one would be an open redirect.
@@ -231,11 +237,25 @@ public sealed partial class IntegrationOAuthController(
             });
         }
 
+        // The outcome and its cause only: the ticket, code and tokens stay out.
+        void LogOutcome(string status, string reason) => logger.Log(
+            status == "connected" ? LogLevel.Information : LogLevel.Warning,
+            "Integration OAuth callback for {Provider} ended as {Status}: {Reason}; Subject={Subject}; TraceId={TraceId}.",
+            definition.Id,
+            status,
+            reason,
+            flow.Subject,
+            HttpContext.TraceIdentifier);
+
         var pending = await ReadPendingAsync(flow, cancellationToken);
         if (pending is null)
+        {
+            LogOutcome("expired", "no pending authorization");
             return await CompleteAuthorizationAsync(flow.ReturnUri, definition.Id, "expired", flow.Popup);
+        }
         if (!string.IsNullOrWhiteSpace(error))
         {
+            LogOutcome("cancelled", $"provider returned {SafeProviderError(error)}");
             await DeletePendingAsync(flow, cancellationToken);
             return await CompleteAuthorizationAsync(pending.ReturnUri, definition.Id, "cancelled", pending.Popup);
         }
@@ -248,7 +268,12 @@ public sealed partial class IntegrationOAuthController(
                 var authentication = await HttpContext.AuthenticateAsync(
                     IdentityConstants.ExternalScheme);
                 if (!authentication.Succeeded || authentication.Properties is null)
+                {
+                    LogOutcome("failed", authentication.None
+                        ? "no external sign-in cookie"
+                        : $"external sign-in rejected ({authentication.Failure?.GetType().Name})");
                     return await CompleteAuthorizationAsync(pending.ReturnUri, definition.Id, "failed", pending.Popup);
+                }
                 authentication.Properties.Items.TryGetValue(
                     "LoginProvider",
                     out var loginProvider);
@@ -256,13 +281,19 @@ public sealed partial class IntegrationOAuthController(
                         loginProvider,
                         definition.Scheme,
                         StringComparison.Ordinal))
+                {
+                    LogOutcome("failed", "external sign-in came from another provider");
                     return await CompleteAuthorizationAsync(pending.ReturnUri, definition.Id, "failed", pending.Popup);
+                }
                 token = FromAuthenticationProperties(authentication.Properties);
             }
             else
             {
                 if (string.IsNullOrWhiteSpace(code))
+                {
+                    LogOutcome("failed", "provider returned no authorization code");
                     return await CompleteAuthorizationAsync(pending.ReturnUri, definition.Id, "failed", pending.Popup);
+                }
                 token = await ExchangeCodeAsync(
                     definition,
                     pending,
@@ -272,6 +303,7 @@ public sealed partial class IntegrationOAuthController(
 
             if (!IntegrationOAuthProtocol.HasRequiredScopes(definition.Scopes, token.Scope))
             {
+                LogOutcome("permissions_required", "provider granted fewer scopes than required");
                 await DeletePendingAsync(flow, cancellationToken);
                 return await CompleteAuthorizationAsync(pending.ReturnUri, definition.Id, "permissions_required", pending.Popup);
             }
@@ -280,14 +312,23 @@ public sealed partial class IntegrationOAuthController(
             token = token with { AuthorizationRevision = Guid.NewGuid().ToString("N") };
             await SaveTokenAsync(flow.Subject, definition.Id, token, cancellationToken);
             await DeletePendingAsync(flow, cancellationToken);
+            LogOutcome("connected", "token stored");
             return await CompleteAuthorizationAsync(pending.ReturnUri, definition.Id, "connected", pending.Popup);
         }
-        catch (HttpRequestException)
+        catch (IntegrationOAuthTokenRequestException exception)
         {
+            LogOutcome("failed", $"token request returned HTTP {(int)exception.Failure.StatusCode} {SafeProviderError(exception.Failure.Error)}");
+            return await CompleteAuthorizationAsync(pending.ReturnUri, definition.Id, "failed", pending.Popup);
+        }
+        catch (HttpRequestException exception)
+        {
+            LogOutcome("failed", $"provider unreachable ({exception.HttpRequestError})");
             return await CompleteAuthorizationAsync(pending.ReturnUri, definition.Id, "failed", pending.Popup);
         }
         catch (Exception exception) when (exception is InvalidOperationException or JsonException)
         {
+            // Type only: these messages may quote the provider's response.
+            LogOutcome("failed", $"unusable token response ({exception.GetType().Name})");
             return await CompleteAuthorizationAsync(pending.ReturnUri, definition.Id, "failed", pending.Popup);
         }
         finally

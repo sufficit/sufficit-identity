@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Sufficit.Identity.Application.Accounts;
 using Sufficit.Identity.STS.Controllers;
 using Sufficit.Identity.STS.Integrations;
@@ -104,6 +105,40 @@ public sealed class IntegrationOAuthCompletionTests
     }
 
     [Fact]
+    public async Task Callback_logs_why_it_ended_without_the_ticket()
+    {
+        var connected = new Fixture();
+        var ticket = await connected.Begin("popup");
+        await connected.Callback(ticket);
+        var entry = Assert.Single(connected.Log.Entries);
+        Assert.Equal(LogLevel.Information, entry.Level);
+        Assert.Contains("ended as connected", entry.Message);
+        Assert.DoesNotContain(ticket, entry.Message);
+
+        var denied = new Fixture();
+        ticket = await denied.Begin("popup");
+        await denied.Callback(ticket, "access_denied\r\nforged line");
+        entry = Assert.Single(denied.Log.Entries);
+        Assert.Equal(LogLevel.Warning, entry.Level);
+        Assert.Contains("provider returned access_deniedforged line", entry.Message);
+
+        var noCookie = new Fixture(externalSignIn: false);
+        ticket = await noCookie.Begin("popup");
+        await noCookie.Callback(ticket);
+        entry = Assert.Single(noCookie.Log.Entries);
+        Assert.Contains("ended as failed: no external sign-in cookie", entry.Message);
+
+        var partial = new Fixture(grantRequiredScopes: false);
+        ticket = await partial.Begin("popup");
+        await partial.Callback(ticket);
+        Assert.Contains("ended as permissions_required", Assert.Single(partial.Log.Entries).Message);
+
+        var tampered = new Fixture();
+        await tampered.Callback("tampered");
+        Assert.Contains("unreadable or expired ticket", Assert.Single(tampered.Log.Entries).Message);
+    }
+
+    [Fact]
     public async Task Popup_mode_does_not_bypass_return_registration()
     {
         var fixture = new Fixture();
@@ -135,9 +170,10 @@ public sealed class IntegrationOAuthCompletionTests
     private sealed class Fixture
     {
         public MemoryVault Vault { get; } = new();
+        public CapturingLogger Log { get; } = new();
         public IntegrationOAuthController Controller { get; }
         private readonly string scope;
-        public Fixture(bool grantRequiredScopes = true, bool registeredReturns = true)
+        public Fixture(bool grantRequiredScopes = true, bool registeredReturns = true, bool externalSignIn = true)
         {
             var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
             {
@@ -147,14 +183,15 @@ public sealed class IntegrationOAuthCompletionTests
             }).Build();
             var registry = new IntegrationOAuthProviderRegistry(configuration, new TestSecretStore(configuration));
             scope = string.Join(' ', registry.Find(Provider)!.Scopes);
-            var authentication = new FakeAuthentication(grantRequiredScopes ? scope : "openid");
+            var authentication = new FakeAuthentication(grantRequiredScopes ? scope : "openid", externalSignIn);
             Controller = new IntegrationOAuthController(registry, Vault, new EphemeralDataProtectionProvider(),
                 new RefreshHttpClient(), new ReturnResolver(registeredReturns), null!,
                 new Microsoft.Extensions.Localization.StringLocalizer<Sufficit.Identity.STS.Resources.AccountMessages>(
                     new Microsoft.Extensions.Localization.ResourceManagerStringLocalizerFactory(
                         Microsoft.Extensions.Options.Options.Create(
                             new Microsoft.Extensions.Localization.LocalizationOptions()),
-                        Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance)));
+                        Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance)),
+                Log);
             Controller.ControllerContext = new ControllerContext
             {
                 HttpContext = new DefaultHttpContext
@@ -198,10 +235,19 @@ public sealed class IntegrationOAuthCompletionTests
             Assert.IsType<OkObjectResult>(await Controller.Status(Provider, default)).Value);
     }
 
-    private sealed class FakeAuthentication(string scope) : IAuthenticationService
+    private sealed class CapturingLogger : ILogger<IntegrationOAuthController>
+    {
+        public List<(LogLevel Level, string Message)> Entries { get; } = [];
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => true;
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
+            Func<TState, Exception?, string> formatter) => Entries.Add((logLevel, formatter(state, exception)));
+    }
+    private sealed class FakeAuthentication(string scope, bool externalSignIn) : IAuthenticationService
     {
         public Task<AuthenticateResult> AuthenticateAsync(HttpContext context, string? scheme)
         {
+            if (!externalSignIn) return Task.FromResult(AuthenticateResult.NoResult());
             var properties = new AuthenticationProperties();
             properties.Items["LoginProvider"] = "Google";
             properties.StoreTokens([

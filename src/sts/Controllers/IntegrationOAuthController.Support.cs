@@ -279,6 +279,16 @@ public sealed partial class IntegrationOAuthController
                 ["status"] = status,
             });
 
+    /// <summary>
+    /// The provider's error code as a log value. It arrives in the browser's
+    /// query string, so it cannot be allowed to shape the log line.
+    /// </summary>
+    private static string SafeProviderError(string? error) => new(
+        (error ?? "no error code")
+            .Where(character => char.IsAsciiLetterOrDigit(character) || character is '_' or '-' or '.' or ' ')
+            .Take(64)
+            .ToArray());
+
     private string Subject() => User.FindFirst("sub")?.Value
         ?? throw new InvalidOperationException(
             "The authenticated integration caller has no subject.");
