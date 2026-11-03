@@ -22,6 +22,11 @@ to `conformance/` while the workflow passes the template relative to the reposit
 after the environment was built and seeded. The script now accepts both forms and checks the template
 before doing any work.
 
+The Basic plan then ran in full: 36 modules, 1842 successful conditions, no failures. It still failed on a
+stale accepted result: `oidcc-ensure-request-with-acr-values-succeeds` expected a warning that went away
+when `c2b754a` made the server honour `acr_values` on 2026-09-19. That entry was removed, which makes the
+gate stricter.
+
 The container reports exit 139 for an unhandled startup exception. Why it is not the usual 134 was not
 investigated.
 

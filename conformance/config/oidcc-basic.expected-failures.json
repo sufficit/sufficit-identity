@@ -45,15 +45,6 @@
     "comment": "Same deliberate behavior as oidcc-scope-email."
   },
   {
-    "test-name": "oidcc-ensure-request-with-acr-values-succeeds",
-    "variant": "*",
-    "configuration-filename": "*plan-config.json",
-    "current-block": "Verify authorization endpoint response",
-    "condition": "ValidateIdTokenACRClaimAgainstAcrValuesRequest",
-    "expected-result": "warning",
-    "comment": "acr_values is a voluntary request (OIDC Core 3.1.2.1): the server returns the acr it actually achieved rather than echoing a value it did not enforce. Discovery advertises no acr_values_supported, so the suite requests a value of its own choosing."
-  },
-  {
     "test-name": "oidcc-claims-essential",
     "variant": "*",
     "configuration-filename": "*plan-config.json",
