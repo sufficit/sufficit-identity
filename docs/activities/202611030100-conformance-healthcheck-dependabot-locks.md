@@ -17,6 +17,11 @@ afterwards did both answer.
 The healthcheck now pings over TCP in `conformance/docker-compose.yml`, `docker-compose.yml` and the CI
 database service, which all had the same defect.
 
+With the database fixed, the run reached the next defect that had been hidden behind it: `run.sh` changes
+to `conformance/` while the workflow passes the template relative to the repository root, so `sed` failed
+after the environment was built and seeded. The script now accepts both forms and checks the template
+before doing any work.
+
 The container reports exit 139 for an unhandled startup exception. Why it is not the usual 134 was not
 investigated.
 

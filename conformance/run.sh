@@ -6,11 +6,22 @@
 #   plan defaults to the OpenID Connect Basic OP certification plan.
 set -euo pipefail
 
+invoked_from=$PWD
 here=$(cd -- "$(dirname -- "$0")" && pwd)
 cd "$here"
 
 plan=${1:-"oidcc-basic-certification-test-plan[server_metadata=discovery][client_registration=static_client]"}
 template=${2:-config/oidcc-basic.template.json}
+# A template may be given relative to this directory or to the caller's, which is
+# how the workflow passes it. A missing one would only surface after the whole
+# environment has been built and seeded.
+if [[ ! -f $template && -f $invoked_from/$template ]]; then
+    template=$invoked_from/$template
+fi
+if [[ ! -f $template ]]; then
+    echo "[conformance] template not found: $template" >&2
+    exit 2
+fi
 # Accepted results and protocol options are per plan; both are named after the
 # template (config/<name>.template.json -> config/<name>.expected-*.json).
 profile=$(basename "$template" .template.json)
