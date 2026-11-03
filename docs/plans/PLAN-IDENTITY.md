@@ -171,8 +171,6 @@ never had, and the local error response is produced regardless.
   when the registration leaves no ambiguity — **revisit only if a client ever
   needs the machine-readable error.** No authorization is granted and the user
   is told either way.
-- [ ] Production answers this refusal with raw `text/plain`
-  (`error:invalid_token`, HTTP 400, measured 2026-11-03) rather than a page.
 
 The accepted warning and skips (`FAPIEnsureServerConfigurationDoesNotSupport`
 `RefreshToken`, the unimplemented `claims` parameter,
