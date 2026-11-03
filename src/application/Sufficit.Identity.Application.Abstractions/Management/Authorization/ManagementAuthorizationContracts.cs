@@ -28,6 +28,15 @@ public static class ManagementCapabilities
     public const string UsersDisable = "identity.users.disable";
     public const string UsersDelete = "identity.users.delete";
     public const string UsersReset = "identity.users.reset";
+
+    /// <summary>
+    /// Sends the user a password-recovery link. Separate from
+    /// <see cref="UsersReset"/> because the owner chooses the new password at
+    /// the confirmed mailbox: the operator neither learns nor sets it, so
+    /// holding this cannot take over an account. <see cref="UsersReset"/>
+    /// also satisfies the same action.
+    /// </summary>
+    public const string UsersRecovery = "identity.users.recovery";
     public const string UsersMfaReset = "identity.users.mfa.reset";
 
     /// <summary>
@@ -154,6 +163,7 @@ public static class ManagementCapabilities
                 UsersDisable,
                 UsersDelete,
                 UsersReset,
+                UsersRecovery,
                 UsersMfaReset,
                 UsersConfirmation,
                 UsersSystem,

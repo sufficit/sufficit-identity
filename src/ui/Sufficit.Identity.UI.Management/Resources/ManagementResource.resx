@@ -55,11 +55,14 @@
   <data name="Capability.identity.users.disable.Description" xml:space="preserve"><value>Used in user details to prevent or restore account access. It is independent from profile editing and password resets.</value></data>
   <data name="Capability.identity.users.delete.Title" xml:space="preserve"><value>Delete users</value></data>
   <data name="Capability.identity.users.delete.Description" xml:space="preserve"><value>Used to remove an account from the provider through administration. It is a sensitive operation separate from permissions to block or edit the user.</value></data>
+  <data name="Capability.Label.PasswordRecovery" xml:space="preserve"><value>Send recovery link</value></data>
   <data name="Capability.Label.ResendConfirmation" xml:space="preserve"><value>Resend confirmation</value></data>
   <data name="Capability.identity.users.system.Title" xml:space="preserve"><value>Manage system users only</value></data>
   <data name="Capability.identity.users.system.Description" xml:space="preserve"><value>Every users action, but only on system users: create them, enable and disable them, and issue and revoke their enrollment codes. Every action is confined to system users, so a provisioning service holding only this capability can never change a person's account. Entitlements are set through the claims API with identity.claims.system.</value></data>
   <data name="Capability.identity.users.confirmation.Title" xml:space="preserve"><value>Resend confirmation emails</value></data>
   <data name="Capability.identity.users.confirmation.Description" xml:space="preserve"><value>Allows triggering a new account-confirmation email to any user from the console. It is an outbound mail action with individual audit records; read-only operators do not receive it, which prevents the console from being used to flood accounts with messages.</value></data>
+  <data name="Capability.identity.users.recovery.Title" xml:space="preserve"><value>Send password recovery links</value></data>
+  <data name="Capability.identity.users.recovery.Description" xml:space="preserve"><value>Allows sending a user a link to choose a new password at their confirmed email address. The operator neither sets nor learns the password, and each dispatch has its own audit record.</value></data>
   <data name="Capability.identity.users.reset.Title" xml:space="preserve"><value>Reset user passwords</value></data>
   <data name="Capability.identity.users.reset.Description" xml:space="preserve"><value>Used in user details to set a new administrative password and signal the credential change. It does not allow profile or other access methods to be edited.</value></data>
 

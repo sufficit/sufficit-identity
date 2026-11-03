@@ -181,6 +181,7 @@ public sealed class ConfigurationManagementObjectAccessPolicy(
             ManagementCapabilities.UsersDisable,
             ManagementCapabilities.UsersDelete,
             ManagementCapabilities.UsersReset,
+            ManagementCapabilities.UsersRecovery,
             ManagementCapabilities.UsersMfaReset,
             ManagementCapabilities.ClaimsCreate,
             ManagementCapabilities.ClaimsUpdate,

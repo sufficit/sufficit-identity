@@ -165,7 +165,7 @@ The generic management application evaluates this catalog
 | --- | --- |
 | Clients | `identity.clients.read` `.create` `.update` `.delete` |
 | Branding | `identity.branding.read` `identity.branding.manage` |
-| Users | `identity.users.read` `.create` `.update` `.disable` `.delete` `.reset` `.confirmation` `.system`, `identity.users.mfa.reset` |
+| Users | `identity.users.read` `.create` `.update` `.disable` `.delete` `.reset` `.recovery` `.confirmation` `.system`, `identity.users.mfa.reset` |
 | Claims | `identity.claims.read` `.create` `.update` `.delete` `.system` |
 | Scopes | `identity.scopes.read` `.create` `.update` `.delete` `.grant` |
 | Sessions | `identity.sessions.read` `identity.sessions.revoke` |
@@ -181,6 +181,12 @@ The generic management application evaluates this catalog
 
 Delegated credentials (RFC 8693) are audited under the audit-only label
 `identity.credentials.delegate`; it is not a grantable capability.
+
+`identity.users.recovery` only sends the user a link to choose a new password
+at the confirmed email address. `identity.users.reset` also satisfies that
+action, but it additionally sets a password chosen by the operator, removes
+external logins and issues system-user credentials. Prefer the first one for
+support staff; it cannot take over an account.
 
 ### Retired names
 
@@ -210,8 +216,9 @@ shown as a role recommendation for managed users.
 
 The Sufficit deployment maps its company `administrator` role to full
 provider operator access because that is a host choice. Its `manager` role maps
-to `identity.users.read` and `identity.claims.read/create/delete` only — the
-directive and entitlement claims managers keep for their company users — and
+to `identity.users.read`, `identity.users.recovery` and
+`identity.claims.read/create/delete` only — the directive and entitlement claims
+managers keep for their company users, and the recovery link for support — and
 other deployment roles map to narrow sets (vault secrets, system users, claim
 reads). The mapping lives in `Management:Authorization:RoleCapabilities`.
 

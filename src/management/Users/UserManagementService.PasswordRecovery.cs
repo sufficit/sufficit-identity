@@ -11,7 +11,12 @@ internal sealed partial class UserManagementService
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
         var resource = new ManagementResource(ManagementResourceTypes.User, id);
-        var decision = await DemandAsync(context, ManagementCapabilities.UsersReset, resource, cancellationToken);
+        var (capability, decision) = await EvaluatePasswordRecoveryAsync(context, resource, cancellationToken);
+        if (!decision.IsAllowed)
+        {
+            await WriteAuditAsync(context, capability, resource, decision, "denied", decision.ReasonCode, cancellationToken);
+            throw new ManagementAccessException(decision);
+        }
         AccountPasswordResetDispatch dispatch;
         try
         {
@@ -30,7 +35,7 @@ internal sealed partial class UserManagementService
             AccountPasswordResetDispatch.EmailUnconfirmed => ("skipped", "user_email_unconfirmed"),
             _ => ("failed", "user_password_recovery_failed")
         };
-        await TryWriteAuditAsync(context, ManagementCapabilities.UsersReset, resource, decision,
+        await TryWriteAuditAsync(context, capability, resource, decision,
             outcome, reason, cancellationToken);
         if (dispatch == AccountPasswordResetDispatch.Sent) return;
         if (dispatch == AccountPasswordResetDispatch.NotFound)
@@ -41,5 +46,23 @@ internal sealed partial class UserManagementService
             AccountPasswordResetDispatch.EmailUnconfirmed => "Confirm the user's email before requesting password recovery.",
             _ => "The password recovery email could not be queued."
         });
+    }
+
+    /// <summary>
+    /// The narrow capability first, then the one that can also set a password.
+    /// A refusal names the narrow capability, unless the operator holds the
+    /// other one and only lacks a second factor.
+    /// </summary>
+    private async Task<(string Capability, ManagementAuthorizationDecision Decision)> EvaluatePasswordRecoveryAsync(
+        ManagementRequestContext context, ManagementResource resource, CancellationToken cancellationToken)
+    {
+        var recovery = await authorization.EvaluateAsync(
+            context.Operator, ManagementCapabilities.UsersRecovery, resource, cancellationToken);
+        if (recovery.IsAllowed) return (ManagementCapabilities.UsersRecovery, recovery);
+        var reset = await authorization.EvaluateAsync(
+            context.Operator, ManagementCapabilities.UsersReset, resource, cancellationToken);
+        return reset.IsAllowed || reset.Outcome is ManagementAuthorizationOutcome.StepUpRequired
+            ? (ManagementCapabilities.UsersReset, reset)
+            : (ManagementCapabilities.UsersRecovery, recovery);
     }
 }

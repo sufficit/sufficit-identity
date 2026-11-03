@@ -288,6 +288,8 @@ internal sealed partial class UserManagementService
             ManagementCapabilities.UsersReset,
             resource,
             cancellationToken);
+        var (_, recoveryDecision) = await EvaluatePasswordRecoveryAsync(
+            context, resource, cancellationToken);
         var mfaResetDecision = await EvaluateResetTwoFactorAsync(
             user.Id, context, cancellationToken);
         var requiresReenrollment = await MfaRecoveryState.IsRequiredAsync(
@@ -347,6 +349,9 @@ internal sealed partial class UserManagementService
                     CanResendConfirmation = confirmationDecision.IsAllowed,
                     ResendConfirmationRequiresMfa = confirmationDecision.Outcome is ManagementAuthorizationOutcome.StepUpRequired,
                     ResendConfirmationReasonCode = confirmationDecision.ReasonCode,
+                    CanRequestPasswordRecovery = recoveryDecision.IsAllowed,
+                    RequestPasswordRecoveryRequiresMfa = recoveryDecision.Outcome is ManagementAuthorizationOutcome.StepUpRequired,
+                    RequestPasswordRecoveryReasonCode = recoveryDecision.ReasonCode,
                 })
         {
             TwoFactorReenrollmentRequired = requiresReenrollment,
