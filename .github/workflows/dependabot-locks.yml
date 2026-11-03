@@ -24,10 +24,6 @@ permissions:
   contents: write
   actions: write
 
-concurrency:
-  group: dependabot-locks-${{ inputs.pull_request || github.event.pull_request.number }}
-  cancel-in-progress: true
-
 jobs:
   propagate:
     if: >-
@@ -35,6 +31,10 @@ jobs:
       || (github.event.pull_request.user.login == 'dependabot[bot]'
       && github.event.pull_request.head.repo.full_name == github.repository
       && startsWith(github.event.pull_request.head.ref, 'dependabot/nuget/'))
+    # On the job: a run that its condition skips must not cancel one doing the work.
+    concurrency:
+      group: dependabot-locks-${{ inputs.pull_request || github.event.pull_request.number }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
