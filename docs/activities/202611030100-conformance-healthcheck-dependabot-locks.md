@@ -46,13 +46,24 @@ to an invalid instruction. There is no memory fault. The conformance `identity` 
 ## Verification of the stricter checks
 
 - Both plans passed on `4ad2436` with the new marker.
-- A throwaway branch pointed one module at a selector that does not exist, and that run failed, so the gate
-  does reject a page without the marker.
+- A throwaway branch pointed one module at a selector that does not exist. That first run did not prove the
+  gate: it failed earlier, on the Basic plan, for the reason below.
 - A throwaway PR on a `dependabot/nuget/` branch with a stale dependent lock (#109, closed unmerged): the
   workflow committed the two missing locks through `workflow_dispatch`, and CI passed on the new head. It
   also found that workflow-level concurrency let a skipped run cancel the one doing the work, now fixed.
 - Not exercised: `pull_request_target` from Dependabot's own account. Its token rules differ, so the next real
   NuGet PR is the first proof; `workflow_dispatch` with the PR number is the fallback.
+
+## A login just made could read as too old
+
+`oidcc-max-age-1` failed intermittently: after a successful login the server asked for another one. `auth_time`
+has whole seconds and the way back to `/connect/authorize` takes time, so with `max_age=1` a login at `X.93`
+read as 1.1 seconds old at `X+1.03`. It also affects slow connections on any short `max_age`, and the user
+could be sent back to the login page repeatedly.
+
+A positive `max_age` now accepts the authentication receipt, as `max_age=0` already did. The receipt is bound to
+that request, session and `auth_time`, and is cleared when the authorization completes, so it cannot extend
+`max_age`: `AuthorizationReauthenticationIntegrationTests` fails without this fix, and covers the repeat.
 
 ## What REVIEW results prove
 

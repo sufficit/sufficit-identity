@@ -23,6 +23,8 @@ public sealed class AuthorizationReauthenticationIntegrationTests(
 
     [Theory]
     [InlineData(900, true)]
+    [InlineData(1, true)]
+    [InlineData(1, false)]
     [InlineData(0, true)]
     [InlineData(0, false)]
     public async Task Stale_session_is_sent_to_existing_two_factor_flow(int maxAge, bool usePar)
@@ -90,7 +92,12 @@ public sealed class AuthorizationReauthenticationIntegrationTests(
             }));
         Assert.Equal(HttpStatusCode.Redirect, mfaResponse.StatusCode);
 
-        if (maxAge == 0)
+        // auth_time has whole seconds and the way back takes time: a ceremony just
+        // made for this request must not read as too old (nightly oidcc-max-age-1).
+        if (maxAge == 1)
+            await Task.Delay(TimeSpan.FromSeconds(2.1));
+
+        if (maxAge <= 1)
             Assert.Contains(mfaResponse.Headers.GetValues("Set-Cookie"), value => value.StartsWith(AuthorizationAuthenticationReceipt.CookieName + "="));
 
         var continuationLocation = mfaResponse.Headers.Location;
@@ -115,6 +122,19 @@ public sealed class AuthorizationReauthenticationIntegrationTests(
             StringComparison.Ordinal);
         Assert.False(QueryHelpers.ParseQuery(completed.Headers.Location.Query)
             .ContainsKey("error"));
+
+        // The receipt served that one authorization: the session is still too old
+        // for the same request, so it cannot extend max_age. A pushed request cannot
+        // be repeated at all, so this needs the direct one.
+        if (maxAge == 1 && !usePar)
+        {
+            using var repeated = await client.GetAsync(query["returnUrl"].ToString());
+            Assert.Equal(HttpStatusCode.Redirect, repeated.StatusCode);
+            Assert.StartsWith(
+                "/account/reauthenticate?",
+                repeated.Headers.Location!.OriginalString,
+                StringComparison.Ordinal);
+        }
     }
 
     [Fact]
@@ -521,7 +541,10 @@ public sealed class AuthorizationReauthenticationIntegrationTests(
             ["client_id"] = ClientId, ["redirect_uri"] = RedirectUri,
             ["response_type"] = "code", ["scope"] = "openid profile",
             ["code_challenge"] = challenge, ["code_challenge_method"] = "S256",
-            ["state"] = Guid.NewGuid().ToString("N"), ["prompt"] = "login",
+            ["state"] = Guid.NewGuid().ToString("N"),
+            // prompt=login demands the ceremony on its own, which would hide what a
+            // short max_age does by itself.
+            ["prompt"] = maxAge == 1 ? null : "login",
             ["max_age"] = maxAge.ToString(System.Globalization.CultureInfo.InvariantCulture),
         });
     }

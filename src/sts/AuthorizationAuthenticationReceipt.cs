@@ -11,7 +11,8 @@ namespace Sufficit.Identity.STS;
 /// <summary>
 /// Evidence that a credential ceremony completed for this exact authorization
 /// request. max_age=0 means new authentication, not an impossible zero-duration
-/// cookie. Never issued by an authorize GET, a refresh, or the continuation page.
+/// cookie, and a short max_age must not expire on the way back from the ceremony.
+/// Never issued by an authorize GET, a refresh, or the continuation page.
 /// </summary>
 internal static class AuthorizationAuthenticationReceipt
 {

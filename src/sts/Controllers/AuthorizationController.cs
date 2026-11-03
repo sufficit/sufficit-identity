@@ -164,14 +164,15 @@ public partial class AuthorizationController : Controller
                 ["remembered_second_factor"]);
         }
 
-        // max_age=0, prompt=login, a remembered second factor and an
-        // acr_values the session does not reach all demand a brand-new
-        // ceremony, so the elapsed session age cannot clear them: only the
-        // receipt issued by the ceremony itself can, or the request would
-        // bounce back to the login page forever. That matters most for
-        // acr_values, where the ceremony may not be able to reach the level
-        // asked for — one attempt, then the token tells the truth.
-        var requiresFreshCeremony = request.MaxAge == 0
+        // max_age, prompt=login, a remembered second factor and an acr_values
+        // the session does not reach all demand a ceremony, so the elapsed
+        // session age cannot clear them: only the receipt issued by the ceremony
+        // itself can, or the request would bounce back to the login page forever.
+        // That matters most for acr_values, where the ceremony may not be able to
+        // reach the level asked for — one attempt, then the token tells the truth.
+        // A short max_age needs it too: auth_time has whole seconds and the way
+        // back takes time, so a login just made can already read as too old.
+        var requiresFreshCeremony = request.MaxAge is not null
             || request.HasPromptValue(PromptValues.Login)
             || secondFactorRemembered
             || !string.IsNullOrWhiteSpace(request.AcrValues);
