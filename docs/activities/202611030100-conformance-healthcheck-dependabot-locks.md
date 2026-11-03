@@ -45,9 +45,13 @@ to an invalid instruction. There is no memory fault. The conformance `identity` 
 
 ## Verification of the stricter checks
 
-- Both plans passed on `4ad2436` with the new marker.
-- A throwaway branch pointed one module at a selector that does not exist. That first run did not prove the
-  gate: it failed earlier, on the Basic plan, for the reason below.
+- Both plans passed on `4ad2436` and on `5df166e` with the new marker.
+- A throwaway branch pointed one module at a selector that does not exist. The first attempt proved nothing,
+  because it failed earlier on the Basic plan for the reason below. The second, on `5df166e`, failed in that
+  module with `Timed out waiting: [data-does-not-exist]`, so the gate rejects a page without the marker.
+- In that same run `ensure-authorization-request-with-long-state` also failed, with an exception inside the suite
+  (`runInBackground called after runFinalisationTaskInBackground`). It was seen once, in this run only, and
+  was not investigated.
 - A throwaway PR on a `dependabot/nuget/` branch with a stale dependent lock (#109, closed unmerged): the
   workflow committed the two missing locks through `workflow_dispatch`, and CI passed on the new head. It
   also found that workflow-level concurrency let a skipped run cancel the one doing the work, now fixed.

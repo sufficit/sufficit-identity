@@ -49,6 +49,9 @@ public sealed class TestSynchronizationContractTests
             ["DistributedStoreTests.cs"] =
                 (1, "Aguarda um TTL de 1ms expirar; dormir demais não "
                     + "invalida o teste."),
+            ["AuthorizationReauthenticationIntegrationTests.cs"] =
+                (1, "Waits for a max_age of 1 second to expire; sleeping longer "
+                    + "does not invalidate the test."),
             ["DatabaseRuntimeTelemetryTests.cs"] =
                 (1, "Aguarda a janela de poda de 10ms passar; dormir demais "
                     + "não invalida o teste."),
