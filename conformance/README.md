@@ -35,9 +35,9 @@ conformance/run.sh \
 The template name selects both the accepted-result files
 (`config/<name>.expected-*.json`) and the protocol options of the environment:
 the FAPI 2 run turns the profile and DPoP on and seeds clients that authenticate
-with `private_key_jwt` against keys generated per run. It is **not** a gate yet
-— see `docs/plans/PLAN-IDENTITY.md` section B9 for the one accepted failure and why it
-was deferred.
+with `private_key_jwt` against keys generated per run. Both plans run nightly and fail
+the workflow; see `docs/plans/PLAN-IDENTITY.md` section B9 for the open item on how an
+expired `request_uri` is reported.
 
 Requirements: Docker with Compose v2 and network access to pull the suite images
 from `registry.gitlab.com/openid/conformance-suite` and to clone the suite scripts.

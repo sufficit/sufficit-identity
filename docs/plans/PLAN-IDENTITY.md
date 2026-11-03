@@ -148,9 +148,13 @@ only a migration valve reported by the posture check.
 Built on: [`202609201500`](../activities/202609201500-ciba-initiator-and-rolling-deploy.md)
 (`ICibaClientPolicy`, bound `binding_message`, `CibaProtocolFeature`).
 
-### B9 — FAPI 2.0: the one accepted conformance failure **(deferred by decision)**
+### B9 — FAPI 2.0: how an expired `request_uri` is reported **(deferred by decision)**
 
-`par-attempt-to-use-expired-request_uri` expects the error to reach the client
+The plan passes with no accepted failure on this module since 2026-11-03: it
+accepts the server's own error page, finishing as REVIEW rather than PASSED. No
+person reviews the nightly screenshot.
+
+`par-attempt-to-use-expired-request_uri` prefers the error to reach the client
 as a redirect carrying `invalid_request_uri`; the server refuses the expired
 `request_uri` on its own error page. OpenIddict drops the request while
 extracting it, before any redirect URI has been resolved — the request carries
@@ -167,6 +171,8 @@ never had, and the local error response is produced regardless.
   when the registration leaves no ambiguity — **revisit only if a client ever
   needs the machine-readable error.** No authorization is granted and the user
   is told either way.
+- [ ] Production answers this refusal with raw `text/plain`
+  (`error:invalid_token`, HTTP 400, measured 2026-11-03) rather than a page.
 
 The accepted warning and skips (`FAPIEnsureServerConfigurationDoesNotSupport`
 `RefreshToken`, the unimplemented `claims` parameter,

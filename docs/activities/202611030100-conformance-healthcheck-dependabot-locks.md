@@ -33,6 +33,10 @@ redirect, and then waits for a screenshot of it. The browser task was configured
 module waited until the runner gave up. The task now uploads it, and the expected failure on
 `EnsureInvalidRequestUriError`, which no longer happens, was removed.
 
+Both plans then passed on `eee5df9`: Basic with 23 PASSED, 6 WARNING, 4 REVIEW and 2 SKIPPED; FAPI 2.0 with
+42 PASSED, 1 WARNING, 10 REVIEW and 3 SKIPPED. REVIEW modules are finished by an uploaded screenshot that
+nobody inspects, and the export does not include the image.
+
 The container reports exit 139 for an unhandled startup exception. Why it is not the usual 134 was not
 investigated.
 
