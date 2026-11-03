@@ -48,6 +48,7 @@ found it.
 
 ## Completed work (activities/)
 
+- [Nightly conformance and Dependabot lock files](activities/202611030100-conformance-healthcheck-dependabot-locks.md) — the nightly run failed on a database healthcheck that passed before TCP was open, and Dependabot PRs failed on stale lock files.
 - [Password recovery by link](activities/202610071840-password-recovery-link.md) — operators request a reset e-mail to the confirmed address; the account holder sets the password in Identity
 - [Delegated device credentials](activities/202610042300-delegated-device-credentials.md) — a trusted client exchanges a fresh user token for another client's refresh token, bound to the device's DPoP key; off by default
 - [The secret scan was reporting the secret store](activities/202609202100-secret-scan-false-positive.md) — a finding that fired on every correctly-configured node, found in the production journal

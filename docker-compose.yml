@@ -31,7 +31,9 @@ services:
       # Apply the canonical schema on first boot (checked-in SQL).
       - ./docs/migration/sql/001-create-empty-database.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "--silent"]
+      # Over TCP: during initialization the image's temporary server answers on the
+      # socket with networking off, which would report healthy too early.
+      test: ["CMD", "mysqladmin", "ping", "--host=127.0.0.1", "--user=identity", "--password=identity", "--silent"]
       interval: 5s
       timeout: 3s
       retries: 20

@@ -14,8 +14,8 @@
       "Sufficit.Blazor.UI": {
         "type": "Direct",
         "requested": "[2.*, )",
-        "resolved": "2.26.1029.2235",
-        "contentHash": "T7B6Ntp38Y3lR9hwS5K8fqARcWsUUFw26GSDo741Kdt/LkpSyD28APPyQSPdlggJOFg4aa6HqPA4/uyjR/Kgwg=="
+        "resolved": "2.26.1102.2231",
+        "contentHash": "yGnoNmj2sFECpRMedlCCxYH+27ozwRByY8obyfqFz55kZiCzbMQYNRHiOLdkyp/7P9mqTRrjJgofOSuj9nkKvw=="
       },
       "Microsoft.Win32.SystemEvents": {
         "type": "Transitive",

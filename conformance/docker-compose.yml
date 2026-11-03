@@ -58,7 +58,10 @@ services:
       MARIADB_USER: identity
       MARIADB_PASSWORD: identity
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "--silent"]
+      # Over TCP on purpose. While initializing, the image runs a temporary server
+      # that answers on the socket with networking off, so a socket ping reports
+      # healthy, the identity host cannot connect and the whole run is lost.
+      test: ["CMD", "mysqladmin", "ping", "--host=127.0.0.1", "--user=identity", "--password=identity", "--silent"]
       interval: 5s
       timeout: 3s
       retries: 30

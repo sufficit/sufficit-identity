@@ -1,0 +1,75 @@
+name: Dependabot lock files
+
+# Dependabot regenerates only the lock of the project that references a package
+# directly, so a bump of anything with dependents fails --locked-mode with NU1004.
+# CI must not fix this on its own copy: the PR would go green and the stale locks
+# would then break main. The fix has to be committed to the Dependabot branch.
+#
+# pull_request_target runs with the definition from the base branch. The PR is
+# checked out only as data: the one script executed comes from the base branch
+# and reads and writes JSON. Nothing from the PR is built or run here.
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize]
+    branches: [main]
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: dependabot-locks-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  propagate:
+    if: >-
+      github.event.pull_request.user.login == 'dependabot[bot]'
+      && github.event.pull_request.head.repo.full_name == github.repository
+      && startsWith(github.event.pull_request.head.ref, 'dependabot/nuget/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout trusted script
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: trusted
+          persist-credentials: false
+
+      - name: Checkout pull request as data
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: pr
+          fetch-depth: 0
+
+      - name: Propagate bumped versions
+        working-directory: pr
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          git fetch --quiet origin "${BASE_SHA}"
+          python3 -I "${GITHUB_WORKSPACE}/trusted/scripts/propagate-lock-versions.py" \
+            "$(git merge-base "${BASE_SHA}" HEAD)"
+
+      - name: Commit and run the checks on the new head
+        working-directory: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo "Lock files already consistent."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- '*packages.lock.json'
+          git commit --quiet -m "chore(deps): update dependent lock files"
+          git push --quiet origin "HEAD:${BRANCH}"
+          # A push made with this token starts no workflow, by design; a dispatch does.
+          gh workflow run ci.yml --ref "${BRANCH}"
+          gh workflow run codeql.yml --ref "${BRANCH}"

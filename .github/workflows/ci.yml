@@ -27,8 +27,10 @@ jobs:
           MARIADB_DATABASE: identity_contract
         ports:
           - 3306:3306
+        # Over TCP: during initialization the image's temporary server answers on
+        # the socket with networking off, which would report healthy too early.
         options: >-
-          --health-cmd "mysqladmin ping --silent"
+          --health-cmd "mysqladmin ping --host=127.0.0.1 --silent"
           --health-interval 5s
           --health-timeout 3s
           --health-retries 20
