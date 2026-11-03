@@ -233,11 +233,11 @@ public sealed partial class IntegrationOAuthController(
 
         var pending = await ReadPendingAsync(flow, cancellationToken);
         if (pending is null)
-            return CompleteAuthorization(flow.ReturnUri, definition.Id, "expired", flow.Popup);
+            return await CompleteAuthorizationAsync(flow.ReturnUri, definition.Id, "expired", flow.Popup);
         if (!string.IsNullOrWhiteSpace(error))
         {
             await DeletePendingAsync(flow, cancellationToken);
-            return CompleteAuthorization(pending.ReturnUri, definition.Id, "cancelled", pending.Popup);
+            return await CompleteAuthorizationAsync(pending.ReturnUri, definition.Id, "cancelled", pending.Popup);
         }
 
         try
@@ -248,7 +248,7 @@ public sealed partial class IntegrationOAuthController(
                 var authentication = await HttpContext.AuthenticateAsync(
                     IdentityConstants.ExternalScheme);
                 if (!authentication.Succeeded || authentication.Properties is null)
-                    return CompleteAuthorization(pending.ReturnUri, definition.Id, "failed", pending.Popup);
+                    return await CompleteAuthorizationAsync(pending.ReturnUri, definition.Id, "failed", pending.Popup);
                 authentication.Properties.Items.TryGetValue(
                     "LoginProvider",
                     out var loginProvider);
@@ -256,13 +256,13 @@ public sealed partial class IntegrationOAuthController(
                         loginProvider,
                         definition.Scheme,
                         StringComparison.Ordinal))
-                    return CompleteAuthorization(pending.ReturnUri, definition.Id, "failed", pending.Popup);
+                    return await CompleteAuthorizationAsync(pending.ReturnUri, definition.Id, "failed", pending.Popup);
                 token = FromAuthenticationProperties(authentication.Properties);
             }
             else
             {
                 if (string.IsNullOrWhiteSpace(code))
-                    return CompleteAuthorization(pending.ReturnUri, definition.Id, "failed", pending.Popup);
+                    return await CompleteAuthorizationAsync(pending.ReturnUri, definition.Id, "failed", pending.Popup);
                 token = await ExchangeCodeAsync(
                     definition,
                     pending,
@@ -273,22 +273,22 @@ public sealed partial class IntegrationOAuthController(
             if (!IntegrationOAuthProtocol.HasRequiredScopes(definition.Scopes, token.Scope))
             {
                 await DeletePendingAsync(flow, cancellationToken);
-                return CompleteAuthorization(pending.ReturnUri, definition.Id, "permissions_required", pending.Popup);
+                return await CompleteAuthorizationAsync(pending.ReturnUri, definition.Id, "permissions_required", pending.Popup);
             }
 
             // Changes only on successful consent, never on automatic token refresh.
             token = token with { AuthorizationRevision = Guid.NewGuid().ToString("N") };
             await SaveTokenAsync(flow.Subject, definition.Id, token, cancellationToken);
             await DeletePendingAsync(flow, cancellationToken);
-            return CompleteAuthorization(pending.ReturnUri, definition.Id, "connected", pending.Popup);
+            return await CompleteAuthorizationAsync(pending.ReturnUri, definition.Id, "connected", pending.Popup);
         }
         catch (HttpRequestException)
         {
-            return CompleteAuthorization(pending.ReturnUri, definition.Id, "failed", pending.Popup);
+            return await CompleteAuthorizationAsync(pending.ReturnUri, definition.Id, "failed", pending.Popup);
         }
         catch (Exception exception) when (exception is InvalidOperationException or JsonException)
         {
-            return CompleteAuthorization(pending.ReturnUri, definition.Id, "failed", pending.Popup);
+            return await CompleteAuthorizationAsync(pending.ReturnUri, definition.Id, "failed", pending.Popup);
         }
         finally
         {

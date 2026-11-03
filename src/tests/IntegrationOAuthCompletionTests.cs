@@ -40,6 +40,10 @@ public sealed class IntegrationOAuthCompletionTests
             File.WriteAllText(Path.Combine(directory, "completion.js"), fixture.Controller.CompletionScript().Content);
         }
         Assert.Contains("/api/integrations/oauth/completion.js", result.Content);
+        Assert.Contains("/_content/Sufficit.Identity.UI/css/site.css", result.Content);
+        Assert.Contains("class=\"auth-card auth-card-center\"", result.Content);
+        Assert.Contains("integration-status--success", result.Content);
+        Assert.Contains("Conta conectada — Identity", result.Content);
         Assert.DoesNotContain("<script nonce=", result.Content);
         Assert.Contains("data-integration-connected=\"true\"", result.Content);
         Assert.Contains("manualmente", result.Content);
@@ -76,6 +80,7 @@ public sealed class IntegrationOAuthCompletionTests
         var ticket = await fixture.Begin("popup");
         var result = Assert.IsType<ContentResult>(await fixture.Callback(ticket, "access_denied"));
         Assert.Contains("Conexão não concluída", result.Content);
+        Assert.Contains("integration-status--warning", result.Content);
         Assert.Contains("data-integration-connected=\"false\"", result.Content);
         Assert.Equal("old-consent", (await fixture.Status()).AuthorizationRevision);
     }
