@@ -26,6 +26,62 @@ public sealed class OpenIddictTokenStoreTests
     }
 
     [Fact]
+    public async Task Subject_is_revoked_with_one_update_and_only_for_that_subject()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        var commands = new CommandCapture();
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddMemoryCache();
+        services.AddDbContext<AppDbContext>(options =>
+        {
+            options.UseSqlite(connection);
+            options.UseOpenIddict().AddInterceptors(commands);
+        });
+        services.AddOpenIddict().AddCore(core =>
+        {
+            core.UseEntityFrameworkCore().UseDbContext<AppDbContext>();
+            core.ReplaceTokenStore<OpenIddictEntityFrameworkCoreToken, SufficitOpenIddictTokenStore>();
+        });
+        services.Configure<OpenIddictEntityFrameworkCoreOptions>(options => options.DisableBulkOperations = true);
+        await using var provider = services.BuildServiceProvider();
+
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            await db.Database.EnsureCreatedAsync();
+            for (var index = 0; index < 500; index++)
+                db.Add(Token("account", index % 2 == 0 ? Statuses.Valid : Statuses.Redeemed));
+            db.Add(Token("account", Statuses.Revoked));
+            db.Add(Token("someone-else", Statuses.Valid));
+            await db.SaveChangesAsync();
+        }
+        commands.Sql.Clear();
+
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var tokens = scope.ServiceProvider.GetRequiredService<IOpenIddictTokenManager>();
+            Assert.Equal(500, await tokens.RevokeBySubjectAsync("account"));
+        }
+        Assert.Single(commands.Sql);
+
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var left = await db.Set<OpenIddictEntityFrameworkCoreToken>().AsNoTracking().ToListAsync();
+            Assert.All(left.Where(token => token.Subject == "account"), token => Assert.Equal(Statuses.Revoked, token.Status));
+            Assert.Equal(Statuses.Valid, left.Single(token => token.Subject == "someone-else").Status);
+        }
+
+        static OpenIddictEntityFrameworkCoreToken Token(string subject, string status) => new()
+        {
+            Subject = subject, Status = status, Type = TokenTypeIdentifiers.RefreshToken,
+            CreationDate = DateTime.UtcNow, ExpirationDate = DateTime.UtcNow.AddDays(1),
+        };
+    }
+
+    [Fact]
     [Trait("Category", "MariaDbIntegration")]
     public async Task Authorization_chain_update_and_pruning_work_on_mariadb()
     {
