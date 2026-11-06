@@ -37,7 +37,8 @@ namespace Sufficit.Identity.STS;
 /// <b>Lifecycle.</b> <see cref="StoreAsync"/> runs on sign-in (insert),
 /// <see cref="RenewAsync"/> on <c>RefreshSignInAsync</c> / sliding (upsert by
 /// sid), <see cref="RetrieveAsync"/> on every cookie-authenticated request
-/// (read + lazy expiry sweep + activity touch), and <see cref="RemoveAsync"/>
+/// (cache read, or database read with lazy expiry/activity touch on a miss),
+/// and <see cref="RemoveAsync"/>
 /// on explicit per-session revoke (delete by sid).
 /// </para>
 /// <para>
@@ -47,9 +48,9 @@ namespace Sufficit.Identity.STS;
 /// <see cref="IDbContextFactory{TContext}"/> (singleton) rather than the
 /// request-scoped <see cref="AppDbContext"/>, creating a short-lived context
 /// per operation. <see cref="IHttpContextAccessor"/> is singleton-safe.
-/// Multi-replica safe out of the box: persistence is the shared database, not
-/// an in-memory cache (unlike the DPoP/CIBA stores that need Redis) — no extra
-/// distributed-cache dependency required.
+/// Persistence is authoritative in the shared database. The distributed ticket
+/// cache is optional acceleration; invalidation failure leaves staleness bounded
+/// by its configured TTL. Request cancellation propagates to both stores.
 /// </para>
 /// </remarks>
 internal sealed class OidcUserSessionTicketStore(
@@ -74,41 +75,80 @@ internal sealed class OidcUserSessionTicketStore(
     // ITicketStore
     // -----------------------------------------------------------------------
 
-    public async Task<string> StoreAsync(AuthenticationTicket ticket)
+    public Task<string> StoreAsync(AuthenticationTicket ticket) =>
+        StoreAsync(ticket, httpContextAccessor.HttpContext?.RequestAborted ?? default);
+
+    public Task RenewAsync(string key, AuthenticationTicket ticket) =>
+        RenewAsync(key, ticket, httpContextAccessor.HttpContext?.RequestAborted ?? default);
+
+    public Task<AuthenticationTicket?> RetrieveAsync(string key) =>
+        RetrieveAsync(key, httpContextAccessor.HttpContext?.RequestAborted ?? default);
+
+    public Task RemoveAsync(string key) =>
+        RemoveAsync(key, httpContextAccessor.HttpContext?.RequestAborted ?? default);
+
+    public async Task<string> StoreAsync(AuthenticationTicket ticket, HttpContext context, CancellationToken cancellationToken = default)
+    {
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted, cancellationToken);
+        return await StoreAsync(ticket, linked.Token);
+    }
+
+    public async Task RenewAsync(string key, AuthenticationTicket ticket, HttpContext context, CancellationToken cancellationToken = default)
+    {
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted, cancellationToken);
+        await RenewAsync(key, ticket, linked.Token);
+    }
+
+    public async Task<AuthenticationTicket?> RetrieveAsync(string key, HttpContext context, CancellationToken cancellationToken = default)
+    {
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted, cancellationToken);
+        return await RetrieveAsync(key, linked.Token);
+    }
+
+    public async Task RemoveAsync(string key, HttpContext context, CancellationToken cancellationToken = default)
+    {
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted, cancellationToken);
+        await RemoveAsync(key, linked.Token);
+    }
+
+    public async Task<string> StoreAsync(AuthenticationTicket ticket, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(ticket);
+        cancellationToken.ThrowIfCancellationRequested();
         var sid = ResolveSessionId(ticket);
-        await using var database = await databaseFactory.CreateDbContextAsync(CancellationToken.None);
-        await StoreAsync(database, sid, ticket, insertIfMissing: true, CancellationToken.None);
-        await TrySetCacheAsync(sid, ticket);
+        await using var database = await databaseFactory.CreateDbContextAsync(cancellationToken);
+        await StoreAsync(database, sid, ticket, insertIfMissing: true, cancellationToken);
+        await TrySetCacheAsync(sid, ticket, cancellationToken);
         return sid;
     }
 
-    public async Task RenewAsync(string key, AuthenticationTicket ticket)
+    public async Task RenewAsync(string key, AuthenticationTicket ticket, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
         ArgumentNullException.ThrowIfNull(ticket);
+        cancellationToken.ThrowIfCancellationRequested();
         // The cookie handler passes back the key it received from StoreAsync
         // (= the sid). An upsert keeps the row stable across RefreshSignInAsync
         // and sliding renewal while refreshing the protected ticket + metadata.
-        await using var database = await databaseFactory.CreateDbContextAsync(CancellationToken.None);
-        await StoreAsync(database, key, ticket, insertIfMissing: false, CancellationToken.None);
-        await TrySetCacheAsync(key, ticket);
+        await using var database = await databaseFactory.CreateDbContextAsync(cancellationToken);
+        await StoreAsync(database, key, ticket, insertIfMissing: false, cancellationToken);
+        await TrySetCacheAsync(key, ticket, cancellationToken);
     }
 
-    public async Task<AuthenticationTicket?> RetrieveAsync(string key)
+    public async Task<AuthenticationTicket?> RetrieveAsync(string key, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
-        var cached = await TryGetCacheAsync(key);
+        cancellationToken.ThrowIfCancellationRequested();
+        var cached = await TryGetCacheAsync(key, cancellationToken);
         if (cached is not null)
         {
             return cached;
         }
 
-        await using var database = await databaseFactory.CreateDbContextAsync(CancellationToken.None);
+        await using var database = await databaseFactory.CreateDbContextAsync(cancellationToken);
         var session = await database.OidcUserSessions
             .AsTracking()
-            .SingleOrDefaultAsync(s => s.SessionId == key, CancellationToken.None);
+            .SingleOrDefaultAsync(s => s.SessionId == key, cancellationToken);
         if (session is null)
         {
             return null;
@@ -120,7 +160,7 @@ internal sealed class OidcUserSessionTicketStore(
         if (session.ExpiresUtc is { } expires && expires <= now)
         {
             database.OidcUserSessions.Remove(session);
-            await database.SaveChangesAsync(CancellationToken.None);
+            await database.SaveChangesAsync(cancellationToken);
             return null;
         }
 
@@ -138,7 +178,7 @@ internal sealed class OidcUserSessionTicketStore(
                 "A user-session ticket (sid {SessionId}) could not be restored and was discarded.",
                 key);
             database.OidcUserSessions.Remove(session);
-            await database.SaveChangesAsync(CancellationToken.None);
+            await database.SaveChangesAsync(cancellationToken);
             return null;
         }
 
@@ -147,15 +187,15 @@ internal sealed class OidcUserSessionTicketStore(
             return null;
         }
 
-        // Touch last-activity cheaply (only when a minute has elapsed, to avoid
-        // a write on every single request). best-effort: never let this throw
-        // surface as an auth failure.
+        // Touch activity on database reads only after the configured interval.
+        // Ignore concurrent-update conflicts; cancellation and other storage
+        // failures propagate to the caller.
         if (now - session.LastActivityUtc >= _activityUpdateInterval)
         {
             session.LastActivityUtc = now.UtcDateTime;
             try
             {
-                await database.SaveChangesAsync(CancellationToken.None);
+                await database.SaveChangesAsync(cancellationToken);
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -163,18 +203,19 @@ internal sealed class OidcUserSessionTicketStore(
             }
         }
 
-        await TrySetCacheAsync(key, ticket);
+        await TrySetCacheAsync(key, ticket, cancellationToken);
         return ticket;
     }
 
-    public async Task RemoveAsync(string key)
+    public async Task RemoveAsync(string key, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
-        await using var database = await databaseFactory.CreateDbContextAsync(CancellationToken.None);
+        cancellationToken.ThrowIfCancellationRequested();
+        await using var database = await databaseFactory.CreateDbContextAsync(cancellationToken);
         await database.OidcUserSessions
             .Where(s => s.SessionId == key)
-            .ExecuteDeleteAsync(CancellationToken.None);
-        await TryRemoveCacheAsync(key);
+            .ExecuteDeleteAsync(cancellationToken);
+        await TryRemoveCacheAsync(key, cancellationToken);
     }
 
     // -----------------------------------------------------------------------
@@ -323,9 +364,11 @@ internal sealed class OidcUserSessionTicketStore(
         return string.IsNullOrWhiteSpace(ua) ? null : ua;
     }
 
-    private async Task<AuthenticationTicket?> TryGetCacheAsync(string key)
+    private async Task<AuthenticationTicket?> TryGetCacheAsync(string key, CancellationToken cancellationToken)
     {
-        using var timeout = new CancellationTokenSource(_cacheOperationTimeout);
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(_cacheOperationTimeout);
+        cancellationToken.ThrowIfCancellationRequested();
         try
         {
             var protectedTicket = await cache.GetAsync(
@@ -341,13 +384,13 @@ internal sealed class OidcUserSessionTicketStore(
             if (ticket?.Properties.ExpiresUtc is { } expires
                 && expires <= timeProvider.GetUtcNow())
             {
-                await TryRemoveCacheAsync(key);
+                await TryRemoveCacheAsync(key, cancellationToken);
                 return null;
             }
 
             return ticket;
         }
-        catch (OperationCanceledException) when (timeout.IsCancellationRequested)
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested && timeout.IsCancellationRequested)
         {
             logger.LogWarning(
                 "Shared user-session cache read exceeded {TimeoutMilliseconds} ms; falling back to the database.",
@@ -365,9 +408,12 @@ internal sealed class OidcUserSessionTicketStore(
 
     private async Task TrySetCacheAsync(
         string key,
-        AuthenticationTicket ticket)
+        AuthenticationTicket ticket,
+        CancellationToken cancellationToken)
     {
-        using var timeout = new CancellationTokenSource(_cacheOperationTimeout);
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(_cacheOperationTimeout);
+        cancellationToken.ThrowIfCancellationRequested();
         try
         {
             var lifetime = _cacheLifetime;
@@ -392,7 +438,7 @@ internal sealed class OidcUserSessionTicketStore(
                 },
                 timeout.Token);
         }
-        catch (OperationCanceledException) when (timeout.IsCancellationRequested)
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested && timeout.IsCancellationRequested)
         {
             logger.LogWarning(
                 "Shared user-session cache write exceeded {TimeoutMilliseconds} ms; database persistence remains authoritative.",

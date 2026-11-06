@@ -1,6 +1,6 @@
 # PLAN — Runtime boundaries, sessions and migration verification
 
-Status: queued; F2.2 completed on 2026-11-06. Other work items remain pending.
+Status: queued; F2.2 and F4.1 cancellation propagation delivered on 2026-11-06. Remaining scope below.
 
 [Index and delivery rules](PLAN-IDENTITY.md) · [Item-by-item reconciliation](../activities/202611061100-plan-reconciliation-split.md)
 
@@ -33,11 +33,11 @@ Evidence: [ManagementOperationGuard.cs](../../src/management/Audit/ManagementOpe
 
 ## F4 — Sessions off the per-request write path
 
-Distributed ticket cache, timeout fallback, invalidation and opt-in stamp caching already exist. ITicketStore paths still pass CancellationToken.None; repository/cancellation and combined fault coverage remain.
+Distributed ticket cache, timeout fallback, invalidation and opt-in stamp caching already exist. ITicketStore cancellation propagation is delivered in the [session cancellation activity](../activities/202611061240-session-ticket-cancellation.md); repository extraction and combined fault coverage remain.
 
 Evidence: [OidcUserSessionTicketStore.cs](../../src/sts/OidcUserSessionTicketStore.cs), [SessionValidity.cs](../../src/core/Sessions/SessionValidity.cs), [ServerSideSessionsTests.cs](../../src/tests/ServerSideSessionsTests.cs), [SessionValidityCacheIntegrationTests.cs](../../src/tests/SessionValidityCacheIntegrationTests.cs), [ARCHITECTURE-SESSION-VALIDITY.md](../architecture/ARCHITECTURE-SESSION-VALIDITY.md).
 
-- [ ] **F4.1 · partial** — Extract the remaining session repository/cancellation contract and propagate cancellation through ticket-store paths that still use CancellationToken.None. Reuse the distributed ticket cache and explicit revocation invalidation already implemented.
+- [ ] **F4.1 · partial** — Extract the remaining session repository contract. Preserve the delivered cancellation overloads, distributed ticket cache and explicit revocation invalidation; the cancellation portion is closed in the linked activity.
 - [ ] **F4.2 · partial** — Complete the joint database/cache failure behavior and stale-revocation bounds. Cache timeout/failure already falls back to authoritative storage; include failed invalidation, disconnected notification channel and database outage cases.
 - [ ] **F4.3 · partial** — Add remaining combined multi-replica stale-cache, failover and cancellation scenarios, reusing ServerSideSessionsTests, SessionValidityCacheIntegrationTests and recorded replica-revocation evidence.
 

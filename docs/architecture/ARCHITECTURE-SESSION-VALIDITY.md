@@ -61,3 +61,22 @@ and the feature opt-in.
 Covered by `SessionValidityCacheTests` (the rules of the cache) and
 `SessionValidityCacheIntegrationTests` (the validator: no channel means no
 skipping, an invalidation brings the read back at once).
+
+## Ticket-store request cancellation
+
+`OidcUserSessionTicketStore` implements the token and HttpContext overloads of
+`ITicketStore`. Explicit tokens reach database context creation, EF operations
+and distributed-cache calls. Context overloads link the supplied token with
+`RequestAborted`; legacy overloads use the current accessor's request token when
+available. Outside a request, legacy callers retain non-cancelable behavior.
+
+Cache operations link cancellation with their own bounded timeout. Cache timeout
+may fall back to the authoritative database; caller cancellation propagates as
+`OperationCanceledException` instead of starting a fallback read. Cancellation is
+not rollback: a completed database mutation remains committed if a subsequent
+cache operation is canceled. Invalidation may therefore remain pending until the
+existing cache TTL; this change does not make database/cache updates atomic.
+
+`SessionTicketCancellationTests` exercises all four operations via the interface,
+explicit/context cancellation, cache-read cancellation without fallback, and
+cancellation during cache writes/removal after a real SQLite commit.
