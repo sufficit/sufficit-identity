@@ -79,6 +79,70 @@ public sealed partial class SessionValidityCacheIntegrationTests
         }
     }
 
+    [LocalBrokerFact]
+    public async Task Isolated_node_misses_invalidation_while_peers_remain_connected_and_recovers_with_bounded_staleness()
+    {
+        var endpoint = new Uri(Environment.GetEnvironmentVariable("IDENTITY_TEST_NATS_URL")!);
+        Assert.True(endpoint.IsLoopback);
+        await using var relay = new Infrastructure.InterruptibleTcpRelay(endpoint);
+        var verifiedAt = DateTimeOffset.UtcNow;
+        var clock = new CacheClock(verifiedAt);
+        var caches = Enumerable.Range(0, 3).Select(_ => new NotifyingCache(clock)).ToArray();
+        var logs = caches.Select(_ => new SignalingLogger<UserSecurityNatsBridge>()).ToArray();
+        var subject = "identity.tests.isolated-user-security." + Guid.NewGuid().ToString("N");
+        var bridges = caches.Select((cache, i) => new UserSecurityNatsBridge(
+            Options.Create(new UserSecurityNatsOptions
+            {
+                Enabled = true,
+                Url = i == 1 ? $"nats://127.0.0.1:{relay.Port}" : endpoint.ToString(),
+                Token = "identity-test-token", Subject = subject,
+            }), cache, new NatsEnvironment(), logs[i])).ToArray();
+        try
+        {
+            foreach (var bridge in bridges) await bridge.StartAsync(default);
+            await Task.WhenAll(bridges.Select((b, i) => logs[i].WaitFor(() => b.Connected)))
+                .WaitAsync(TimeSpan.FromSeconds(45));
+            var ticket = await IssueTicketAsync(verifiedAt);
+            var user = await SubjectOfAsync(ticket);
+            foreach (var cache in caches) cache.MarkVerified(user);
+
+            relay.Cut();
+            await logs[1].WaitFor(() => !bridges[1].Connected).WaitAsync(TimeSpan.FromSeconds(45));
+            await RotateSecurityStampAsync(ticket);
+            Assert.True(await bridges[0].PublishAsync(user, default));
+            await caches[2].WaitForInvalidation(user);
+            Assert.True(bridges[0].Connected);
+            Assert.True(bridges[2].Connected);
+            Assert.False(bridges[1].Connected);
+            Assert.False(caches[1].IsRevalidationNeeded(user, verifiedAt));
+            Assert.Null((await ValidateAsync(ticket, caches[2], bridges[2])).Principal);
+            Assert.Null((await ValidateAsync(ticket, caches[1], bridges[1])).Principal);
+
+            relay.Restore();
+            await logs[1].WaitFor(() => bridges[1].Connected).WaitAsync(TimeSpan.FromSeconds(45));
+            clock.Now = verifiedAt.AddSeconds(29);
+            Assert.NotNull((await ValidateAsync(ticket, caches[1], bridges[1])).Principal);
+            clock.Now = verifiedAt.AddSeconds(30);
+            Assert.Null((await ValidateAsync(ticket, caches[1], bridges[1])).Principal);
+
+            var recovered = await IssueTicketAsync(clock.Now);
+            var recoveredUser = await SubjectOfAsync(recovered);
+            caches[1].MarkVerified(recoveredUser);
+            await RotateSecurityStampAsync(recovered);
+            Assert.True(await bridges[0].PublishAsync(recoveredUser, default));
+            await caches[1].WaitForInvalidation(recoveredUser);
+            Assert.Null((await ValidateAsync(recovered, caches[1], bridges[1])).Principal);
+        }
+        finally
+        {
+            foreach (var bridge in bridges)
+            {
+                await bridge.StopAsync(CancellationToken.None);
+                bridge.Dispose();
+            }
+        }
+    }
+
     private sealed class NotifyingCache(TimeProvider clock) : ISessionValidityCache
     {
         private readonly InMemorySessionValidityCache inner = new(TimeSpan.FromSeconds(30), clock);

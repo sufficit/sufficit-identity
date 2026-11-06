@@ -309,3 +309,13 @@ is not treated as proof of remote application: the test waits for cache invalida
 Use a fixed loopback host port across container restarts. This local broker
 restart does not establish partition behavior or clustered broker failover.
 [Real broker evidence and invocation requirements](../activities/202611061809-session-nats-recovery.md).
+
+## Isolated notification connection
+
+A three-bridge local NATS regression now cuts only one node's TCP relay while
+the other two remain connected. The unaffected receiver applies the invalidation;
+the isolated node bypasses its warm cache while disconnected. Once restored,
+missed invalidation remains bounded by the original cache deadline, and new
+notifications arrive again. The relay closes sockets and refuses new connections;
+it does not emulate silent packet loss or one-way network partitions.
+[Isolated-connection evidence](../activities/202611061818-session-isolated-notification-path.md).
