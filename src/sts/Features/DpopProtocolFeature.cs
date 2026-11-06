@@ -1,3 +1,4 @@
+using Sufficit.Identity.Application.Security;
 using System.Text.Json.Nodes;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,6 +15,19 @@ namespace Sufficit.Identity.STS.Features;
 internal sealed class DpopProtocolFeature : IProtocolFeature
 {
     public string Name => "dpop";
+
+    public IEnumerable<ProductionPostureFinding> EvaluatePosture(ProtocolPostureContext context)
+    {
+        if (context.Options.Dpop.Enabled
+            && context.Options.DistributedCache.RequireShared
+            && context.DistributedCache?.GetType().Name is "MemoryDistributedCache")
+        {
+            yield return new(
+                "dpop-replay-cache-not-shared",
+                "DPoP requires shared state but the registered distributed cache is process-local memory.",
+                "Register a shared cache or set DistributedCache:RequireShared=false for a genuine single-replica deployment.");
+        }
+    }
 
     public bool IsEnabled(SufficitIdentityOptions options) => options.Dpop.Enabled;
 

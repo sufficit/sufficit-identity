@@ -1,3 +1,4 @@
+using Sufficit.Identity.STS.Features;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
 using Sufficit.Identity.Application.Security;
@@ -18,6 +19,11 @@ public sealed class StsProductionPostureContributor(
 {
     public IEnumerable<ProductionPostureFinding> Evaluate()
     {
+        foreach (var finding in ProtocolFeatureCatalog.EvaluatePosture(new(options, distributedCache)))
+        {
+            yield return finding;
+        }
+
         // V12 (evaluation 2026-09-12): advisory by the maintainer's decision,
         // because the check calls an external service on every registration
         // and password change.
@@ -88,16 +94,6 @@ public sealed class StsProductionPostureContributor(
                 "Set Sufficit:Identity:PersonalTokens:RequireMfa=true, or document a time-bounded security exception.");
         }
 
-        if (options.SharedSignals.Enabled
-            && options.SharedSignals.StreamManagementEnabled
-            && !options.SharedSignals.RequireMfa)
-        {
-            yield return new(
-                "ssf-transmitter-mfa-disabled",
-                "SSF stream management accepts a password-only authentication context for the sensitive ssf_transmitter scope.",
-                "Set Sufficit:Identity:SharedSignals:RequireMfa=true, or document a time-bounded security exception.");
-        }
-
         var tokenExchange = configuration
             .GetSection("Sufficit:Identity:TokenExchange")
             .Get<Grants.TokenExchangeOptions>()
@@ -120,16 +116,6 @@ public sealed class StsProductionPostureContributor(
             yield return finding;
         }
 
-        if (options.Ciba.Enabled
-            && options.Ciba.ClientPolicyMode
-                == SecurityPolicyEnforcementMode.Observe)
-        {
-            yield return new(
-                "ciba-client-policy-observe",
-                "CIBA client eligibility is in Observe mode and would-be denials are permitted.",
-                "Provision the CIBA grant/client allow-list and set Ciba:ClientPolicyMode=Enforce.");
-        }
-
         if (options.CredentialMutations.StepUpMode
             == CredentialMutationStepUpMode.Audit)
         {
@@ -146,16 +132,6 @@ public sealed class StsProductionPostureContributor(
                 "public-origin-request-derived",
                 "Public security URLs can be derived from the request host in compatibility Audit mode.",
                 "Configure Sufficit:Identity:PublicUrl or Issuer and set PublicOrigin:Mode=Enforce.");
-        }
-
-        if (options.Dpop.Enabled
-            && options.DistributedCache.RequireShared
-            && distributedCache?.GetType().Name is "MemoryDistributedCache")
-        {
-            yield return new(
-                "dpop-replay-cache-not-shared",
-                "DPoP requires shared state but the registered distributed cache is process-local memory.",
-                "Register a shared cache or set DistributedCache:RequireShared=false for a genuine single-replica deployment.");
         }
 
         // The deployment shape must be a statement, not an inherited default

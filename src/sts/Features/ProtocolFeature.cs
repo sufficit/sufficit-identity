@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Caching.Distributed;
+using Sufficit.Identity.Application.Security;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using OpenIddict.Server;
@@ -9,10 +11,15 @@ internal sealed record ProtocolFeatureContext(
     SufficitIdentityOptions Options,
     SigningCredentials AuxiliarySigningCredentials);
 
+/// <summary>Runtime dependencies used when evaluating protocol posture.</summary>
+internal sealed record ProtocolPostureContext(
+    SufficitIdentityOptions Options,
+    IDistributedCache? DistributedCache);
+
 /// <summary>
 /// One optional protocol capability of the STS with all of its composition in
 /// one place: option validation, services, OpenIddict server configuration,
-/// discovery metadata and the runtime capabilities it adds.
+/// discovery metadata, production posture and the runtime capabilities it adds.
 /// </summary>
 /// <remarks>
 /// Internal to the STS on purpose: this is where OpenIddict is configured, so
@@ -29,6 +36,12 @@ internal interface IProtocolFeature
     bool IsEnabled(SufficitIdentityOptions options);
 
     IEnumerable<string> RuntimeCapabilities(SufficitIdentityOptions options) => [];
+
+    /// <summary>
+    /// Evaluates feature-owned production findings, including its own enablement
+    /// gates. Called for disabled features too, just like the composition hooks.
+    /// </summary>
+    IEnumerable<ProductionPostureFinding> EvaluatePosture(ProtocolPostureContext context) => [];
 
     /// <summary>Rejects unsupported option values at startup.</summary>
     void Validate(SufficitIdentityOptions options)
@@ -119,6 +132,9 @@ internal static class ProtocolFeatureCatalog
             feature.ConfigureValidation(validation, context);
         }
     }
+
+    public static IEnumerable<ProductionPostureFinding> EvaluatePosture(ProtocolPostureContext context) =>
+        All.SelectMany(feature => feature.EvaluatePosture(context));
 
     public static IEnumerable<string> RuntimeCapabilities(SufficitIdentityOptions options) =>
         All.SelectMany(feature => feature.RuntimeCapabilities(options));

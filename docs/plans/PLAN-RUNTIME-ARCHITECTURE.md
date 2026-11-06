@@ -1,6 +1,6 @@
 # PLAN — Runtime boundaries, sessions and migration verification
 
-Status: queued; F2.2, F4.1 and local F5.2 completed on 2026-11-06. Remaining scope below.
+Status: queued; F1.1, F2.2, F4.1 and local F5.2 completed on 2026-11-06. Remaining scope below.
 
 [Index and delivery rules](PLAN-IDENTITY.md) · [Item-by-item reconciliation](../activities/202611061100-plan-reconciliation-split.md)
 
@@ -21,11 +21,13 @@ CI repair evidence: [synchronization and historical scan](../activities/20261106
 
 ## F1 — Posture contributors inside the feature contract
 
-IProtocolFeature has configuration/discovery hooks but no posture contributor hook; findings remain separately composed.
+F1.1 is implemented: `IProtocolFeature.EvaluatePosture` owns protocol findings,
+aggregated by the STS contributor. CIBA, DPoP and SSF retain their original gates,
+identifiers, severity and messages. Cross-cutting STS policies and independent
+Management/SCIM/Vault contributors retain their boundaries. Token exchange is
+not currently a member of the protocol feature catalog and remains STS-owned.
 
-Evidence: [ProtocolFeature.cs](../../src/sts/Features/ProtocolFeature.cs), [StsProductionPostureContributor.cs](../../src/sts/Security/StsProductionPostureContributor.cs).
-
-- [ ] **F1.1 · pending** — Add the posture contributor to the feature contract, so a feature owns its production findings the same way it owns its discovery metadata (today the findings live in four separate `IProductionPostureContributor` implementations, one of which carries every STS finding regardless of which feature owns the setting — which is how the coverage fell behind the configuration surface in the first place)
+Evidence and validation: [feature-owned posture activity](../activities/202611061737-feature-owned-posture.md).
 
 ## F2 — One management operation executor
 

@@ -1,3 +1,9 @@
+using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
+using Sufficit.Identity.Application.Security;
+using Sufficit.Identity.STS.Security;
 using Sufficit.Identity.STS;
 using Sufficit.Identity.STS.Features;
 using Xunit;
@@ -19,6 +25,7 @@ public sealed class ProtocolFeatureCatalogTests
         "OpenIddictServerConfiguration.Discovery.cs",
         "OpenIddictServerConfiguration.Credentials.cs",
         "RuntimeCapabilityCatalog.cs",
+        "Security/StsProductionPostureContributor.cs",
     ];
 
     private static readonly string[] MigratedFeatureOptions =
@@ -88,6 +95,61 @@ public sealed class ProtocolFeatureCatalogTests
         };
 
         Assert.Throws<InvalidOperationException>(() => ProtocolFeatureCatalog.Validate(invalid));
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public void Protocol_posture_preserves_enablement_and_policy_gates(bool enabled, bool permissive)
+    {
+        var options = new SufficitIdentityOptions
+        {
+            Ciba = new CibaOptions
+            {
+                Enabled = enabled,
+                ClientPolicyMode = permissive
+                    ? SecurityPolicyEnforcementMode.Observe : SecurityPolicyEnforcementMode.Enforce,
+            },
+            SharedSignals = new SharedSignalsOptions
+            {
+                Enabled = enabled,
+                StreamManagementEnabled = true,
+                RequireMfa = !permissive,
+            },
+            Dpop = new DpopOptions { Enabled = enabled },
+            DistributedCache = new DistributedCacheOptions { RequireShared = permissive },
+        };
+        var cache = new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions()));
+        var context = new ProtocolPostureContext(options, cache);
+        var findings = ProtocolFeatureCatalog.EvaluatePosture(context).ToArray();
+        var expected = enabled && permissive
+            ? new[] { "ciba-client-policy-observe", "dpop-replay-cache-not-shared", "ssf-transmitter-mfa-disabled" }
+            : Array.Empty<string>();
+        Assert.Equal(expected, findings.Select(f => f.Id).OrderBy(id => id, StringComparer.Ordinal));
+        Assert.All(findings, finding => Assert.Equal(ProductionPostureSeverity.Blocking, finding.Severity));
+
+        var aggregated = new StsProductionPostureContributor(options, new ConfigurationBuilder().Build(), cache)
+            .Evaluate().ToArray();
+        foreach (var finding in findings)
+        {
+            Assert.Equal(finding, Assert.Single(aggregated, candidate => candidate.Id == finding.Id));
+        }
+
+        // A disabled stream-management surface cannot emit its MFA finding.
+        var streamDisabled = new ProtocolPostureContext(new SufficitIdentityOptions
+        {
+            SharedSignals = new SharedSignalsOptions
+            {
+                Enabled = true, StreamManagementEnabled = false, RequireMfa = false,
+            },
+        }, cache);
+        Assert.DoesNotContain(ProtocolFeatureCatalog.EvaluatePosture(streamDisabled),
+            finding => finding.Id == "ssf-transmitter-mfa-disabled");
+        // Missing cache is not reclassified as the explicitly process-local cache.
+        Assert.DoesNotContain(ProtocolFeatureCatalog.EvaluatePosture(context with { DistributedCache = null }),
+            finding => finding.Id == "dpop-replay-cache-not-shared");
     }
 
     private static string ResolveRepositoryRoot()

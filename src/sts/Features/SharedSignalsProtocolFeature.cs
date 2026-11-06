@@ -19,6 +19,19 @@ internal sealed class SharedSignalsProtocolFeature : IProtocolFeature
 {
     public string Name => "shared-signals";
 
+    public IEnumerable<ProductionPostureFinding> EvaluatePosture(ProtocolPostureContext context)
+    {
+        if (context.Options.SharedSignals.Enabled
+            && context.Options.SharedSignals.StreamManagementEnabled
+            && !context.Options.SharedSignals.RequireMfa)
+        {
+            yield return new(
+                "ssf-transmitter-mfa-disabled",
+                "SSF stream management accepts a password-only authentication context for the sensitive ssf_transmitter scope.",
+                "Set Sufficit:Identity:SharedSignals:RequireMfa=true, or document a time-bounded security exception.");
+        }
+    }
+
     public bool IsEnabled(SufficitIdentityOptions options) => options.SharedSignals.Enabled;
 
     public void Validate(SufficitIdentityOptions options)

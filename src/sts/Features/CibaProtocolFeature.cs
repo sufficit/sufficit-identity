@@ -19,6 +19,19 @@ internal sealed class CibaProtocolFeature : IProtocolFeature
 {
     public string Name => "ciba";
 
+    public IEnumerable<ProductionPostureFinding> EvaluatePosture(ProtocolPostureContext context)
+    {
+        if (context.Options.Ciba.Enabled
+            && context.Options.Ciba.ClientPolicyMode
+                == SecurityPolicyEnforcementMode.Observe)
+        {
+            yield return new(
+                "ciba-client-policy-observe",
+                "CIBA client eligibility is in Observe mode and would-be denials are permitted.",
+                "Provision the CIBA grant/client allow-list and set Ciba:ClientPolicyMode=Enforce.");
+        }
+    }
+
     public bool IsEnabled(SufficitIdentityOptions options) => options.Ciba.Enabled;
 
     public IEnumerable<string> RuntimeCapabilities(SufficitIdentityOptions options) =>
