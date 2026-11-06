@@ -91,3 +91,19 @@ The authorized publication is complete and archived in the
 [production publication activity](../activities/202611061222-production-publication.md).
 Layout migration, preparation, sequential activation and production validation
 passed. The operational gates above remain pending; deployment does not close them.
+
+## Schema rollout evidence
+
+The [local F5.2 verification](../activities/202611061708-migration-verification-complete.md)
+is complete for the documented revisions and fixtures. Before a future schema
+rollout, retain these outstanding operational checks alongside G4; do not reopen
+the completed local work or infer production approval from it.
+
+- [ ] **F5 rollout · operational** — Rehearse the intended release with the actual
+  production-shaped configuration and representative sanitized data/volume; record
+  the chosen workload and acceptance thresholds, backup/restore evidence and the
+  exact rollback artifact. Local Development fixtures and tmpfs are not this evidence.
+
+The owner must supply/approve the representative workload and its acceptance
+thresholds before a volume result can be called acceptable. This item authorizes
+no production data export, destructive repair or retirement of old releases.

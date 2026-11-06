@@ -1,6 +1,6 @@
 # PLAN — Runtime boundaries, sessions and migration verification
 
-Status: queued; F2.2 and F4.1 completed on 2026-11-06. Remaining scope below.
+Status: queued; F2.2, F4.1 and local F5.2 completed on 2026-11-06. Remaining scope below.
 
 [Index and delivery rules](PLAN-IDENTITY.md) · [Item-by-item reconciliation](../activities/202611061100-plan-reconciliation-split.md)
 
@@ -46,11 +46,15 @@ Evidence: [OidcUserSessionTicketStore.cs](../../src/sts/OidcUserSessionTicketSto
 
 ## F5 — Schema migration out of the web process
 
-Production HTTP startup already rejects AutoMigrate; only migrate-only or Development applies schema changes. Canonical/additive tests exist, but not the full two-replica failure/retry/old-binary scenario.
+Completed local implementation/verification is archived in the
+[F5.2 completion activity](../activities/202611061708-migration-verification-complete.md).
+Production HTTP rejects AutoMigrate; dedicated migrators, partial-DDL repair,
+concurrency and the recorded old binary's password/MFA/OIDC compatibility were
+verified against disposable MariaDB. This closes the original local F5.2 scope.
 
-Evidence: [HostBootstrap.Schema.cs](../../src/server/HostBootstrap.Schema.cs), [MariaDbMigrationIntegrationTests.cs](../../src/tests/MariaDbMigrationIntegrationTests.cs).
-
-- [ ] **F5.2 · partial** — Extend canonical/additive MariaDB migration coverage to two-replica startup, migration failure/retry and old-binary rollback. The [schema-guard activity](../activities/202611061446-production-schema-guard.md) closes direct Production/Staging refusal coverage and verifies the dedicated-migrator/Development boundary. The [advisory-lock activity](../activities/202611061451-migration-advisory-lock-recovery.md) verifies real MariaDB lock contention and release after controlled execution failure/success, including retry with a fresh context. The [real SQL recovery rehearsal](../activities/202611061457-real-migration-failure-recovery.md) verifies partial DDL, unchanged history after failure, failed blind retry and successful explicit fixture repair/retry using canonical EF migrations. The [concurrent canonical migration rehearsal](../activities/202611061519-concurrent-canonical-migrations.md) covers overlapping host wrappers with independent contexts/connections and real EF migration execution. The [dedicated-process rehearsal](../activities/202611061539-dedicated-migrator-processes.md) launches two real host processes with isolated Development configuration and verifies successful migrate-only exits and canonical history. The [populated recovery activity](../activities/202611061549-populated-migration-recovery.md) verifies synthetic user/role/claim/key/session preservation and password-hash verification across failure and repair/retry. The [historical-host rehearsal](../activities/202611061555-historical-host-schema-compatibility.md) reconstructs unchanged pre-migration revision `4493f97` and verifies HTTP readiness on the upgraded schema without changing migration history. The [historical login activity](../activities/202611061633-historical-password-login.md) verifies incorrect-password rejection, real antiforgery-protected password sign-in and authenticated profile access on that binary; it also aligns the host advisory-lock command timeout with the server wait. The [historical MFA activity](../activities/202611061641-historical-mfa-recovery.md) verifies recovery-code MFA and consumed-code rejection in a fresh cookie session. The [historical TOTP activity](../activities/202611061646-historical-totp-login.md) verifies malformed-code rejection and current-code authentication through the real authenticator endpoint. The [historical OIDC activity](../activities/202611061657-historical-oidc-code-flow.md) verifies public-client authorization code + S256 PKCE, ID-token signature/claims and code reuse rejection on the unchanged old binary. Local startup/password/MFA/OIDC compatibility is now evidenced for this specific revision. Production-posture startup and broader data/volume rehearsal remain pending; this does not establish every historical client/extension.
+Deployment-specific posture and representative volume/data evidence remain under
+[production rollout gates](PLAN-PRODUCTION-GATES.md#schema-rollout-evidence), not
+implicit claims of this local verification. Other runtime sections remain open.
 
 ## F14 — Security-critical protocol annotations
 
@@ -68,13 +72,3 @@ behavior. Record exact commands, outcomes, release/commit and limitations.
 For UI changes use the repository design/browser workflow; for production gates
 attach dated redacted evidence and rollback. Do not close an item solely because
 a related type, test name or historical deployment exists.
-
-
-
-
-
-
-
-
-
-
