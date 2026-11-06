@@ -319,3 +319,14 @@ missed invalidation remains bounded by the original cache deadline, and new
 notifications arrive again. The relay closes sockets and refuses new connections;
 it does not emulate silent packet loss or one-way network partitions.
 [Isolated-connection evidence](../activities/202611061818-session-isolated-notification-path.md).
+
+## Silent notification loss while Connected
+
+A local relay can discard the broker-to-client bytes of a revocation while the
+bridge still reports Connected. The new opt-in scenario confirms those bytes
+were discarded, verifies unaffected peer delivery and proves that cached stamp
+acceptance still ends at the original revalidation deadline. Recovery uses fresh
+sockets before testing new notification delivery, because partial byte loss can
+break NATS framing. This models silent notification loss, not kernel packet
+retransmission or production heartbeat timings.
+[Silent-loss evidence](../activities/202611061823-session-silent-notification-loss.md).

@@ -5,7 +5,8 @@ namespace Sufficit.Identity.Tests.Infrastructure;
 
 /// <summary>
 /// Owned loopback TCP relay for integration tests. Cut closes established sockets
-/// and refuses new ones until Restore; it does not simulate silent packet loss.
+/// and refuses new ones until Restore. Optional server-to-client discard keeps
+/// TCP open and signals when the requested test marker has actually been dropped.
 /// </summary>
 internal sealed class InterruptibleTcpRelay : IAsyncDisposable
 {
@@ -18,6 +19,7 @@ internal sealed class InterruptibleTcpRelay : IAsyncDisposable
     private readonly int port;
     private readonly Task accepting;
     private bool cut;
+    private DiscardState? discard;
 
     public InterruptibleTcpRelay(Uri target)
     {
@@ -30,6 +32,44 @@ internal sealed class InterruptibleTcpRelay : IAsyncDisposable
     }
 
     public int Port { get; }
+
+    public Task DropServerTraffic(string marker)
+    {
+        var state = new DiscardState(marker);
+        Volatile.Write(ref discard, state);
+        return state.Observed.Task;
+    }
+
+    public void ResumeServerTraffic() => Volatile.Write(ref discard, null);
+
+    private sealed class DiscardState(string marker)
+    {
+        private string seen = string.Empty;
+        public TaskCompletionSource Observed { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public void Observe(ReadOnlySpan<byte> bytes)
+        {
+            lock (this)
+            {
+                seen += System.Text.Encoding.UTF8.GetString(bytes);
+                if (seen.Contains(marker, StringComparison.Ordinal)) Observed.TrySetResult();
+                // Retain only enough suffix to detect a marker split across reads.
+                if (seen.Length > marker.Length) seen = seen[^marker.Length..];
+            }
+        }
+    }
+
+    private async Task ForwardServerAsync(Stream source, Stream destination)
+    {
+        var buffer = new byte[8192];
+        int count;
+        while ((count = await source.ReadAsync(buffer, shutdown.Token)) != 0)
+        {
+            if (Volatile.Read(ref discard) is { } state)
+                state.Observe(buffer.AsSpan(0, count));
+            else
+                await destination.WriteAsync(buffer.AsMemory(0, count), shutdown.Token);
+        }
+    }
 
     public void Cut()
     {
@@ -80,7 +120,7 @@ internal sealed class InterruptibleTcpRelay : IAsyncDisposable
             var incoming = client.GetStream();
             var outgoing = server.GetStream();
             var toServer = incoming.CopyToAsync(outgoing, shutdown.Token);
-            var toClient = outgoing.CopyToAsync(incoming, shutdown.Token);
+            var toClient = ForwardServerAsync(outgoing, incoming);
             await Task.WhenAny(toServer, toClient);
             client.Dispose();
             server.Dispose();

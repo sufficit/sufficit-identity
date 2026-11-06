@@ -80,7 +80,14 @@ public sealed partial class SessionValidityCacheIntegrationTests
     }
 
     [LocalBrokerFact]
-    public async Task Isolated_node_misses_invalidation_while_peers_remain_connected_and_recovers_with_bounded_staleness()
+    public Task Isolated_node_misses_invalidation_while_peers_remain_connected_and_recovers_with_bounded_staleness() =>
+        RehearseIsolatedPath(false);
+
+    [LocalBrokerFact]
+    public Task Silently_dropped_notification_is_bounded_even_while_the_bridge_reports_connected() =>
+        RehearseIsolatedPath(true);
+
+    private async Task RehearseIsolatedPath(bool silentLoss)
     {
         var endpoint = new Uri(Environment.GetEnvironmentVariable("IDENTITY_TEST_NATS_URL")!);
         Assert.True(endpoint.IsLoopback);
@@ -106,24 +113,47 @@ public sealed partial class SessionValidityCacheIntegrationTests
             var user = await SubjectOfAsync(ticket);
             foreach (var cache in caches) cache.MarkVerified(user);
 
-            relay.Cut();
-            await logs[1].WaitFor(() => !bridges[1].Connected).WaitAsync(TimeSpan.FromSeconds(45));
+            Task? discarded = null;
+            if (silentLoss)
+                discarded = relay.DropServerTraffic(user);
+            else
+            {
+                relay.Cut();
+                await logs[1].WaitFor(() => !bridges[1].Connected).WaitAsync(TimeSpan.FromSeconds(45));
+            }
             await RotateSecurityStampAsync(ticket);
             Assert.True(await bridges[0].PublishAsync(user, default));
             await caches[2].WaitForInvalidation(user);
             Assert.True(bridges[0].Connected);
             Assert.True(bridges[2].Connected);
-            Assert.False(bridges[1].Connected);
+            if (discarded is not null) await discarded.WaitAsync(TimeSpan.FromSeconds(30));
+            Assert.Equal(silentLoss, bridges[1].Connected);
             Assert.False(caches[1].IsRevalidationNeeded(user, verifiedAt));
             Assert.Null((await ValidateAsync(ticket, caches[2], bridges[2])).Principal);
-            Assert.Null((await ValidateAsync(ticket, caches[1], bridges[1])).Principal);
-
-            relay.Restore();
-            await logs[1].WaitFor(() => bridges[1].Connected).WaitAsync(TimeSpan.FromSeconds(45));
+            if (silentLoss)
+                Assert.NotNull((await ValidateAsync(ticket, caches[1], bridges[1])).Principal);
+            else
+            {
+                Assert.Null((await ValidateAsync(ticket, caches[1], bridges[1])).Principal);
+                relay.Restore();
+                await logs[1].WaitFor(() => bridges[1].Connected).WaitAsync(TimeSpan.FromSeconds(45));
+            }
             clock.Now = verifiedAt.AddSeconds(29);
             Assert.NotNull((await ValidateAsync(ticket, caches[1], bridges[1])).Principal);
             clock.Now = verifiedAt.AddSeconds(30);
             Assert.Null((await ValidateAsync(ticket, caches[1], bridges[1])).Principal);
+
+            if (silentLoss)
+            {
+                Assert.True(bridges[1].Connected);
+                // Discard can truncate protocol frames: heal with fresh sockets,
+                // not an assumption that the old byte stream is still aligned.
+                relay.Cut();
+                await logs[1].WaitFor(() => !bridges[1].Connected).WaitAsync(TimeSpan.FromSeconds(45));
+                relay.ResumeServerTraffic();
+                relay.Restore();
+                await logs[1].WaitFor(() => bridges[1].Connected).WaitAsync(TimeSpan.FromSeconds(45));
+            }
 
             var recovered = await IssueTicketAsync(clock.Now);
             var recoveredUser = await SubjectOfAsync(recovered);
