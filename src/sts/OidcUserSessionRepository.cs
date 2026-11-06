@@ -114,12 +114,22 @@ internal sealed class OidcUserSessionRepository(IDbContextFactory<AppDbContext> 
         string subject, string? exceptSessionId, CancellationToken cancellationToken)
     {
         await using var database = await databaseFactory.CreateDbContextAsync(cancellationToken);
-        var sessionIds = await database.OidcUserSessions
+        var selected = await database.OidcUserSessions
             .Where(s => s.Subject == subject && s.SessionId != exceptSessionId)
-            .Select(s => s.SessionId).ToListAsync(cancellationToken);
+            .Select(s => new { s.Id, s.SessionId }).ToListAsync(cancellationToken);
+        if (selected.Count == 0)
+        {
+            return new SessionDeletionResult(0, Array.Empty<string>());
+        }
+
+        // Delete the selected rows, not sessions inserted after the snapshot.
+        // Internal row IDs also distinguish a deleted/recreated session key.
+        var rowIds = selected.Select(s => s.Id).ToArray();
         var removed = await database.OidcUserSessions
-            .Where(s => s.Subject == subject && s.SessionId != exceptSessionId)
+            .Where(s => s.Subject == subject && s.SessionId != exceptSessionId && rowIds.Contains(s.Id))
             .ExecuteDeleteAsync(cancellationToken);
-        return new SessionDeletionResult(removed, sessionIds);
+        // A concurrent delete can reduce Removed. Invalidating all selected
+        // keys is still safe, and covers every row deleted by this operation.
+        return new SessionDeletionResult(removed, selected.Select(s => s.SessionId).ToArray());
     }
 }

@@ -103,8 +103,8 @@ metadata remains unchanged. Fresh sign-in retains its separate upsert path.
 
 Database mutation and cache writes are still not atomic: a renewal accepted
 before revocation can write its cache entry after invalidation. The
-subject-ID-selection/deletion sequence also remains unchanged. These races
-remain in the runtime plan's F4.2/F4.3 scope.
+bulk deletion now restricts its target to the selected internal row IDs (see
+below). Cross-store atomicity remains outside this contract.
 
 ## Ticket-cache publication deadline
 
@@ -120,7 +120,7 @@ when the provider honors absolute expiration and replica clocks agree. It
 does not guarantee immediate revocation: a stale entry inside that window
 and an already running request may still return the ticket. Database/cache
 operations are not atomic. Real-provider failover and clock-skew evidence
-remain part of F4.2/F4.3, as does bulk-revocation ID selection.
+remain part of F4.2/F4.3.
 
 Database session expiry compares UTC DateTime values explicitly; an
 unspecified DateTime kind from persistence must not invoke local timezone
@@ -130,3 +130,23 @@ instances have been replaced and their previous entries have expired.
 
 See the [delayed-publication activity](../activities/202611061303-session-cache-publication-deadline.md)
 for deterministic two-store regression coverage and its limits.
+
+## Bulk revocation snapshot
+
+Subject-session revocation selects internal row IDs together with cache session
+keys, then deletes only those rows while retaining the subject and exclusion
+predicates. A concurrent insertion is outside that snapshot. A row deleted and
+recreated with the same session key has a new internal ID and is not deleted by
+the earlier operation.
+
+Every row deleted by this operation therefore has a selected invalidation key.
+Concurrent deletion can make the removed count smaller than the selected key
+count; invalidating the full selected key set remains safe. For a recreated
+key this can evict a fresh cache entry, which the new durable row can repopulate.
+An empty snapshot returns zero without a later broad delete.
+
+This operation revokes a snapshot of browser-session records, not future
+sign-ins. Credential revocation still relies on the higher-level security-stamp
+rotation. Cache invalidation can fail or race with late publication; the
+publication-deadline contract above still applies. See the
+[bulk snapshot activity](../activities/202611061318-bulk-session-revocation-snapshot.md).

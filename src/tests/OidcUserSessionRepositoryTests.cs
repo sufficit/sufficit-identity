@@ -1,3 +1,5 @@
+using System.Data.Common;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.DataProtection;
@@ -16,6 +18,7 @@ namespace Sufficit.Identity.Tests;
 public sealed class OidcUserSessionRepositoryTests : IDisposable
 {
     private readonly Microsoft.Data.Sqlite.SqliteConnection _connection = new("DataSource=:memory:");
+    private readonly DeleteInterceptor _interceptor = new();
     private readonly ServiceProvider _services;
     private readonly OidcUserSessionRepository _repository;
     private static readonly DateTime Initial = new(2026, 11, 6, 10, 0, 0, DateTimeKind.Utc);
@@ -28,6 +31,7 @@ public sealed class OidcUserSessionRepositoryTests : IDisposable
         services.AddDbContextFactory<AppDbContext>(options =>
         {
             options.UseSqlite(_connection);
+            options.AddInterceptors(_interceptor);
             options.UseOpenIddict();
         });
         _services = services.BuildServiceProvider();
@@ -133,6 +137,46 @@ public sealed class OidcUserSessionRepositoryTests : IDisposable
         var stored = (await _repository.FindAsync("sid", default))!;
         Assert.Equal("original-user", stored.Subject);
         Assert.Equal(new byte[] { 1, 2, 3 }, stored.ProtectedTicket);
+    }
+
+    [Theory]
+    [InlineData("insert")]
+    [InlineData("delete")]
+    [InlineData("replace")]
+    public async Task Bulk_revocation_deletes_only_the_selected_row_snapshot(string concurrentChange)
+    {
+        await _repository.UpsertAsync(Session("selected", "user"), default);
+        _interceptor.BeforeDelete = async () =>
+        {
+            if (concurrentChange != "insert") await _repository.DeleteAsync("selected", default);
+            if (concurrentChange != "delete")
+                await _repository.UpsertAsync(Session(
+                    concurrentChange == "replace" ? "selected" : "new-session", "user"), default);
+        };
+        var result = await _repository.DeleteBySubjectAsync("user", null, default);
+        Assert.Equal(concurrentChange == "insert" ? 1 : 0, result.Removed);
+        Assert.Equal("selected", Assert.Single(result.SessionIds));
+        var remaining = await _repository.ListBySubjectAsync("user", null, default);
+        if (concurrentChange == "delete") Assert.Empty(remaining);
+        else Assert.Equal(concurrentChange == "replace" ? "selected" : "new-session",
+            Assert.Single(remaining).SessionId);
+    }
+
+    private sealed class DeleteInterceptor : DbCommandInterceptor
+    {
+        public Func<Task>? BeforeDelete { get; set; }
+        public override async ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(
+            DbCommand command, CommandEventData eventData, InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+        {
+            if (command.CommandText.TrimStart().StartsWith("DELETE", StringComparison.OrdinalIgnoreCase)
+                && BeforeDelete is { } action)
+            {
+                BeforeDelete = null;
+                await action();
+            }
+            return result;
+        }
     }
 
     private static OidcUserSession Session(string sid, string subject) => new()
