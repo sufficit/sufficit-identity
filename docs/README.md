@@ -31,8 +31,6 @@ claim cites `file:line`.
 
 ## The plan (pending work)
 
-Active implementation: [Profile audit history](PLAN-PROFILE-AUDIT-HISTORY.md).
-
 There is one plan: [`plans/PLAN-IDENTITY.md`](plans/PLAN-IDENTITY.md). It consolidates the twelve
 that preceded it, each reconciled against the working tree first, and organises
 what is left by the boundary it belongs to rather than by which evaluation
@@ -49,6 +47,8 @@ found it.
 | G | Observability, conformance and cutover — certification, external audit, legacy cutover gates |
 
 ## Completed work (activities/)
+
+- [Profile audit history](activities/202611061049-profile-audit-history.md) — changed profile fields and restricted, paginated history search.
 
 - [Nightly conformance and Dependabot lock files](activities/202611030100-conformance-healthcheck-dependabot-locks.md) — the nightly run failed on a database healthcheck that passed before TCP was open, and Dependabot PRs failed on stale lock files.
 - [Password recovery by link](activities/202610071840-password-recovery-link.md) — operators request a reset e-mail to the confirmed address; the account holder sets the password in Identity

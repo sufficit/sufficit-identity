@@ -35,5 +35,7 @@ The review covered RFC 9110 §§17.8–17.9 and RFC 9700 §4.9.3. Existing reten
 
 ## Delivery
 
-Implementation reviewed on main, initially synchronized with origin/main.
-Owner policy requires commit/push directly to main. Deployment remains separate.
+Implementation commit `a8709fd` was pushed to `origin/main` successfully
+(`aa6fefc..a8709fd`). The completed temporary plan was retired after push;
+its durable contract and validation evidence are preserved here and in the usage guide.
+Deployment remains separate and was not performed.
