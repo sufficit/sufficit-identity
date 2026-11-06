@@ -183,10 +183,12 @@ internal static partial class HostBootstrap
             await using var acquire = connection.CreateCommand();
             acquire.CommandText =
                 "SELECT GET_LOCK('sufficit_identity_schema_migrator', 60);";
-            var acquired = Convert.ToInt32(
-                await acquire.ExecuteScalarAsync(),
-                System.Globalization.CultureInfo.InvariantCulture);
-            if (acquired != 1)
+            // Let MariaDB finish the requested lock wait before the client cancels
+            // the query (the deployment connection may have a shorter default).
+            acquire.CommandTimeout = 65;
+            var result = await acquire.ExecuteScalarAsync();
+            if (result is null or DBNull || Convert.ToInt32(
+                    result, System.Globalization.CultureInfo.InvariantCulture) != 1)
             {
                 throw new InvalidOperationException(
                     "Unable to acquire the Sufficit Identity schema migration lock.");

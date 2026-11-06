@@ -63,7 +63,7 @@ public sealed class MariaDbMigratorProcessTests
     }
 
     internal static Process Start(string directory, string certificate, string connection,
-        string? assemblyPath = null, bool migrateOnly = true, DataReceivedEventHandler? output = null)
+        string? assemblyPath = null, bool migrateOnly = true, DataReceivedEventHandler? output = null, bool publicUi = false)
     {
         var start = new ProcessStartInfo("dotnet")
         {
@@ -77,6 +77,7 @@ public sealed class MariaDbMigratorProcessTests
         start.Environment["PATH"] = Environment.GetEnvironmentVariable("PATH");
         foreach (var surface in new[] { "Public", "Management", "Vault" })
             start.Environment[$"Sufficit__Identity__UI__{surface}__Mode"] = "None";
+        if (publicUi) start.Environment["Sufficit__Identity__UI__Public__Mode"] = "Embedded";
         start.Environment["DOTNET_ENVIRONMENT"] = "Development";
         start.Environment["ASPNETCORE_ENVIRONMENT"] = "Development";
         start.Environment["SUFFICIT_SECRET_DATABASE_CONNECTION_STRING"] = connection;

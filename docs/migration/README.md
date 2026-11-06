@@ -345,3 +345,9 @@ checks an unchanged binary built from before `AddTokenMaintenance`: it starts
 against the current schema and serves HTTP readiness without altering migration
 history. This is a startup compatibility check, not authorization to deploy that
 historical release or proof of authenticated flow compatibility.
+
+The [historical password-login activity](../activities/202611061633-historical-password-login.md)
+extends that check with real password authentication and authenticated profile
+access. The host's advisory-lock command timeout is 65 seconds, exceeding the
+60-second MariaDB lock wait even when the connection's default command timeout
+is shorter. A null lock result is handled as acquisition failure.
