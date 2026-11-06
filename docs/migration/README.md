@@ -319,3 +319,20 @@ approved secret mechanism at execution time.
 [109-add-token-maintenance.sql](sql/109-add-token-maintenance.sql) adds the disabled
 database schedule and run history. Follow the [token maintenance transition](../operations/RUNBOOK-TOKEN-PRUNING.md#transition-from-the-external-timer)
 when replacing an existing external timer.
+
+## Failure recovery under the dedicated migrator
+
+The host advisory lock serializes migration execution; it does not make a whole
+MariaDB migration atomic. In the [disposable MariaDB rehearsal](../activities/202611061457-real-migration-failure-recovery.md),
+`AddTokenMaintenance` failed on its second `CREATE TABLE`. The first table
+remained, while migration history correctly omitted the failed migration. A
+blind retry failed again on that first table.
+
+After a migration error, compare the actual schema and migration history with
+the failed migration before deciding how to recover. Preserve existing data and
+use a reviewed repair or backup restoration appropriate to that database. Do not
+mark the migration applied merely to bypass the failure. The test removes only
+its own empty fixture tables; that cleanup is not a production recovery procedure.
+Successful repair/retry and a subsequent no-op migration run are covered locally.
+Old-binary compatibility and recovery with production-like data require separate
+rehearsal evidence.
