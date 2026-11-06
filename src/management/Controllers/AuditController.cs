@@ -9,9 +9,19 @@ namespace Sufficit.Identity.Management.Controllers;
 [ApiController]
 [Authorize(Policy = "sufficit-identity-management")]
 [Route("api/audit")]
+[ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 public sealed class AuditController(IManagementAuditService audit)
     : ControllerBase
 {
+    [HttpPost("search")]
+    public async Task<ActionResult<ManagementAuditPage>> Search(
+        [FromBody] ManagementAuditQuery query,
+        CancellationToken cancellationToken = default) =>
+        Ok(await audit.SearchAsync(
+            new ManagementRequestContext(User, HttpContext.TraceIdentifier),
+            query,
+            cancellationToken));
+
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<ManagementAuditRecord>>> List(
         [FromQuery] int limit = 100,

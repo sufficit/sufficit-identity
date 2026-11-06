@@ -864,6 +864,12 @@ public sealed partial class ManagementUiRoutingTests
 
     private sealed class StubManagementAuditService : IManagementAuditService
     {
+        public Task<ManagementAuditPage> SearchAsync(
+            ManagementRequestContext context,
+            ManagementAuditQuery query,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
         public Task<IReadOnlyList<ManagementAuditRecord>> ListAsync(
             ManagementRequestContext context,
             int limit = 100,

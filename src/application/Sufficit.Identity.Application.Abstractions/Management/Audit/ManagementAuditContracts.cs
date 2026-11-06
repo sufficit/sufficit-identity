@@ -4,6 +4,11 @@ namespace Sufficit.Identity.Management.Audit;
 
 public interface IManagementAuditService
 {
+    Task<ManagementAuditPage> SearchAsync(
+        ManagementRequestContext context,
+        ManagementAuditQuery query,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<ManagementAuditRecord>> ListAsync(
         ManagementRequestContext context,
         int limit = 100,
@@ -26,3 +31,16 @@ public sealed record ManagementAuditRecord(
     string? AuthenticationMethods,
     string? BeforeJson = null,
     string? AfterJson = null);
+
+/// <summary>Exact resource filters and a half-open UTC interval. Reuse filters when following a cursor.</summary>
+public sealed record ManagementAuditQuery(
+    string? ResourceType = null,
+    string? ResourceId = null,
+    DateTimeOffset? FromUtc = null,
+    DateTimeOffset? ToUtc = null,
+    int Limit = 100,
+    string? Cursor = null);
+
+public sealed record ManagementAuditPage(
+    IReadOnlyList<ManagementAuditRecord> Items,
+    string? NextCursor);

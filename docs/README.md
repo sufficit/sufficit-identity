@@ -31,6 +31,8 @@ claim cites `file:line`.
 
 ## The plan (pending work)
 
+Active implementation: [Profile audit history](PLAN-PROFILE-AUDIT-HISTORY.md).
+
 There is one plan: [`plans/PLAN-IDENTITY.md`](plans/PLAN-IDENTITY.md). It consolidates the twelve
 that preceded it, each reconciled against the working tree first, and organises
 what is left by the boundary it belongs to rather than by which evaluation
@@ -122,6 +124,8 @@ found it.
 - [Audience management surface](design/DESIGN-AUDIENCES.md)
 
 ## Usage
+
+- [Administrative profile audit history](management/USAGE-AUDIT-HISTORY.md) — changed fields, restricted search and cursor pagination.
 
 - [Audience management](management/USAGE-AUDIENCES.md) — inventory, scope bindings, permissions and audit.
 

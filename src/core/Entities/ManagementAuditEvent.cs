@@ -2,7 +2,8 @@ namespace Sufficit.Identity.Core.Entities;
 
 /// <summary>
 /// Append-only record of an administrative authorization decision and its
-/// operation outcome. Sensitive request payloads and credentials never belong
+/// operation outcome. Only allowlisted profile/configuration changes are captured.
+/// Entire request payloads and credentials never belong
 /// in this entity.
 /// </summary>
 public sealed class ManagementAuditEvent
@@ -31,7 +32,7 @@ public sealed class ManagementAuditEvent
 
     public string CorrelationId { get; set; } = string.Empty;
 
-    /// <summary>Non-secret configuration values before and after an audited mutation.</summary>
+    /// <summary>Allowlisted non-secret profile/configuration changes, subject to audit access and retention.</summary>
     public string? BeforeJson { get; set; }
     public string? AfterJson { get; set; }
 

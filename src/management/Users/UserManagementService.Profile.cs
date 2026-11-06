@@ -9,6 +9,7 @@ using Sufficit.Identity.Application.Security;
 using Sufficit.Identity.Management.Audit;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
+using System.Text.Json;
 using Sufficit.Identity.Management.Authorization;
 
 namespace Sufficit.Identity.Management.Users;
@@ -106,6 +107,7 @@ internal sealed partial class UserManagementService
         var hasChanges =
             userNameChanged || emailChanged || phoneNumberChanged;
 
+        var beforeProfile = AuditProfile(user);
         await using var transaction = await database.Database
             .BeginTransactionAsync(cancellationToken);
         try
@@ -144,16 +146,27 @@ internal sealed partial class UserManagementService
                     context.CorrelationId);
             }
 
-            database.ManagementAuditEvents.Add(
-                ManagementAuditEventFactory.Create(
-                    context,
-                    ManagementCapabilities.UsersUpdate,
-                    auditResource,
-                    decision,
-                    "succeeded",
-                    hasChanges
-                        ? "user_profile_updated"
-                        : "user_profile_unchanged"));
+            var audit = ManagementAuditEventFactory.Create(
+                context,
+                ManagementCapabilities.UsersUpdate,
+                auditResource,
+                decision,
+                "succeeded",
+                hasChanges
+                    ? "user_profile_updated"
+                    : "user_profile_unchanged");
+            if (hasChanges)
+            {
+                var afterProfile = AuditProfile(user);
+                var changedFields = beforeProfile.Keys
+                    .Where(key => !Equals(beforeProfile[key], afterProfile[key]))
+                    .ToArray();
+                audit.BeforeJson = JsonSerializer.Serialize(
+                    changedFields.ToDictionary(key => key, key => beforeProfile[key]));
+                audit.AfterJson = JsonSerializer.Serialize(
+                    changedFields.ToDictionary(key => key, key => afterProfile[key]));
+            }
+            database.ManagementAuditEvents.Add(audit);
 
             await database.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
@@ -206,6 +219,17 @@ internal sealed partial class UserManagementService
             context,
             cancellationToken);
     }
+
+    // Explicit allowlist: never serialize ApplicationUser, request payloads,
+    // password hashes, security stamps, tokens or claims into audit history.
+    private static Dictionary<string, object?> AuditProfile(ApplicationUser user) => new()
+    {
+        ["userName"] = user.UserName,
+        ["email"] = user.Email,
+        ["emailConfirmed"] = user.EmailConfirmed,
+        ["phoneNumber"] = user.PhoneNumber,
+        ["phoneNumberConfirmed"] = user.PhoneNumberConfirmed,
+    };
 
     public async Task RequestEmailConfirmationAsync(
         string id,

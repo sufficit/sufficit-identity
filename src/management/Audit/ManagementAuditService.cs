@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Core.Entities;
@@ -12,6 +13,12 @@ internal sealed class ManagementAuditService(
     public async Task<IReadOnlyList<ManagementAuditRecord>> ListAsync(
         ManagementRequestContext context,
         int limit = 100,
+        CancellationToken cancellationToken = default) =>
+        (await SearchAsync(context, new ManagementAuditQuery(Limit: limit), cancellationToken)).Items;
+
+    public async Task<ManagementAuditPage> SearchAsync(
+        ManagementRequestContext context,
+        ManagementAuditQuery query,
         CancellationToken cancellationToken = default)
     {
         var decision = await authorization.EvaluateAsync(
@@ -19,19 +26,44 @@ internal sealed class ManagementAuditService(
             ManagementCapabilities.AuditRead,
             new ManagementResource(ManagementResourceTypes.Audit),
             cancellationToken);
-
         if (!decision.IsAllowed)
-        {
             throw new ManagementAccessException(decision);
+
+        ArgumentNullException.ThrowIfNull(query);
+        if (query.ResourceType?.Length > 100 || query.ResourceId?.Length > 255)
+            throw new ManagementValidationException("audit_filter_invalid",
+                "Resource filters exceed their maximum length.");
+        if (query.FromUtc is { } from && query.ToUtc is { } to && from >= to)
+            throw new ManagementValidationException("audit_interval_invalid",
+                "FromUtc must precede ToUtc.", "fromUtc");
+
+        var entries = database.ManagementAuditEvents.AsNoTracking();
+        if (!string.IsNullOrEmpty(query.ResourceType))
+            entries = entries.Where(entry => entry.ResourceType == query.ResourceType);
+        if (!string.IsNullOrEmpty(query.ResourceId))
+            entries = entries.Where(entry => entry.ResourceId == query.ResourceId);
+        if (query.FromUtc is { } fromUtc)
+        {
+            var start = fromUtc.UtcDateTime;
+            entries = entries.Where(entry => entry.OccurredAtUtc >= start);
+        }
+        if (query.ToUtc is { } toUtc)
+        {
+            var end = toUtc.UtcDateTime;
+            entries = entries.Where(entry => entry.OccurredAtUtc < end);
+        }
+        if (query.Cursor is not null)
+        {
+            var (time, id) = ReadCursor(query.Cursor);
+            entries = entries.Where(entry => entry.OccurredAtUtc < time
+                || (entry.OccurredAtUtc == time && entry.Id < id));
         }
 
-        var boundedLimit = Math.Clamp(limit, 1, 250);
-
-        return await database.ManagementAuditEvents
-            .AsNoTracking()
+        var limit = Math.Clamp(query.Limit, 1, 250);
+        var rows = await entries
             .OrderByDescending(entry => entry.OccurredAtUtc)
             .ThenByDescending(entry => entry.Id)
-            .Take(boundedLimit)
+            .Take(limit + 1)
             .Select(entry => new ManagementAuditRecord(
                 entry.Id,
                 entry.OccurredAtUtc,
@@ -47,6 +79,25 @@ internal sealed class ManagementAuditService(
                 entry.CorrelationId,
                 entry.AuthenticationMethods, entry.BeforeJson, entry.AfterJson))
             .ToArrayAsync(cancellationToken);
+        var items = rows.Take(limit).ToArray();
+        var nextCursor = rows.Length > limit
+            ? FormattableString.Invariant($"{items[^1].OccurredAtUtc.Ticks}:{items[^1].Id}")
+            : null;
+        return new ManagementAuditPage(items, nextCursor);
+    }
+
+    // A cursor is a position, not a credential. Every page rechecks AuditRead;
+    // it carries only time/id, never profile values or authorization state.
+    private static (DateTime Time, long Id) ReadCursor(string cursor)
+    {
+        var parts = cursor.Length <= 40 ? cursor.Split(':') : [];
+        if (parts.Length != 2
+            || !long.TryParse(parts[0], NumberStyles.None, CultureInfo.InvariantCulture, out var ticks)
+            || !long.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out var id)
+            || ticks < DateTime.MinValue.Ticks || ticks > DateTime.MaxValue.Ticks || id <= 0)
+            throw new ManagementValidationException("audit_cursor_invalid",
+                "Use the nextCursor returned by the preceding page.", "cursor");
+        return (new DateTime(ticks, DateTimeKind.Utc), id);
     }
 }
 
