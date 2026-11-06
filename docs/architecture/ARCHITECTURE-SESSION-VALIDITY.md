@@ -243,3 +243,21 @@ writer/provider clock independence or a production skew bound. Reliable host
 time remains necessary; an arbitrary clock-skew tolerance would also change the
 session-expiry policy and is not introduced here.
 [Clock-offset evidence](../activities/202611061432-session-replica-clock-offsets.md).
+
+## Acknowledged Redis replica promotion
+
+An additional opt-in local Redis case starts a primary and replica, waits for
+the replica's synchronization event, writes a ticket and verifies replication.
+After revoking the durable row and cache entry, it sends a barrier SET followed
+by WAIT on the same dedicated primary connection. A reply of one acknowledged
+replica proves that the replication stream includes the preceding deletion.
+
+The test then stops the owned primary, explicitly promotes the replica with
+REPLICAOF NO ONE and connects a fresh client to that endpoint. Neither retrieval
+nor late renewal restores the revoked session; a fresh sign-in can write/read
+the promoted cache. Both processes and temporary directories are disposed.
+
+This verifies acknowledged data preservation through explicit promotion, not
+automatic Sentinel/Cluster election, client endpoint discovery, split-brain,
+unacknowledged-write loss or Galera failover.
+[Promotion evidence](../activities/202611061437-session-redis-replica-promotion.md).

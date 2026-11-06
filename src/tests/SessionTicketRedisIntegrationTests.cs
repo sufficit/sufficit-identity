@@ -126,6 +126,70 @@ public sealed class SessionTicketRedisIntegrationTests
         Assert.NotNull(await recovered.RetrieveAsync(freshSid));
     }
 
+    [LocalRedisFact]
+    [Trait("Category", "RedisIntegration")]
+    public async Task Acknowledged_revocation_survives_primary_loss_and_replica_promotion()
+    {
+        using var primary = new LocalRedis();
+        using var replica = new LocalRedis();
+        await primary.StartAsync();
+        await replica.StartAsync(primary.Port);
+        using var connection = new Microsoft.Data.Sqlite.SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync();
+        var services = new ServiceCollection();
+        services.AddDbContextFactory<AppDbContext>(options =>
+        {
+            options.UseSqlite(connection);
+            options.UseOpenIddict();
+        });
+        using var databaseServices = services.BuildServiceProvider();
+        var factory = databaseServices.GetRequiredService<IDbContextFactory<AppDbContext>>();
+        await using (var db = await factory.CreateDbContextAsync())
+            await db.Database.EnsureCreatedAsync();
+        var repository = new OidcUserSessionRepository(factory);
+        using var primaryServices = CacheServices(primary.Port);
+        using var replicaServices = CacheServices(replica.Port);
+        var primaryCache = primaryServices.GetRequiredService<IDistributedCache>();
+        var replicaCache = replicaServices.GetRequiredService<IDistributedCache>();
+        var protection = new EphemeralDataProtectionProvider();
+        OidcUserSessionTicketStore Store(IDistributedCache cache) => new(repository, protection,
+            cache, new HttpContextAccessor(), new SufficitIdentityOptions(),
+            TimeProvider.System, NullLogger<OidcUserSessionTicketStore>.Instance);
+        var original = Store(primaryCache);
+        var ticket = new AuthenticationTicket(new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim("sub", "test-user"), new Claim("sid", "promoted-session")], "test")),
+            new AuthenticationProperties { ExpiresUtc = DateTimeOffset.UtcNow.AddHours(1) }, "test");
+        var sid = await original.StoreAsync(ticket);
+        // SET follows the ticket mutation in the primary stream; WAIT on the same
+        // connection confirms that its replication offset has reached the replica.
+        Assert.Equal(new[] { "+OK", ":1" },
+            await primary.CommandsAsync("SET rehearsal-barrier created", "WAIT 1 5000"));
+        Assert.NotNull(await replicaCache.GetAsync(Key(sid)));
+
+        await original.RemoveAsync(sid);
+        Assert.Null(await repository.FindAsync(sid, default));
+        Assert.Equal(new[] { "+OK", ":1" },
+            await primary.CommandsAsync("SET rehearsal-barrier revoked", "WAIT 1 5000"));
+        primary.Stop();
+        Assert.Equal(new[] { "+OK" }, await replica.CommandsAsync("REPLICAOF NO ONE"));
+
+        // A fresh client explicitly connects to the promoted endpoint; this is
+        // promotion evidence, not an automatic client-discovery/election test.
+        using var promotedServices = CacheServices(replica.Port);
+        var promotedCache = promotedServices.GetRequiredService<IDistributedCache>();
+        Assert.Null(await promotedCache.GetAsync(Key(sid)));
+        var promoted = Store(promotedCache);
+        Assert.Null(await promoted.RetrieveAsync(sid));
+        await promoted.RenewAsync(sid, ticket);
+        Assert.Null(await promotedCache.GetAsync(Key(sid)));
+        var identity = ticket.Principal.Identities.First();
+        identity.RemoveClaim(ticket.Principal.FindFirst("sid")!);
+        identity.AddClaim(new Claim("sid", "after-promotion"));
+        var newSid = await promoted.StoreAsync(ticket);
+        Assert.NotNull(await promotedCache.GetAsync(Key(newSid)));
+        Assert.NotNull(await promoted.RetrieveAsync(newSid));
+    }
+
     private static string Key(string sid) => "identity:oidc-session:v1:" + sid;
 
     internal static ServiceProvider CacheServices(int port)
@@ -150,7 +214,7 @@ public sealed class SessionTicketRedisIntegrationTests
             Directory.CreateDirectory(_directory);
         }
 
-        public async Task StartAsync()
+        public async Task StartAsync(int? primaryPort = null)
         {
             var start = new ProcessStartInfo(Environment.GetEnvironmentVariable("SUFFICIT_TEST_REDIS_EXECUTABLE")!)
             {
@@ -159,12 +223,22 @@ public sealed class SessionTicketRedisIntegrationTests
             foreach (var argument in new[] { "--bind", "127.0.0.1", "--port", Port.ToString(),
                 "--save", "", "--appendonly", "no", "--dir", _directory, "--daemonize", "no" })
                 start.ArgumentList.Add(argument);
+            if (primaryPort is { } upstream)
+            {
+                foreach (var argument in new[] { "--replicaof", "127.0.0.1", upstream.ToString() })
+                    start.ArgumentList.Add(argument);
+            }
+            start.ArgumentList.Add("--repl-diskless-sync-delay");
+            start.ArgumentList.Add("0");
+            var synchronized = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             _process = new Process { StartInfo = start, EnableRaisingEvents = true };
             _process.OutputDataReceived += (_, e) =>
             {
                 if (e.Data?.Contains("Ready to accept connections", StringComparison.OrdinalIgnoreCase) == true)
                     ready.TrySetResult();
+                if (e.Data?.Contains("sync: Finished with success", StringComparison.OrdinalIgnoreCase) == true)
+                    synchronized.TrySetResult();
             };
             _process.Exited += (_, _) => ready.TrySetException(
                 new InvalidOperationException("Disposable Redis exited before readiness."));
@@ -172,6 +246,27 @@ public sealed class SessionTicketRedisIntegrationTests
             _process.BeginOutputReadLine();
             _process.BeginErrorReadLine();
             await ready.Task.WaitAsync(TimeSpan.FromSeconds(15));
+            if (primaryPort.HasValue)
+                await synchronized.Task.WaitAsync(TimeSpan.FromSeconds(30));
+        }
+
+        public async Task<string[]> CommandsAsync(params string[] commands)
+        {
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            using var client = new TcpClient();
+            await client.ConnectAsync(IPAddress.Loopback, Port, timeout.Token);
+            await using var stream = client.GetStream();
+            using var reader = new StreamReader(stream, System.Text.Encoding.ASCII, leaveOpen: true);
+            var responses = new List<string>();
+            // Commands are fixed test-fixture literals with simple/integer replies.
+            // Keep this connection for SET + WAIT: WAIT tracks this client's offset.
+            foreach (var command in commands)
+            {
+                await stream.WriteAsync(System.Text.Encoding.ASCII.GetBytes(command + "\r\n"), timeout.Token);
+                responses.Add(await reader.ReadLineAsync(timeout.Token)
+                    ?? throw new IOException("Redis closed the command stream."));
+            }
+            return responses.ToArray();
         }
 
         public async Task SaveSnapshotAsync()
