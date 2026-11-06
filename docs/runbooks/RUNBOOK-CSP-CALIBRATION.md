@@ -40,6 +40,38 @@ curl -sk https://localhost:5001/account/login -o /dev/null -D - | grep -i conten
 
 Expected: `Content-Security-Policy-Report-Only: ...; report-uri /security/csp-report`
 
+## Bounded production calibration window
+
+Before starting a non-Development host in Report-Only mode, configure
+`Sufficit:Identity:Security:Acknowledgements:csp-report-only` with a nonblank
+`Owner`, a nonblank `Reason`, and `ExpiresAtUtc` strictly later than the startup
+check's UTC time. Choose an explicit deadline for the actual calibration window:
+
+```jsonc
+"Security": {
+  "Acknowledgements": {
+    "csp-report-only": {
+      "Owner": "identity-operations",
+      "Reason": "Calibrate the browser policy before enforcement",
+      "ExpiresAtUtc": "<replace with the approved ISO-8601 UTC deadline>"
+    }
+  }
+}
+```
+
+The placeholder must be replaced before loading the configuration. The old
+`Csp:AcknowledgeReportOnly` boolean is ignored, including when
+`Security:AllowLegacyBooleanAcknowledgements=true`. Migrate boolean-only
+configurations before upgrading: otherwise non-Development startup is refused.
+An expired or incomplete structured exception also refuses startup; the boolean
+cannot revive it. Other unresolved posture findings must be resolved separately.
+
+Expiry does not flip browser headers or terminate a running process. This is a
+startup gate, not a runtime enforcement timer. Complete calibration before the
+deadline, set `Csp:ReportOnly=false` and remove the `csp-report-only`
+acknowledgement together; leaving the entry after enforcement creates a stale
+acknowledgement finding that also blocks startup.
+
 ## Step 2 — Exercise every UI page
 
 Open a browser and navigate through **every** interactive page. For each page, check:
@@ -142,8 +174,9 @@ Do one final full UI exercise to confirm nothing breaks under enforcement.
 If enforcement breaks the UI in production:
 
 1. Set `Csp.ReportOnly` back to `true` in `appsettings.json`
-2. Restart the STS
-3. Collect the new violations and repeat Step 3-4
+2. Configure a new bounded `Security:Acknowledgements:csp-report-only` entry as above
+3. Restart the STS
+4. Collect the new violations and repeat Step 3-4
 
 ## What NOT to do
 

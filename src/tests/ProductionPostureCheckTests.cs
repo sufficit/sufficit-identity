@@ -249,6 +249,48 @@ public sealed class ProductionPostureCheckTests
             finding => finding.Id == "scim-mfa-disabled");
     }
 
+    [Theory]
+    [InlineData(null, "owner", "calibration", true)]
+    [InlineData(-1, "owner", "calibration", true)]
+    [InlineData(0, "owner", "calibration", true)]
+    [InlineData(1, "", "calibration", true)]
+    [InlineData(1, "owner", "", true)]
+    [InlineData(1, "owner", "calibration", false)]
+    public void Csp_report_only_requires_bounded_acknowledgement_even_with_legacy_bridge(
+        int? expiryMinutes, string owner, string reason, bool unresolved)
+    {
+        var root = new SufficitIdentityOptions
+        {
+            Csp = new CspOptions { ReportOnly = true, AcknowledgeReportOnly = true },
+        };
+        var contributor = new StsProductionPostureContributor(
+            root, new ConfigurationBuilder().Build());
+        var acknowledgements = new Dictionary<string, ProductionPostureAcknowledgement>();
+        if (expiryMinutes.HasValue)
+        {
+            acknowledgements["csp-report-only"] = new()
+            {
+                Owner = owner,
+                Reason = reason,
+                ExpiresAtUtc = Now.AddMinutes(expiryMinutes.Value),
+            };
+        }
+        var security = new SecurityPostureOptions
+        {
+            AllowLegacyBooleanAcknowledgements = true,
+            Acknowledgements = acknowledgements,
+        };
+        var findings = ProductionPostureCheck.Evaluate([contributor], security, Now);
+        Assert.Equal(unresolved, findings.Any(finding => finding.Id == "csp-report-only"));
+
+        if (!unresolved)
+        {
+            var afterExpiry = ProductionPostureCheck.Evaluate(
+                [contributor], security, Now.AddMinutes(1));
+            Assert.Contains(afterExpiry, finding => finding.Id == "csp-report-only");
+        }
+    }
+
     [Fact]
     public void Valid_structured_acknowledgement_suppresses_one_finding()
     {

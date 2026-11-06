@@ -1,6 +1,6 @@
 # PLAN — Authorization and security policy
 
-Status: queued; A4.1 and A4.2 completed on 2026-11-06. A2 and D1 remain pending.
+Status: queued; A4.1, A4.2 and D1.1 completed on 2026-11-06. A2 remains pending.
 
 [Index and delivery rules](PLAN-IDENTITY.md) · [Item-by-item reconciliation](../activities/202611061100-plan-reconciliation-split.md)
 
@@ -34,11 +34,10 @@ Earlier delivery records: [reader consolidation](../activities/202611061120-scim
 
 ## D1 — CSP from telemetry to enforcement
 
-AcknowledgeReportOnly remains a boolean without an expiry. Existing CSP tests do not bound that exception lifetime.
-
-Evidence: [HttpSurfaceOptions.cs](../../src/sts/Options/HttpSurfaceOptions.cs), [CspHeaderTests.cs](../../src/tests/CspHeaderTests.cs).
-
-- [ ] **D1.1 · pending** — Make the report-only rollback switch bounded: `AcknowledgeReportOnly` has no expiry (reports already strip query and userinfo)
+D1.1 is closed in the [bounded CSP calibration activity](../activities/202611061207-bounded-csp-calibration.md).
+Report-only startup exceptions require owner, reason and expiry through the
+existing posture mechanism; the legacy boolean cannot bypass expiry. Production
+calibration and configuration migration remain operational rollout actions.
 
 ## Validation required when executing
 

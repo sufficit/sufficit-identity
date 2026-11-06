@@ -86,11 +86,10 @@ public sealed class CspOptions
     public bool UseNonce { get; init; } = false;
 
     /// <summary>
-    /// Acknowledges that running CSP in <see cref="ReportOnly"/> mode in
-    /// production is a deliberate choice (e.g. during policy calibration). When
-    /// false (default), the production posture check treats report-only CSP as
-    /// an unresolved permissive default and — if fail-closed is on — blocks
-    /// startup. Set true only if you knowingly want report-only in production.
+    /// Legacy configuration key retained for binding compatibility only; it no
+    /// longer suppresses the production posture finding, even when the legacy
+    /// boolean bridge is enabled. Use Security:Acknowledgements:csp-report-only
+    /// with Owner, Reason and a future ExpiresAtUtc for bounded calibration.
     /// </summary>
     public bool AcknowledgeReportOnly { get; init; }
 

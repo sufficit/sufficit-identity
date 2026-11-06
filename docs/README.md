@@ -39,6 +39,8 @@ accounts for all 105 original items, seven closure criteria and the operational 
 
 ## Completed work (activities/)
 
+- [Bounded CSP calibration exception](activities/202611061207-bounded-csp-calibration.md) — D1.1 closure using owner, reason and expiry; legacy boolean cannot bypass expiry.
+
 - [MFA evidence and browser authorization chain](activities/202611061148-mfa-evidence-browser-chain.md) — A4.1/A4.2 closure: verified passkey issuance, normalized evidence, Chromium-to-Management/SCIM and refresh.
 
 - [Session assurance and evidence ownership](activities/202611061129-session-assurance-evidence-ownership.md) — conservative AAL and authenticated same-user renewal evidence.

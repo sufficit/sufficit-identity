@@ -43,8 +43,7 @@ public sealed class StsProductionPostureContributor(
             yield return new(
                 "csp-report-only",
                 "Content-Security-Policy is in Report-Only mode and does not block browser policy violations.",
-                "Set Sufficit:Identity:Csp:ReportOnly=false after UI calibration.",
-                options.Csp.AcknowledgeReportOnly);
+                "Set Sufficit:Identity:Csp:ReportOnly=false after UI calibration, or configure Security:Acknowledgements:csp-report-only with owner, reason and a future ExpiresAtUtc.");
         }
 
         if (!options.ExternalIdentities.RequireVerifiedEmail)
