@@ -39,6 +39,8 @@ accounts for all 105 original items, seven closure criteria and the operational 
 
 ## Completed work (activities/)
 
+- [Mixed KEK rewrap and DEK rotation race](activities/202611061234-mixed-kek-dek-race.md) — C1.2: both lease orderings, cold decrypt, version and journal invariants.
+
 - [Holder-bound DPoP subject-token exchange](activities/202611061228-dpop-subject-token-exchange.md) — B3.1: wire-token hash, request-local proof handoff and nonce/replay regressions.
 
 - [Production publication completed](activities/202611061222-production-publication.md) — legacy layout migrated atomically; release activated and verified on all three nodes.

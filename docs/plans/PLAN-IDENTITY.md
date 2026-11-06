@@ -39,7 +39,7 @@ allowlisted and access-controlled under its documented retention policy.
 | [Authorization and security policy](PLAN-AUTHORIZATION.md) | A2, A4, D1 | Verify A2 observation evidence; then scope enforcement decision |
 | [SCIM operation policy and query processing](PLAN-SCIM.md) | A3, F3 | Inventory consumers; then filter parser design |
 | [Token exchange, CIBA and dynamic registration](PLAN-PROTOCOL-ASSURANCE.md) | B3, B5, B9, F10 | B3 rollout inventory; B5 external interoperability evidence |
-| [Keys, vault rotation and encryption budget](PLAN-KEYS-VAULT.md) | C1, C2, F12 | C1 re-wrap versus data-key rotation test |
+| [Keys, vault rotation and encryption budget](PLAN-KEYS-VAULT.md) | C1, C2, F12 | C1 authority evidence; C2 lifecycle gap review |
 | [Client console lifecycle and operation](PLAN-CLIENT-CONSOLE.md) | E2, E3, E4, E6, E8 | E3 audit timeline using delivered API |
 | [Pluggable UI and remote interaction](PLAN-UI-COMPOSITION.md) | E7 | E7 phase 2 semantic endpoint contract |
 | [Runtime boundaries, sessions and migration verification](PLAN-RUNTIME-ARCHITECTURE.md) | F1, F2, F4, F5, F14 | F4 cancellation and residual fault matrix |
@@ -53,8 +53,8 @@ allowlisted and access-controlled under its documented retention policy.
 
 1. Verify the overdue A2/legacy-client calendar gates; evidence first, no automatic
    enforcement or deletion. See [production calendar](PLAN-PRODUCTION-GATES.md).
-2. C1 mixed rotation test can proceed without modifying production accounts.
-   B3 regression is delivered; its production inventory gate remains.
+2. C1 mixed rotation and B3 regressions are delivered. C1 authority separation
+   and B3 production inventory still need operational evidence.
 3. E3 console audit timeline reuses the delivered search API. E2 credential UI
    follows A2 secret-reference parity; E4 owns typed application claims.
 4. F9/F15 share one email race matrix. F6/F7 select provider/database together;

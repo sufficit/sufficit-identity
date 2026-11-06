@@ -71,6 +71,132 @@ public sealed partial class VaultTests
         Assert.Equal(3, fresh.AlreadyActive);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Rewrap_and_peer_rotation_share_the_lease_and_preserve_both_versions(bool rotationFirst)
+    {
+        using var directory = new KekDirectory();
+        var oldPath = directory.Create("race-old");
+        var newPath = directory.Create("race-new");
+        using var oldSource = Source(oldPath);
+        using var rewrapSource = Source(newPath, oldPath);
+        using var rotationSource = Source(newPath, oldPath);
+        using var newOnly = Source(newPath);
+        var connectionString = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder
+        {
+            DataSource = $"kek-dek-race-{Guid.NewGuid():N}",
+            Mode = Microsoft.Data.Sqlite.SqliteOpenMode.Memory,
+            Cache = Microsoft.Data.Sqlite.SqliteCacheMode.Shared,
+        }.ToString();
+        using var keeper = new Microsoft.Data.Sqlite.SqliteConnection(connectionString);
+        await keeper.OpenAsync();
+        var services = new ServiceCollection();
+        services.AddDbContextFactory<AppDbContext>(options =>
+        {
+            options.UseSqlite(connectionString);
+            options.UseOpenIddict();
+        });
+        using var provider = services.BuildServiceProvider();
+        var factory = provider.GetRequiredService<IDbContextFactory<AppDbContext>>();
+        await using (var db = await factory.CreateDbContextAsync())
+            await db.Database.EnsureCreatedAsync();
+        var original = await Vault(factory, oldSource).EncryptAsync("mixed-race", "before");
+        using var gate = new GatedWrapSource(rotationFirst ? rotationSource : rewrapSource);
+        var clock = new ObservedRetryTimeProvider();
+        var rewrap = (IVaultKekRewrap)new KeyVault(factory,
+            rotationFirst ? rewrapSource : gate, NullLogger<KeyVault>.Instance,
+            new VaultOptions { Enabled = true }, clock);
+        var peer = Vault(factory, rotationFirst ? gate : rotationSource);
+        const string operation = "mixed-race-operation";
+        Task<VaultKekRewrapResult>? rewrapping = null;
+        Task<KeyId>? rotating = null;
+        try
+        {
+            if (rotationFirst)
+            {
+                rotating = Task.Run(() => peer.RotateKeyAsync("mixed-race"));
+                await gate.Entered.Task.WaitAsync(TimeSpan.FromSeconds(15));
+                rewrapping = Task.Run(() => rewrap.RewrapAsync(operation, "mixed race"));
+                // This signal proves rewrap actually encountered the foreign lease.
+                await clock.RetryScheduled.Task.WaitAsync(TimeSpan.FromSeconds(15));
+                gate.Release();
+                Assert.Equal(new KeyId("mixed-race", 2), await rotating);
+            }
+            else
+            {
+                rewrapping = Task.Run(() => rewrap.RewrapAsync(operation, "mixed race"));
+                await gate.Entered.Task.WaitAsync(TimeSpan.FromSeconds(15));
+                await Assert.ThrowsAsync<KeyOperationLeaseConflictException>(() => peer.RotateKeyAsync("mixed-race"));
+                await using var during = await factory.CreateDbContextAsync();
+                Assert.Equal(1, await during.VaultKeys.CountAsync());
+                Assert.Equal(1, await during.VaultSigningKeyLocks.CountAsync());
+                Assert.False(await during.VaultSigningKeyLifecycleOperations.AnyAsync());
+                gate.Release();
+            }
+            var result = await rewrapping.WaitAsync(TimeSpan.FromSeconds(15));
+            Assert.Empty(result.Failed);
+            Assert.Equal(1, result.Rewrapped);
+            Assert.Equal(rotationFirst ? 1 : 0, result.AlreadyActive);
+            if (!rotationFirst)
+                Assert.Equal(new KeyId("mixed-race", 2), await peer.RotateKeyAsync("mixed-race"));
+
+            // Cold readers with only the new KEK cannot hide failures behind key caches.
+            var cold = Vault(factory, newOnly);
+            var after = await cold.EncryptAsync("mixed-race", "after");
+            Assert.StartsWith("v1.mixed-race:2.", after, StringComparison.Ordinal);
+            Assert.Equal("before", await cold.DecryptStringAsync(original));
+            Assert.Equal("after", await Vault(factory, newOnly).DecryptStringAsync(after));
+            await using var db = await factory.CreateDbContextAsync();
+            var rows = await db.VaultKeys.AsNoTracking().OrderBy(key => key.KeyVersion).ToArrayAsync();
+            Assert.Equal(new[] { 1, 2 }, rows.Select(key => key.KeyVersion));
+            Assert.All(rows, row => Assert.True(newOnly.IsWrappedByActiveKey(row.WrappedKey)));
+            Assert.False(await db.VaultSigningKeyLocks.AnyAsync());
+            Assert.Equal(operation, (await db.VaultSigningKeyLifecycleOperations.SingleAsync()).OperationId);
+            Assert.True((await rewrap.RewrapAsync(operation, "retry")).AlreadyCompleted);
+        }
+        finally
+        {
+            gate.Release();
+            // Finish workers before disposing connections/certificates, even on assertion failure.
+            if (rotating is not null) await rotating.WaitAsync(TimeSpan.FromSeconds(15));
+            if (rewrapping is not null) await rewrapping.WaitAsync(TimeSpan.FromSeconds(15));
+        }
+    }
+
+    private sealed class GatedWrapSource(IVaultRewrappableKeySource inner) : IVaultRewrappableKeySource, IDisposable
+    {
+        private readonly ManualResetEventSlim _release = new();
+        private int _entered;
+        public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public string KeyIdentifier => inner.KeyIdentifier;
+        public bool HasPreviousKeys => inner.HasPreviousKeys;
+        public bool IsWrappedByActiveKey(ReadOnlyMemory<byte> wrappedDek) => inner.IsWrappedByActiveKey(wrappedDek);
+        public byte[] Unwrap(ReadOnlyMemory<byte> wrappedDek) => inner.Unwrap(wrappedDek);
+        public byte[] Wrap(ReadOnlyMemory<byte> dek)
+        {
+            if (Interlocked.Exchange(ref _entered, 1) == 0)
+            {
+                Entered.TrySetResult();
+                if (!_release.Wait(TimeSpan.FromSeconds(20))) throw new TimeoutException("Concurrent test did not release wrapping.");
+            }
+            return inner.Wrap(dek);
+        }
+        public void Release() => _release.Set();
+        public void Dispose() => _release.Dispose();
+    }
+
+    private sealed class ObservedRetryTimeProvider : TimeProvider
+    {
+        public TaskCompletionSource RetryScheduled { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+        {
+            var timer = TimeProvider.System.CreateTimer(callback, state, dueTime, period);
+            RetryScheduled.TrySetResult();
+            return timer;
+        }
+    }
+
     [Fact]
     public async Task Rewrap_reports_a_key_no_configured_kek_opens_and_journals_nothing()
     {

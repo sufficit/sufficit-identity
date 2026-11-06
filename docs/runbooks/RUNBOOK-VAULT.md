@@ -80,6 +80,10 @@ porque `PreviousCertificatePaths` é aberto com ela.
 3. **Troca, nos três nós:** `CertificatePath` passa a ser a nova e a antiga vai
    para `PreviousCertificatePaths`. Reinicie um nó por vez. Chaves de dados e
    chaves do Data Protection criadas a partir daqui já saem pela nova.
+   Confirme a troca da KEK ativa em **todos** os nós antes de recifrar. O lease
+   por nome de chave coordena recifragem e rotação de DEK, mas não impede que
+   um nó ainda configurado com a KEK antiga grave novas chaves sob ela depois.
+
 4. **Recifragem, em um nó só**, com a unidade do serviço (o mesmo ambiente do
    `--verify-vault`):
 

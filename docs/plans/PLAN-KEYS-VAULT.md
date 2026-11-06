@@ -1,12 +1,12 @@
 # PLAN — Keys, vault rotation and encryption budget
 
-Status: queued; reviewed on 2026-11-06 against `a66456e`. No work item is in progress.
+Status: C1.2 completed on 2026-11-06; remaining items queued.
 
 [Index and delivery rules](PLAN-IDENTITY.md) · [Item-by-item reconciliation](../activities/202611061100-plan-reconciliation-split.md)
 
 ## Scope and order
 
-Do the re-wrap/data-key race test before new key providers. The old token-decryption certificates must stay until their recorded expiry gate is rechecked.
+The re-wrap/data-key race is tested; review remaining lifecycle gaps before new key providers. The old token-decryption certificates must stay until their recorded expiry gate is rechecked.
 
 ## Acceptance
 
@@ -17,12 +17,14 @@ a fresh production inventory. Source/tests present does not mean deployed.
 
 ## C1 — Vault production enablement and rotation
 
-Re-wrap, loss and key leases are covered separately. They do not prove the mixed re-wrap/data-key rotation race or production authority separation.
+Re-wrap, loss, leases and the mixed re-wrap/data-key rotation race are covered. Production authority separation still requires operational evidence.
 
 Evidence: [VaultTests.KekRewrap.cs](../../src/tests/VaultTests.KekRewrap.cs), [VaultSymmetricKeyLeaseTests.cs](../../src/tests/VaultSymmetricKeyLeaseTests.cs), [202610231900-vault-kek-escrow.md](../activities/202610231900-vault-kek-escrow.md).
 
 - [ ] **C1.1 · operational** — Separate database-reader authority from KEK authority in production
-- [ ] **C1.2 · pending** — Test a re-wrap racing a data-key rotation on another replica (loss, old-version decrypt and restore are covered: [`202610232000`](../activities/202610232000-vault-kek-rotation.md))
+C1.2 is closed in the [mixed KEK/DEK race activity](../activities/202611061234-mixed-kek-dek-race.md).
+Both lease orderings, persisted key versions, journal/idempotence and cold decrypt
+with only the new KEK are covered; no production implementation change was needed.
 
 ## C2 — Signing and encryption key separation
 
