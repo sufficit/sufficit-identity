@@ -223,3 +223,23 @@ or cache. The scenarios then verify successful revocation after recovery.
 This is independent from the persisted stale-cache scenario: combined tests
 restart Redis empty. They are not distributed HA, clock-skew or production HTTP
 tests. [Execution evidence](../activities/202611061355-combined-session-outage.md).
+
+## Replica clock offsets
+
+Ticket expiration is evaluated against each reader's TimeProvider, both on cache
+hits and database fallback. A fast reader can reject a ticket early and delete
+its durable row during lazy expiry. A slow reader can accept an expired ticket
+from persistence until its own UTC clock reaches that ticket's absolute expiry.
+The stored expiry is not extended; this is a disagreement about the current time.
+
+That differs from revocation after database deletion: once the shared provider
+expires the cache entry, a reader clock offset cannot recreate the missing row.
+The controlled-cache tests verify these separate cases with independent reader
+and cache clocks, without sleeps or changing host clocks.
+
+Those tests do not emulate the production Redis provider's conversion between
+absolute deadlines, local wall time and Redis TTL. They therefore do not prove
+writer/provider clock independence or a production skew bound. Reliable host
+time remains necessary; an arbitrary clock-skew tolerance would also change the
+session-expiry policy and is not introduced here.
+[Clock-offset evidence](../activities/202611061432-session-replica-clock-offsets.md).

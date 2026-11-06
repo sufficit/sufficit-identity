@@ -17,6 +17,7 @@ public sealed class SessionTicketCacheRaceTests : IDisposable
     private readonly Microsoft.Data.Sqlite.SqliteConnection _connection = new("DataSource=:memory:");
     private readonly ServiceProvider _services;
     private readonly Clock _clock = new();
+    private readonly IDataProtectionProvider _protection = new EphemeralDataProtectionProvider();
     private readonly ControlledCache _cache;
     private readonly OidcUserSessionTicketStore _writer;
     private readonly OidcUserSessionTicketStore _revoker;
@@ -37,13 +38,12 @@ public sealed class SessionTicketCacheRaceTests : IDisposable
         db.Database.EnsureCreated();
         _repository = new OidcUserSessionRepository(factory);
         _cache = new ControlledCache(_clock);
-        var protection = new EphemeralDataProtectionProvider();
         var options = new SufficitIdentityOptions
         {
             UserSessions = new() { CacheLifetimeSeconds = 5, CacheOperationTimeoutMilliseconds = 2000 },
         };
         OidcUserSessionTicketStore Store() => new(new OidcUserSessionRepository(factory),
-            protection, _cache, new HttpContextAccessor(), options, _clock,
+            _protection, _cache, new HttpContextAccessor(), options, _clock,
             NullLogger<OidcUserSessionTicketStore>.Instance);
         _writer = Store();
         _revoker = Store();
@@ -105,6 +105,73 @@ public sealed class SessionTicketCacheRaceTests : IDisposable
         Assert.Null(await _cache.GetAsync(CacheKey(sid)));
         Assert.Null(await _revoker.RetrieveAsync(sid));
     }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Fast_reader_expires_ticket_early_on_cache_hit_or_database_read(bool cacheHit)
+    {
+        var ticket = Ticket();
+        ticket.Properties.ExpiresUtc = _clock.GetUtcNow().AddSeconds(2);
+        var sid = await _writer.StoreAsync(ticket);
+        if (!cacheHit) _cache.Remove(CacheKey(sid));
+        var readerClock = new Clock();
+        readerClock.Advance(TimeSpan.FromSeconds(2));
+        var reader = Reader(readerClock);
+
+        // Real/cache time has not advanced: this is a reader-clock discrepancy.
+        Assert.True(_clock.GetUtcNow() < ticket.Properties.ExpiresUtc);
+        Assert.Null(await reader.RetrieveAsync(sid));
+        Assert.Null(await _repository.FindAsync(sid, default));
+        Assert.Null(await _cache.GetAsync(CacheKey(sid)));
+    }
+
+    [Fact]
+    public async Task Slow_reader_can_accept_database_ticket_after_cache_clock_expiration()
+    {
+        var ticket = Ticket();
+        ticket.Properties.ExpiresUtc = _clock.GetUtcNow().AddSeconds(2);
+        var sid = await _writer.StoreAsync(ticket);
+        var readerClock = new Clock();
+        var reader = Reader(readerClock);
+        _clock.Advance(TimeSpan.FromSeconds(2));
+        // Reader is now two seconds behind the shared cache clock.
+        Assert.Null(await _cache.GetAsync(CacheKey(sid)));
+        Assert.NotNull(await reader.RetrieveAsync(sid));
+        Assert.NotNull(await _repository.FindAsync(sid, default));
+        // Absolute expiry is not changed or extended by the slow reader.
+        Assert.Equal(ticket.Properties.ExpiresUtc.Value.UtcDateTime,
+            (await _repository.FindAsync(sid, default))!.ExpiresUtc);
+
+        readerClock.Advance(TimeSpan.FromSeconds(2));
+        _clock.Advance(TimeSpan.FromSeconds(2));
+        Assert.Null(await reader.RetrieveAsync(sid));
+        Assert.Null(await _repository.FindAsync(sid, default));
+    }
+
+    [Theory]
+    [InlineData(-2)]
+    [InlineData(2)]
+    public async Task Reader_clock_offset_does_not_extend_shared_cache_deadline_after_revocation(int offset)
+    {
+        var sid = await _writer.StoreAsync(Ticket());
+        var readerClock = new Clock();
+        readerClock.Advance(TimeSpan.FromSeconds(offset));
+        var reader = Reader(readerClock);
+        _cache.FailRemove = true;
+        await _revoker.RemoveAsync(sid);
+        Assert.NotNull(await reader.RetrieveAsync(sid));
+        _clock.Advance(TimeSpan.FromSeconds(5));
+        readerClock.Advance(TimeSpan.FromSeconds(5));
+        Assert.Null(await reader.RetrieveAsync(sid));
+        Assert.Null(await _repository.FindAsync(sid, default));
+    }
+
+    private OidcUserSessionTicketStore Reader(TimeProvider clock) => new(_repository,
+        _protection, _cache, new HttpContextAccessor(), new SufficitIdentityOptions
+        {
+            UserSessions = new() { CacheLifetimeSeconds = 5 },
+        }, clock, NullLogger<OidcUserSessionTicketStore>.Instance);
 
     private AuthenticationTicket Ticket() => new(new ClaimsPrincipal(new ClaimsIdentity(
         [new Claim("sub", "test-user"), new Claim("sid", "session")], "test")),
