@@ -89,8 +89,9 @@ a related type, test name or historical deployment exists.
 
 1. **completed** — Verify deployment inventory, active revisions, CSP startup
    compatibility and local SUI source; identify schema changes before activation.
-2. **in progress** — Build the release with local SUI and prepare the same verified
-   archive on all three nodes using the cluster wrappers.
+2. **blocked** — Release built successfully with local SUI; cluster preparation
+   is blocked by the legacy active-directory layout. Archive evidence is recorded
+   in the [publication activity](../activities/202611061218-publication-preflight.md).
 3. **pending** — Activate sequentially with rollback, verify revision/readiness/
    certificate/JWKS uniformity, record activity and push delivery documentation.
 

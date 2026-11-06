@@ -39,6 +39,8 @@ accounts for all 105 original items, seven closure criteria and the operational 
 
 ## Completed work (activities/)
 
+- [Publication preflight and prepared artifact](activities/202611061218-publication-preflight.md) — build complete; production activation blocked by legacy directory layout.
+
 - [Client lifecycle vault references](activities/202611061213-client-lifecycle-secret-references.md) — A2.4: rotation/additional credentials, vault authorization and bounded plaintext compatibility.
 
 - [Bounded CSP calibration exception](activities/202611061207-bounded-csp-calibration.md) — D1.1 closure using owner, reason and expiry; legacy boolean cannot bypass expiry.
