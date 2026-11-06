@@ -41,6 +41,7 @@ internal sealed class ClientCredentialRegistry(
     IClientCredentialSecretHasher credentialSecretHasher,
     IConfiguration configuration,
     ManagementOperationGuard guard,
+    IManagementClientSecretReferenceResolver secretReferences,
     ILogger<ClientCredentialRegistry> logger)
 {
     public async Task<ManagementClientCredentialsOverview> GetCredentialsAsync(
@@ -119,11 +120,14 @@ internal sealed class ClientCredentialRegistry(
             await EnsureClientIsManuallyManagedAsync(application, cancellationToken);
 
             var label = ClientCredentialPolicy.ValidateCredentialLabel(command.Label);
+            ClientCredentialPolicy.ValidateSecretSource(command.Generate, command.ClientSecret, command.SecretReference);
             var generated = command.Generate;
             var oneTimeSecret = generated
                 ? WebEncoders.Base64UrlEncode(
                     RandomNumberGenerator.GetBytes(ClientCredentialPolicy.GeneratedClientSecretBytes))
-                : ClientCredentialPolicy.ValidateReplacementClientSecret(command.ClientSecret);
+                : ClientCredentialPolicy.ValidateReplacementClientSecret(command.SecretReference is null
+                    ? command.ClientSecret
+                    : await secretReferences.ResolveAsync(command.SecretReference, context, cancellationToken));
             var now = DateTime.UtcNow;
             var notBeforeUtc = command.NotBeforeUtc?.UtcDateTime;
             var expiresAtUtc = command.ExpiresAtUtc?.UtcDateTime;
@@ -153,11 +157,16 @@ internal sealed class ClientCredentialRegistry(
                 && notBeforeUtc is null && expiresAtUtc is null;
             if (createdAsPrimary)
             {
-                entity.ClientType = OpenIddictConstants.ClientTypes.Confidential;
-                await applications.UpdateAsync(
-                    application,
-                    oneTimeSecret,
-                    cancellationToken);
+                var descriptor = new OpenIddictApplicationDescriptor();
+                await applications.PopulateAsync(descriptor, application, cancellationToken);
+                descriptor.ClientType = OpenIddictConstants.ClientTypes.Confidential;
+                descriptor.ClientSecret = oneTimeSecret;
+                if (command.SecretReference is not null)
+                    descriptor.Properties[ClientManagementService.SecretReferenceProperty] =
+                        System.Text.Json.JsonSerializer.SerializeToElement(command.SecretReference.ToString());
+                else
+                    descriptor.Properties.Remove(ClientManagementService.SecretReferenceProperty);
+                await applications.UpdateAsync(application, descriptor, cancellationToken);
             }
             else
             {
@@ -227,7 +236,7 @@ internal sealed class ClientCredentialRegistry(
 
             return new CreateManagementClientCredentialResult(
                 overview,
-                oneTimeSecret,
+                command.SecretReference is null ? oneTimeSecret : string.Empty,
                 generated,
                 createdAsPrimary);
         }

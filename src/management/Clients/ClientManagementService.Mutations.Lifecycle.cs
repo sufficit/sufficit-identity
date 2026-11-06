@@ -197,23 +197,28 @@ internal sealed partial class ClientManagementService
                     "This client is managed by a declarative manifest. Change the secret reference in the manifest and apply provisioning.");
             }
 
+            ClientCredentialPolicy.ValidateSecretSource(command.Generate, command.ClientSecret, command.SecretReference);
             var generated = command.Generate;
             var oneTimeSecret = generated
                 ? WebEncoders.Base64UrlEncode(
                     RandomNumberGenerator.GetBytes(ClientCredentialPolicy.GeneratedClientSecretBytes))
-                : ClientCredentialPolicy.ValidateReplacementClientSecret(command.ClientSecret);
+                : ClientCredentialPolicy.ValidateReplacementClientSecret(command.SecretReference is null
+                    ? command.ClientSecret
+                    : await secretReferences.ResolveAsync(command.SecretReference, context, cancellationToken));
 
             await using var transaction = await database.Database
                 .BeginTransactionAsync(cancellationToken);
 
             // OpenIddict accepts a shared secret only for confidential clients.
-            // Mutating the tracked entity here lets the manager validate and
-            // persist the type transition together with the newly hashed secret.
-            entity.ClientType = OpenIddictConstants.ClientTypes.Confidential;
-            await applications.UpdateAsync(
-                application,
-                oneTimeSecret,
-                cancellationToken);
+            // The descriptor lets the manager persist the type transition,
+            // provenance and newly hashed secret together.
+            descriptor.ClientType = OpenIddictConstants.ClientTypes.Confidential;
+            descriptor.ClientSecret = oneTimeSecret;
+            if (command.SecretReference is not null)
+                SetSecretReference(descriptor.Properties, command.SecretReference);
+            else
+                descriptor.Properties.Remove(SecretReferenceProperty);
+            await applications.UpdateAsync(application, descriptor, cancellationToken);
 
             var detail = await ToDetailAsync(application, cancellationToken);
             database.ManagementAuditEvents.Add(ManagementAuditEventFactory.Create(
@@ -228,7 +233,7 @@ internal sealed partial class ClientManagementService
 
             return new RotateManagementClientSecretResult(
                 detail,
-                oneTimeSecret,
+                command.SecretReference is null ? oneTimeSecret : string.Empty,
                 generated);
         }
         catch (ManagementValidationException exception)

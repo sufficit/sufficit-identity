@@ -1,6 +1,6 @@
 # PLAN — Authorization and security policy
 
-Status: queued; A4.1, A4.2 and D1.1 completed on 2026-11-06. A2 remains pending.
+Status: operational gates pending; A2.4, A4.1, A4.2 and D1.1 completed on 2026-11-06.
 
 [Index and delivery rules](PLAN-IDENTITY.md) · [Item-by-item reconciliation](../activities/202611061100-plan-reconciliation-split.md)
 
@@ -17,14 +17,14 @@ a fresh production inventory. Source/tests present does not mean deployed.
 
 ## A2 — Operator-aware client scope and secret authorization
 
-Create/update support secretReference; rotate/additional-credential commands still accept plaintext. The October deployment record does not prove that the November enforcement gate ran.
+Create/update, rotation and additional credentials support secretReference. Plaintext HTTP compatibility is audited and expires. The October deployment record does not prove that the November enforcement gate ran.
 
 Evidence: [ClientManagementContracts.cs](../../src/application/Sufficit.Identity.Application.Abstractions/Management/Clients/ClientManagementContracts.cs), [ClientSecretReferenceTests.cs](../../src/tests/ClientSecretReferenceTests.cs), [202610281800-operator-scope-grant.md](../activities/202610281800-operator-scope-grant.md).
 
 - [ ] **A2.1 · operational** — Reconcile the observed denials (audit `reasonCode like 'scope_grant_%'`, `operationOutcome = 'observed'`), then set `ClientScopeGrants:Mode=Enforce` on the three nodes
 - [ ] **A2.2 · operational** — Migrate plaintext-secret callers (`client_secret_plaintext_deprecated`) to `secretReference` and remove the adapter after `ClientSecrets:PlaintextExpiresAtUtc`
 - [ ] **A2.3 · operational** — Inventory the real production manifests and adopt existing managed clients explicitly before enabling client-definition enforcement
-- [ ] **A2.4 · pending** — Bring `/secret/rotate` and `/credentials` onto `secretReference`; they still accept an operator-supplied secret
+A2.4 is closed in the [client lifecycle reference activity](../activities/202611061213-client-lifecycle-secret-references.md).
 
 ## A4 — Step-up enforcement and one MFA evidence policy
 

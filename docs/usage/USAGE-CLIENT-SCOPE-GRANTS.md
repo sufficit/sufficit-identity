@@ -109,9 +109,33 @@ o modo.
   `client_secret_reference_requires_confidential` (edição de aplicação
   pública), `vault_required` (Vault desligado) e `403` sem capacidade de Vault.
 
+### Rotação e credenciais adicionais
+
+`POST /api/clients/{clientId}/secret/rotate` e
+`POST /api/clients/{clientId}/credentials` também aceitam `secretReference`.
+Envie `generate=false` explicitamente (o padrão continua `true`), sem
+`clientSecret`, e a versão atual (`expectedVersion` na rotação;
+`expectedClientVersion` e `label` na criação de credencial).
+
+A resolução usa a mesma autorização e auditoria do Vault. Referência ausente,
+expirada ou sem autorização não substitui a credencial atual. Referência junto
+com `generate=true` ou `clientSecret` retorna `client_secret_source_ambiguous`.
+`oneTimeSecret` retorna uma string vazia quando a origem é uma referência; o
+valor resolvido não volta ao consumidor. Segredos gerados continuam retornando
+uma única vez. A referência é resolvida no momento da operação: mudanças futuras
+no Vault exigem uma nova rotação ou criação, não sincronizam automaticamente.
+
+A rotação substitui o segredo primário; uma credencial adicional preserva os
+segredos existentes e mantém sua própria validade/revogação. A origem do segredo
+primário é atualizada ao usar referência e removida quando ele é substituído por
+um segredo gerado ou texto claro. As credenciais adicionais armazenam somente
+hash e metadados de ciclo de vida; não alteram a origem do segredo primário.
+Clientes gerenciados por manifesto continuam recusando essas mutações manuais.
+
 ### `clientSecret` em texto claro (obsoleto)
 
-O campo `clientSecret` do `POST /api/clients` continua aceito como adaptador
+O campo `clientSecret` do `POST /api/clients`, da rotação e da criação de
+credenciais adicionais continua aceito como adaptador
 de compatibilidade, até `Management:ClientSecrets:PlaintextExpiresAtUtc`
 (padrão `2027-04-30T00:00:00Z`):
 
@@ -123,5 +147,6 @@ de compatibilidade, até `Management:ClientSecrets:PlaintextExpiresAtUtc`
 
 Para achar quem ainda usa o adaptador: linhas com
 `reasonCode = 'client_secret_plaintext_deprecated'`. O segredo gerado pelo
-servidor no assistente de criação e a rotação (`/secret/rotate`) não passam
-por este adaptador.
+servidor no assistente, na rotação e na criação de credenciais não passa
+por este adaptador. As operações de rotação/criação de credencial registram
+o aviso com a capacidade `identity.clients.update`.

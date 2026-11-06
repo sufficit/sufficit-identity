@@ -40,7 +40,8 @@ public sealed class PlaintextClientSecretAdapter(
         string? clientId,
         bool hasSecretReference,
         ManagementRequestContext context,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string capability = ManagementCapabilities.ClientsCreate)
     {
         if (hasSecretReference)
         {
@@ -67,7 +68,7 @@ public sealed class PlaintextClientSecretAdapter(
         {
             var audit = ManagementAuditEventFactory.Create(
                 context,
-                ManagementCapabilities.ClientsCreate,
+                capability,
                 new ManagementResource(ManagementResourceTypes.Client, clientId),
                 ManagementAuthorizationDecision.Allowed(),
                 expired ? "rejected" : "warning",

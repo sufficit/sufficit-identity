@@ -161,7 +161,7 @@ public sealed class ClientsController(
 
     /// <summary>
     /// Adds a shared credential. The plaintext is returned exactly once in
-    /// this response and is never persisted or logged.
+    /// this response and is never persisted or logged. Referenced values are never returned.
     /// </summary>
     [HttpPost("{clientId}/credentials")]
     public async Task<ActionResult<CreateManagementClientCredentialResult>>
@@ -170,6 +170,16 @@ public sealed class ClientsController(
             [FromBody] CreateClientCredentialRequest request,
             CancellationToken cancellationToken)
     {
+        if (!string.IsNullOrEmpty(request.ClientSecret))
+        {
+            await plaintextSecrets.AcceptAsync(
+                clientId,
+                request.SecretReference is not null,
+                RequestContext(),
+                cancellationToken,
+                ManagementCapabilities.ClientsUpdate);
+        }
+
         var result = await clients.CreateCredentialAsync(
             new CreateManagementClientCredentialCommand(
                 clientId,
@@ -178,7 +188,8 @@ public sealed class ClientsController(
                 request.Generate,
                 request.ClientSecret,
                 request.NotBeforeUtc,
-                request.ExpiresAtUtc),
+                request.ExpiresAtUtc,
+                request.SecretReference?.ToCommand()),
             RequestContext(),
             cancellationToken);
 
@@ -253,7 +264,7 @@ public sealed class ClientsController(
 
     /// <summary>
     /// Replaces the shared credential of a manually managed client. The
-    /// plaintext value is returned only in this response.
+    /// plaintext value is returned only in this response; referenced values are never returned.
     /// </summary>
     [HttpPost("{clientId}/secret/rotate")]
     public async Task<ActionResult<RotateManagementClientSecretResult>> RotateSecret(
@@ -261,12 +272,23 @@ public sealed class ClientsController(
         [FromBody] RotateClientSecretRequest request,
         CancellationToken cancellationToken)
     {
+        if (!string.IsNullOrEmpty(request.ClientSecret))
+        {
+            await plaintextSecrets.AcceptAsync(
+                clientId,
+                request.SecretReference is not null,
+                RequestContext(),
+                cancellationToken,
+                ManagementCapabilities.ClientsUpdate);
+        }
+
         var result = await clients.RotateSecretAsync(
             new RotateManagementClientSecretCommand(
                 clientId,
                 request.ExpectedVersion,
                 request.Generate,
-                request.ClientSecret),
+                request.ClientSecret,
+                request.SecretReference?.ToCommand()),
             RequestContext(),
             cancellationToken);
 
@@ -480,6 +502,7 @@ public sealed class RotateClientSecretRequest
 {
     public string? ExpectedVersion { get; set; }
     public bool Generate { get; set; } = true;
+    public ClientSecretReferenceRequest? SecretReference { get; set; }
     public string? ClientSecret { get; set; }
 }
 
@@ -509,6 +532,7 @@ public sealed class CreateClientCredentialRequest
     public string? ExpectedClientVersion { get; set; }
     public string? Label { get; set; }
     public bool Generate { get; set; } = true;
+    public ClientSecretReferenceRequest? SecretReference { get; set; }
     public string? ClientSecret { get; set; }
     public DateTimeOffset? NotBeforeUtc { get; set; }
     public DateTimeOffset? ExpiresAtUtc { get; set; }

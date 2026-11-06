@@ -307,8 +307,10 @@ public sealed record RotateManagementClientSecretCommand(
     string ClientId,
     string? ExpectedVersion,
     bool Generate,
-    string? ClientSecret = null);
+    string? ClientSecret = null,
+    ManagementClientSecretReference? SecretReference = null);
 
+/// <summary>OneTimeSecret is empty when a vault reference supplied the value.</summary>
 public sealed record RotateManagementClientSecretResult(
     ManagementClientDetail Client,
     string OneTimeSecret,
@@ -356,8 +358,10 @@ public sealed record CreateManagementClientCredentialCommand(
     bool Generate,
     string? ClientSecret = null,
     DateTimeOffset? NotBeforeUtc = null,
-    DateTimeOffset? ExpiresAtUtc = null);
+    DateTimeOffset? ExpiresAtUtc = null,
+    ManagementClientSecretReference? SecretReference = null);
 
+/// <summary>OneTimeSecret is empty when a vault reference supplied the value.</summary>
 public sealed record CreateManagementClientCredentialResult(
     ManagementClientCredentialsOverview Overview,
     string OneTimeSecret,

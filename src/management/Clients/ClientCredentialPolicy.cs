@@ -22,6 +22,18 @@ namespace Sufficit.Identity.Management.Clients;
 /// </remarks>
 internal static class ClientCredentialPolicy
 {
+    internal static void ValidateSecretSource(
+        bool generate, string? plaintext, ManagementClientSecretReference? reference)
+    {
+        if (reference is not null && (generate || !string.IsNullOrEmpty(plaintext)))
+        {
+            throw new ManagementValidationException(
+                PlaintextClientSecretAdapter.AmbiguousReasonCode,
+                "Send secretReference with generate=false and without clientSecret.",
+                "secretReference");
+        }
+    }
+
     // A client secret is machine-generated and machine-stored, so there is no
     // usability argument for tolerating a short one.
     internal const int MinimumClientSecretLength = 32;

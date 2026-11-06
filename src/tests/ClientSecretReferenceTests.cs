@@ -225,6 +225,145 @@ public sealed class ClientSecretReferenceTests
                 .GetProperty("reasonCode").GetString());
     }
 
+    [Theory]
+    [InlineData("secret/rotate")]
+    [InlineData("credentials")]
+    public async Task Lifecycle_reference_is_resolved_without_returning_the_vault_value(string endpoint)
+    {
+        using var factory = new ManagementTestFactory(enablePersonalVaultTestSurface: true);
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        using var http = factory.CreateClient();
+        const string original = "original-lifecycle-client-secret-0123456789";
+        const string replacement = "vault-lifecycle-replacement-secret-0123456789";
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<IVaultNamedSecretStore>().PutAsync(
+                "clients/lifecycle/secret", replacement, "test-operator");
+        }
+        var clientId = $"lifecycle-ref-{Guid.NewGuid():N}";
+        using var created = await http.PostAsJsonAsync("/api/clients", new CreateClientRequest
+        {
+            ClientId = clientId,
+            ClientSecret = original,
+            GrantTypes = [Permissions.GrantTypes.ClientCredentials],
+        });
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var detail = (await created.Content.ReadFromJsonAsync<ManagementClientDetail>())!;
+        using var response = await http.PostAsJsonAsync($"/api/clients/{clientId}/{endpoint}", new
+        {
+            expectedVersion = detail.Version,
+            expectedClientVersion = detail.Version,
+            label = "vault-reference",
+            generate = false,
+            secretReference = new { name = "clients/lifecycle/secret" },
+        });
+        Assert.Equal(endpoint == "credentials" ? HttpStatusCode.Created : HttpStatusCode.OK, response.StatusCode);
+        var json = await response.Content.ReadAsStringAsync();
+        Assert.DoesNotContain(replacement, json, StringComparison.Ordinal);
+        Assert.Equal(HttpStatusCode.OK, await TokenAsync(http, clientId, replacement));
+        Assert.Equal(endpoint == "credentials", await TokenAsync(http, clientId, original) == HttpStatusCode.OK);
+        await using var auditScope = factory.Services.CreateAsyncScope();
+        var rows = await auditScope.ServiceProvider.GetRequiredService<AppDbContext>()
+            .ManagementAuditEvents.AsNoTracking().Where(row => row.ResourceId == clientId).ToArrayAsync();
+        Assert.All(rows, row => Assert.DoesNotContain(replacement, JsonSerializer.Serialize(row), StringComparison.Ordinal));
+        var current = (await http.GetFromJsonAsync<ManagementClientDetail>($"/api/clients/{clientId}"))!;
+        foreach (var invalid in new[]
+        {
+            (Generate: true, Secret: (string?)null, Name: "clients/lifecycle/secret", Reason: "client_secret_source_ambiguous"),
+            (Generate: false, Secret: (string?)original, Name: "clients/lifecycle/secret", Reason: "client_secret_source_ambiguous"),
+            (Generate: false, Secret: (string?)null, Name: "clients/lifecycle/missing", Reason: "client_secret_reference_not_found"),
+        })
+        {
+            using var rejected = await http.PostAsJsonAsync($"/api/clients/{clientId}/{endpoint}", new
+            {
+                expectedVersion = current.Version, expectedClientVersion = current.Version,
+                label = "rejected-reference", generate = invalid.Generate, clientSecret = invalid.Secret,
+                secretReference = new { name = invalid.Name },
+            });
+            Assert.Equal(HttpStatusCode.BadRequest, rejected.StatusCode);
+            Assert.Equal(invalid.Reason, (await rejected.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("reasonCode").GetString());
+            Assert.Equal(HttpStatusCode.OK, await TokenAsync(http, clientId, replacement));
+        }
+        if (endpoint == "secret/rotate")
+        {
+            var manager = auditScope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
+            var application = (await manager.FindByClientIdAsync(clientId))!;
+            Assert.Equal("global:clients/lifecycle/secret",
+                (await manager.GetPropertiesAsync(application))["identity:management:secret-reference"].GetString());
+        }
+    }
+
+    [Theory]
+    [InlineData("secret/rotate")]
+    [InlineData("credentials")]
+    public async Task Lifecycle_plaintext_adapter_expires_but_generation_remains_available(string endpoint)
+    {
+        using var factory = new ManagementTestFactory(extraConfiguration: new Dictionary<string, string?>
+        {
+            ["Sufficit:Identity:Management:ClientSecrets:PlaintextExpiresAtUtc"] = "2020-01-01T00:00:00Z",
+        });
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        using var http = factory.CreateClient();
+        var clientId = $"lifecycle-expired-{Guid.NewGuid():N}";
+        using var created = await http.PostAsJsonAsync("/api/clients", new CreateClientRequest { ClientId = clientId });
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var detail = (await created.Content.ReadFromJsonAsync<ManagementClientDetail>())!;
+        using var rejected = await http.PostAsJsonAsync($"/api/clients/{clientId}/{endpoint}", new
+        {
+            expectedVersion = detail.Version, expectedClientVersion = detail.Version,
+            label = "expired-plaintext", generate = false, clientSecret = "expired-plaintext-secret-0123456789",
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, rejected.StatusCode);
+        Assert.Equal(PlaintextClientSecretAdapter.ExpiredReasonCode,
+            (await rejected.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("reasonCode").GetString());
+        using var generated = await http.PostAsJsonAsync($"/api/clients/{clientId}/{endpoint}", new
+        {
+            expectedVersion = detail.Version, expectedClientVersion = detail.Version,
+            label = "generated-after-expiry", generate = true,
+        });
+        Assert.Equal(endpoint == "credentials" ? HttpStatusCode.Created : HttpStatusCode.OK, generated.StatusCode);
+        await using var scope = factory.Services.CreateAsyncScope();
+        var audit = await scope.ServiceProvider.GetRequiredService<AppDbContext>().ManagementAuditEvents
+            .SingleAsync(row => row.ResourceId == clientId && row.ReasonCode == PlaintextClientSecretAdapter.ExpiredReasonCode);
+        Assert.Equal(ManagementCapabilities.ClientsUpdate, audit.Capability);
+    }
+
+    [Theory]
+    [InlineData("secret/rotate")]
+    [InlineData("credentials")]
+    public async Task Lifecycle_reference_requires_vault_authority(string endpoint)
+    {
+        using var factory = new ManagementTestFactory(enablePersonalVaultTestSurface: true);
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        using var host = factory.WithWebHostBuilder(builder => builder.ConfigureServices(services =>
+            services.Replace(ServiceDescriptor.Singleton<IManagementAuthorizationEvaluator>(new ClientOnlyAuthorization()))));
+        using var http = host.CreateClient();
+        var clientId = $"lifecycle-denied-{Guid.NewGuid():N}";
+        using var created = await http.PostAsJsonAsync("/api/clients", new CreateClientRequest { ClientId = clientId });
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var detail = (await created.Content.ReadFromJsonAsync<ManagementClientDetail>())!;
+        using var rejected = await http.PostAsJsonAsync($"/api/clients/{clientId}/{endpoint}", new
+        {
+            expectedVersion = detail.Version, expectedClientVersion = detail.Version,
+            label = "forbidden-reference", generate = false,
+            secretReference = new { name = "clients/lifecycle/secret" },
+        });
+        Assert.Equal(HttpStatusCode.Forbidden, rejected.StatusCode);
+        var unchanged = (await http.GetFromJsonAsync<ManagementClientDetail>($"/api/clients/{clientId}"))!;
+        Assert.Equal(detail.Version, unchanged.Version);
+        Assert.Equal(detail.Type, unchanged.Type);
+    }
+
+    private sealed class ClientOnlyAuthorization : IManagementAuthorizationEvaluator
+    {
+        public ValueTask<ManagementAuthorizationDecision> EvaluateAsync(
+            System.Security.Claims.ClaimsPrincipal principal, string capability,
+            ManagementResource resource, CancellationToken cancellationToken = default) =>
+            ValueTask.FromResult(capability == ManagementCapabilities.SecretsResolve
+                ? ManagementAuthorizationDecision.Denied("vault_resolution_denied")
+                : ManagementAuthorizationDecision.Allowed());
+    }
+
     private sealed class FakeReferences(Dictionary<string, string> values)
         : IManagementClientSecretReferenceResolver
     {
