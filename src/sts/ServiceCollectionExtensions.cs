@@ -359,6 +359,8 @@ public static partial class ServiceCollectionExtensions
                 mysql => mysql.MigrationsHistoryTable(IdentityDatabaseSchema.MigrationsHistoryTable));
             db.UseOpenIddict();
             db.AddInterceptors(connectionTelemetry, commandTelemetry);
+            if (options.Database.RequireGaleraCausalReads)
+                db.AddInterceptors(new DatabaseCausalReadInterceptor());
         });
         services.AddHostedService<DatabaseHealthWatchdog>();
         services.AddHostedService<Security.AuthenticationSecretMigrationWorker>();

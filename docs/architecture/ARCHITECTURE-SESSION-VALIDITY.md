@@ -338,3 +338,41 @@ sockets before testing new notification delivery, because partial byte loss can
 break NATS framing. This models silent notification loss, not kernel packet
 retransmission or production heartbeat timings.
 [Silent-loss evidence](../activities/202611061823-session-silent-notification-loss.md).
+
+## Optional Galera causal reads
+
+`Sufficit:Identity:Database:RequireGaleraCausalReads` defaults to `false` for
+compatibility with standalone/non-Galera deployments. Enabling it registers the
+production connection interceptor on the HTTP host's shared AppDbContext factory
+and the maintenance-only token-pruning context. It adds bit 1 to each logical EF
+connection's existing session `wsrep_sync_wait`, preserving the other bits. Both
+synchronous and asynchronous opens run setup, including pooled logical opens.
+It requires session wsrep enabled and dirty reads disabled; setup errors and
+cancellation propagate rather than allowing an unchecked query. Setup has a
+10-second command timeout. Subsequent query waits retain the database/provider
+and command timeout settings; this option does not promise a recovery deadline.
+
+Example configuration for a verified Galera deployment:
+
+```json
+{
+  "Sufficit": {
+    "Identity": {
+      "Database": { "RequireGaleraCausalReads": true }
+    }
+  }
+}
+```
+
+This changes only application sessions, never GLOBAL variables. It is not
+applied to raw SQL connections outside those EF registrations. EF-based health
+checks and the database watchdog using the shared context also run setup.
+Activation must verify selected-node compatibility and read latency, then observe
+connection/setup failures and readiness. A rollback to `false` restores inherited
+session behavior on new application connections and also restores its stale-read
+risk. Restart/recreate the application scope when changing this startup option.
+
+The barrier protects database reads; a cache hit bypasses it. Existing stale
+cache entries, notifications, TTL bounds and race handling remain separate.
+No production activation is implied by merging the option.
+[Implementation and validation](../activities/202611062018-galera-causal-read-policy.md).

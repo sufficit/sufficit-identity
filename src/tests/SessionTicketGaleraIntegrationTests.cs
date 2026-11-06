@@ -50,7 +50,7 @@ public sealed class SessionTicketGaleraIntegrationTests
                 {
                     o.UseMySql(connection, new MariaDbServerVersion(new Version(10, 4, 34)));
                     o.UseOpenIddict();
-                    if (barrier) o.AddInterceptors(new TestOnlySelectBarrier());
+                    if (barrier) o.AddInterceptors(new Sufficit.Identity.STS.Diagnostics.DatabaseCausalReadInterceptor());
                 });
                 services.AddDistributedMemoryCache();
                 return services.BuildServiceProvider();
@@ -73,6 +73,14 @@ public sealed class SessionTicketGaleraIntegrationTests
             var ticket = new AuthenticationTicket(new ClaimsPrincipal(new ClaimsIdentity(
                 [new Claim("sub", "galera-user"), new Claim("sid", "galera-session")], "test")),
                 new AuthenticationProperties { ExpiresUtc = DateTimeOffset.UtcNow.AddHours(1) }, "test");
+            // Exercise the synchronous EF open path as well as repository async opens.
+            using (var sync = causalServices.GetRequiredService<IDbContextFactory<AppDbContext>>().CreateDbContext())
+            {
+                sync.Database.OpenConnection();
+                using var check = sync.Database.GetDbConnection().CreateCommand();
+                check.CommandText = "SELECT @@SESSION.wsrep_sync_wait";
+                Assert.Equal(15, Convert.ToInt32(check.ExecuteScalar()));
+            }
             var sid = await writer.StoreAsync(ticket);
             Assert.NotNull(await Repository(causalServices).FindAsync(sid, default));
             await Execute(blocker, "SET SESSION wsrep_sync_wait=0; SET GLOBAL wsrep_desync=ON; FLUSH TABLES WITH READ LOCK;");
@@ -107,15 +115,4 @@ public sealed class SessionTicketGaleraIntegrationTests
         await command.ExecuteNonQueryAsync();
     }
 
-    // Test-only comparison; no production policy is installed by this fixture.
-    private sealed class TestOnlySelectBarrier : DbConnectionInterceptor
-    {
-        public override async Task ConnectionOpenedAsync(DbConnection connection, ConnectionEndEventData eventData,
-            CancellationToken cancellationToken = default)
-        {
-            await using var command = connection.CreateCommand();
-            command.CommandText = "SET SESSION wsrep_sync_wait = @@SESSION.wsrep_sync_wait | 1";
-            await command.ExecuteNonQueryAsync(cancellationToken);
-        }
-    }
 }

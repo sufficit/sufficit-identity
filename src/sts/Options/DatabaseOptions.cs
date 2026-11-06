@@ -21,6 +21,14 @@ namespace Sufficit.Identity.STS;
 public sealed class DatabaseOptions
 {
     /// <summary>
+    /// Opt in for Galera deployments: add the causal READ bit to every application
+    /// EF connection's wsrep_sync_wait setting. Requires wsrep enabled. Setup
+    /// failures abort connection use; no global server setting is changed.
+    /// Already cached tickets still follow the configured cache lifetime.
+    /// </summary>
+    public bool RequireGaleraCausalReads { get; init; }
+
+    /// <summary>
     /// Transport contract for the database connection. Compatibility keeps
     /// existing rolling deployments unchanged; production can select
     /// <c>RequireVerifiedTls</c> or the explicit <c>PrivateSocket</c>

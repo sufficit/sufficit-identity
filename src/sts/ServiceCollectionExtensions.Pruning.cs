@@ -21,6 +21,8 @@ public static partial class ServiceCollectionExtensions
         {
             db.UseMySql(configured, MariaDbServerVersion.AutoDetect(configured));
             db.UseOpenIddict();
+            if (options.Database.RequireGaleraCausalReads)
+                db.AddInterceptors(new Diagnostics.DatabaseCausalReadInterceptor());
         });
         services.AddOpenIddict().AddCore(core =>
         {
