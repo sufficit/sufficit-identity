@@ -39,6 +39,8 @@ accounts for all 105 original items, seven closure criteria and the operational 
 
 ## Completed work (activities/)
 
+- [Shared Management options](activities/202611061115-shared-management-options.md) — STS and Management use one configuration contract (F2.2).
+
 - [Focused plan reconciliation](activities/202611061100-plan-reconciliation-split.md) — reviewed backlog, removed completed/duplicate work and preserved evidence for every item.
 
 - [Profile audit history](activities/202611061049-profile-audit-history.md) — changed profile fields and restricted, paginated history search.

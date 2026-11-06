@@ -1,6 +1,6 @@
 # PLAN — Runtime boundaries, sessions and migration verification
 
-Status: queued; reviewed on 2026-11-06 against `a66456e`. No work item is in progress.
+Status: queued; F2.2 completed on 2026-11-06. Other work items remain pending.
 
 [Index and delivery rules](PLAN-IDENTITY.md) · [Item-by-item reconciliation](../activities/202611061100-plan-reconciliation-split.md)
 
@@ -25,12 +25,11 @@ Evidence: [ProtocolFeature.cs](../../src/sts/Features/ProtocolFeature.cs), [StsP
 
 ## F2 — One management operation executor
 
-The shared guard exists; operation wrappers remain repeated and both ManagementOptions definitions still exist.
+The shared guard exists; operation wrappers remain repeated. STS and Management now use the same application-abstractions options contract; see the [F2.2 activity](../activities/202611061115-shared-management-options.md).
 
-Evidence: [ManagementOperationGuard.cs](../../src/management/Audit/ManagementOperationGuard.cs), [ManagementOptions.cs](../../src/sts/Options/ManagementOptions.cs), [ManagementOptions.cs](../../src/application/Sufficit.Identity.Application.Abstractions/Management/ManagementOptions.cs).
+Evidence: [ManagementOperationGuard.cs](../../src/management/Audit/ManagementOperationGuard.cs), [ManagementOptions.cs](../../src/application/Sufficit.Identity.Application.Abstractions/Management/ManagementOptions.cs).
 
 - [ ] **F2.1 · pending** — Replace the `DemandAsync`/`TryWriteAuditAsync` pair repeated across the remaining management services with a `ManagementOperationExecutor`
-- [ ] **F2.2 · pending** — Remove the duplicated `ManagementOptions` (STS × Abstractions)
 
 ## F4 — Sessions off the per-request write path
 

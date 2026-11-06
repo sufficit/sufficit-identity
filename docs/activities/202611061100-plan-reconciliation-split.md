@@ -139,7 +139,7 @@ IProtocolFeature has configuration/discovery hooks but no posture contributor ho
 
 The shared guard exists; operation wrappers remain repeated and both ManagementOptions definitions still exist.
 
-[ManagementOperationGuard.cs](../../src/management/Audit/ManagementOperationGuard.cs), [ManagementOptions.cs](../../src/sts/Options/ManagementOptions.cs), [ManagementOptions.cs](../../src/application/Sufficit.Identity.Application.Abstractions/Management/ManagementOptions.cs).
+[ManagementOperationGuard.cs](../../src/management/Audit/ManagementOperationGuard.cs), [former STS ManagementOptions](https://github.com/sufficit/sufficit-identity/blob/a66456e/src/sts/Options/ManagementOptions.cs), [ManagementOptions.cs](../../src/application/Sufficit.Identity.Application.Abstractions/Management/ManagementOptions.cs).
 
 ### F3
 

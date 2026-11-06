@@ -91,6 +91,18 @@ application-facing contracts must remain neutral enough to replace those
 adapters in the future. Their replacement is an architectural provision, not
 part of the current implementation phase.
 
+## Shared Management configuration
+
+`Sufficit.Identity.Management.ManagementOptions` in Application.Abstractions is
+also the type of `SufficitIdentityOptions.Management`. Both root STS binding and
+direct Management options binding read `Sufficit:Identity:Management`; keys and
+defaults are shared, including avatar origins used by CSP. The two bindings do
+not imply a shared object instance or automatic synchronization of runtime overrides.
+
+The former `Sufficit.Identity.STS.ManagementOptions` type was removed. Source
+consumers that named it must use the Management namespace and rebuild; deployed
+configuration files need no migration. See the [consolidation activity](../activities/202611061115-shared-management-options.md).
+
 ## Why consolidation was selected
 
 The former split had a bidirectional repository dependency: the Server

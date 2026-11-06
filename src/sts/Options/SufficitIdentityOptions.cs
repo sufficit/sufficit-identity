@@ -1,3 +1,4 @@
+using Sufficit.Identity.Management;
 using Sufficit.Identity.Application.Security;
 
 namespace Sufficit.Identity.STS;
