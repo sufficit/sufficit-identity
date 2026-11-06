@@ -220,9 +220,17 @@ fail until MariaDB returns. A failed revocation leaves its durable row intact;
 the caller must retry after recovery. No uncommitted sign-in appears in storage
 or cache. The scenarios then verify successful revocation after recovery.
 
-This is independent from the persisted stale-cache scenario: combined tests
-restart Redis empty. They are not distributed HA, clock-skew or production HTTP
-tests. [Execution evidence](../activities/202611061355-combined-session-outage.md).
+Those two combined recovery-order cases restart Redis empty. They are not
+distributed HA, clock-skew or production HTTP tests. [Execution evidence](../activities/202611061355-combined-session-outage.md).
+
+A further combined case restores a pre-revocation RDB snapshot while MariaDB is
+unavailable, after confirming that durable revocation committed. The restored
+ticket is accepted only within its original cache deadline. Failed renewal and
+repeated reads do not extend that deadline; after expiry reads surface database
+unavailability. When MariaDB returns, renewal cannot recreate the revoked row,
+and a fresh sign-in works. This records bounded stale acceptance, not immediate
+revocation across snapshot restoration.
+[Restored-cache/database-outage evidence](../activities/202611061910-restored-cache-database-outage.md).
 
 ## Replica clock offsets
 

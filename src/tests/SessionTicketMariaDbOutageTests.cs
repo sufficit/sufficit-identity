@@ -14,7 +14,7 @@ using Xunit;
 
 namespace Sufficit.Identity.Tests;
 
-public sealed class SessionTicketMariaDbOutageTests
+public sealed partial class SessionTicketMariaDbOutageTests
 {
     public sealed class LocalMariaDbFactAttribute : FactAttribute
     {

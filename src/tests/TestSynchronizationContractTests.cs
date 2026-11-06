@@ -40,6 +40,8 @@ public sealed class TestSynchronizationContractTests
     private static readonly Dictionary<string, (int Count, string Reason)> Justified =
         new(StringComparer.Ordinal)
         {
+            ["SessionTicketMariaDbOutageTests.PersistedCache.cs"] =
+                (1, "Waits for the original real Redis TTL while MariaDB is offline; not background-work synchronization."),
             ["SessionTicketCancellationTests.cs"] =
                 (2, "Infinite delays block until explicit cancellation; no elapsed-time assertion."),
             ["SessionTicketRedisIntegrationTests.cs"] =
