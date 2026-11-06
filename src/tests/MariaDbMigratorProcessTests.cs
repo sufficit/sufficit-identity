@@ -62,7 +62,8 @@ public sealed class MariaDbMigratorProcessTests
         finally { Directory.Delete(directory, recursive: true); }
     }
 
-    private static Process Start(string directory, string certificate, string connection)
+    internal static Process Start(string directory, string certificate, string connection,
+        string? assemblyPath = null, bool migrateOnly = true, DataReceivedEventHandler? output = null)
     {
         var start = new ProcessStartInfo("dotnet")
         {
@@ -85,11 +86,20 @@ public sealed class MariaDbMigratorProcessTests
         start.Environment["Sufficit__Identity__Database__AllowedDatabaseNames__0"] = "session_test";
         start.Environment["Sufficit__Identity__Certificates__SigningPath"] = certificate;
         start.Environment["Sufficit__Identity__Certificates__EncryptionPath"] = certificate;
-        start.ArgumentList.Add(typeof(HostBootstrap).Assembly.Location);
+        start.Environment["ASPNETCORE_URLS"] = "http://127.0.0.1:0";
+        start.ArgumentList.Add(assemblyPath ?? typeof(HostBootstrap).Assembly.Location);
         start.ArgumentList.Add("--contentRoot");
         start.ArgumentList.Add(directory);
-        start.ArgumentList.Add("--migrate-only");
-        return Process.Start(start) ?? throw new InvalidOperationException("Could not launch disposable migrator.");
+        if (migrateOnly) start.ArgumentList.Add("--migrate-only");
+        var process = new Process { StartInfo = start };
+        if (output is not null) process.OutputDataReceived += output;
+        try
+        {
+            if (!process.Start()) throw new InvalidOperationException("Could not launch disposable host.");
+            if (output is not null) process.BeginOutputReadLine();
+            return process;
+        }
+        catch { process.Dispose(); throw; }
     }
 
     private static void Verify(int exitCode, string output, string error)

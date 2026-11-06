@@ -339,3 +339,9 @@ also verifies unchanged synthetic identity, role, claim, key and session records
 through failure and repair, including password-hash verification. Key XML and
 session bytes in that fixture test storage preservation only. Old-binary
 compatibility and broader data/volume recovery require separate rehearsal evidence.
+
+The [historical-host rehearsal](../activities/202611061555-historical-host-schema-compatibility.md)
+checks an unchanged binary built from before `AddTokenMaintenance`: it starts
+against the current schema and serves HTTP readiness without altering migration
+history. This is a startup compatibility check, not authorization to deploy that
+historical release or proof of authenticated flow compatibility.
