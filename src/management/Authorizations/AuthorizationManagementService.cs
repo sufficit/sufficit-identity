@@ -12,9 +12,9 @@ namespace Sufficit.Identity.Management.Authorizations;
 
 internal sealed class AuthorizationManagementService(
     AppDbContext database,
+    ManagementOperationExecutor operations,
     IOpenIddictAuthorizationManager authorizationManager,
     IOpenIddictTokenManager tokenManager,
-    IManagementAuthorizationEvaluator authorization,
     ILogger<AuthorizationManagementService> logger)
     : IAuthorizationManagementService
 {
@@ -212,24 +212,12 @@ internal sealed class AuthorizationManagementService(
             context.CorrelationId);
     }
 
-    private async Task<ManagementAuthorizationDecision> DemandAsync(
+    private Task<ManagementAuthorizationDecision> DemandAsync(
         ManagementRequestContext context,
         string capability,
         ManagementResource resource,
-        CancellationToken cancellationToken)
-    {
-        var decision = await authorization.EvaluateAsync(
-            context.Operator,
-            capability,
-            resource,
-            cancellationToken);
-        if (!decision.IsAllowed)
-        {
-            throw new ManagementAccessException(decision);
-        }
-
-        return decision;
-    }
+        CancellationToken cancellationToken) =>
+        operations.DemandAsync(context, capability, resource, cancellationToken, auditDenial: false);
 
     private static IReadOnlyList<string> ParseScopes(string? value)
     {

@@ -174,6 +174,7 @@ public static class ServiceCollectionExtensions
         // ManagementOperationGuard for why the audit choice stays explicit).
         services.AddMemoryCache();
         services.TryAddScoped<ManagementOperationGuard>();
+        services.TryAddScoped<ManagementOperationExecutor>();
         services.TryAddScoped<ClientCredentialRegistry>();
         services.TryAddScoped<IClientManagementService, ClientManagementService>();
         services.TryAddScoped<IManagementClientSecretReferenceResolver,

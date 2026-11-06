@@ -11,9 +11,8 @@ namespace Sufficit.Identity.Management.Branding;
 
 internal sealed class BrandingManagementService(
     AppDbContext database,
-    IBrandingThemeProvider activeThemeProvider,
-    IManagementAuthorizationEvaluator authorization,
-    ILogger<BrandingManagementService> logger) : IBrandingManagementService
+    ManagementOperationExecutor operations,
+    IBrandingThemeProvider activeThemeProvider) : IBrandingManagementService
 {
     public async Task<IReadOnlyList<ManagementBrandingTheme>> ListAsync(
         ManagementRequestContext context,
@@ -273,63 +272,22 @@ internal sealed class BrandingManagementService(
         activeThemeProvider.Invalidate();
     }
 
-    private async Task<ManagementAuthorizationDecision> DemandAsync(
+    private Task<ManagementAuthorizationDecision> DemandAsync(
         ManagementRequestContext context,
         string capability,
         ManagementResource resource,
-        CancellationToken cancellationToken)
-    {
-        var decision = await authorization.EvaluateAsync(
-            context.Operator,
-            capability,
-            resource,
-            cancellationToken);
+        CancellationToken cancellationToken) =>
+        operations.DemandAsync(context, capability, resource, cancellationToken, auditDenial: true);
 
-        if (decision.IsAllowed)
-        {
-            return decision;
-        }
-
-        await TryWriteAuditAsync(
-            context,
-            resource,
-            decision,
-            "denied",
-            decision.ReasonCode,
-            cancellationToken,
-            capability);
-        throw new ManagementAccessException(decision);
-    }
-
-    private async Task TryWriteAuditAsync(
+    private Task TryWriteAuditAsync(
         ManagementRequestContext context,
         ManagementResource resource,
         ManagementAuthorizationDecision decision,
         string operationOutcome,
         string? reasonCode,
         CancellationToken cancellationToken,
-        string capability = ManagementCapabilities.BrandingManage)
-    {
-        try
-        {
-            database.ManagementAuditEvents.Add(ManagementAuditEventFactory.Create(
-                context,
-                capability,
-                resource,
-                decision,
-                operationOutcome,
-                reasonCode));
-            await database.SaveChangesAsync(cancellationToken);
-        }
-        catch (Exception exception)
-        {
-            logger.LogError(
-                exception,
-                "Unable to persist branding audit event. Capability={Capability} CorrelationId={CorrelationId}",
-                capability,
-                context.CorrelationId);
-        }
-    }
+        string capability = ManagementCapabilities.BrandingManage) =>
+        operations.TryWriteAuditAsync(context, capability, resource, decision, operationOutcome, reasonCode, cancellationToken);
 
     private static ValidatedBrandingTheme Validate(
         SaveManagementBrandingThemeCommand command)

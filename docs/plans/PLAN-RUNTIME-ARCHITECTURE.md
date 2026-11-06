@@ -1,6 +1,6 @@
 # PLAN — Runtime boundaries, sessions and migration verification
 
-Status: queued; F1.1, F2.2, F4.1 and local F5.2 completed on 2026-11-06. Remaining scope below.
+Status: queued; F1.1, F2.1, F2.2, F4.1 and local F5.2 completed on 2026-11-06. Remaining scope below.
 
 [Index and delivery rules](PLAN-IDENTITY.md) · [Item-by-item reconciliation](../activities/202611061100-plan-reconciliation-split.md)
 
@@ -31,11 +31,12 @@ Evidence and validation: [feature-owned posture activity](../activities/20261106
 
 ## F2 — One management operation executor
 
-The shared guard exists; operation wrappers remain repeated. STS and Management now use the same application-abstractions options contract; see the [F2.2 activity](../activities/202611061115-shared-management-options.md).
-
-Evidence: [ManagementOperationGuard.cs](../../src/management/Audit/ManagementOperationGuard.cs), [ManagementOptions.cs](../../src/application/Sufficit.Identity.Application.Abstractions/Management/ManagementOptions.cs).
-
-- [ ] **F2.1 · pending** — Replace the `DemandAsync`/`TryWriteAuditAsync` pair repeated across the remaining management services with a `ManagementOperationExecutor`
+F2.1 is implemented by the scoped `ManagementOperationExecutor`: repeated
+capability demand and best-effort audit helpers now delegate to one implementation.
+Service-specific policies and transactional success writes retain their original
+boundaries. See the [executor activity](../activities/202611061742-management-operation-executor.md).
+STS and Management also share the application-abstractions options contract;
+see the [F2.2 activity](../activities/202611061115-shared-management-options.md).
 
 ## F4 — Sessions off the per-request write path
 

@@ -16,6 +16,7 @@ namespace Sufficit.Identity.Management.Users;
 
 internal sealed partial class UserManagementService(
     AppDbContext database,
+    ManagementOperationExecutor operations,
     UserManager<ApplicationUser> userManager,
     IManagementAuthorizationEvaluator authorization,
     IIdentityUserSessionRevoker sessionRevoker,

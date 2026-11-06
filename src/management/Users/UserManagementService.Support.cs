@@ -139,61 +139,22 @@ internal sealed partial class UserManagementService
         public IdentityResult Result { get; } = result;
     }
 
-    private async Task<ManagementAuthorizationDecision> DemandAsync(
+    private Task<ManagementAuthorizationDecision> DemandAsync(
         ManagementRequestContext context,
         string capability,
         ManagementResource resource,
-        CancellationToken cancellationToken)
-    {
-        var decision = await authorization.EvaluateAsync(
-            context.Operator,
-            capability,
-            resource,
-            cancellationToken);
-        if (decision.IsAllowed)
-        {
-            return decision;
-        }
+        CancellationToken cancellationToken) =>
+        operations.DemandAsync(context, capability, resource, cancellationToken, auditDenial: true);
 
-        await WriteAuditAsync(
-            context,
-            capability,
-            resource,
-            decision,
-            "denied",
-            decision.ReasonCode,
-            cancellationToken);
-        throw new ManagementAccessException(decision);
-    }
-
-    private async Task WriteAuditAsync(
+    private Task WriteAuditAsync(
         ManagementRequestContext context,
         string capability,
         ManagementResource resource,
         ManagementAuthorizationDecision decision,
         string operationOutcome,
         string reasonCode,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            database.ManagementAuditEvents.Add(ManagementAuditEventFactory.Create(
-                context,
-                capability,
-                resource,
-                decision,
-                operationOutcome,
-                reasonCode));
-            await database.SaveChangesAsync(cancellationToken);
-        }
-        catch (Exception exception)
-        {
-            logger.LogError(
-                exception,
-                "Unable to persist user-management audit event. CorrelationId={CorrelationId}",
-                context.CorrelationId);
-        }
-    }
+        CancellationToken cancellationToken) =>
+        operations.TryWriteAuditAsync(context, capability, resource, decision, operationOutcome, reasonCode, cancellationToken);
 
     private Task TryWriteAuditAsync(
         ManagementRequestContext context,

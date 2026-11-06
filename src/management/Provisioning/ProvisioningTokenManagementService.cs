@@ -28,6 +28,7 @@ internal interface IProvisioningTokenIssuer
 
 internal sealed class ProvisioningTokenManagementService(
     AppDbContext database,
+    ManagementOperationExecutor operations,
     IManagementAuthorizationEvaluator authorization,
     IProvisioningTokenIssuer issuer,
     IOptions<ManagementOptions> options,
@@ -180,33 +181,13 @@ internal sealed class ProvisioningTokenManagementService(
         return lifetime;
     }
 
-    private async Task TryWriteAuditAsync(
+    private Task TryWriteAuditAsync(
         ManagementRequestContext context,
         ManagementAuthorizationDecision decision,
         string operationOutcome,
         string reasonCode,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            database.ManagementAuditEvents.Add(
-                ManagementAuditEventFactory.Create(
-                    context,
-                    ManagementCapabilities.ProvisioningApply,
-                    TokenResource,
-                    decision,
-                    operationOutcome,
-                    reasonCode));
-            await database.SaveChangesAsync(cancellationToken);
-        }
-        catch (Exception exception)
-        {
-            logger.LogError(
-                exception,
-                "Unable to persist temporary provisioning-token audit event. CorrelationId={CorrelationId}",
-                context.CorrelationId);
-        }
-    }
+        CancellationToken cancellationToken) =>
+        operations.TryWriteAuditAsync(context, ManagementCapabilities.ProvisioningApply, TokenResource, decision, operationOutcome, reasonCode, cancellationToken);
 }
 
 /// <summary>

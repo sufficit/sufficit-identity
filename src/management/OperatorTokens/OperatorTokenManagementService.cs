@@ -20,6 +20,7 @@ namespace Sufficit.Identity.Management.OperatorTokens;
 
 internal sealed partial class OperatorTokenManagementService(
     AppDbContext database,
+    ManagementOperationExecutor operations,
     IOpenIddictTokenManager tokenManager,
     Sufficit.Identity.Application.Security.IPrivilegedTokenMintingService minting,
     IManagementEntitlementResolver entitlements,

@@ -12,6 +12,7 @@ namespace Sufficit.Identity.Management.Metrics;
 
 internal sealed class MetricsManagementService(
     AppDbContext database,
+    ManagementOperationExecutor operations,
     IOpenIddictApplicationManager applications,
     IManagementAuthorizationEvaluator authorization,
     IKeyVault keyVault,
@@ -185,14 +186,9 @@ internal sealed class MetricsManagementService(
         return ToContract(entity);
     }
 
-    private async Task<ManagementAuthorizationDecision> DemandAsync(
-        ManagementRequestContext context, string capability, CancellationToken cancellationToken)
-    {
-        var decision = await authorization.EvaluateAsync(
-            context.Operator, capability, MetricsResource, cancellationToken);
-        if (!decision.IsAllowed) throw new ManagementAccessException(decision);
-        return decision;
-    }
+    private Task<ManagementAuthorizationDecision> DemandAsync(
+        ManagementRequestContext context, string capability, CancellationToken cancellationToken) =>
+        operations.DemandAsync(context, capability, MetricsResource, cancellationToken, auditDenial: false);
 
     private static void Validate(SaveManagementMetricsConfiguration command)
     {

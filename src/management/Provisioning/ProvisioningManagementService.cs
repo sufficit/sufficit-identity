@@ -11,7 +11,7 @@ namespace Sufficit.Identity.Management.Provisioning;
 internal sealed class ProvisioningManagementService(
     OpenIddictManifestProvisioner provisioner,
     AppDbContext database,
-    IManagementAuthorizationEvaluator authorization,
+    ManagementOperationExecutor operations,
     IReservedScopePolicy reservedScopePolicy,
     IClientDefinitionValidator clientDefinitionValidator,
     ILogger<ProvisioningManagementService> logger,
@@ -400,30 +400,11 @@ internal sealed class ProvisioningManagementService(
         }
     }
 
-    private async Task<ManagementAuthorizationDecision> DemandAsync(
+    private Task<ManagementAuthorizationDecision> DemandAsync(
         ManagementRequestContext context,
         string capability,
-        CancellationToken cancellationToken)
-    {
-        var decision = await authorization.EvaluateAsync(
-            context.Operator,
-            capability,
-            ManifestResource,
-            cancellationToken);
-        if (decision.IsAllowed)
-        {
-            return decision;
-        }
-
-        await TryWriteAuditAsync(
-            context,
-            capability,
-            decision,
-            "denied",
-            decision.ReasonCode,
-            cancellationToken);
-        throw new ManagementAccessException(decision);
-    }
+        CancellationToken cancellationToken) =>
+        operations.DemandAsync(context, capability, ManifestResource, cancellationToken, auditDenial: true);
 
     private async Task WriteAuditAsync(
         ManagementRequestContext context,
@@ -444,31 +425,12 @@ internal sealed class ProvisioningManagementService(
         await database.SaveChangesAsync(cancellationToken);
     }
 
-    private async Task TryWriteAuditAsync(
+    private Task TryWriteAuditAsync(
         ManagementRequestContext context,
         string capability,
         ManagementAuthorizationDecision decision,
         string operationOutcome,
         string reasonCode,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            await WriteAuditAsync(
-                context,
-                capability,
-                decision,
-                operationOutcome,
-                reasonCode,
-                cancellationToken);
-        }
-        catch (Exception exception)
-        {
-            logger.LogError(
-                exception,
-                "Unable to persist provisioning audit event. Capability={Capability} CorrelationId={CorrelationId}",
-                capability,
-                context.CorrelationId);
-        }
-    }
+        CancellationToken cancellationToken) =>
+        operations.TryWriteAuditAsync(context, capability, ManifestResource, decision, operationOutcome, reasonCode, cancellationToken);
 }

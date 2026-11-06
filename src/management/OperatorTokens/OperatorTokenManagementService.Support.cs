@@ -136,35 +136,15 @@ internal sealed partial class OperatorTokenManagementService
         }
     }
 
-    private async Task TryWriteAuditAsync(
+    private Task TryWriteAuditAsync(
         ManagementRequestContext context,
         string capability,
         ManagementResource resource,
         ManagementAuthorizationDecision decision,
         string outcome,
         string reasonCode,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            database.ManagementAuditEvents.Add(
-                ManagementAuditEventFactory.Create(
-                    context,
-                    capability,
-                    resource,
-                    decision,
-                    outcome,
-                    reasonCode));
-            await database.SaveChangesAsync(cancellationToken);
-        }
-        catch (Exception exception)
-        {
-            logger.LogError(
-                exception,
-                "Unable to persist temporary operator-token audit event. CorrelationId={CorrelationId}.",
-                context.CorrelationId);
-        }
-    }
+        CancellationToken cancellationToken) =>
+        operations.TryWriteAuditAsync(context, capability, resource, decision, outcome, reasonCode, cancellationToken);
 
     private async Task RecordRejectedIssueAsync(
         ManagementRequestContext context,

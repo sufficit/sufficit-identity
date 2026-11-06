@@ -16,10 +16,10 @@ namespace Sufficit.Identity.Management.Sessions;
 
 internal sealed class SessionManagementService(
     AppDbContext database,
+    ManagementOperationExecutor operations,
     UserManager<ApplicationUser> userManager,
     IOpenIddictTokenManager tokenManager,
     IIdentityUserSessionRevoker sessionRevoker,
-    IManagementAuthorizationEvaluator authorization,
     ILogger<SessionManagementService> logger) : ISessionManagementService
 {
     public async Task<ManagementSessionPage> SearchAsync(
@@ -261,24 +261,12 @@ internal sealed class SessionManagementService(
             result.RevokedBrowserSessions);
     }
 
-    private async Task<ManagementAuthorizationDecision> DemandAsync(
+    private Task<ManagementAuthorizationDecision> DemandAsync(
         ManagementRequestContext context,
         string capability,
         ManagementResource resource,
-        CancellationToken cancellationToken)
-    {
-        var decision = await authorization.EvaluateAsync(
-            context.Operator,
-            capability,
-            resource,
-            cancellationToken);
-        if (!decision.IsAllowed)
-        {
-            throw new ManagementAccessException(decision);
-        }
-
-        return decision;
-    }
+        CancellationToken cancellationToken) =>
+        operations.DemandAsync(context, capability, resource, cancellationToken, auditDenial: false);
 
     private static string RequiredId(string? value)
     {
