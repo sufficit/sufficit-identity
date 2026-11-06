@@ -15,6 +15,16 @@ Feature-owned posture checks, one management executor/options contract, cancella
 Operational statuses describe evidence still required; historical records are not
 a fresh production inventory. Source/tests present does not mean deployed.
 
+## Active checkpoint — authorized deployment, evaluation and continuation
+
+1. **in progress** — Confirm cluster baseline, schema delta and clean local-SUI package.
+2. pending — Prepare and activate the exact release sequentially through cluster wrappers.
+3. pending — Verify node/public health and revision; record production evidence.
+4. pending — Resume the combined database/cache outage rehearsal, validate and deliver its evidence.
+
+User authorized deploy and continuation. Preserve production configuration and
+credentials; keep the previous release for rollback. Commit/push alone is not deployment.
+
 ## F1 — Posture contributors inside the feature contract
 
 IProtocolFeature has configuration/discovery hooks but no posture contributor hook; findings remain separately composed.
