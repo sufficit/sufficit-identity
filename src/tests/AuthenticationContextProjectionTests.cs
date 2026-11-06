@@ -195,6 +195,75 @@ public sealed class AuthenticationContextProjectionTests
         Assert.Equal("urn:identity:acr:loa2", destination.FindFirst("acr")?.Value);
     }
 
+    [Theory]
+    [InlineData(false, false, false, false, true)]
+    [InlineData(true, false, false, false, true)]
+    [InlineData(true, true, false, false, true)]
+    [InlineData(true, true, true, false, true)]
+    [InlineData(true, true, false, true, true)]
+    [InlineData(true, true, false, false, false)]
+    public async Task Session_evidence_is_owned_and_replaced_not_merged(
+        bool sameUser, bool persisted, bool fresh, bool expired, bool authenticated)
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(new Dictionary<string, string?>());
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        await using var scope = factory.Services.CreateAsyncScope();
+        var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var user = (await users.FindByNameAsync(TestDataSeeder.DefaultUsername))!;
+        Assert.True((await users.AddClaimsAsync(user, new[]
+        {
+            new Claim("amr", "passkey"), new Claim("amr", "mfa"),
+            new Claim("aal", "PhishingResistant"), new Claim("acr", "stored-acr"),
+            new Claim("identity:mfa_remembered", "true"), new Claim("auth_time", "42")
+        })).Succeeded);
+        if (persisted)
+        {
+            await using var db = await scope.ServiceProvider
+                .GetRequiredService<IDbContextFactory<Sufficit.Identity.Core.Data.AppDbContext>>()
+                .CreateDbContextAsync();
+            db.OidcUserSessions.Add(new OidcUserSession
+            {
+                SessionId = "owned-evidence", Subject = user.Id,
+                ExpiresUtc = expired ? DateTime.UtcNow.AddMinutes(-5) : null,
+                CreatedAtUtc = DateTime.UtcNow, LastActivityUtc = DateTime.UtcNow
+            });
+            await db.SaveChangesAsync();
+        }
+        scope.ServiceProvider.GetRequiredService<IHttpContextAccessor>().HttpContext = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(new[]
+            {
+                new Claim(ClaimTypes.NameIdentifier, sameUser ? user.Id : "other-user"),
+                new Claim("sid", "owned-evidence"), new Claim("amr", "pwd mfa"),
+                new Claim("identity:mfa_remembered", "true"), new Claim("auth_time", "123456")
+            }, authenticated ? "Test" : null))
+        };
+        if (fresh)
+            scope.ServiceProvider.GetRequiredService<IAuthenticationContextAccessor>().Set(
+                new AuthenticationContextEvidence(new[] { "pwd", "otp", "mfa" },
+                    DateTimeOffset.FromUnixTimeSeconds(234567), "urn:identity:acr:loa2"));
+        var principal = await scope.ServiceProvider
+            .GetRequiredService<IUserClaimsPrincipalFactory<ApplicationUser>>().CreateAsync(user);
+        var retained = sameUser && persisted && !expired && authenticated;
+        Assert.DoesNotContain(principal.FindAll("amr"), c => c.Value == "passkey");
+        Assert.Equal(fresh || retained ? "Loa2" : "Loa1", principal.FindFirst("aal")?.Value);
+        Assert.Equal(fresh || retained ? "urn:identity:acr:loa2" : "urn:identity:acr:loa1",
+            principal.FindFirst("acr")?.Value);
+        Assert.Equal(retained && !fresh,
+            Sufficit.Identity.Application.Security.MfaEvidencePolicy.IsSecondFactorRemembered(principal));
+        if (fresh || retained)
+            Assert.Equal(fresh ? "234567" : "123456", principal.FindFirst("auth_time")?.Value);
+        else
+        {
+            Assert.Empty(principal.FindAll("amr"));
+            Assert.NotEqual("123456", principal.FindFirst("auth_time")?.Value);
+        }
+        var token = new ClaimsIdentity();
+        scope.ServiceProvider.GetRequiredService<IAuthenticationContextProjector>().Project(principal, token);
+        Assert.Equal(principal.FindFirst("acr")?.Value, token.FindFirst("acr")?.Value);
+        Assert.Equal(principal.FindFirst("auth_time")?.Value, token.FindFirst("auth_time")?.Value);
+    }
+
     [Fact]
     public async Task Session_factory_without_sign_in_evidence_spells_the_resolved_level()
     {

@@ -1,6 +1,6 @@
 # PLAN — Authorization and security policy
 
-Status: queued; A4.1 single-factor MFA refusal completed on 2026-11-06; assurance/projection audit remains.
+Status: queued; A4.1 assurance derivation/session ownership completed on 2026-11-06; issuance and existing-token audit remains.
 
 [Index and delivery rules](PLAN-IDENTITY.md) · [Item-by-item reconciliation](../activities/202611061100-plan-reconciliation-split.md)
 
@@ -32,7 +32,7 @@ STS and SCIM now delegate evidence reading to MfaEvidencePolicy; see the [SCIM c
 
 Evidence: [ScimServiceCollectionExtensions.cs](../../src/scim/ScimServiceCollectionExtensions.cs), [MfaEvidence.cs](../../src/sts/Security/MfaEvidence.cs), [CredentialMutationSecurityTests.cs](../../src/tests/CredentialMutationSecurityTests.cs).
 
-- [ ] **A4.1 · partial** — Reader consolidation and single-factor MFA refusal are complete ([activity](../activities/202611061124-single-factor-mfa-refusal.md)). Continue the amr-writer audit through cookie/token projection and AAL/ACR: AmrBasedAssuranceLevelResolver maps possession methods to the strongest level, and passkeys emit hwk without hardware/software distinction. Review issuance order and renewal of evidence/remembered markers with integration regressions. Preserve remembered-MFA versus fresh credential-minting requirements.
+- [ ] **A4.1 · partial** — Reader consolidation, single-factor refusal and conservative assurance/session ownership are complete ([activity](../activities/202611061129-session-assurance-evidence-ownership.md)). Finish the writer audit: passkeys still emit hwk without hardware/software distinction; verify when passkey authentication evidence is set relative to cookie issuance. Review existing cookies/refresh tokens and direct AAL/ACR consumers (including AuthorizationReauthenticationPolicy.CurrentAssuranceLevel) rather than assuming the corrected factory retroactively repairs issued evidence. Preserve remembered-MFA versus fresh credential-minting requirements.
 - [ ] **A4.2 · partial** — Complete a browser-to-Management/SCIM MFA authorization test chain. Reuse CredentialMutationSecurityTests for stale credential mutations rather than recreating its covered cases.
 
 ## D1 — CSP from telemetry to enforcement

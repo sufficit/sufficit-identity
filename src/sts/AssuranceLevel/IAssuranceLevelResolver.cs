@@ -16,58 +16,35 @@ public interface IAssuranceLevelResolver
 }
 
 /// <summary>
-/// AMR-to-AAL mapping per RFC 8176 / CAEP. The strongest factor present wins:
-/// phishing-resistant factors beat hardware-bound OTP, which beats software
-/// OTP, which beats password-only. Unknown AMRs default to the weakest level
-/// so the resolver is fail-safe (never overstates assurance).
+/// Provider assurance mapping: MFA evidence is required above Loa1. The
+/// strongest level additionally requires a WebAuthn-family method; hardware
+/// possession, biometrics or geolocation alone do not establish that level.
+/// This is a local policy, not a mapping specified by RFC 8176.
 /// </summary>
 internal sealed class AmrBasedAssuranceLevelResolver : IAssuranceLevelResolver
 {
-    private static readonly HashSet<string> PhishingResistantAmrs =
-        new(StringComparer.Ordinal) { "passkey", "fido", "webauthn", "face", "geo", "hwk" };
-    private static readonly HashSet<string> TwoFactorAmrs =
-        new(StringComparer.Ordinal) { "mfa", "otp", "totp", "sms" };
+    private static readonly HashSet<string> WebAuthnMethods =
+        new(StringComparer.Ordinal) { "passkey", "fido", "webauthn" };
 
     public CaepAssuranceLevel Resolve(ClaimsPrincipal principal)
     {
         ArgumentNullException.ThrowIfNull(principal);
-
-        // Fast path: the session already carries an `aal` claim stamped by the
-        // principal factory. This avoids re-deriving on every request.
-        if (principal.FindFirst("aal")?.Value is { } aalString
-            && Enum.TryParse<CaepAssuranceLevel>(aalString, ignoreCase: false, out var stamped))
-        {
-            return stamped;
-        }
-
-        var amrs = principal.FindAll("amr")
-            .Select(claim => claim.Value)
+        var methods = principal.FindAll("amr")
+            .SelectMany(claim => claim.Value.Split(' ',
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
             .ToHashSet(StringComparer.Ordinal);
+        var derived = !MfaEvidencePolicy.HasMfaEvidence(principal)
+            ? CaepAssuranceLevel.Loa1
+            : methods.Overlaps(WebAuthnMethods)
+                ? CaepAssuranceLevel.PhishingResistant
+                : CaepAssuranceLevel.Loa2;
 
-        if (amrs.Count == 0)
-        {
-            return CaepAssuranceLevel.Loa1;
-        }
-
-        if (amrs.Overlaps(PhishingResistantAmrs))
-        {
-            return CaepAssuranceLevel.PhishingResistant;
-        }
-
-        if (amrs.Overlaps(TwoFactorAmrs))
-        {
-            // Hardware-bound OTP (hwk already caught above) → Loa3; software
-            // OTP/SMS → Loa2. We treat any OTP as Loa2 unless a hardware key
-            // co-occurs (covered by the phishing-resistant set above).
-            return CaepAssuranceLevel.Loa2;
-        }
-
-        if (amrs.Contains("pwd") || amrs.Contains("kba"))
-        {
-            return CaepAssuranceLevel.Loa1;
-        }
-
-        // Unknown AMR: fail safe to the weakest level.
-        return CaepAssuranceLevel.Loa1;
+        // Preserve a conservative historical stamp, but never let a stale or
+        // numeric/undefined value promote the current authentication evidence.
+        if (Enum.TryParse<CaepAssuranceLevel>(principal.FindFirst("aal")?.Value,
+                ignoreCase: false, out var stamped)
+            && Enum.IsDefined(stamped) && stamped < derived)
+            return stamped;
+        return derived;
     }
 }

@@ -351,9 +351,14 @@ public sealed partial class SharedSignalsTests
     [InlineData(new[] { "pwd" }, CaepAssuranceLevel.Loa1)]
     [InlineData(new[] { "pwd", "mfa" }, CaepAssuranceLevel.Loa2)]
     [InlineData(new[] { "pwd", "otp" }, CaepAssuranceLevel.Loa2)]
-    [InlineData(new[] { "pwd", "hwk" }, CaepAssuranceLevel.PhishingResistant)]
-    [InlineData(new[] { "passkey" }, CaepAssuranceLevel.PhishingResistant)]
-    [InlineData(new[] { "fido" }, CaepAssuranceLevel.PhishingResistant)]
+    [InlineData(new[] { "pwd", "hwk" }, CaepAssuranceLevel.Loa2)]
+    [InlineData(new[] { "passkey" }, CaepAssuranceLevel.Loa1)]
+    [InlineData(new[] { "fido" }, CaepAssuranceLevel.Loa1)]
+    [InlineData(new[] { "passkey hwk" }, CaepAssuranceLevel.Loa1)]
+    [InlineData(new[] { "passkey hwk mfa" }, CaepAssuranceLevel.PhishingResistant)]
+    [InlineData(new[] { "passkey", "hwk", "mfa" }, CaepAssuranceLevel.PhishingResistant)]
+    [InlineData(new[] { "face", "geo", "mfa" }, CaepAssuranceLevel.Loa2)]
+    [InlineData(new[] { "otp" }, CaepAssuranceLevel.Loa1)]
     [InlineData(new string[0], CaepAssuranceLevel.Loa1)]
     public async Task Amr_resolver_maps_factors_to_assurance_level(
         string[] amrs,
@@ -367,6 +372,19 @@ public sealed partial class SharedSignalsTests
 
         Assert.Equal(expected, resolver.Resolve(principal));
         await Task.CompletedTask;
+    }
+
+    [Theory]
+    [InlineData("PhishingResistant")]
+    [InlineData("999")]
+    [InlineData("Loa3")]
+    public void Stamped_assurance_cannot_exceed_current_factor_evidence(string stamp)
+    {
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(new[]
+        {
+            new Claim("amr", "passkey hwk"), new Claim("aal", stamp)
+        }, "Test"));
+        Assert.Equal(CaepAssuranceLevel.Loa1, new AmrBasedAssuranceLevelResolver().Resolve(principal));
     }
 
     [Theory]
@@ -385,7 +403,7 @@ public sealed partial class SharedSignalsTests
             new[]
             {
                 new Claim("aal", stamped.ToString()),
-                new Claim("amr", "passkey"),
+                new Claim("amr", "passkey mfa"),
             },
             authenticationType: "Test");
         var principal = new ClaimsPrincipal(identity);

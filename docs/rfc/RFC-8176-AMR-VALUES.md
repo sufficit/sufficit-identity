@@ -25,7 +25,7 @@ that already completed MFA (`src/sts/ServiceCollectionExtensions.cs:559-602`).
 | Password + TOTP | `pwd`, `otp`, `mfa` | `{prefix}loa2` |
 | Password + recovery code | `pwd`, `rc`, `mfa` | `{prefix}loa2` |
 | Passkey with user verification | `passkey`, `hwk`, `mfa` | `{prefix}loa3` |
-| Passkey without user verification (opt-in) | `passkey`, `hwk` | Sign-in evidence requests `{prefix}loa1`; fallback AAL mapping still requires review |
+| Passkey without user verification (opt-in) | `passkey`, `hwk` | `{prefix}loa1` |
 | Password grant (legacy) | `pwd` | `{prefix}loa1` |
 
 `{prefix}` is `Sufficit:Identity:AuthenticationContext:AcrPrefix`, default
@@ -51,6 +51,26 @@ not satisfy the fresh-evidence check used for credential minting. Existing token
 with only a single-method AMR must authenticate with sufficient evidence before
 using MFA-protected surfaces after this change.
 
+## Session assurance and ownership
+
+`AmrBasedAssuranceLevelResolver` derives Loa1 without MFA, Loa2 with MFA,
+and the provider's strongest level with MFA plus a WebAuthn-family method
+(`passkey`, `fido`, `webauthn`). Claims may be repeated or space-separated.
+A pre-existing AAL stamp can lower the result but cannot elevate it; undefined
+numeric enum values cannot establish assurance. This mapping is deployment policy,
+not a standardized assurance certification.
+
+`OidcSessionClaimsPrincipalFactory` removes stored account/role `amr`, `aal`,
+`acr`, `auth_time` and remembered-factor claims before setting session evidence.
+Renewal requires an authenticated principal of the same subject with a matching,
+non-expired durable session. Fresh request evidence takes precedence and replaces
+the remembered marker. The factory derives AAL afresh and maps fallback ACR from it.
+AuthenticationContextProjector copies the resulting AMR/ACR/time into token claims.
+
+Already-issued cookies and tokens are not revoked by this code change. Their
+existing evidence and the direct authorization/refresh consumers require separate
+review; these tests do not establish a production rollout or full browser ceremony.
+
 ## Gaps
 
 - **`acr` uses a deployment vocabulary, not a registered one.** The prefix is
@@ -58,9 +78,8 @@ using MFA-protected surfaces after this change.
   `http://schemas.openid.net/pape/policies/2007/06/multi-factor`; a relying
   party must be told what `loa1`–`loa3` mean.
 - Passkeys currently emit `hwk` without distinguishing software-backed from
-  hardware-backed credentials. The separate AMR-to-AAL resolver also maps
-  possession methods to its strongest level; review this against UV and
-  cookie/token projection (remaining A4.1).
+  hardware-backed credentials. Audit issuance ordering through the actual
+  passkey cookie ceremony and existing refresh-token evidence (remaining A4.1).
 - `acr_values` in the request does not select an authentication policy; only
   `max_age` and `prompt=login` force re-authentication.
 

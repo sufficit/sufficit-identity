@@ -52,7 +52,7 @@ internal sealed class OidcSessionClaimsPrincipalFactory(
         // stale, imported, or deliberately supplied by a caller. Reuse is
         // allowed only when the current principal is the same subject AND a
         // durable session row proves that sid belongs to that subject.
-        var sessionId = string.Equals(
+        var sessionId = currentPrincipal?.Identity?.IsAuthenticated == true && string.Equals(
                 currentSubject,
                 user.Id,
                 StringComparison.Ordinal)
@@ -65,13 +65,16 @@ internal sealed class OidcSessionClaimsPrincipalFactory(
                 .AsNoTracking()
                 .AnyAsync(
                     session => session.SessionId == sessionId &&
-                        session.Subject == user.Id);
+                        session.Subject == user.Id &&
+                        (session.ExpiresUtc == null || session.ExpiresUtc > timeProvider.GetUtcNow().UtcDateTime));
             if (!persisted)
             {
                 sessionId = null;
             }
         }
 
+        // Reuse authentication evidence only across this validated session.
+        var renewalPrincipal = string.IsNullOrWhiteSpace(sessionId) ? null : currentPrincipal;
         if (string.IsNullOrWhiteSpace(sessionId))
         {
             sessionId = WebEncoders.Base64UrlEncode(
@@ -80,9 +83,16 @@ internal sealed class OidcSessionClaimsPrincipalFactory(
 
         ReplaceClaim(identity, SessionIdClaimType, sessionId);
 
+        // Account/role claims are not evidence of the ceremony. Remove them
+        // before projecting trusted request evidence or this user's renewal.
+        foreach (var type in new[] { "amr", "aal", "acr", "auth_time",
+                     MfaEvidencePolicy.RememberedSecondFactorClaimType })
+            foreach (var claim in identity.FindAll(type).ToArray())
+                identity.RemoveClaim(claim);
+
         var evidence = authenticationContextAccessor.Current;
         var authenticationMethods = evidence?.AuthenticationMethods
-            ?? currentPrincipal?.FindAll(AuthenticationContextProjector.AuthenticationMethodClaimType)
+            ?? renewalPrincipal?.FindAll(AuthenticationContextProjector.AuthenticationMethodClaimType)
                 .SelectMany(claim => claim.Value.Split(
                     ' ',
                     StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
@@ -105,8 +115,8 @@ internal sealed class OidcSessionClaimsPrincipalFactory(
         // presented in this sign-in. Renewals keep the mark: the evidence only
         // exists on the request that signed in.
         var rememberedSecondFactor = evidence?.RememberedSecondFactor
-            ?? (currentPrincipal is not null
-                && MfaEvidencePolicy.IsSecondFactorRemembered(currentPrincipal));
+            ?? (renewalPrincipal is not null
+                && MfaEvidencePolicy.IsSecondFactorRemembered(renewalPrincipal));
         if (rememberedSecondFactor)
         {
             ReplaceClaim(
@@ -116,7 +126,7 @@ internal sealed class OidcSessionClaimsPrincipalFactory(
         }
 
         var authenticatedAt = evidence?.AuthenticatedAt
-            ?? ResolveAuthenticationTime(currentPrincipal)
+            ?? ResolveAuthenticationTime(renewalPrincipal)
             ?? timeProvider.GetUtcNow();
         ReplaceClaim(
             identity,
