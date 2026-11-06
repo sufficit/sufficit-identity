@@ -56,6 +56,12 @@ public static class ManagementCapabilities
     /// this cannot touch a person.
     /// </summary>
     public const string UsersSystem = "identity.users.system";
+    /// <summary>
+    /// Obtain a short-lived access token in the name of a person (token
+    /// exchange with <c>impersonated_subject</c>), to reproduce what that person
+    /// sees. Never covers administrators, managers or protected principals.
+    /// </summary>
+    public const string UsersImpersonate = "identity.users.impersonate";
     public const string ClaimsRead = "identity.claims.read";
     public const string ClaimsCreate = "identity.claims.create";
     public const string ClaimsUpdate = "identity.claims.update";
@@ -167,6 +173,7 @@ public static class ManagementCapabilities
                 UsersMfaReset,
                 UsersConfirmation,
                 UsersSystem,
+                UsersImpersonate,
                 ClaimsRead,
                 ClaimsCreate,
                 ClaimsUpdate,

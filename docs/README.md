@@ -162,6 +162,7 @@ accounts for all 105 original items, seven closure criteria and the operational 
 - [SCIM 2.0](usage/USAGE-SCIM.md)
 - [Personal tokens: scope and authorization](usage/USAGE-PERSONAL-TOKENS.md)
 - [System users](usage/USAGE-SYSTEM-USERS.md) — ordinary users without e-mail, password, external login or passkey
+- [Impersonation](usage/USAGE-IMPERSONATION.md) — staff obtain a short-lived token as a person (token exchange with `impersonated_subject`), audited, never for privileged accounts
 - [Administrative password recovery by e-mail](management/USAGE-PASSWORD-RECOVERY.md)
 - [Database migration assets](migration/README.md)
 

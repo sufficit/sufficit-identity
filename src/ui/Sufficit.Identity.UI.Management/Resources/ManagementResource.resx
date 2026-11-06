@@ -59,6 +59,8 @@
   <data name="Capability.Label.ResendConfirmation" xml:space="preserve"><value>Resend confirmation</value></data>
   <data name="Capability.identity.users.system.Title" xml:space="preserve"><value>Manage system users only</value></data>
   <data name="Capability.identity.users.system.Description" xml:space="preserve"><value>Every users action, but only on system users: create them, enable and disable them, and issue and revoke their enrollment codes. Every action is confined to system users, so a provisioning service holding only this capability can never change a person's account. Entitlements are set through the claims API with identity.claims.system.</value></data>
+  <data name="Capability.identity.users.impersonate.Title" xml:space="preserve"><value>Act as a person (impersonation)</value></data>
+  <data name="Capability.identity.users.impersonate.Description" xml:space="preserve"><value>Lets a staff member obtain a short-lived token in the name of a person, through a client allowed to request it, to reproduce exactly what that person sees. Requires a recent sign-in with a second factor; never reaches administrators, managers or protected accounts; the token names the staff member in its act claim, has no refresh token and every use is audited permanently.</value></data>
   <data name="Capability.identity.users.confirmation.Title" xml:space="preserve"><value>Resend confirmation emails</value></data>
   <data name="Capability.identity.users.confirmation.Description" xml:space="preserve"><value>Allows triggering a new account-confirmation email to any user from the console. It is an outbound mail action with individual audit records; read-only operators do not receive it, which prevents the console from being used to flood accounts with messages.</value></data>
   <data name="Capability.identity.users.recovery.Title" xml:space="preserve"><value>Send password recovery links</value></data>
@@ -2064,6 +2066,7 @@
   <data name="Posture.vault-kek-in-data-protection.Recommendation" xml:space="preserve"><value>Set Sufficit:Vault:KeySource=certificate with a dedicated certificate readable only by the service account.</value></data>
   <data name="Capability.Label.ResetMfa" xml:space="preserve"><value>Reset two-factor authentication</value></data>
   <data name="Capability.Label.SystemOnly" xml:space="preserve"><value>System users only</value></data>
+  <data name="Capability.Label.Impersonate" xml:space="preserve"><value>Act as person</value></data>
   <data name="Capability.identity.users.mfa.reset.Title" xml:space="preserve"><value>Reset user two-factor authentication</value></data>
   <data name="Capability.identity.users.mfa.reset.Description" xml:space="preserve"><value>Allows recovery of another user after verifying their identity. Requires recent MFA, revokes previous access and requires authenticator enrollment.</value></data>
   <data name="Users.MfaReset.Title" xml:space="preserve"><value>Reset two-factor authentication</value></data>

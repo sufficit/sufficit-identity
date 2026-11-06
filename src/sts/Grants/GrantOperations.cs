@@ -410,6 +410,13 @@ public sealed class GrantOperations(
                 yield return Destinations.IdentityToken;
                 yield break;
 
+            case ActClaimType:
+                // RFC 8693 §4.1: resource servers must see who acts for the
+                // subject. Explicit, so a deployment that withholds unmapped
+                // claims (IncludeUnmappedClaimsInAccessTokens=false) keeps it.
+                yield return Destinations.AccessToken;
+                yield break;
+
             case SessionIdClaimType:
                 // OIDC Front-/Back-Channel Logout session correlation. sid is
                 // an ID Token claim; it is not needed by resource servers.

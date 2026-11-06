@@ -819,6 +819,8 @@ public static partial class ServiceCollectionExtensions
         services.TryAddSingleton(tokenExchange);
         services.AddScoped<Grants.DelegatedCredentialIssuer>();
         services.AddScoped<Grants.DelegatedCredentialEvents>();
+        services.AddScoped<Grants.ImpersonationIssuer>();
+        services.AddScoped<Grants.ImpersonationEvents>();
         services.AddScoped<Grants.ISubjectTokenResolver, Grants.SubjectTokenResolver>();
         services.AddScoped<Grants.ITokenGrantHandler, Grants.TokenExchangeGrantHandler>();
         services.AddScoped<Grants.TokenGrantDispatcher>();

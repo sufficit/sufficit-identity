@@ -35,6 +35,7 @@ public static class ManagementCapabilityPresentation
             [ManagementCapabilities.UsersConfirmation] =
                 "Capability.Label.ResendConfirmation",
             [ManagementCapabilities.UsersSystem] = "Capability.Label.SystemOnly",
+            [ManagementCapabilities.UsersImpersonate] = "Capability.Label.Impersonate",
             [ManagementCapabilities.ClaimsRead] = "Capability.Label.Read",
             [ManagementCapabilities.ClaimsCreate] = "Capability.Label.Create",
             [ManagementCapabilities.ClaimsUpdate] = "Capability.Label.Update",

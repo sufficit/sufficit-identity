@@ -59,6 +59,8 @@
   <data name="Capability.Label.ResendConfirmation" xml:space="preserve"><value>Reenviar confirmação</value></data>
   <data name="Capability.identity.users.system.Title" xml:space="preserve"><value>Administrar somente usuários de sistema</value></data>
   <data name="Capability.identity.users.system.Description" xml:space="preserve"><value>Toda ação sobre usuários, mas só em usuários de sistema: criar, ativar e desativar, emitir e revogar códigos de habilitação. Toda ação fica restrita a usuários de sistema, então um serviço de provisionamento que só tem esta capacidade nunca altera a conta de uma pessoa. Entitlements são definidos pela API de claims com identity.claims.system.</value></data>
+  <data name="Capability.identity.users.impersonate.Title" xml:space="preserve"><value>Agir como uma pessoa (impersonação)</value></data>
+  <data name="Capability.identity.users.impersonate.Description" xml:space="preserve"><value>Permite que alguém da equipe obtenha um token de curta duração em nome de uma pessoa, por um cliente autorizado a pedir, para reproduzir exatamente o que essa pessoa vê. Exige login recente com segundo fator; nunca alcança administradores, gestores ou contas protegidas; o token identifica quem age na claim act, não tem refresh token e todo uso fica na auditoria para sempre.</value></data>
   <data name="Capability.identity.users.confirmation.Title" xml:space="preserve"><value>Reenviar e-mails de confirmação</value></data>
   <data name="Capability.identity.users.confirmation.Description" xml:space="preserve"><value>Permite disparar o envio de um novo e-mail de confirmação de conta para qualquer usuário a partir do console. É uma ação de e-mail de saída, auditada individualmente; operadores somente leitura não a recebem, o que impede o uso do console para bombardear contas com mensagens.</value></data>
   <data name="Capability.identity.users.recovery.Title" xml:space="preserve"><value>Enviar links de recuperação de senha</value></data>
@@ -2064,6 +2066,7 @@
   <data name="Posture.vault-kek-in-data-protection.Recommendation" xml:space="preserve"><value>Defina Sufficit:Vault:KeySource=certificate com um certificado dedicado, legível só pela conta do serviço.</value></data>
   <data name="Capability.Label.ResetMfa" xml:space="preserve"><value>Redefinir duas etapas</value></data>
   <data name="Capability.Label.SystemOnly" xml:space="preserve"><value>Somente usuários de sistema</value></data>
+  <data name="Capability.Label.Impersonate" xml:space="preserve"><value>Agir como pessoa</value></data>
   <data name="Capability.identity.users.mfa.reset.Title" xml:space="preserve"><value>Redefinir autenticação de dois fatores de usuários</value></data>
   <data name="Capability.identity.users.mfa.reset.Description" xml:space="preserve"><value>Permite recuperar o acesso de outro usuário após verificar sua identidade. Exige MFA recente, revoga os acessos anteriores e obriga o recadastro do autenticador.</value></data>
   <data name="Users.MfaReset.Title" xml:space="preserve"><value>Redefinir autenticação de dois fatores</value></data>

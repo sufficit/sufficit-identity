@@ -609,6 +609,9 @@ public sealed class TokenExchangeOptions
     /// <see cref="DelegatedCredentialOptions"/>.
     /// </summary>
     public DelegatedCredentialOptions DelegatedCredentials { get; init; } = new();
+
+    /// <summary>Staff impersonation of a person (see <see cref="ImpersonationIssuer"/>); off by default.</summary>
+    public ImpersonationOptions Impersonation { get; init; } = new();
 }
 
 /// <summary>
@@ -620,7 +623,8 @@ public sealed class TokenExchangeGrantHandler(
     ISubjectTokenProvenancePolicy subjectTokenProvenancePolicy,
     ISubjectTokenResolver subjectTokenResolver,
     IdentityAssertionIssuer identityAssertionIssuer,
-    DelegatedCredentialIssuer delegatedCredentialIssuer) : ITokenGrantHandler
+    DelegatedCredentialIssuer delegatedCredentialIssuer,
+    ImpersonationIssuer impersonationIssuer) : ITokenGrantHandler
 {
     public IReadOnlyCollection<string> HandledGrantTypes { get; } =
         [GrantTypes.TokenExchange];
@@ -634,6 +638,20 @@ public sealed class TokenExchangeGrantHandler(
         // Master kill switch + client allowlist, layered on TOP of the
         // OpenIddict-level Permissions.GrantTypes.TokenExchange the server
         // pipeline already enforces upstream.
+        if (tokenExchangeOptions.Enabled && ImpersonationIssuer.IsRequested(request))
+        {
+            // Own client allow-list and rules: allowing a client to impersonate
+            // does not open the general exchange to it, nor the other way around.
+            var subject = await httpContext.AuthenticateAsync(
+                OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+            if (subject is not { Succeeded: true, Principal: not null })
+            {
+                return TokenGrantDispatcher.ForbidError(Errors.InvalidGrant,
+                    "The subject_token is missing, invalid or expired.");
+            }
+            return await impersonationIssuer.IssueAsync(context, subject.Principal);
+        }
+
         if (!tokenExchangeOptions.Enabled
             || (tokenExchangeOptions.AllowedClientIds.Count > 0
                 && !tokenExchangeOptions.AllowedClientIds.Contains(request.ClientId!)))
