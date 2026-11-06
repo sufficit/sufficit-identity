@@ -15,15 +15,7 @@ Feature-owned posture checks, one management executor/options contract, cancella
 Operational statuses describe evidence still required; historical records are not
 a fresh production inventory. Source/tests present does not mean deployed.
 
-## Active checkpoint — authorized deployment, evaluation and continuation
-
-1. **in progress** — Confirm cluster baseline, schema delta and clean local-SUI package.
-2. pending — Prepare and activate the exact release sequentially through cluster wrappers.
-3. pending — Verify node/public health and revision; record production evidence.
-4. pending — Resume the combined database/cache outage rehearsal, validate and deliver its evidence.
-
-User authorized deploy and continuation. Preserve production configuration and
-credentials; keep the previous release for rollback. Commit/push alone is not deployment.
+Deployment evidence: [2026-11-06 publication](../activities/202611061353-production-session-publication.md).
 
 ## F1 — Posture contributors inside the feature contract
 
@@ -47,7 +39,7 @@ Distributed ticket cache, timeout fallback, invalidation and opt-in stamp cachin
 
 Evidence: [OidcUserSessionTicketStore.cs](../../src/sts/OidcUserSessionTicketStore.cs), [SessionValidity.cs](../../src/core/Sessions/SessionValidity.cs), [ServerSideSessionsTests.cs](../../src/tests/ServerSideSessionsTests.cs), [SessionValidityCacheIntegrationTests.cs](../../src/tests/SessionValidityCacheIntegrationTests.cs), [ARCHITECTURE-SESSION-VALIDITY.md](../architecture/ARCHITECTURE-SESSION-VALIDITY.md).
 
-- [ ] **F4.2 · partial** — Complete the joint database/cache failure behavior and stale-revocation bounds. Cache timeout/failure already falls back to authoritative storage; include failed invalidation, disconnected notification channel and database outage cases. Renewal after database deletion is fixed by the [conditional-renewal activity](../activities/202611061258-session-renewal-after-revocation.md). The [publication-deadline activity](../activities/202611061303-session-cache-publication-deadline.md) bounds delayed renewal/read cache writes and verifies failed invalidation with a controlled shared cache. The [bulk-snapshot activity](../activities/202611061318-bulk-session-revocation-snapshot.md) covers insertion, deletion and same-key recreation between selection and deletion. The [local Redis rehearsal](../activities/202611061339-session-redis-outage-rehearsal.md) verifies real cache outage, database fallback and recovery after revocation across independent cache clients. The [persisted-cache rehearsal](../activities/202611061343-persisted-session-cache-recovery.md) checks stale RDB restoration and expiry without extending the original deadline. The [MariaDB outage rehearsal](../activities/202611061349-session-mariadb-outage.md) verifies warm/cold cache behavior, mutation failures and recovery against an owned real database. Still cover combined Redis/database outage, HA failover and clock skew; these local rehearsals do not establish production-cluster behavior.
+- [ ] **F4.2 · partial** — Complete the joint database/cache failure behavior and stale-revocation bounds. Cache timeout/failure already falls back to authoritative storage; include failed invalidation, disconnected notification channel and database outage cases. Renewal after database deletion is fixed by the [conditional-renewal activity](../activities/202611061258-session-renewal-after-revocation.md). The [publication-deadline activity](../activities/202611061303-session-cache-publication-deadline.md) bounds delayed renewal/read cache writes and verifies failed invalidation with a controlled shared cache. The [bulk-snapshot activity](../activities/202611061318-bulk-session-revocation-snapshot.md) covers insertion, deletion and same-key recreation between selection and deletion. The [local Redis rehearsal](../activities/202611061339-session-redis-outage-rehearsal.md) verifies real cache outage, database fallback and recovery after revocation across independent cache clients. The [persisted-cache rehearsal](../activities/202611061343-persisted-session-cache-recovery.md) checks stale RDB restoration and expiry without extending the original deadline. The [MariaDB outage rehearsal](../activities/202611061349-session-mariadb-outage.md) verifies warm/cold cache behavior, mutation failures and recovery against an owned real database. The [combined-outage rehearsal](../activities/202611061355-combined-session-outage.md) verifies both recovery orders with real MariaDB and Redis. Still cover HA failover and clock skew; these local rehearsals do not establish production-cluster behavior.
 - [ ] **F4.3 · partial** — Add remaining combined multi-replica stale-cache, failover and cancellation scenarios, reusing ServerSideSessionsTests, SessionValidityCacheIntegrationTests and recorded replica-revocation evidence.
 
 ## F5 — Schema migration out of the web process

@@ -129,7 +129,7 @@ public sealed class SessionTicketRedisIntegrationTests
 
     private static string Key(string sid) => "identity:oidc-session:v1:" + sid;
 
-    private static ServiceProvider CacheServices(int port)
+    internal static ServiceProvider CacheServices(int port)
     {
         var services = new ServiceCollection();
         services.AddStackExchangeRedisCache(options =>
@@ -137,7 +137,7 @@ public sealed class SessionTicketRedisIntegrationTests
         return services.BuildServiceProvider();
     }
 
-    private sealed class LocalRedis : IDisposable
+    internal sealed class LocalRedis : IDisposable
     {
         private Process? _process;
         private readonly string _directory = Path.Combine(Path.GetTempPath(), "identity-redis-" + Guid.NewGuid().ToString("N"));

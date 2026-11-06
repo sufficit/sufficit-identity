@@ -205,3 +205,21 @@ rehearsals remain separate. It does not prove combined outage, Galera failover,
 retry-policy or production HTTP behavior. It explicitly skips without opt-in,
 and removes its container and anonymous volumes on disposal. See the
 [dated results](../activities/202611061349-session-mariadb-outage.md).
+
+## Combined database and cache outage
+
+The opt-in combined theory in `SessionTicketMariaDbOutageTests` requires both
+`SUFFICIT_TEST_MARIADB_DOCKER=1` and `SUFFICIT_TEST_REDIS_EXECUTABLE`.
+It reuses only owned disposable infrastructure and exercises both recovery
+orders. While both stores are down, read/create/renew/revoke fail with the
+database connection error; no successful revocation is reported.
+
+If MariaDB recovers first, reads fall back to it and revocation commits while
+Redis remains offline. If Redis recovers first with an empty cache, reads still
+fail until MariaDB returns. A failed revocation leaves its durable row intact;
+the caller must retry after recovery. No uncommitted sign-in appears in storage
+or cache. The scenarios then verify successful revocation after recovery.
+
+This is independent from the persisted stale-cache scenario: combined tests
+restart Redis empty. They are not distributed HA, clock-skew or production HTTP
+tests. [Execution evidence](../activities/202611061355-combined-session-outage.md).

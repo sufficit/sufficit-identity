@@ -80,6 +80,91 @@ public sealed class SessionTicketMariaDbOutageTests
         Assert.Null(await store.RetrieveAsync(sid));
     }
 
+    public sealed class LocalCombinedTheoryAttribute : TheoryAttribute
+    {
+        public LocalCombinedTheoryAttribute()
+        {
+            if (Environment.GetEnvironmentVariable("SUFFICIT_TEST_MARIADB_DOCKER") != "1"
+                || string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("SUFFICIT_TEST_REDIS_EXECUTABLE")))
+                Skip = "Enable both disposable MariaDB and Redis rehearsals.";
+        }
+    }
+
+    [LocalCombinedTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    [Trait("Category", "MariaDbIntegration")]
+    [Trait("Category", "RedisIntegration")]
+    public async Task Simultaneous_outage_never_reports_a_failed_revoke_as_committed(bool databaseRecoversFirst)
+    {
+        await using var server = new LocalMariaDb();
+        await server.CreateAsync();
+        using var redis = new SessionTicketRedisIntegrationTests.LocalRedis();
+        await redis.StartAsync();
+        var services = new ServiceCollection();
+        services.AddDbContextFactory<AppDbContext>(options =>
+        {
+            options.UseMySql(server.ConnectionString, new MariaDbServerVersion(new Version(10, 11)));
+            options.UseOpenIddict();
+        });
+        using var provider = services.BuildServiceProvider();
+        var factory = provider.GetRequiredService<IDbContextFactory<AppDbContext>>();
+        await using (var db = await factory.CreateDbContextAsync())
+            await db.Database.EnsureCreatedAsync();
+        var repository = new OidcUserSessionRepository(factory);
+        var protection = new EphemeralDataProtectionProvider();
+        OidcUserSessionTicketStore Store(IDistributedCache cache) => new(repository, protection,
+            cache, new HttpContextAccessor(), new SufficitIdentityOptions
+            {
+                UserSessions = new() { CacheOperationTimeoutMilliseconds = 100 },
+            }, TimeProvider.System, NullLogger<OidcUserSessionTicketStore>.Instance);
+        using var originalCache = SessionTicketRedisIntegrationTests.CacheServices(redis.Port);
+        var store = Store(originalCache.GetRequiredService<IDistributedCache>());
+        var ticket = Ticket("combined");
+        var sid = await store.StoreAsync(ticket);
+        Assert.NotNull(await originalCache.GetRequiredService<IDistributedCache>().GetAsync(Key(sid)));
+
+        redis.Stop();
+        await server.StopAsync();
+        await AssertDatabaseUnavailableAsync(() => store.RetrieveAsync(sid));
+        await AssertDatabaseUnavailableAsync(() => store.RemoveAsync(sid));
+        await AssertDatabaseUnavailableAsync(() => store.RenewAsync(sid, ticket));
+        await AssertDatabaseUnavailableAsync(() => store.StoreAsync(Ticket("uncommitted")));
+
+        if (databaseRecoversFirst)
+        {
+            await server.RestartAsync();
+            Assert.NotNull(await store.RetrieveAsync(sid)); // DB fallback while Redis remains down.
+            await store.RemoveAsync(sid); // Durable revocation succeeds despite cache outage.
+            Assert.Null(await repository.FindAsync(sid, default));
+            await redis.StartAsync();
+        }
+        else
+        {
+            await redis.StartAsync();
+            using var cacheOnly = SessionTicketRedisIntegrationTests.CacheServices(redis.Port);
+            var liveCache = cacheOnly.GetRequiredService<IDistributedCache>();
+            await liveCache.SetStringAsync("cache-live", "yes");
+            Assert.Equal("yes", await liveCache.GetStringAsync("cache-live"));
+            // An empty healthy cache cannot authenticate without the still-offline DB.
+            await AssertDatabaseUnavailableAsync(() => Store(liveCache).RetrieveAsync(sid));
+            await server.RestartAsync();
+            Assert.NotNull(await repository.FindAsync(sid, default)); // Earlier revoke failed.
+        }
+
+        using var recoveredCache = SessionTicketRedisIntegrationTests.CacheServices(redis.Port);
+        var recovered = Store(recoveredCache.GetRequiredService<IDistributedCache>());
+        Assert.Null(await repository.FindAsync("uncommitted", default));
+        if (!databaseRecoversFirst)
+        {
+            Assert.NotNull(await recovered.RetrieveAsync(sid));
+            await recovered.RemoveAsync(sid);
+        }
+        Assert.Null(await repository.FindAsync(sid, default));
+        Assert.Null(await recovered.RetrieveAsync(sid));
+        Assert.Null(await recoveredCache.GetRequiredService<IDistributedCache>().GetAsync(Key("uncommitted")));
+    }
+
     private static async Task AssertDatabaseUnavailableAsync(Func<Task> operation)
     {
         var error = await Record.ExceptionAsync(operation);
