@@ -84,3 +84,22 @@ behavior. Record exact commands, outcomes, release/commit and limitations.
 For UI changes use the repository design/browser workflow; for production gates
 attach dated redacted evidence and rollback. Do not close an item solely because
 a related type, test name or historical deployment exists.
+
+## Authorized publication — 2026-11-06
+
+1. **completed** — Verify deployment inventory, active revisions, CSP startup
+   compatibility and local SUI source; identify schema changes before activation.
+2. **in progress** — Build the release with local SUI and prepare the same verified
+   archive on all three nodes using the cluster wrappers.
+3. **pending** — Activate sequentially with rollback, verify revision/readiness/
+   certificate/JWKS uniformity, record activity and push delivery documentation.
+
+Publication authorized by the user. Preserve per-node configuration and secrets;
+do not enable unrelated enforcement gates or change user/client records.
+
+Preflight evidence: all three apps nodes are active, CSP is enforced and the
+legacy acknowledgement bridge is disabled. All three active paths are ordinary
+directories outside the versioned releases root, with no REVISION. The current
+cluster prepare/activate wrappers reject this layout. Activation is blocked
+until the legacy layout is migrated with a verified rollback baseline; no
+service has been changed. Local SUI revision: `91f76e061b5561cf8adeafdf311815407061856a`.
