@@ -118,8 +118,10 @@ public sealed class MariaDbHistoricalHostTests
                 Assert.True(response.IsSuccessStatusCode,
                     $"Readiness returned {response.StatusCode}: {await response.Content.ReadAsStringAsync()}");
                 await AssertPasswordLoginAsync(http, username, password);
-                await AssertRecoveryLoginAsync(address, mfaUser.UserName, password, recoveryCode, consumed: false);
-                await AssertRecoveryLoginAsync(address, mfaUser.UserName, password, recoveryCode, consumed: true);
+                await AssertMfaLoginAsync(address, mfaUser.UserName, password, recoveryCode, consumed: false);
+                await AssertMfaLoginAsync(address, mfaUser.UserName, password, recoveryCode, consumed: true);
+                await AssertMfaLoginAsync(address, mfaUser.UserName, password, recoveryCode,
+                    consumed: false, authenticator: true);
                 Assert.Equal(applied, (await db.Database.GetAppliedMigrationsAsync()).ToArray());
                 Assert.Empty(await db.Database.GetPendingMigrationsAsync());
             }
@@ -161,8 +163,8 @@ public sealed class MariaDbHistoricalHostTests
         Assert.Contains(username, await profile.Content.ReadAsStringAsync());
     }
 
-    private static async Task AssertRecoveryLoginAsync(Uri address, string username, string password,
-        string recoveryCode, bool consumed)
+    private static async Task AssertMfaLoginAsync(Uri address, string username, string password,
+        string recoveryCode, bool consumed, bool authenticator = false)
     {
         using var handler = new HttpClientHandler { AllowAutoRedirect = false, CookieContainer = new CookieContainer() };
         using var http = new HttpClient(handler) { BaseAddress = address, Timeout = TimeSpan.FromSeconds(15) };
@@ -184,16 +186,21 @@ public sealed class MariaDbHistoricalHostTests
         Assert.StartsWith("/account/loginwith2fa", login.Headers.Location?.ToString());
         using var pending = await http.GetAsync("/manage");
         Assert.DoesNotContain(username, await pending.Content.ReadAsStringAsync());
+        var action = authenticator ? "/account/login/2fa" : "/account/login/recoverycode";
+        var form = authenticator ? "/account/loginwith2fa" : "/account/loginwithrecoverycode";
         async Task<HttpResponseMessage> RedeemAsync(string code) => await http.PostAsync(
-            "/account/login/recoverycode", new FormUrlEncodedContent(new Dictionary<string, string>
+            action, new FormUrlEncodedContent(new Dictionary<string, string>
             {
                 ["Code"] = code, ["ReturnUrl"] = "/manage",
-                ["__RequestVerificationToken"] = await TokenAsync("/account/loginwithrecoverycode", "/account/login/recoverycode"),
+                ["__RequestVerificationToken"] = await TokenAsync(form, action),
             }));
         using var invalid = await RedeemAsync("invalid-fixture-code");
         Assert.Equal(HttpStatusCode.Redirect, invalid.StatusCode);
         Assert.Contains("invalid_code", invalid.Headers.Location?.ToString());
-        using var result = await RedeemAsync(recoveryCode);
+        var validCode = authenticator
+            ? AccountTwoFactorServiceTests.CurrentAuthenticatorCode("JBSWY3DPEHPK3PXP")
+            : recoveryCode;
+        using var result = await RedeemAsync(validCode);
         Assert.Equal(HttpStatusCode.Redirect, result.StatusCode);
         if (consumed)
         {

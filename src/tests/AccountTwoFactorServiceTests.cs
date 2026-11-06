@@ -286,7 +286,7 @@ public sealed class AccountTwoFactorServiceTests(
                 ClaimTypes.Name,
                 ClaimTypes.Role));
 
-    private static string CurrentAuthenticatorCode(string sharedKey)
+    internal static string CurrentAuthenticatorCode(string sharedKey)
     {
         var key = DecodeBase32(sharedKey);
         var timeStep = DateTimeOffset.UtcNow.ToUnixTimeSeconds() / 30;
