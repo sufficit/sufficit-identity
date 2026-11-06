@@ -178,7 +178,7 @@ public sealed class SessionTicketMariaDbOutageTests
         new AuthenticationProperties { ExpiresUtc = DateTimeOffset.UtcNow.AddHours(1) }, "test");
     private static string Key(string sid) => "identity:oidc-session:v1:" + sid;
 
-    private sealed class LocalMariaDb : IAsyncDisposable
+    internal sealed class LocalMariaDb : IAsyncDisposable
     {
         private readonly string _name = "identity-session-test-" + Guid.NewGuid().ToString("N");
         private bool _created;

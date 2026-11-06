@@ -50,7 +50,7 @@ Production HTTP startup already rejects AutoMigrate; only migrate-only or Develo
 
 Evidence: [HostBootstrap.Schema.cs](../../src/server/HostBootstrap.Schema.cs), [MariaDbMigrationIntegrationTests.cs](../../src/tests/MariaDbMigrationIntegrationTests.cs).
 
-- [ ] **F5.2 · partial** — Extend canonical/additive MariaDB migration coverage to two-replica startup, migration failure/retry and old-binary rollback. The [schema-guard activity](../activities/202611061446-production-schema-guard.md) closes direct Production/Staging refusal coverage and verifies the dedicated-migrator/Development boundary. Migration execution failure/retry/rollback and two-replica scenarios remain pending.
+- [ ] **F5.2 · partial** — Extend canonical/additive MariaDB migration coverage to two-replica startup, migration failure/retry and old-binary rollback. The [schema-guard activity](../activities/202611061446-production-schema-guard.md) closes direct Production/Staging refusal coverage and verifies the dedicated-migrator/Development boundary. The [advisory-lock activity](../activities/202611061451-migration-advisory-lock-recovery.md) verifies real MariaDB lock contention and release after controlled execution failure/success, including retry with a fresh context. Real migration SQL failure/retry/rollback and concurrent full migrator startup remain pending.
 
 ## F14 — Security-critical protocol annotations
 
@@ -68,3 +68,4 @@ behavior. Record exact commands, outcomes, release/commit and limitations.
 For UI changes use the repository design/browser workflow; for production gates
 attach dated redacted evidence and rollback. Do not close an item solely because
 a related type, test name or historical deployment exists.
+
