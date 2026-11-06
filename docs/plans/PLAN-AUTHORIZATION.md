@@ -1,6 +1,6 @@
 # PLAN — Authorization and security policy
 
-Status: queued; reviewed on 2026-11-06 against `a66456e`. No work item is in progress.
+Status: queued; A4.1 reader consolidation completed on 2026-11-06; writer audit remains pending.
 
 [Index and delivery rules](PLAN-IDENTITY.md) · [Item-by-item reconciliation](../activities/202611061100-plan-reconciliation-split.md)
 
@@ -28,11 +28,11 @@ Evidence: [ClientManagementContracts.cs](../../src/application/Sufficit.Identity
 
 ## A4 — Step-up enforcement and one MFA evidence policy
 
-STS delegates evidence reading to MfaEvidencePolicy; SCIM still has its own method set. Stale-credential tests exist, but the requested browser-to-Management/SCIM end-to-end chain is not established.
+STS and SCIM now delegate evidence reading to MfaEvidencePolicy; see the [SCIM consolidation activity](../activities/202611061120-scim-shared-mfa-evidence.md). Stale-credential tests exist, but the requested browser-to-Management/SCIM end-to-end chain is not established.
 
 Evidence: [ScimServiceCollectionExtensions.cs](../../src/scim/ScimServiceCollectionExtensions.cs), [MfaEvidence.cs](../../src/sts/Security/MfaEvidence.cs), [CredentialMutationSecurityTests.cs](../../src/tests/CredentialMutationSecurityTests.cs).
 
-- [ ] **A4.1 · partial** — Finish evidence-policy consolidation for SCIM and audit the remaining amr writers. STS already delegates to MfaEvidencePolicy; preserve distinct remembered-MFA versus fresh credential-minting requirements.
+- [ ] **A4.1 · partial** — Audit the remaining amr writers and their composition with MfaEvidencePolicy; STS and SCIM reader consolidation is complete. Specifically review PasskeyAssurancePolicy emitting hwk without user verification while MfaEvidencePolicy accepts hwk as MFA evidence. Preserve distinct remembered-MFA versus fresh credential-minting requirements; establish an executable regression before changing accepted evidence.
 - [ ] **A4.2 · partial** — Complete a browser-to-Management/SCIM MFA authorization test chain. Reuse CredentialMutationSecurityTests for stale credential mutations rather than recreating its covered cases.
 
 ## D1 — CSP from telemetry to enforcement

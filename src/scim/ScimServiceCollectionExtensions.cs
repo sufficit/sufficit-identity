@@ -130,8 +130,8 @@ public sealed class ScimMfaRequirement : IAuthorizationRequirement;
 
 /// <summary>
 /// Validates the <see cref="ScimMfaRequirement"/>: the principal must carry an
-/// <c>amr</c> claim with at least one MFA-indicating value (RFC 8176). Succeeds
-/// only then; otherwise leaves the requirement unsatisfied (the policy denies).
+/// evidence accepted by <see cref="MfaEvidencePolicy"/>. Otherwise leaves the
+/// requirement unsatisfied (the policy denies).
 /// </summary>
 public sealed class ScimMfaHandler : AuthorizationHandler<ScimMfaRequirement>
 {
@@ -154,20 +154,8 @@ public sealed class ScimMfaHandler : AuthorizationHandler<ScimMfaRequirement>
 /// </summary>
 internal static class ScimAuthenticationContext
 {
-    private const string AmrClaimType = "amr";
-
-    // amr values per RFC 8176 that prove a second factor was used.
-    private static readonly HashSet<string> MfaValues = new(StringComparer.Ordinal)
-    {
-        "mfa", "otp", "hwk", "sms", "vcm", "fpt", "eye", "voice", "retina"
-    };
-
     internal static bool HasMfaEvidence(ClaimsPrincipal principal) =>
-        principal.FindAll(AmrClaimType)
-            .SelectMany(claim => claim.Value.Split(
-                ' ',
-                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-            .Any(MfaValues.Contains);
+        MfaEvidencePolicy.HasMfaEvidence(principal);
 
     internal static bool HasScope(ClaimsPrincipal principal, string scope) =>
         principal.FindAll("scope")
