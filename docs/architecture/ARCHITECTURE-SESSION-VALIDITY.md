@@ -296,3 +296,16 @@ Tests use independent in-memory stamp caches, the real validator/user store and
 a controlled cache clock. Publisher state is simulated; this is not evidence of
 NATS delivery, packet-loss recovery, Redis failover or production clock bounds.
 [Transition evidence](../activities/202611061745-session-notification-transitions.md).
+
+## Real NATS broker recovery
+
+The opt-in `SessionValidityCacheIntegrationTests.Nats.cs` case exercises two real
+user-security bridges against a dedicated local NATS container. It observes
+remote invalidation before outage, stamp-store fallback while disconnected,
+reconnection with a missed notification bounded by the original cache window,
+and delivery of a new invalidation after recovery. Publisher acceptance alone
+is not treated as proof of remote application: the test waits for cache invalidation.
+
+Use a fixed loopback host port across container restarts. This local broker
+restart does not establish partition behavior or clustered broker failover.
+[Real broker evidence and invocation requirements](../activities/202611061809-session-nats-recovery.md).

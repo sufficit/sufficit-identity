@@ -23,7 +23,7 @@ namespace Sufficit.Identity.Tests;
 /// or an invalidation arrives.
 /// </summary>
 [Collection(StsCollection.Name)]
-public sealed class SessionValidityCacheIntegrationTests(
+public sealed partial class SessionValidityCacheIntegrationTests(
     SufficitIdentityTestFactory factory)
 {
     [Fact]
