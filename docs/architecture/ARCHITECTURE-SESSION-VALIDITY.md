@@ -80,3 +80,22 @@ existing cache TTL; this change does not make database/cache updates atomic.
 `SessionTicketCancellationTests` exercises all four operations via the interface,
 explicit/context cancellation, cache-read cancellation without fallback, and
 cancellation during cache writes/removal after a real SQLite commit.
+
+## Browser-session persistence boundary
+
+`IOidcUserSessionRepository` is the internal STS contract for durable session
+operations; `OidcUserSessionRepository` uses a short-lived factory-created EF
+context per call. Its singleton registration never captures a scoped context.
+The repository reads detached session snapshots, upserts protected bytes, deletes
+rows, touches activity, lists subject metadata and returns the IDs needed for
+cache invalidation after subject deletion. All operations accept cancellation.
+
+`OidcUserSessionTicketStore` owns serialization/Data Protection, request metadata,
+expiry checks, the activity interval and distributed-cache policy. It no longer
+queries EF directly. Its protector purpose and cache-key format are unchanged.
+
+A touch attaches the previously read snapshot and changes only activity; it does
+not overwrite a concurrently renewed protected ticket or insert a removed row.
+The existing ticket renewal upsert and subject-ID-selection/deletion sequence
+are preserved. This extraction does not make renewal/revocation/cache writes
+atomic; their races remain in the runtime plan's F4.2/F4.3 verification scope.

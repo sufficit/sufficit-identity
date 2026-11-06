@@ -4,10 +4,8 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Caching.Distributed;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Sufficit.Identity.Application.Accounts;
-using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Core.Entities;
 using System.Security.Cryptography;
 
@@ -44,17 +42,15 @@ namespace Sufficit.Identity.STS;
 /// <para>
 /// <b>Singleton.</b> <c>CookieAuthenticationOptions.SessionStore</c> is
 /// resolved from the root service provider (it is effectively singleton), so
-/// this store MUST be singleton. It therefore depends on
-/// <see cref="IDbContextFactory{TContext}"/> (singleton) rather than the
-/// request-scoped <see cref="AppDbContext"/>, creating a short-lived context
-/// per operation. <see cref="IHttpContextAccessor"/> is singleton-safe.
+/// this store MUST be singleton. Its repository owns short-lived database
+/// contexts per operation. <see cref="IHttpContextAccessor"/> is singleton-safe.
 /// Persistence is authoritative in the shared database. The distributed ticket
 /// cache is optional acceleration; invalidation failure leaves staleness bounded
 /// by its configured TTL. Request cancellation propagates to both stores.
 /// </para>
 /// </remarks>
 internal sealed class OidcUserSessionTicketStore(
-    IDbContextFactory<AppDbContext> databaseFactory,
+    IOidcUserSessionRepository repository,
     IDataProtectionProvider dataProtectionProvider,
     IDistributedCache cache,
     IHttpContextAccessor httpContextAccessor,
@@ -116,8 +112,7 @@ internal sealed class OidcUserSessionTicketStore(
         ArgumentNullException.ThrowIfNull(ticket);
         cancellationToken.ThrowIfCancellationRequested();
         var sid = ResolveSessionId(ticket);
-        await using var database = await databaseFactory.CreateDbContextAsync(cancellationToken);
-        await StoreAsync(database, sid, ticket, insertIfMissing: true, cancellationToken);
+        await PersistAsync(sid, ticket, cancellationToken);
         await TrySetCacheAsync(sid, ticket, cancellationToken);
         return sid;
     }
@@ -130,8 +125,7 @@ internal sealed class OidcUserSessionTicketStore(
         // The cookie handler passes back the key it received from StoreAsync
         // (= the sid). An upsert keeps the row stable across RefreshSignInAsync
         // and sliding renewal while refreshing the protected ticket + metadata.
-        await using var database = await databaseFactory.CreateDbContextAsync(cancellationToken);
-        await StoreAsync(database, key, ticket, insertIfMissing: false, cancellationToken);
+        await PersistAsync(key, ticket, cancellationToken);
         await TrySetCacheAsync(key, ticket, cancellationToken);
     }
 
@@ -145,10 +139,7 @@ internal sealed class OidcUserSessionTicketStore(
             return cached;
         }
 
-        await using var database = await databaseFactory.CreateDbContextAsync(cancellationToken);
-        var session = await database.OidcUserSessions
-            .AsTracking()
-            .SingleOrDefaultAsync(s => s.SessionId == key, cancellationToken);
+        var session = await repository.FindAsync(key, cancellationToken);
         if (session is null)
         {
             return null;
@@ -159,8 +150,7 @@ internal sealed class OidcUserSessionTicketStore(
         var now = timeProvider.GetUtcNow();
         if (session.ExpiresUtc is { } expires && expires <= now)
         {
-            database.OidcUserSessions.Remove(session);
-            await database.SaveChangesAsync(cancellationToken);
+            await repository.DeleteSnapshotAsync(session, cancellationToken);
             return null;
         }
 
@@ -177,8 +167,7 @@ internal sealed class OidcUserSessionTicketStore(
             logger.LogWarning(exception,
                 "A user-session ticket (sid {SessionId}) could not be restored and was discarded.",
                 key);
-            database.OidcUserSessions.Remove(session);
-            await database.SaveChangesAsync(cancellationToken);
+            await repository.DeleteSnapshotAsync(session, cancellationToken);
             return null;
         }
 
@@ -192,15 +181,7 @@ internal sealed class OidcUserSessionTicketStore(
         // failures propagate to the caller.
         if (now - session.LastActivityUtc >= _activityUpdateInterval)
         {
-            session.LastActivityUtc = now.UtcDateTime;
-            try
-            {
-                await database.SaveChangesAsync(cancellationToken);
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                // Another request updated the same row concurrently; harmless.
-            }
+            await repository.TouchAsync(session, now.UtcDateTime, cancellationToken);
         }
 
         await TrySetCacheAsync(key, ticket, cancellationToken);
@@ -211,10 +192,7 @@ internal sealed class OidcUserSessionTicketStore(
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
         cancellationToken.ThrowIfCancellationRequested();
-        await using var database = await databaseFactory.CreateDbContextAsync(cancellationToken);
-        await database.OidcUserSessions
-            .Where(s => s.SessionId == key)
-            .ExecuteDeleteAsync(cancellationToken);
+        await repository.DeleteAsync(key, cancellationToken);
         await TryRemoveCacheAsync(key, cancellationToken);
     }
 
@@ -230,32 +208,13 @@ internal sealed class OidcUserSessionTicketStore(
         var currentSid = httpContextAccessor.HttpContext?.User
             .FindFirst(OidcSessionClaimsPrincipalFactory.SessionIdClaimType)?.Value;
 
-        await using var database = await databaseFactory.CreateDbContextAsync(cancellationToken);
-        var rows = await database.OidcUserSessions
-            .AsNoTracking()
-            .Where(s => s.Subject == subject)
-            .OrderByDescending(s => s.LastActivityUtc)
-            .Select(s => new OidcUserSessionSummary(
-                s.SessionId,
-                s.Subject,
-                s.CreatedAtUtc,
-                s.LastActivityUtc,
-                s.ExpiresUtc,
-                s.RemoteIpAddress,
-                s.UserAgent,
-                IsCurrent: s.SessionId == currentSid))
-            .ToListAsync(cancellationToken);
-
-        return rows;
+        return await repository.ListBySubjectAsync(subject, currentSid, cancellationToken);
     }
 
     async Task ISessionManagement.RevokeAsync(string sessionId, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sessionId);
-        await using var database = await databaseFactory.CreateDbContextAsync(cancellationToken);
-        await database.OidcUserSessions
-            .Where(s => s.SessionId == sessionId)
-            .ExecuteDeleteAsync(cancellationToken);
+        await repository.DeleteAsync(sessionId, cancellationToken);
         await TryRemoveCacheAsync(sessionId, cancellationToken);
     }
 
@@ -265,20 +224,13 @@ internal sealed class OidcUserSessionTicketStore(
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(subject);
-        await using var database = await databaseFactory.CreateDbContextAsync(cancellationToken);
-        var sessionIds = await database.OidcUserSessions
-            .Where(s => s.Subject == subject && s.SessionId != exceptSessionId)
-            .Select(s => s.SessionId)
-            .ToListAsync(cancellationToken);
-        var removed = await database.OidcUserSessions
-            .Where(s => s.Subject == subject && s.SessionId != exceptSessionId)
-            .ExecuteDeleteAsync(cancellationToken);
-        foreach (var sessionId in sessionIds)
+        var result = await repository.DeleteBySubjectAsync(subject, exceptSessionId, cancellationToken);
+        foreach (var sessionId in result.SessionIds)
         {
             await TryRemoveCacheAsync(sessionId, cancellationToken);
         }
 
-        return removed;
+        return result.Removed;
     }
 
     // -----------------------------------------------------------------------
@@ -302,51 +254,21 @@ internal sealed class OidcUserSessionTicketStore(
         return WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
     }
 
-    private async Task StoreAsync(
-        AppDbContext database,
-        string sid,
-        AuthenticationTicket ticket,
-        bool insertIfMissing,
-        CancellationToken cancellationToken)
+    private Task PersistAsync(string sid, AuthenticationTicket ticket, CancellationToken cancellationToken)
     {
         var now = timeProvider.GetUtcNow().UtcDateTime;
-        var protectedTicket = _protector.Protect(
-            TicketSerializer.Default.Serialize(ticket));
-
-        var subject = ticket.Principal.FindFirst(
-            System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
-            ?? ticket.Principal.FindFirst("sub")?.Value
-            ?? string.Empty;
-
-        var existing = await database.OidcUserSessions
-            .AsTracking()
-            .SingleOrDefaultAsync(s => s.SessionId == sid, cancellationToken);
-
-        if (existing is null)
+        return repository.UpsertAsync(new OidcUserSession
         {
-            database.OidcUserSessions.Add(new OidcUserSession
-            {
-                SessionId = sid,
-                Subject = subject,
-                RemoteIpAddress = ResolveRemoteIp(),
-                UserAgent = ResolveUserAgent(),
-                CreatedAtUtc = now,
-                LastActivityUtc = now,
-                ExpiresUtc = ResolveExpiration(ticket),
-                ProtectedTicket = protectedTicket,
-            });
-        }
-        else
-        {
-            existing.Subject = subject;
-            existing.LastActivityUtc = now;
-            existing.ExpiresUtc = ResolveExpiration(ticket);
-            existing.ProtectedTicket = protectedTicket;
-            // Device metadata is captured at creation only — refreshing it on
-            // every sliding renewal would mask the originating device.
-        }
-
-        await database.SaveChangesAsync(cancellationToken);
+            SessionId = sid,
+            Subject = ticket.Principal.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                ?? ticket.Principal.FindFirst("sub")?.Value ?? string.Empty,
+            RemoteIpAddress = ResolveRemoteIp(),
+            UserAgent = ResolveUserAgent(),
+            CreatedAtUtc = now,
+            LastActivityUtc = now,
+            ExpiresUtc = ResolveExpiration(ticket),
+            ProtectedTicket = _protector.Protect(TicketSerializer.Default.Serialize(ticket)),
+        }, cancellationToken);
     }
 
     private DateTime? ResolveExpiration(AuthenticationTicket ticket)

@@ -42,7 +42,7 @@ allowlisted and access-controlled under its documented retention policy.
 | [Keys, vault rotation and encryption budget](PLAN-KEYS-VAULT.md) | C1, C2, F12 | C1 authority evidence; C2 lifecycle gap review |
 | [Client console lifecycle and operation](PLAN-CLIENT-CONSOLE.md) | E2, E3, E4, E6, E8 | E3 audit timeline using delivered API |
 | [Pluggable UI and remote interaction](PLAN-UI-COMPOSITION.md) | E7 | E7 phase 2 semantic endpoint contract |
-| [Runtime boundaries, sessions and migration verification](PLAN-RUNTIME-ARCHITECTURE.md) | F1, F2, F4, F5, F14 | F4 repository extraction and residual fault matrix |
+| [Runtime boundaries, sessions and migration verification](PLAN-RUNTIME-ARCHITECTURE.md) | F1, F2, F4, F5, F14 | F4 residual fault and revocation-race matrix |
 | [Database provider provenance and supported baseline](PLAN-DATABASE-PROVIDER.md) | F6, F7 | F6/F7 provider and database compatibility matrix |
 | [Account email identity and recovery](PLAN-ACCOUNT-EMAILS.md) | F9, F15, G5 | F9 race matrix, then F15 additive email model |
 | [Security observability and assurance](PLAN-OBSERVABILITY-CONFORMANCE.md) | G1, G2, G3 | G3 residual coverage matrix, then G1 durable events |

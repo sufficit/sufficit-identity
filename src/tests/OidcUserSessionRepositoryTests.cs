@@ -1,0 +1,119 @@
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
+using Sufficit.Identity.Core.Data;
+using Sufficit.Identity.Core.Entities;
+using Sufficit.Identity.STS;
+using Xunit;
+
+namespace Sufficit.Identity.Tests;
+
+public sealed class OidcUserSessionRepositoryTests : IDisposable
+{
+    private readonly Microsoft.Data.Sqlite.SqliteConnection _connection = new("DataSource=:memory:");
+    private readonly ServiceProvider _services;
+    private readonly OidcUserSessionRepository _repository;
+    private static readonly DateTime Initial = new(2026, 11, 6, 10, 0, 0, DateTimeKind.Utc);
+
+    public OidcUserSessionRepositoryTests()
+    {
+        _connection.Open();
+        var services = new ServiceCollection();
+        services.AddDistributedMemoryCache();
+        services.AddDbContextFactory<AppDbContext>(options =>
+        {
+            options.UseSqlite(_connection);
+            options.UseOpenIddict();
+        });
+        _services = services.BuildServiceProvider();
+        var factory = _services.GetRequiredService<IDbContextFactory<AppDbContext>>();
+        using var db = factory.CreateDbContext();
+        db.Database.EnsureCreated();
+        _repository = new OidcUserSessionRepository(factory);
+    }
+
+    [Fact]
+    public async Task Renewal_preserves_creation_and_device_metadata_while_replacing_ticket_and_expiry()
+    {
+        await _repository.UpsertAsync(Session("sid", "user"), default);
+        var renewed = Session("sid", "user");
+        renewed.CreatedAtUtc = Initial.AddHours(1);
+        renewed.LastActivityUtc = Initial.AddHours(1);
+        renewed.RemoteIpAddress = "198.51.100.9";
+        renewed.UserAgent = "different-device";
+        renewed.ProtectedTicket = [4, 5, 6];
+        renewed.ExpiresUtc = Initial.AddDays(2);
+        await _repository.UpsertAsync(renewed, default);
+        var persisted = Assert.IsType<OidcUserSession>(await _repository.FindAsync("sid", default));
+        Assert.Equal(Initial, persisted.CreatedAtUtc);
+        Assert.Equal("192.0.2.1", persisted.RemoteIpAddress);
+        Assert.Equal("original-device", persisted.UserAgent);
+        Assert.Equal(renewed.LastActivityUtc, persisted.LastActivityUtc);
+        Assert.Equal(renewed.ExpiresUtc, persisted.ExpiresUtc);
+        Assert.Equal(renewed.ProtectedTicket, persisted.ProtectedTicket);
+        Assert.Single(await _repository.ListBySubjectAsync("user", "sid", default));
+    }
+
+    [Fact]
+    public async Task Activity_touch_does_not_overwrite_a_newer_ticket_or_recreate_a_deleted_session()
+    {
+        await _repository.UpsertAsync(Session("sid", "user"), default);
+        var snapshot = (await _repository.FindAsync("sid", default))!;
+        var renewed = Session("sid", "user");
+        renewed.ProtectedTicket = [9];
+        await _repository.UpsertAsync(renewed, default);
+        await _repository.TouchAsync(snapshot, Initial.AddMinutes(2), default);
+        Assert.Equal(new byte[] { 9 }, (await _repository.FindAsync("sid", default))!.ProtectedTicket);
+        await _repository.DeleteAsync("sid", default);
+        await _repository.TouchAsync(snapshot, Initial.AddMinutes(3), default);
+        Assert.Null(await _repository.FindAsync("sid", default));
+    }
+
+    [Fact]
+    public async Task Subject_deletion_preserves_the_exception_and_other_users_and_returns_cache_keys()
+    {
+        await _repository.UpsertAsync(Session("keep", "user"), default);
+        await _repository.UpsertAsync(Session("drop", "user"), default);
+        await _repository.UpsertAsync(Session("other", "other-user"), default);
+        var deleted = await _repository.DeleteBySubjectAsync("user", "keep", default);
+        Assert.Equal(1, deleted.Removed);
+        Assert.Equal("drop", Assert.Single(deleted.SessionIds));
+        var current = Assert.Single(await _repository.ListBySubjectAsync("user", "keep", default));
+        Assert.True(current.IsCurrent);
+        Assert.Equal("keep", current.SessionId);
+        Assert.NotNull(await _repository.FindAsync("other", default));
+        Assert.Null(await _repository.FindAsync("drop", default));
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Ticket_store_discards_expired_or_corrupt_database_tickets(bool expired)
+    {
+        var row = Session("discard", "user");
+        row.ExpiresUtc = expired ? DateTime.UtcNow.AddMinutes(-1) : DateTime.UtcNow.AddHours(1);
+        await _repository.UpsertAsync(row, default);
+        var store = new OidcUserSessionTicketStore(_repository,
+            new EphemeralDataProtectionProvider(), _services.GetRequiredService<IDistributedCache>(),
+            new HttpContextAccessor(), new SufficitIdentityOptions(), TimeProvider.System,
+            NullLogger<OidcUserSessionTicketStore>.Instance);
+        Assert.Null(await store.RetrieveAsync("discard", default(CancellationToken)));
+        Assert.Null(await _repository.FindAsync("discard", default));
+    }
+
+    private static OidcUserSession Session(string sid, string subject) => new()
+    {
+        SessionId = sid, Subject = subject, CreatedAtUtc = Initial,
+        LastActivityUtc = Initial, ExpiresUtc = Initial.AddDays(1),
+        ProtectedTicket = [1, 2, 3], RemoteIpAddress = "192.0.2.1", UserAgent = "original-device",
+    };
+
+    public void Dispose()
+    {
+        _services.Dispose();
+        _connection.Dispose();
+    }
+}

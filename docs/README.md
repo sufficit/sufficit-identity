@@ -39,6 +39,8 @@ accounts for all 105 original items, seven closure criteria and the operational 
 
 ## Completed work (activities/)
 
+- [Browser-session repository extraction](activities/202611061246-session-repository-extraction.md) — F4.1 closure: cancellable persistence boundary and real session regressions.
+
 - [Session ticket cancellation propagation](activities/202611061240-session-ticket-cancellation.md) — F4.1 cancellation portion, cache timeout distinction and post-commit tests.
 
 - [Mixed KEK rewrap and DEK rotation race](activities/202611061234-mixed-kek-dek-race.md) — C1.2: both lease orderings, cold decrypt, version and journal invariants.

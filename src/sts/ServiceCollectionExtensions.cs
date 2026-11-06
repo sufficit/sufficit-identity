@@ -553,6 +553,7 @@ public static partial class ServiceCollectionExtensions
         // resolved from the root provider; the store therefore depends on
         // IDbContextFactory<AppDbContext> (singleton) and creates a context per
         // operation. Multi-replica safe out of the box (DB persistence).
+        services.TryAddSingleton<IOidcUserSessionRepository, OidcUserSessionRepository>();
         services.AddSingleton<OidcUserSessionTicketStore>();
         services.AddSingleton<ISessionManagement>(sp =>
             sp.GetRequiredService<OidcUserSessionTicketStore>());

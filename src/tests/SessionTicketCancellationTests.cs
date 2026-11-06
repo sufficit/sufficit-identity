@@ -107,7 +107,7 @@ public sealed class SessionTicketCancellationTests
     }
 
     private static OidcUserSessionTicketStore Store(IDbContextFactory<AppDbContext> factory, TestCache cache) =>
-        new(factory, new EphemeralDataProtectionProvider(), cache, new HttpContextAccessor(),
+        new(new OidcUserSessionRepository(factory), new EphemeralDataProtectionProvider(), cache, new HttpContextAccessor(),
             new SufficitIdentityOptions(), TimeProvider.System, NullLogger<OidcUserSessionTicketStore>.Instance);
 
     private static Task Invoke(ITicketStore store, string operation, CancellationToken token, HttpContext? context = null)
