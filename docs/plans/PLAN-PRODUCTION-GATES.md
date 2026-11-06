@@ -85,22 +85,9 @@ For UI changes use the repository design/browser workflow; for production gates
 attach dated redacted evidence and rollback. Do not close an item solely because
 a related type, test name or historical deployment exists.
 
-## Authorized publication — 2026-11-06
+## Publication record — 2026-11-06
 
-1. **completed** — Verify deployment inventory, active revisions, CSP startup
-   compatibility and local SUI source; identify schema changes before activation.
-2. **blocked** — Release built successfully with local SUI; cluster preparation
-   is blocked by the legacy active-directory layout. Archive evidence is recorded
-   in the [publication activity](../activities/202611061218-publication-preflight.md).
-3. **pending** — Activate sequentially with rollback, verify revision/readiness/
-   certificate/JWKS uniformity, record activity and push delivery documentation.
-
-Publication authorized by the user. Preserve per-node configuration and secrets;
-do not enable unrelated enforcement gates or change user/client records.
-
-Preflight evidence: all three apps nodes are active, CSP is enforced and the
-legacy acknowledgement bridge is disabled. All three active paths are ordinary
-directories outside the versioned releases root, with no REVISION. The current
-cluster prepare/activate wrappers reject this layout. Activation is blocked
-until the legacy layout is migrated with a verified rollback baseline; no
-service has been changed. Local SUI revision: `91f76e061b5561cf8adeafdf311815407061856a`.
+The authorized publication is complete and archived in the
+[production publication activity](../activities/202611061222-production-publication.md).
+Layout migration, preparation, sequential activation and production validation
+passed. The operational gates above remain pending; deployment does not close them.

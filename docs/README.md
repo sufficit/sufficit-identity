@@ -39,6 +39,8 @@ accounts for all 105 original items, seven closure criteria and the operational 
 
 ## Completed work (activities/)
 
+- [Production publication completed](activities/202611061222-production-publication.md) — legacy layout migrated atomically; release activated and verified on all three nodes.
+
 - [Publication preflight and prepared artifact](activities/202611061218-publication-preflight.md) — build complete; production activation blocked by legacy directory layout.
 
 - [Client lifecycle vault references](activities/202611061213-client-lifecycle-secret-references.md) — A2.4: rotation/additional credentials, vault authorization and bounded plaintext compatibility.
