@@ -105,3 +105,28 @@ Database mutation and cache writes are still not atomic: a renewal accepted
 before revocation can write its cache entry after invalidation. The
 subject-ID-selection/deletion sequence also remains unchanged. These races
 remain in the runtime plan's F4.2/F4.3 scope.
+
+## Ticket-cache publication deadline
+
+Each sign-in, renewal and cache-miss database read fixes an absolute cache
+deadline before accessing persistence. Publication uses that deadline, capped
+by the ticket expiry, rather than a new relative TTL at write time. Cache hits
+do not extend it. A slow operation skips publication if the deadline has
+already elapsed; a write delayed inside the cache provider still carries the
+original absolute deadline.
+
+This bounds a late publication after revocation to the original cache window
+when the provider honors absolute expiration and replica clocks agree. It
+does not guarantee immediate revocation: a stale entry inside that window
+and an already running request may still return the ticket. Database/cache
+operations are not atomic. Real-provider failover and clock-skew evidence
+remain part of F4.2/F4.3, as does bulk-revocation ID selection.
+
+Database session expiry compares UTC DateTime values explicitly; an
+unspecified DateTime kind from persistence must not invoke local timezone
+conversion. Ticket/cache serialization, protector purpose and keys are unchanged.
+During rolling updates, older writers still use relative expiration until all
+instances have been replaced and their previous entries have expired.
+
+See the [delayed-publication activity](../activities/202611061303-session-cache-publication-deadline.md)
+for deterministic two-store regression coverage and its limits.

@@ -33,8 +33,8 @@ namespace Sufficit.Identity.STS;
 /// </para>
 /// <para>
 /// <b>Lifecycle.</b> <see cref="StoreAsync"/> runs on sign-in (insert),
-/// <see cref="RenewAsync"/> on <c>RefreshSignInAsync</c> / sliding (upsert by
-/// sid), <see cref="RetrieveAsync"/> on every cookie-authenticated request
+/// <see cref="RenewAsync"/> on <c>RefreshSignInAsync</c> / sliding (conditional update by
+/// sid and subject), <see cref="RetrieveAsync"/> on every cookie-authenticated request
 /// (cache read, or database read with lazy expiry/activity touch on a miss),
 /// and <see cref="RemoveAsync"/>
 /// on explicit per-session revoke (delete by sid).
@@ -111,9 +111,10 @@ internal sealed class OidcUserSessionTicketStore(
     {
         ArgumentNullException.ThrowIfNull(ticket);
         cancellationToken.ThrowIfCancellationRequested();
+        var cacheDeadline = timeProvider.GetUtcNow() + _cacheLifetime;
         var sid = ResolveSessionId(ticket);
         await repository.UpsertAsync(CreateSession(sid, ticket), cancellationToken);
-        await TrySetCacheAsync(sid, ticket, cancellationToken);
+        await TrySetCacheAsync(sid, ticket, cacheDeadline, cancellationToken);
         return sid;
     }
 
@@ -122,10 +123,11 @@ internal sealed class OidcUserSessionTicketStore(
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
         ArgumentNullException.ThrowIfNull(ticket);
         cancellationToken.ThrowIfCancellationRequested();
+        var cacheDeadline = timeProvider.GetUtcNow() + _cacheLifetime;
         // Renewal never creates a session: a revoked row must remain absent.
         if (await repository.RenewAsync(CreateSession(key, ticket), cancellationToken))
         {
-            await TrySetCacheAsync(key, ticket, cancellationToken);
+            await TrySetCacheAsync(key, ticket, cacheDeadline, cancellationToken);
         }
     }
 
@@ -139,6 +141,7 @@ internal sealed class OidcUserSessionTicketStore(
             return cached;
         }
 
+        var cacheDeadline = timeProvider.GetUtcNow() + _cacheLifetime;
         var session = await repository.FindAsync(key, cancellationToken);
         if (session is null)
         {
@@ -148,7 +151,7 @@ internal sealed class OidcUserSessionTicketStore(
         // Lazy expiry sweep: a session past its absolute expiration is treated
         // as absent and removed, so the caller sees an unauthenticated request.
         var now = timeProvider.GetUtcNow();
-        if (session.ExpiresUtc is { } expires && expires <= now)
+        if (session.ExpiresUtc is { } expires && expires <= now.UtcDateTime)
         {
             await repository.DeleteSnapshotAsync(session, cancellationToken);
             return null;
@@ -184,7 +187,7 @@ internal sealed class OidcUserSessionTicketStore(
             await repository.TouchAsync(session, now.UtcDateTime, cancellationToken);
         }
 
-        await TrySetCacheAsync(key, ticket, cancellationToken);
+        await TrySetCacheAsync(key, ticket, cacheDeadline, cancellationToken);
         return ticket;
     }
 
@@ -331,6 +334,7 @@ internal sealed class OidcUserSessionTicketStore(
     private async Task TrySetCacheAsync(
         string key,
         AuthenticationTicket ticket,
+        DateTimeOffset cacheDeadline,
         CancellationToken cancellationToken)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -338,14 +342,13 @@ internal sealed class OidcUserSessionTicketStore(
         cancellationToken.ThrowIfCancellationRequested();
         try
         {
-            var lifetime = _cacheLifetime;
-            if (ticket.Properties.ExpiresUtc is { } expires)
+            // Anchor the cache window before the database operation. A delayed
+            // write after revocation must not start a fresh relative TTL.
+            if (ticket.Properties.ExpiresUtc is { } expires && expires < cacheDeadline)
             {
-                lifetime = expires - timeProvider.GetUtcNow() < lifetime
-                    ? expires - timeProvider.GetUtcNow()
-                    : lifetime;
+                cacheDeadline = expires;
             }
-            if (lifetime <= TimeSpan.Zero)
+            if (cacheDeadline <= timeProvider.GetUtcNow())
             {
                 return;
             }
@@ -356,7 +359,7 @@ internal sealed class OidcUserSessionTicketStore(
                     TicketSerializer.Default.Serialize(ticket)),
                 new DistributedCacheEntryOptions
                 {
-                    AbsoluteExpirationRelativeToNow = lifetime,
+                    AbsoluteExpiration = cacheDeadline,
                 },
                 timeout.Token);
         }
