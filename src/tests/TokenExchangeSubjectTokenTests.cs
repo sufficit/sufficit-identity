@@ -259,7 +259,7 @@ public sealed class TokenExchangeSubjectTokenTests
                 .GetProperty("jkt").GetString());
     }
 
-    [Fact(Skip = "B3 finding: a DPoP-bound subject_token cannot be exchanged even by its key holder — ValidateDpopAccessTokenProof computes ath over the resolved reference-token payload (context.Token), not the opaque subject_token the client sent")]
+    [Fact]
     public async Task A_dpop_bound_subject_token_is_exchanged_by_the_holder_of_its_key_and_stays_bound_to_it()
     {
         // ValidateDpopAccessTokenProof runs on every access token OpenIddict
@@ -290,6 +290,66 @@ public sealed class TokenExchangeSubjectTokenTests
             thumbprint,
             introspection.GetProperty(DpopProofValidator.ConfirmationClaimType)
                 .GetProperty("jkt").GetString());
+        var (replayed, replayBody) = await ExchangeAsync(client, subjectToken,
+            TestDataSeeder.TokenExchangeClientId, TestDataSeeder.TokenExchangeClientSecret, holderProof);
+        Assert.Equal(HttpStatusCode.BadRequest, replayed);
+        Assert.False(replayBody.TryGetProperty("access_token", out _));
+        var (freshProof, _) = BuildDpopProof("POST", tokenUrl, key, subjectToken);
+        var (fresh, _) = await ExchangeAsync(client, subjectToken,
+            TestDataSeeder.TokenExchangeClientId, TestDataSeeder.TokenExchangeClientSecret, freshProof);
+        Assert.Equal(HttpStatusCode.OK, fresh);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("another-token")]
+    public async Task Holder_exchange_rejects_missing_or_wrong_ath(string? hashInput)
+    {
+        using var factory = await CreateDpopFactoryAsync();
+        using var client = factory.CreateClient();
+        var url = new Uri(client.BaseAddress!, "connect/token").AbsoluteUri;
+        var (issuance, key) = BuildDpopProof("POST", url);
+        var token = await PasswordTokenAsync(client, issuance);
+        var (proof, _) = BuildDpopProof("POST", url, key, hashInput);
+        var (status, body) = await ExchangeAsync(client, token,
+            TestDataSeeder.TokenExchangeClientId, TestDataSeeder.TokenExchangeClientSecret, proof);
+        Assert.Equal(HttpStatusCode.BadRequest, status);
+        Assert.False(body.TryGetProperty("access_token", out _));
+    }
+
+    [Fact]
+    public async Task Holder_exchange_preserves_nonce_challenge_and_accepts_a_fresh_retry()
+    {
+        using var factory = await CreateDpopFactoryAsync(requireNonce: true);
+        using var client = factory.CreateClient();
+        var url = new Uri(client.BaseAddress!, "connect/token").AbsoluteUri;
+        var (initial, key) = BuildDpopProof("POST", url);
+        // Seed only the issuance nonce; exercise exchange's challenge over HTTP.
+        var store = factory.Services.GetRequiredService<IDpopNonceStore>();
+        DpopProofValidator.TryGetKeyThumbprint(initial, out var thumbprint);
+        var issuanceNonce = store.Issue($"/connect/token|{TestDataSeeder.PasswordClientId}|{thumbprint}");
+        var (issuance, _) = BuildDpopProof("POST", url, key, nonce: issuanceNonce);
+        var token = await PasswordTokenAsync(client, issuance);
+        var (proof, _) = BuildDpopProof("POST", url, key, token);
+        client.DefaultRequestHeaders.Add("DPoP", proof);
+        using var response = await client.PostAsync("/connect/token", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["grant_type"] = TokenExchangeGrantType,
+            ["subject_token"] = token,
+            ["subject_token_type"] = AccessTokenType,
+            ["client_id"] = TestDataSeeder.TokenExchangeClientId,
+            ["client_secret"] = TestDataSeeder.TokenExchangeClientSecret,
+        }));
+        client.DefaultRequestHeaders.Remove("DPoP");
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("use_dpop_nonce", body.RootElement.GetProperty("error").GetString());
+        var nonce = response.Headers.GetValues("DPoP-Nonce").Single();
+        var (retry, _) = BuildDpopProof("POST", url, key, token, nonce);
+        var (status, result) = await ExchangeAsync(client, token,
+            TestDataSeeder.TokenExchangeClientId, TestDataSeeder.TokenExchangeClientSecret, retry);
+        Assert.Equal(HttpStatusCode.OK, status);
+        Assert.Equal("DPoP", result.GetProperty("token_type").GetString());
     }
 
     [Fact]
@@ -560,13 +620,14 @@ public sealed class TokenExchangeSubjectTokenTests
         return body.GetProperty("access_token").GetString()!;
     }
 
-    private static async Task<SufficitIdentityTestFactory> CreateDpopFactoryAsync()
+    private static async Task<SufficitIdentityTestFactory> CreateDpopFactoryAsync(bool requireNonce = false)
     {
         var factory = SufficitIdentityTestFactory.CreateIsolated(
             new Dictionary<string, string?>
             {
                 ["Sufficit:Identity:Dpop:Enabled"] = "true",
                 ["Sufficit:Identity:Dpop:RequireForAllClients"] = "false",
+                ["Sufficit:Identity:Dpop:RequireNonce"] = requireNonce.ToString(),
             });
         await ((IAsyncLifetime)factory).InitializeAsync();
         return factory;
@@ -658,7 +719,8 @@ public sealed class TokenExchangeSubjectTokenTests
         string method,
         string url,
         ECDsaSecurityKey? signingKey = null,
-        string? accessToken = null)
+        string? accessToken = null,
+        string? nonce = null)
     {
         var key = signingKey
             ?? new ECDsaSecurityKey(ECDsa.Create(ECCurve.NamedCurves.nistP256));
@@ -681,6 +743,7 @@ public sealed class TokenExchangeSubjectTokenTests
                 ["jwk"] = JsonSerializer.Deserialize<JsonElement>(JsonSerializer.Serialize(jwk)),
             },
         };
+        if (nonce is not null) descriptor.Claims["nonce"] = nonce;
         if (accessToken is not null)
         {
             descriptor.Claims["ath"] = Base64UrlEncoder.Encode(

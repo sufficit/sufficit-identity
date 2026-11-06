@@ -76,6 +76,26 @@ when `Dpop:RequireNonce`:
 | Userinfo | `ExtractDpopUserInfoToken` + `ath` verification |
 | Conflict with mTLS | Rejected by `RejectCombinedDpopAndMtlsSenderConstraints` |
 
+## Bound subject-token exchange
+
+The provider's token-exchange policy requires a proof from the subject token's
+`cnf.jkt` key with `ath` over the original token string. This applies RFC 9449's
+hash/binding checks to this exchange profile; RFC 9449 alone does not specify a
+complete RFC 8693 exchange profile.
+
+`CaptureDpopWireToken` captures that string before reference-token resolution,
+separately for each validation context (subject and actor must not overwrite each
+other). Successful signature, request, hash, binding and replay validation is
+handed to the dispatcher through a private, single-consumption HTTP-context item.
+It is never a token claim or cross-request cache. The dispatcher still enforces
+its nonce partition and challenge. A second HTTP request with the same proof
+still reaches the replay guard and is rejected.
+
+`TokenExchangeSubjectTokenTests` covers holder success, output binding, foreign
+keys, absent/incorrect hashes, repeated proof refusal, fresh proof acceptance and
+the nonce challenge/retry. Source rules: [RFC 9449 §4.3](https://www.rfc-editor.org/rfc/rfc9449.html#section-4.3)
+and [§8](https://www.rfc-editor.org/rfc/rfc9449.html#section-8).
+
 ## Configuration
 
 | Key | Default | Effect |

@@ -39,6 +39,8 @@ accounts for all 105 original items, seven closure criteria and the operational 
 
 ## Completed work (activities/)
 
+- [Holder-bound DPoP subject-token exchange](activities/202611061228-dpop-subject-token-exchange.md) — B3.1: wire-token hash, request-local proof handoff and nonce/replay regressions.
+
 - [Production publication completed](activities/202611061222-production-publication.md) — legacy layout migrated atomically; release activated and verified on all three nodes.
 
 - [Publication preflight and prepared artifact](activities/202611061218-publication-preflight.md) — build complete; production activation blocked by legacy directory layout.

@@ -14,8 +14,8 @@ namespace Sufficit.Identity.STS.Grants;
 
 /// <summary>
 /// Everything a token-endpoint grant branch needs (A2, eval 2026-08-14).
-/// The DPoP proof is validated ONCE by the dispatcher and handed to the
-/// handler explicitly — handlers never re-parse the header.
+/// The DPoP proof is validated once (during bound-token validation or by the
+/// dispatcher) and handed to the grant handler explicitly.
 /// </summary>
 public sealed record TokenGrantContext(
     HttpContext HttpContext,
@@ -72,7 +72,8 @@ public sealed class TokenGrantDispatcher(
             Fapi.Fapi2Policy.Applies(options.Fapi2, request.ClientId)
             && options.Fapi2.SenderConstraint == Fapi2SenderConstraint.Dpop;
 
-        // ---- DPoP preamble (RFC 9449) — runs for EVERY grant exactly once.
+        // ---- DPoP preamble (RFC 9449). Bound-token validation can hand off
+        // its successful proof within this request; do not consume its jti twice.
         // When enabled, the proof binds the issued token to the client's key
         // (cnf.jkt). When RequireForAllClients is set, a missing/invalid proof
         // is fatal. OpenIddict 7.6 has no DPoP support, so this lives here.
@@ -80,6 +81,7 @@ public sealed class TokenGrantDispatcher(
         if (options.Dpop.Enabled)
         {
             var dpopHeader = httpContext.Request.Headers["DPoP"].ToString();
+            var validatedTokenProof = Dpop.ValidatedDpopTokenProof.Take(httpContext);
             string? expectedNonce = null;
             // DPoP nonce dance (RFC 9449 §8). When RequireNonce is on, the AS
             // challenges a cryptographically valid proof with a stateless
@@ -92,7 +94,7 @@ public sealed class TokenGrantDispatcher(
                 var suppliedNonce = GrantOperations.ExtractNonceFromHeader(dpopHeader);
                 if (!dpopNonceStore.IsValid(suppliedNonce, partition))
                 {
-                    var preliminaryProof = await dpopProofValidator.ValidateAsync(
+                    var preliminaryProof = validatedTokenProof ?? await dpopProofValidator.ValidateAsync(
                         dpopHeader,
                         httpContext.Request.Method,
                         httpContext.Request.Scheme + "://" + httpContext.Request.Host
@@ -113,7 +115,7 @@ public sealed class TokenGrantDispatcher(
                 expectedNonce = suppliedNonce;
             }
 
-            proof = await dpopProofValidator.ValidateAsync(
+            proof = validatedTokenProof ?? await dpopProofValidator.ValidateAsync(
                 dpopHeader,
                 httpContext.Request.Method,
                 httpContext.Request.Scheme + "://" + httpContext.Request.Host

@@ -1,12 +1,12 @@
 # PLAN — Token exchange, CIBA and dynamic registration
 
-Status: queued; reviewed on 2026-11-06 against `a66456e`. No work item is in progress.
+Status: B3.1 completed on 2026-11-06; remaining items queued.
 
 [Index and delivery rules](PLAN-IDENTITY.md) · [Item-by-item reconciliation](../activities/202611061100-plan-reconciliation-split.md)
 
 ## Scope and order
 
-B3 is an isolated reproducible defect. CIBA expansion requires abuse/interoperability evidence. B9 remains explicitly deferred. DCR secret work depends on A2.
+B3 holder exchange is corrected; production inventory remains a rollout gate. CIBA expansion requires abuse/interoperability evidence. B9 remains explicitly deferred. DCR secret work depends on A2.
 
 ## Acceptance
 
@@ -17,11 +17,13 @@ a fresh production inventory. Source/tests present does not mean deployed.
 
 ## B3 — Token exchange provenance and delegation
 
-The holder-bound subject-token test remains explicitly skipped with the resolved-payload ath failure documented in its reason.
+B3.1 is closed in the [holder-bound exchange activity](../activities/202611061228-dpop-subject-token-exchange.md).
+The original skipped regression now passes, together with wrong/missing ath,
+foreign key, replay, fresh proof and nonce challenge/retry coverage.
 
-Evidence: [TokenExchangeSubjectTokenTests.cs](../../src/tests/TokenExchangeSubjectTokenTests.cs).
-
-- [ ] **B3.1 · pending** — Let the holder of a DPoP-bound subject token exchange it. It fails closed today: `ValidateDpopAccessTokenProof` checks `ath` against the reference token's resolved payload (`context.Token`) because the token endpoint has no `AccessToken`, so even the right key and a correct `ath` are refused; once fixed, the same proof is checked again in `TokenGrantDispatcher` and its replay guard may refuse it. Pinned by the skipped test in `TokenExchangeSubjectTokenTests`. The old plan recorded no such production callers; refresh that inventory before rollout.
+- [ ] **B3 rollout · operational** — Refresh the production caller inventory before
+  publishing this change. The old plan's absence of callers is historical only.
+  This retains the original B3.1 rollout gate, not an unverified deployment claim.
 
 ## B5 — CIBA trust boundary completion
 

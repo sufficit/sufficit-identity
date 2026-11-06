@@ -77,6 +77,7 @@ internal sealed class DpopProtocolFeature : IProtocolFeature
         server.AddEventHandler(Dpop.AttachDpopConfirmation.Descriptor);
         server.AddEventHandler(Dpop.AttachDpopTokenType.Descriptor);
         server.AddEventHandler(Dpop.ExtractDpopUserInfoToken.Descriptor);
+        server.AddEventHandler(Dpop.CaptureDpopWireToken.Descriptor);
         server.AddEventHandler(Dpop.ValidateDpopAccessTokenProof.Descriptor);
         // RFC 9449 10.1: a proof sent with a pushed authorization request
         // binds the code, with or without a dpop_jkt parameter.

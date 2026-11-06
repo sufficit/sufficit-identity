@@ -136,6 +136,49 @@ internal sealed class ExtractDpopUserInfoToken :
     }
 }
 
+// Keep the original value per validation context: reference-token resolution
+// replaces context.Token, and subject/actor validation share a transaction.
+internal sealed class CaptureDpopWireToken : IOpenIddictServerHandler<ValidateTokenContext>
+{
+    private sealed record WireToken(string Value);
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<ValidateTokenContext, WireToken> Tokens = new();
+
+    public static OpenIddictServerHandlerDescriptor Descriptor { get; } =
+        OpenIddictServerHandlerDescriptor.CreateBuilder<ValidateTokenContext>()
+            .UseSingletonHandler<CaptureDpopWireToken>()
+            .SetOrder(OpenIddictServerHandlers.Protection.ValidateReferenceTokenIdentifier.Descriptor.Order - 500)
+            .SetType(OpenIddictServerHandlerType.Custom)
+            .Build();
+
+    public ValueTask HandleAsync(ValidateTokenContext context)
+    {
+        Tokens.GetValue(context, current => new WireToken(current.Token));
+        return ValueTask.CompletedTask;
+    }
+
+    internal static string? Get(ValidateTokenContext context) =>
+        Tokens.TryGetValue(context, out var token) ? token.Value : null;
+}
+
+// Successful validation may be consumed by the dispatcher in this HTTP request
+// only. Never place this handoff in a principal, cookie or distributed cache.
+internal sealed record ValidatedDpopTokenProof(string Header, DpopProof Proof)
+{
+    private static readonly object ItemKey = new();
+
+    internal static void Store(Microsoft.AspNetCore.Http.HttpRequest request, DpopProof proof) =>
+        request.HttpContext.Items[ItemKey] = new ValidatedDpopTokenProof(request.Headers["DPoP"].ToString(), proof);
+
+    internal static DpopProof? Take(Microsoft.AspNetCore.Http.HttpContext context)
+    {
+        if (!context.Items.Remove(ItemKey, out var value)
+            || value is not ValidatedDpopTokenProof validated
+            || !string.Equals(validated.Header, context.Request.Headers["DPoP"].ToString(), StringComparison.Ordinal))
+            return null;
+        return validated.Proof;
+    }
+}
+
 /// <summary>
 /// Validates DPoP proof-of-possession for access tokens consumed by the STS
 /// itself. OpenIddict 7.6 validates mTLS <c>cnf.x5t#S256</c> natively but does
@@ -206,6 +249,13 @@ internal sealed class ValidateDpopAccessTokenProof :
             return;
         }
 
+        var wireToken = CaptureDpopWireToken.Get(context);
+        if (string.IsNullOrEmpty(wireToken))
+        {
+            context.Reject(Errors.InvalidToken, "The original token required for DPoP validation is unavailable.");
+            return;
+        }
+
         var proof = await _validator.ValidateAsync(
             request.Headers["DPoP"].ToString(),
             request.Method,
@@ -214,7 +264,7 @@ internal sealed class ValidateDpopAccessTokenProof :
             context.CancellationToken,
             // For reference tokens, context.Token is the resolved internal
             // payload. RFC 9449 ath binds the opaque value the client sent.
-            accessToken: context.Request?.AccessToken ?? context.Token);
+            accessToken: wireToken);
 
         if (proof is null || !string.Equals(
                 proof.KeyThumbprint,
@@ -223,6 +273,10 @@ internal sealed class ValidateDpopAccessTokenProof :
         {
             context.Reject(error: Errors.InvalidToken,
                 description: "A valid DPoP proof bound to this access token is required.");
+            return;
         }
+
+        if (context.Request?.IsTokenExchangeGrantType() is true)
+            ValidatedDpopTokenProof.Store(request, proof);
     }
 }
