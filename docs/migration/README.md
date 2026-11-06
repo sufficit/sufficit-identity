@@ -334,5 +334,8 @@ use a reviewed repair or backup restoration appropriate to that database. Do not
 mark the migration applied merely to bypass the failure. The test removes only
 its own empty fixture tables; that cleanup is not a production recovery procedure.
 Successful repair/retry and a subsequent no-op migration run are covered locally.
-Old-binary compatibility and recovery with production-like data require separate
-rehearsal evidence.
+The [populated recovery rehearsal](../activities/202611061549-populated-migration-recovery.md)
+also verifies unchanged synthetic identity, role, claim, key and session records
+through failure and repair, including password-hash verification. Key XML and
+session bytes in that fixture test storage preservation only. Old-binary
+compatibility and broader data/volume recovery require separate rehearsal evidence.
