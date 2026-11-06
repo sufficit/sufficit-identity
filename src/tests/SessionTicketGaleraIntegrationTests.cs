@@ -73,6 +73,15 @@ public sealed class SessionTicketGaleraIntegrationTests
             var ticket = new AuthenticationTicket(new ClaimsPrincipal(new ClaimsIdentity(
                 [new Claim("sub", "galera-user"), new Claim("sid", "galera-session")], "test")),
                 new AuthenticationProperties { ExpiresUtc = DateTimeOffset.UtcNow.AddHours(1) }, "test");
+            // Match the newly observed production session defaults and ensure
+            // opt-in setup changes only its connection, not other clients/globals.
+            using (var inherited = staleServices.GetRequiredService<IDbContextFactory<AppDbContext>>().CreateDbContext())
+            {
+                inherited.Database.OpenConnection();
+                using var check = inherited.Database.GetDbConnection().CreateCommand();
+                check.CommandText = "SELECT @@SESSION.wsrep_dirty_reads";
+                Assert.Equal(1, Convert.ToInt32(check.ExecuteScalar()));
+            }
             // Exercise the synchronous EF open path as well as repository async opens.
             using (var sync = causalServices.GetRequiredService<IDbContextFactory<AppDbContext>>().CreateDbContext())
             {
@@ -80,6 +89,10 @@ public sealed class SessionTicketGaleraIntegrationTests
                 using var check = sync.Database.GetDbConnection().CreateCommand();
                 check.CommandText = "SELECT @@SESSION.wsrep_sync_wait";
                 Assert.Equal(15, Convert.ToInt32(check.ExecuteScalar()));
+                check.CommandText = "SELECT @@SESSION.wsrep_dirty_reads";
+                Assert.Equal(0, Convert.ToInt32(check.ExecuteScalar()));
+                check.CommandText = "SELECT @@GLOBAL.wsrep_dirty_reads";
+                Assert.Equal(1, Convert.ToInt32(check.ExecuteScalar()));
             }
             var sid = await writer.StoreAsync(ticket);
             Assert.NotNull(await Repository(causalServices).FindAsync(sid, default));

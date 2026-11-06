@@ -57,6 +57,7 @@ def main():
                     "--wsrep-node-name=" + node,
                     "--wsrep-sst-method=rsync", "--binlog-format=ROW",
                     "--default-storage-engine=InnoDB", "--innodb-autoinc-lock-mode=2",
+                    *(["--wsrep-dirty-reads=ON"] if args.identity_tests else []),
                     "--wsrep-sync-wait=14", "--wsrep-provider-options=repl.causal_read_timeout=PT2S")
             created.append(node)
             command("docker", "start", node)

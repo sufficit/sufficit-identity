@@ -344,8 +344,9 @@ retransmission or production heartbeat timings.
 `Sufficit:Identity:Database:RequireGaleraCausalReads` defaults to `false` for
 compatibility with standalone/non-Galera deployments. Enabling it registers the
 production connection interceptor on the HTTP host's shared AppDbContext factory
-and the maintenance-only token-pruning context. It adds bit 1 to each logical EF
-connection's existing session `wsrep_sync_wait`, preserving the other bits. Both
+and the maintenance-only token-pruning context. It disables `wsrep_dirty_reads` only in that application session and adds bit 1
+to its existing `wsrep_sync_wait`, preserving the other bits. Dirty reads would
+otherwise bypass the causal check. Both
 synchronous and asynchronous opens run setup, including pooled logical opens.
 It requires session wsrep enabled and dirty reads disabled; setup errors and
 cancellation propagate rather than allowing an unchecked query. Setup has a
@@ -374,5 +375,8 @@ risk. Restart/recreate the application scope when changing this startup option.
 
 The barrier protects database reads; a cache hit bypasses it. Existing stale
 cache entries, notifications, TTL bounds and race handling remain separate.
-No production activation is implied by merging the option.
+No production activation is implied by merging the option. The
+[compatibility gate](../activities/202611062028-galera-session-compatibility.md)
+verified this session-local preparation on all four live SQL candidates from
+Eveo using the application credentials; existing service pools were not modified.
 [Implementation and validation](../activities/202611062018-galera-causal-read-policy.md).

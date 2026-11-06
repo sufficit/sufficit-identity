@@ -10,8 +10,9 @@ internal sealed class DatabaseCausalReadInterceptor : DbConnectionInterceptor
     {
         var command = connection.CreateCommand();
         command.CommandTimeout = 10;
-        // Keep the caller's existing write/SHOW bits. Never change GLOBAL settings.
-        command.CommandText = "SET SESSION wsrep_sync_wait = @@SESSION.wsrep_sync_wait | 1; SELECT @@SESSION.wsrep_on AND NOT @@SESSION.wsrep_dirty_reads";
+        // Dirty reads bypass sync-wait. Disable them for this opted-in session,
+        // preserving existing write/SHOW bits. Never change GLOBAL settings.
+        command.CommandText = "SET SESSION wsrep_dirty_reads = OFF; SET SESSION wsrep_sync_wait = @@SESSION.wsrep_sync_wait | 1; SELECT @@SESSION.wsrep_on AND NOT @@SESSION.wsrep_dirty_reads";
         return command;
     }
 

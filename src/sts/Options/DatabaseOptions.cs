@@ -22,7 +22,8 @@ public sealed class DatabaseOptions
 {
     /// <summary>
     /// Opt in for Galera deployments: add the causal READ bit to every application
-    /// EF connection's wsrep_sync_wait setting. Requires wsrep enabled. Setup
+    /// EF connection's wsrep_sync_wait setting and disable session dirty reads.
+    /// Requires wsrep enabled. Setup
     /// failures abort connection use; no global server setting is changed.
     /// Already cached tickets still follow the configured cache lifetime.
     /// </summary>
