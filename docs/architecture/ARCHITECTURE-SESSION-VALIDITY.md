@@ -155,7 +155,7 @@ publication-deadline contract above still applies. See the
 
 `SessionTicketRedisIntegrationTests` is opt-in via
 `SUFFICIT_TEST_REDIS_EXECUTABLE`, an absolute path to a runnable local Redis
-server binary. It starts its own loopback-only process with persistence disabled,
+server binary. It starts its own loopback-only process with automatic persistence disabled,
 uses independent Redis cache clients and real SQLite persistence, stops only
 that owned process, and restarts it to verify post-revocation recovery.
 Temporary server directories and processes are disposed even after failures.
@@ -169,6 +169,14 @@ SUFFICIT_TEST_REDIS_EXECUTABLE=/path/to/redis-server dotnet test src/tests/Suffi
 
 The test verifies shared cache publication, database fallback during a real
 cache outage, durable renewal/revocation, rejection after a clean cache restart
-and fresh sign-in after recovery. It is not a Sentinel/Cluster failover,
-persistent stale-cache recovery, clock-skew or MariaDB outage rehearsal.
+and fresh sign-in after recovery. A second scenario explicitly saves an RDB
+snapshot before outage, verifies the identical protected ticket is restored
+after revocation, and checks rejection at the original cache deadline despite
+repeated reads. This demonstrates the remaining stale-access window rather
+than promising immediate revocation. It is not a Sentinel/Cluster failover,
+clock-skew or MariaDB outage rehearsal.
 See the [dated results](../activities/202611061339-session-redis-outage-rehearsal.md).
+
+The [persisted-cache activity](../activities/202611061343-persisted-session-cache-recovery.md)
+records the RDB restoration test. The local fixture retains only its own
+temporary snapshot between restarts and removes it on disposal.

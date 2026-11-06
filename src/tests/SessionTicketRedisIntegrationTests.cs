@@ -29,7 +29,15 @@ public sealed class SessionTicketRedisIntegrationTests
 
     [LocalRedisFact]
     [Trait("Category", "RedisIntegration")]
-    public async Task Two_stores_fall_back_during_redis_outage_and_preserve_revocation_after_restart()
+    public Task Two_stores_fall_back_during_redis_outage_and_preserve_revocation_after_restart() =>
+        RehearseRecoveryAsync(persistCache: false);
+
+    [LocalRedisFact]
+    [Trait("Category", "RedisIntegration")]
+    public Task Persisted_cache_can_restore_stale_ticket_but_cannot_extend_its_original_deadline() =>
+        RehearseRecoveryAsync(persistCache: true);
+
+    private static async Task RehearseRecoveryAsync(bool persistCache)
     {
         using var redis = new LocalRedis();
         await redis.StartAsync();
@@ -51,10 +59,11 @@ public sealed class SessionTicketRedisIntegrationTests
         var cacheA = cacheServicesA.GetRequiredService<IDistributedCache>();
         var cacheB = cacheServicesB.GetRequiredService<IDistributedCache>();
         var protection = new EphemeralDataProtectionProvider();
+        var cacheLifetimeSeconds = persistCache ? 15 : 5;
         OidcUserSessionTicketStore Store(IDistributedCache cache) => new(repository, protection, cache,
             new HttpContextAccessor(), new SufficitIdentityOptions
             {
-                UserSessions = new() { CacheOperationTimeoutMilliseconds = 100, CacheLifetimeSeconds = 5 },
+                UserSessions = new() { CacheOperationTimeoutMilliseconds = 100, CacheLifetimeSeconds = cacheLifetimeSeconds },
             }, TimeProvider.System, NullLogger<OidcUserSessionTicketStore>.Instance);
         var writer = Store(cacheA);
         var reader = Store(cacheB);
@@ -62,10 +71,14 @@ public sealed class SessionTicketRedisIntegrationTests
             [new Claim("sub", "test-user"), new Claim("sid", "redis-session")], "test")),
             new AuthenticationProperties { ExpiresUtc = DateTimeOffset.UtcNow.AddHours(1) }, "test");
 
+        var publicationStarted = DateTimeOffset.UtcNow;
         var sid = await writer.StoreAsync(ticket);
         // Check the actual provider, so DB fallback cannot disguise a broken setup.
-        Assert.NotNull(await cacheB.GetAsync(Key(sid)));
+        var savedTicket = await cacheB.GetAsync(Key(sid));
+        Assert.NotNull(savedTicket);
         Assert.NotNull(await reader.RetrieveAsync(sid));
+
+        if (persistCache) await redis.SaveSnapshotAsync();
 
         redis.Stop();
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(10));
@@ -85,6 +98,23 @@ public sealed class SessionTicketRedisIntegrationTests
         await cacheC.SetStringAsync("recovered", "yes");
         Assert.Equal("yes", await cacheC.GetStringAsync("recovered"));
         var recovered = Store(cacheC);
+        if (persistCache)
+        {
+            // Prove the stale RDB entry was actually restored before checking
+            // its bound; an empty-cache restart must not satisfy this test.
+            Assert.Equal(savedTicket, await cacheC.GetAsync(Key(sid)));
+            Assert.NotNull(await recovered.RetrieveAsync(sid));
+            Assert.Null(await repository.FindAsync(sid, default));
+
+            // Read repeatedly: neither restart nor cache hits may reset expiry.
+            // Allow 250 ms for scheduling/publication overhead at the boundary.
+            var expiryCheck = publicationStarted.AddSeconds(cacheLifetimeSeconds).AddMilliseconds(250);
+            while (DateTimeOffset.UtcNow < expiryCheck)
+            {
+                await recovered.RetrieveAsync(sid);
+                await Task.Delay(100);
+            }
+        }
         Assert.Null(await recovered.RetrieveAsync(sid));
         await writer.RenewAsync(sid, ticket); // Absent row must not be republished.
         Assert.Null(await cacheC.GetAsync(Key(sid)));
@@ -145,6 +175,20 @@ public sealed class SessionTicketRedisIntegrationTests
                 }
                 catch (SocketException) { await Task.Delay(25, timeout.Token); }
             }
+        }
+
+        public async Task SaveSnapshotAsync()
+        {
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            using var client = new TcpClient();
+            await client.ConnectAsync(IPAddress.Loopback, Port, timeout.Token);
+            await using var stream = client.GetStream();
+            // Synchronous SAVE returns only after the RDB snapshot is durable.
+            await stream.WriteAsync("*1\r\n$4\r\nSAVE\r\n"u8.ToArray(), timeout.Token);
+            var response = new byte[5];
+            await stream.ReadExactlyAsync(response, timeout.Token);
+            Assert.Equal("+OK\r\n", System.Text.Encoding.ASCII.GetString(response));
+            Assert.True(File.Exists(Path.Combine(_directory, "dump.rdb")));
         }
 
         public void Stop()
