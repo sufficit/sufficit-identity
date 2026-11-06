@@ -261,6 +261,7 @@ public sealed class ImpersonationEvents(
         }
     }
 
+    [return: System.Diagnostics.CodeAnalysis.NotNullIfNotNull(nameof(value))]
     private static string? Truncate(string? value, int max) => value is null ? null : value.Length <= max ? value : value[..max];
     private static string Sanitize(string? value) => (value ?? "none").Replace('\r', ' ').Replace('\n', ' ');
 }

@@ -107,3 +107,15 @@ the completed local work or infer production approval from it.
 The owner must supply/approve the representative workload and its acceptance
 thresholds before a volume result can be called acceptable. This item authorizes
 no production data export, destructive repair or retirement of old releases.
+
+## Active deployment checkpoint — 2026-11-06
+
+Authorized deployment of current main. Preserve parallel package-lock edits; build
+in a clean isolated checkout using the local SUI. No schema changes since the
+currently published revision. Deploy all three apps nodes sequentially.
+
+1. **in progress** — CI nullability blocker repaired; Release warn-as-error focused tests: 18 passed. Full suite running.
+   Evidence: [build repair](../activities/202611061726-deployment-build-repair.md).
+2. **pending** — Package clean revision with local SUI and inspect artifact.
+3. **pending** — Prepare all nodes, activate serially, verify health/revision/JWKS.
+4. **pending** — Archive deployment evidence and commit/push documentation.
