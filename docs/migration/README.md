@@ -351,3 +351,9 @@ extends that check with real password authentication and authenticated profile
 access. The host's advisory-lock command timeout is 65 seconds, exceeding the
 60-second MariaDB lock wait even when the connection's default command timeout
 is shorter. A null lock result is handled as acquisition failure.
+
+The [historical OIDC rehearsal](../activities/202611061657-historical-oidc-code-flow.md)
+also covers a public client's authorization-code flow with S256 PKCE, ID-token
+signature/issuer/audience/nonce/subject validation and authorization-code reuse
+rejection. This evidence is specific to the recorded historical binary and local
+fixture, not a general compatibility guarantee for every client or extension.

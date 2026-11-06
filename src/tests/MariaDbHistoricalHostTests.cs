@@ -1,4 +1,11 @@
 using System.Diagnostics;
+using Microsoft.IdentityModel.JsonWebTokens;
+using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.IdentityModel.Tokens;
+using OpenIddict.Abstractions;
+using static OpenIddict.Abstractions.OpenIddictConstants;
 using System.Net;
 using AngleSharp.Html.Parser;
 using Microsoft.AspNetCore.Identity;
@@ -77,6 +84,28 @@ public sealed class MariaDbHistoricalHostTests
             Value = "JBSWY3DPEHPK3PXP",
         });
         await db.SaveChangesAsync();
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddDbContext<AppDbContext>(builder => builder.UseMySql(server.ConnectionString,
+            new MariaDbServerVersion(new Version(10, 11))));
+        services.AddOpenIddict().AddCore(core => core.UseEntityFrameworkCore().UseDbContext<AppDbContext>());
+        await using (var provider = services.BuildServiceProvider())
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>().CreateAsync(
+                new OpenIddictApplicationDescriptor
+                {
+                    ClientId = "historical-public", ClientType = ClientTypes.Public,
+                    ConsentType = ConsentTypes.Implicit,
+                    RedirectUris = { new Uri("https://client.example.invalid/callback") },
+                    Permissions =
+                    {
+                        Permissions.Endpoints.Authorization, Permissions.Endpoints.Token,
+                        Permissions.GrantTypes.AuthorizationCode, Permissions.ResponseTypes.Code,
+                        Permissions.Prefixes.Scope + Scopes.OpenId,
+                    },
+                });
+        }
         var directory = Path.Combine(Path.GetTempPath(), "identity-historical-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         try
@@ -118,6 +147,7 @@ public sealed class MariaDbHistoricalHostTests
                 Assert.True(response.IsSuccessStatusCode,
                     $"Readiness returned {response.StatusCode}: {await response.Content.ReadAsStringAsync()}");
                 await AssertPasswordLoginAsync(http, username, password);
+                await AssertOidcAsync(http, user.Id);
                 await AssertMfaLoginAsync(address, mfaUser.UserName, password, recoveryCode, consumed: false);
                 await AssertMfaLoginAsync(address, mfaUser.UserName, password, recoveryCode, consumed: true);
                 await AssertMfaLoginAsync(address, mfaUser.UserName, password, recoveryCode,
@@ -215,6 +245,62 @@ public sealed class MariaDbHistoricalHostTests
             Assert.Equal(HttpStatusCode.OK, profile.StatusCode);
             Assert.Contains(username, await profile.Content.ReadAsStringAsync());
         }
+    }
+
+    private static async Task AssertOidcAsync(HttpClient http, string subject)
+    {
+        const string clientId = "historical-public";
+        const string redirect = "https://client.example.invalid/callback";
+        var verifier = Base64UrlEncoder.Encode(RandomNumberGenerator.GetBytes(32));
+        var challenge = Base64UrlEncoder.Encode(SHA256.HashData(Encoding.ASCII.GetBytes(verifier)));
+        var nonce = Guid.NewGuid().ToString("N");
+        var state = Guid.NewGuid().ToString("N");
+        var url = QueryHelpers.AddQueryString("/connect/authorize", new Dictionary<string, string?>
+        {
+            ["client_id"] = clientId, ["redirect_uri"] = redirect, ["response_type"] = "code",
+            ["scope"] = "openid", ["state"] = state, ["nonce"] = nonce,
+            ["code_challenge"] = challenge, ["code_challenge_method"] = "S256",
+        });
+        using var authorization = await http.GetAsync(url);
+        Assert.Equal(HttpStatusCode.Redirect, authorization.StatusCode);
+        var callback = authorization.Headers.Location!;
+        Assert.True(callback.IsAbsoluteUri, $"Unexpected authorization location: {callback}");
+        Assert.Equal(redirect, callback.GetLeftPart(UriPartial.Path));
+        var query = QueryHelpers.ParseQuery(callback.Query);
+        Assert.Equal(state, query["state"].ToString());
+        Assert.False(query.ContainsKey("error"), callback.ToString());
+        var code = query["code"].ToString();
+        Assert.False(string.IsNullOrWhiteSpace(code));
+        async Task<HttpResponseMessage> ExchangeAsync() => await http.PostAsync("/connect/token",
+            new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["grant_type"] = "authorization_code", ["client_id"] = clientId,
+                ["redirect_uri"] = redirect, ["code"] = code, ["code_verifier"] = verifier,
+            }));
+        using var tokenResponse = await ExchangeAsync();
+        Assert.Equal(HttpStatusCode.OK, tokenResponse.StatusCode);
+        using var tokens = JsonDocument.Parse(await tokenResponse.Content.ReadAsStringAsync());
+        Assert.False(string.IsNullOrWhiteSpace(tokens.RootElement.GetProperty("access_token").GetString()));
+        using var discovery = JsonDocument.Parse(await http.GetStringAsync("/.well-known/openid-configuration"));
+        var jwksPath = new Uri(discovery.RootElement.GetProperty("jwks_uri").GetString()!).PathAndQuery;
+        var keys = new JsonWebKeySet(await http.GetStringAsync(jwksPath));
+        var validator = new JsonWebTokenHandler { MapInboundClaims = false };
+        var validation = await validator.ValidateTokenAsync(tokens.RootElement.GetProperty("id_token").GetString(),
+            new TokenValidationParameters
+            {
+                ValidIssuer = discovery.RootElement.GetProperty("issuer").GetString(),
+                ValidAudience = clientId, IssuerSigningKeys = keys.GetSigningKeys(),
+                ValidateIssuerSigningKey = true, ValidateIssuer = true, ValidateAudience = true,
+                ValidateLifetime = true, RequireSignedTokens = true, RequireExpirationTime = true,
+            });
+        Assert.True(validation.IsValid, validation.Exception?.ToString());
+        var principal = validation.ClaimsIdentity;
+        Assert.Equal(subject, principal.FindFirst("sub")?.Value);
+        Assert.Equal(nonce, principal.FindFirst("nonce")?.Value);
+        using var reused = await ExchangeAsync();
+        Assert.Equal(HttpStatusCode.BadRequest, reused.StatusCode);
+        using var error = JsonDocument.Parse(await reused.Content.ReadAsStringAsync());
+        Assert.Equal("invalid_grant", error.RootElement.GetProperty("error").GetString());
     }
 
 }
