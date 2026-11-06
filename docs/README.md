@@ -37,8 +37,6 @@ foundations, remaining scope, dependencies and acceptance evidence. The
 [2026-11-06 reconciliation](activities/202611061100-plan-reconciliation-split.md)
 accounts for all 105 original items, seven closure criteria and the operational calendar.
 
-Active documentation checkpoint: [Backlog reconciliation](plans/PLAN-RECONCILE-BACKLOG.md).
-
 ## Completed work (activities/)
 
 - [Focused plan reconciliation](activities/202611061100-plan-reconciliation-split.md) — reviewed backlog, removed completed/duplicate work and preserved evidence for every item.
