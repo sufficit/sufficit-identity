@@ -2,6 +2,8 @@
 """Owned local SQL rehearsal; never accepts production database endpoints."""
 import argparse
 import json
+import os
+from pathlib import Path
 import selectors
 import subprocess
 import time
@@ -18,6 +20,7 @@ def command(*args, timeout=60, check=True):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--image", default="mariadb@sha256:22edfe1c78349f8cae88bbb5c2873b7e6c515be767c91c691308ce57445806f3")
+    parser.add_argument("--identity-tests", action="store_true", help="Run the built Release Identity Galera session integration test")
     args = parser.parse_args()
     prefix = "identity-galera-" + uuid.uuid4().hex[:8]
     network = prefix + "-net"
@@ -42,10 +45,11 @@ def main():
         raise RuntimeError(f"Owned Galera node did not become ready: {node}")
 
     try:
-        command("docker", "network", "create", "--internal", network)
+        command("docker", "network", "create", *([] if args.identity_tests else ["--internal"]), network)
         network_created = True
         for i, node in enumerate(nodes):
             command("docker", "create", "--name", node, "--network", network,
+                    *(["--publish", "127.0.0.1::3306"] if args.identity_tests else []),
                     "--env", "MYSQL_ROOT_PASSWORD=disposable-local-only", args.image,
                     "--wsrep-on=ON", "--wsrep-provider=/usr/lib/galera/libgalera_smm.so",
                     "--wsrep-cluster-name=" + prefix,
@@ -60,6 +64,21 @@ def main():
         for node in nodes:
             ready(node, 3)
         version = sql(nodes[0], "SELECT VERSION(); SHOW GLOBAL STATUS LIKE 'wsrep_provider_version';").stdout.strip()
+        if args.identity_tests:
+            endpoints = []
+            for node in nodes[:2]:
+                address = command("docker", "port", node, "3306/tcp").stdout.strip()
+                if not address.startswith("127.0.0.1:"):
+                    raise RuntimeError("Owned SQL port is not loopback")
+                endpoints.append("Server=127.0.0.1;Port=" + address.split(":")[1] +
+                                 ";User=root;Password=disposable-local-only;Pooling=false;Default Command Timeout=10")
+            env = dict(os.environ, IDENTITY_TEST_OWNED_GALERA_CONNECTIONS="|".join(endpoints))
+            subprocess.run(["dotnet", "test", "src/tests/Sufficit.Identity.Tests.csproj", "-c", "Release",
+                            "--no-build", "--no-restore", "--filter", "FullyQualifiedName~SessionTicketGaleraIntegrationTests",
+                            "--nologo", "--verbosity", "quiet"], env=env,
+                           cwd=Path(__file__).resolve().parent.parent, check=True, timeout=180)
+            print(json.dumps({"version": version, "identity_test": "passed"}))
+            return
         sql(nodes[0], "CREATE DATABASE rehearsal; CREATE TABLE rehearsal.sessions (id INT PRIMARY KEY) ENGINE=InnoDB; INSERT INTO rehearsal.sessions VALUES (1);")
         assert sql(nodes[1], "SET SESSION wsrep_sync_wait=15; SELECT COUNT(*) FROM rehearsal.sessions;").stdout.strip() == "1"
         # Freeze application of remote writes on one local node while allowing reads.
