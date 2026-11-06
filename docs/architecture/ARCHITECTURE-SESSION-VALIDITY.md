@@ -150,3 +150,25 @@ sign-ins. Credential revocation still relies on the higher-level security-stamp
 rotation. Cache invalidation can fail or race with late publication; the
 publication-deadline contract above still applies. See the
 [bulk snapshot activity](../activities/202611061318-bulk-session-revocation-snapshot.md).
+
+## Disposable Redis integration rehearsal
+
+`SessionTicketRedisIntegrationTests` is opt-in via
+`SUFFICIT_TEST_REDIS_EXECUTABLE`, an absolute path to a runnable local Redis
+server binary. It starts its own loopback-only process with persistence disabled,
+uses independent Redis cache clients and real SQLite persistence, stops only
+that owned process, and restarts it to verify post-revocation recovery.
+Temporary server directories and processes are disposed even after failures.
+Without the variable the test is explicitly skipped.
+
+Example:
+
+```sh
+SUFFICIT_TEST_REDIS_EXECUTABLE=/path/to/redis-server dotnet test src/tests/Sufficit.Identity.Tests.csproj --no-restore -p:SufficitUseLocalSui=false --filter FullyQualifiedName~SessionTicketRedisIntegrationTests
+```
+
+The test verifies shared cache publication, database fallback during a real
+cache outage, durable renewal/revocation, rejection after a clean cache restart
+and fresh sign-in after recovery. It is not a Sentinel/Cluster failover,
+persistent stale-cache recovery, clock-skew or MariaDB outage rehearsal.
+See the [dated results](../activities/202611061339-session-redis-outage-rehearsal.md).
