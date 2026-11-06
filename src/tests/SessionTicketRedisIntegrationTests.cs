@@ -109,11 +109,10 @@ public sealed class SessionTicketRedisIntegrationTests
             // Read repeatedly: neither restart nor cache hits may reset expiry.
             // Allow 250 ms for scheduling/publication overhead at the boundary.
             var expiryCheck = publicationStarted.AddSeconds(cacheLifetimeSeconds).AddMilliseconds(250);
-            while (DateTimeOffset.UtcNow < expiryCheck)
-            {
-                await recovered.RetrieveAsync(sid);
-                await Task.Delay(100);
-            }
+            await recovered.RetrieveAsync(sid);
+            await recovered.RetrieveAsync(sid);
+            var remaining = expiryCheck - DateTimeOffset.UtcNow;
+            if (remaining > TimeSpan.Zero) await Task.Delay(remaining);
         }
         Assert.Null(await recovered.RetrieveAsync(sid));
         await writer.RenewAsync(sid, ticket); // Absent row must not be republished.
@@ -160,21 +159,19 @@ public sealed class SessionTicketRedisIntegrationTests
             foreach (var argument in new[] { "--bind", "127.0.0.1", "--port", Port.ToString(),
                 "--save", "", "--appendonly", "no", "--dir", _directory, "--daemonize", "no" })
                 start.ArgumentList.Add(argument);
-            _process = Process.Start(start)!;
+            var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            _process = new Process { StartInfo = start, EnableRaisingEvents = true };
+            _process.OutputDataReceived += (_, e) =>
+            {
+                if (e.Data?.Contains("Ready to accept connections", StringComparison.OrdinalIgnoreCase) == true)
+                    ready.TrySetResult();
+            };
+            _process.Exited += (_, _) => ready.TrySetException(
+                new InvalidOperationException("Disposable Redis exited before readiness."));
+            _process.Start();
             _process.BeginOutputReadLine();
             _process.BeginErrorReadLine();
-            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-            while (true)
-            {
-                if (_process.HasExited) throw new InvalidOperationException("Disposable Redis exited during startup.");
-                using var client = new TcpClient();
-                try
-                {
-                    await client.ConnectAsync(IPAddress.Loopback, Port, timeout.Token);
-                    return;
-                }
-                catch (SocketException) { await Task.Delay(25, timeout.Token); }
-            }
+            await ready.Task.WaitAsync(TimeSpan.FromSeconds(15));
         }
 
         public async Task SaveSnapshotAsync()

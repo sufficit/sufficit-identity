@@ -40,6 +40,10 @@ public sealed class TestSynchronizationContractTests
     private static readonly Dictionary<string, (int Count, string Reason)> Justified =
         new(StringComparer.Ordinal)
         {
+            ["SessionTicketCancellationTests.cs"] =
+                (2, "Infinite delays block until explicit cancellation; no elapsed-time assertion."),
+            ["SessionTicketRedisIntegrationTests.cs"] =
+                (1, "Waits for the real Redis absolute TTL to expire; longer scheduling delays are safe."),
             ["ManagementUiRoutingTests.cs"] =
                 (1, "Task.Delay(Timeout.InfiniteTimeSpan) — bloqueio até "
                     + "cancelamento, não espera por conclusão."),

@@ -213,17 +213,36 @@ public sealed class SessionTicketMariaDbOutageTests
             var port = int.Parse(endpoint.Split(':')[1]);
             ConnectionString = $"Server=127.0.0.1;Port={port};Database=session_test;User=session_test;" +
                 "Password=disposable-test-only;Pooling=false;Connection Timeout=1;Default Command Timeout=3";
-            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(60));
-            while (true)
+            // Follow this start's log stream; do not poll with sleeps or accept
+            // the temporary initialization server (whose port is zero).
+            var started = (await DockerAsync("inspect", "--format", "{{.State.StartedAt}}", _name)).Trim();
+            var start = new ProcessStartInfo("docker")
             {
-                try
-                {
-                    await using var connection = new MySqlConnection(ConnectionString);
-                    await connection.OpenAsync(timeout.Token);
-                    return;
-                }
-                catch (MySqlException) { await Task.Delay(200, timeout.Token); }
+                UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true,
+            };
+            foreach (var argument in new[] { "logs", "--follow", "--since", started, _name })
+                start.ArgumentList.Add(argument);
+            var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            using var logs = new Process { StartInfo = start, EnableRaisingEvents = true };
+            void Observe(object sender, DataReceivedEventArgs e)
+            {
+                if (e.Data is { } line && System.Text.RegularExpressions.Regex.IsMatch(line, @"port:\s*3306\b"))
+                    ready.TrySetResult();
             }
+            logs.OutputDataReceived += Observe;
+            logs.ErrorDataReceived += Observe;
+            logs.Exited += (_, _) => ready.TrySetException(new InvalidOperationException("MariaDB log stream ended before readiness."));
+            logs.Start();
+            logs.BeginOutputReadLine();
+            logs.BeginErrorReadLine();
+            try { await ready.Task.WaitAsync(TimeSpan.FromSeconds(60)); }
+            finally
+            {
+                if (!logs.HasExited) logs.Kill();
+                await logs.WaitForExitAsync();
+            }
+            await using var connection = new MySqlConnection(ConnectionString);
+            await connection.OpenAsync();
         }
 
         private static async Task<string> DockerAsync(params string[] arguments)

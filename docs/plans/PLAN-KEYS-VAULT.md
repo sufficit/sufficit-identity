@@ -23,7 +23,7 @@ Evidence: [VaultTests.KekRewrap.cs](../../src/tests/VaultTests.KekRewrap.cs), [V
 
 - [ ] **C1.1 · operational** — Separate database-reader authority from KEK authority in production
 C1.2 is closed in the [mixed KEK/DEK race activity](../activities/202611061234-mixed-kek-dek-race.md).
-Both lease orderings, persisted key versions, journal/idempotence and cold decrypt
+Both lease orderings, persisted versions, journal idempotence and cold decrypt
 with only the new KEK are covered; no production implementation change was needed.
 
 ## C2 — Signing and encryption key separation
