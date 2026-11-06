@@ -81,6 +81,70 @@ public sealed class SessionValidityCacheIntegrationTests(
         Assert.Null(context.Principal);
     }
 
+    [Fact]
+    public async Task Losing_the_channel_bypasses_an_already_warm_stamp_cache()
+    {
+        var ticket = await IssueTicketAsync(verifiedAt: DateTimeOffset.UtcNow);
+        var cache = new InMemorySessionValidityCache(TimeSpan.FromSeconds(30));
+        cache.MarkVerified(await SubjectOfAsync(ticket));
+        var publisher = new MutablePublisher();
+        Assert.NotNull((await ValidateAsync(ticket, cache, publisher)).Principal);
+
+        publisher.Connected = false;
+        await RotateSecurityStampAsync(ticket);
+
+        // Even a verification cached before the disconnect must not bypass
+        // the authoritative stamp read while this node cannot hear changes.
+        Assert.Null((await ValidateAsync(ticket, cache, publisher)).Principal);
+    }
+
+    [Fact]
+    public async Task Reconnection_after_a_missed_notification_does_not_restart_the_original_window()
+    {
+        var verifiedAt = DateTimeOffset.UtcNow;
+        var ticket = await IssueTicketAsync(verifiedAt);
+        var subject = await SubjectOfAsync(ticket);
+        var clock = new CacheClock(verifiedAt);
+        var notifyingNode = new InMemorySessionValidityCache(TimeSpan.FromSeconds(30), clock);
+        var isolatedNode = new InMemorySessionValidityCache(TimeSpan.FromSeconds(30), clock);
+        notifyingNode.MarkVerified(subject);
+        isolatedNode.MarkVerified(subject);
+        var publisher = new MutablePublisher();
+        Assert.NotNull((await ValidateAsync(ticket, isolatedNode, publisher)).Principal);
+
+        publisher.Connected = false;
+        await RotateSecurityStampAsync(ticket);
+        clock.Now = verifiedAt.AddSeconds(1);
+        notifyingNode.Invalidate(subject);
+        Assert.Null((await ValidateAsync(ticket, notifyingNode,
+            new StubPublisher(Enabled: true, Connected: true))).Principal);
+
+        // No requests or notification reach the isolated node while offline.
+        // Reconnection alone has no replay guarantee: the old verification
+        // can still be trusted inside its original, bounded window.
+        publisher.Connected = true;
+        clock.Now = verifiedAt.AddSeconds(29);
+        Assert.NotNull((await ValidateAsync(ticket, isolatedNode, publisher)).Principal);
+        Assert.NotNull((await ValidateAsync(ticket, isolatedNode, publisher)).Principal);
+
+        clock.Now = verifiedAt.AddSeconds(30);
+        Assert.Null((await ValidateAsync(ticket, isolatedNode, publisher)).Principal);
+    }
+
+    private sealed class CacheClock(DateTimeOffset now) : TimeProvider
+    {
+        public DateTimeOffset Now { get; set; } = now;
+        public override DateTimeOffset GetUtcNow() => Now;
+    }
+
+    private sealed class MutablePublisher : IUserSecurityChangePublisher
+    {
+        public bool Enabled => true;
+        public bool Connected { get; set; } = true;
+        public Task<bool> PublishAsync(string userId, CancellationToken cancellationToken) =>
+            Task.FromResult(Connected);
+    }
+
     private async Task<string> SubjectOfAsync(AuthenticationTicket ticket)
     {
         await using var scope = factory.Services.CreateAsyncScope();

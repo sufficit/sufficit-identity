@@ -278,3 +278,21 @@ This deterministic detachment models a missing invalidation, not automatic
 election, packet-loss injection or a partition-healing protocol. Production
 revocation is still best effort within the configured cache window.
 [Execution evidence](../activities/202611061440-session-replica-missed-invalidation.md).
+
+## Notification-channel transitions
+
+A warm per-user security-stamp cache does not bypass verification while the
+notification publisher reports disconnected. A stamp rotated on another node is
+then rejected by an authoritative user-store read, even inside the cache window.
+
+Reconnection does not prove that missed notifications have been replayed. A node
+that received no requests while disconnected can still trust its old stamp
+verification inside the original window after reconnecting. Cache hits do not
+refresh that deadline: at the original window boundary it reads the user row and
+rejects the old stamp. Another node that received the invalidation rejects it
+without waiting for that boundary.
+
+Tests use independent in-memory stamp caches, the real validator/user store and
+a controlled cache clock. Publisher state is simulated; this is not evidence of
+NATS delivery, packet-loss recovery, Redis failover or production clock bounds.
+[Transition evidence](../activities/202611061745-session-notification-transitions.md).
