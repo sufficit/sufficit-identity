@@ -403,8 +403,9 @@ public sealed class AspNetCoreIdentityPasskeyService(
 
         if (assurance.RequireUserVerification && !evidence.Value.UserVerified)
         {
-            // The authenticator proved possession and nothing else. Signing in
-            // anyway would mint amr=mfa for a single factor.
+            // Enforce the deployment's user-verification requirement before
+            // sign-in. A relaxed deployment can accept possession-only evidence,
+            // but that evidence must not satisfy MFA-protected operations.
             logger.LogWarning(
                 "Passkey assertion reported no user verification while the "
                 + "deployment requires it.");

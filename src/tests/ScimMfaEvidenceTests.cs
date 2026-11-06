@@ -17,9 +17,10 @@ public sealed class ScimMfaEvidenceTests
                 yield return new object[] { new[] { "pwd", method }, remembered, true };
                 yield return new object[] { new[] { $"  pwd   {method}  " }, remembered, true };
             }
-            foreach (var method in new[] { "", "pwd", "MFA", "passkey", "unknown", "not-mfa" })
+            foreach (var method in new[] { "", "pwd", "MFA", "passkey", "unknown", "not-mfa", "otp", "hwk", "sms", "vcm", "fpt", "eye", "voice", "retina", "passkey hwk", "hwk otp", "pwd pwd" })
                 yield return new object[] { new[] { method }, remembered, false };
             yield return new object[] { Array.Empty<string>(), remembered, false };
+            yield return new object[] { new[] { "mfa" }, remembered, true };
         }
     }
 

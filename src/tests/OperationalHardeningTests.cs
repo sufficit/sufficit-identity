@@ -62,9 +62,9 @@ public sealed class MfaRequirementTests
     [InlineData("otp")]   // one-time password (TOTP/HOTP)
     [InlineData("hwk")]   // hardware key (WebAuthn/FIDO2)
     [InlineData("fpt")]   // fingerprint
-    public async Task Second_factor_amr_values_satisfy_the_requirement(string amrValue)
+    public async Task A_single_method_does_not_satisfy_the_requirement(string amrValue)
     {
-        // Each RFC 8176 second-factor value individually proves MFA.
+        // A method identifies one factor, not proof that multiple factors were used.
         var handler = new MfaHandler(EmptyScopeFactory());
         var requirement = new MfaRequirement();
         var context = new AuthorizationHandlerContext(
@@ -74,7 +74,7 @@ public sealed class MfaRequirementTests
 
         await handler.HandleAsync(context);
 
-        Assert.True(context.HasSucceeded);
+        Assert.False(context.HasSucceeded);
     }
 
     [Fact]

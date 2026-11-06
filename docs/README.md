@@ -39,6 +39,8 @@ accounts for all 105 original items, seven closure criteria and the operational 
 
 ## Completed work (activities/)
 
+- [Single-factor MFA refusal](activities/202611061124-single-factor-mfa-refusal.md) — rejects possession-only passkey and other single-method evidence at MFA gates.
+
 - [SCIM shared MFA evidence](activities/202611061120-scim-shared-mfa-evidence.md) — removes the duplicated reader; writer audit remains in A4.1.
 
 - [Shared Management options](activities/202611061115-shared-management-options.md) — STS and Management use one configuration contract (F2.2).

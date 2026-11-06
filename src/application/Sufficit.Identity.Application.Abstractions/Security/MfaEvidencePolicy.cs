@@ -28,18 +28,25 @@ public static class MfaEvidencePolicy
 
     public const string AuthenticationMethodClaimType = "amr";
 
-    private static readonly HashSet<string> MfaMethods = new(StringComparer.Ordinal)
+    private static readonly HashSet<string> PasswordComplementMethods = new(StringComparer.Ordinal)
     {
-        "mfa", "otp", "hwk", "sms", "vcm", "fpt", "eye", "voice", "retina",
+        "otp", "hwk", "sms", "vcm", "fpt", "eye", "voice", "retina",
     };
 
-    /// <summary>A second factor is part of this principal's evidence.</summary>
+    /// <summary>
+    /// Requires an explicit MFA assertion or password plus a recognized
+    /// possession/biometric method. A method alone (including hwk or otp)
+    /// does not prove multiple factors; duplicate possession methods do not
+    /// constitute two factors either. Other combinations require explicit mfa.
+    /// </summary>
     public static bool HasMfaEvidence(ClaimsPrincipal principal)
     {
         ArgumentNullException.ThrowIfNull(principal);
-        return principal.FindAll(AuthenticationMethodClaimType)
+        var methods = principal.FindAll(AuthenticationMethodClaimType)
             .SelectMany(Split)
-            .Any(MfaMethods.Contains);
+            .ToHashSet(StringComparer.Ordinal);
+        return methods.Contains("mfa")
+            || (methods.Contains("pwd") && methods.Overlaps(PasswordComplementMethods));
     }
 
     /// <summary>

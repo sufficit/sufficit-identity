@@ -56,6 +56,29 @@ public sealed class PasskeyAssurancePolicyTests
         Assert.Contains("mfa", policy.AuthenticationMethods(verified.Value));
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Emitted_passkey_methods_require_user_verification_for_mfa(bool verified)
+    {
+        var policy = new PasskeyAssurancePolicy(
+            new AccountPasskeyOptions { RequireUserVerification = false });
+        var evidence = policy.Read(Assertion((byte)(UserPresent | (verified ? UserVerified : 0))));
+        Assert.NotNull(evidence);
+        var principal = new System.Security.Claims.ClaimsPrincipal(
+            new System.Security.Claims.ClaimsIdentity(policy.AuthenticationMethods(evidence.Value)
+                .Select(method => new System.Security.Claims.Claim("amr", method)), "test"));
+        Assert.Equal(verified,
+            Sufficit.Identity.Application.Security.MfaEvidencePolicy.HasMfaEvidence(principal));
+        Assert.Equal(verified,
+            Sufficit.Identity.Application.Security.MfaEvidencePolicy.HasFreshMfaEvidence(principal));
+        var requirement = new Sufficit.Identity.Scim.ScimMfaRequirement();
+        var context = new Microsoft.AspNetCore.Authorization.AuthorizationHandlerContext(
+            new[] { requirement }, principal, null);
+        await new Sufficit.Identity.Scim.ScimMfaHandler().HandleAsync(context);
+        Assert.Equal(verified, context.HasSucceeded);
+    }
+
     [Fact]
     public void User_verification_is_required_by_default_and_can_be_relaxed()
     {

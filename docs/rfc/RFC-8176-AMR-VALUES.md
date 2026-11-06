@@ -24,7 +24,8 @@ that already completed MFA (`src/sts/ServiceCollectionExtensions.cs:559-602`).
 | Password + device with remembered MFA | `pwd`, `mfa` | `{prefix}loa2` |
 | Password + TOTP | `pwd`, `otp`, `mfa` | `{prefix}loa2` |
 | Password + recovery code | `pwd`, `rc`, `mfa` | `{prefix}loa2` |
-| Passkey | `passkey`, `hwk`, `mfa` | `{prefix}loa3` |
+| Passkey with user verification | `passkey`, `hwk`, `mfa` | `{prefix}loa3` |
+| Passkey without user verification (opt-in) | `passkey`, `hwk` | Sign-in evidence requests `{prefix}loa1`; fallback AAL mapping still requires review |
 | Password grant (legacy) | `pwd` | `{prefix}loa1` |
 
 `{prefix}` is `Sufficit:Identity:AuthenticationContext:AcrPrefix`, default
@@ -35,11 +36,20 @@ the level resolved from its `amr` values, spelled by the same mapper.
 
 ## Consumption
 
-The management plane requires evidence of a second factor: `MfaRequirement`
-accepts the values `mfa`, `otp`, `hwk`, `sms`, `vcm`, `fpt`, `eye`, `voice`,
-and `retina` (`src/management/ServiceCollectionExtensions.cs:377-380`), all
-from the RFC 8176 registry. The same requirement applies to personal token
-issuance and SSF stream management.
+Management, STS and SCIM use `MfaEvidencePolicy` in
+`src/application/Sufficit.Identity.Application.Abstractions/Security/MfaEvidencePolicy.cs`.
+It requires explicit `mfa` or `pwd` plus one of `otp`, `hwk`, `sms`, `vcm`,
+`fpt`, `eye`, `voice`, `retina`. The latter list is a compatibility vocabulary
+(`eye` is legacy), not a claim that each value is standardized or alone proves MFA.
+Single methods and possession-only combinations such as `passkey hwk` are refused.
+Other factor combinations require the trusted issuer to assert `mfa` explicitly.
+This is a provider acceptance policy; RFC 8176 defines method meanings, not this
+particular authorization rule.
+
+`identity:mfa_remembered=true` permits ordinary MFA-protected operations but does
+not satisfy the fresh-evidence check used for credential minting. Existing tokens
+with only a single-method AMR must authenticate with sufficient evidence before
+using MFA-protected surfaces after this change.
 
 ## Gaps
 
@@ -47,12 +57,15 @@ issuance and SSF stream management.
   configurable, but there is no built-in mapping to ISO/IEC 29115 values or to
   `http://schemas.openid.net/pape/policies/2007/06/multi-factor`; a relying
   party must be told what `loa1`–`loa3` mean.
-- Passkeys do not distinctly emit `hwk` or `swk`; they enter the MFA path as
-  a verified factor.
+- Passkeys currently emit `hwk` without distinguishing software-backed from
+  hardware-backed credentials. The separate AMR-to-AAL resolver also maps
+  possession methods to its strongest level; review this against UV and
+  cookie/token projection (remaining A4.1).
 - `acr_values` in the request does not select an authentication policy; only
   `max_age` and `prompt=login` force re-authentication.
 
 ## Tests
 
 `AuthenticationContextProjectionTests`, `AuthorizationReauthenticationPolicyTests`,
-`ManagementApplicationAuthorizationTests`.
+`ManagementApplicationAuthorizationTests`, `ScimMfaEvidenceTests`,
+`MfaRequirementTests`, `PasskeyAssurancePolicyTests`, `RememberedSecondFactorTests`.

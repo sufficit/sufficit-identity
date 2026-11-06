@@ -1,6 +1,6 @@
 # PLAN — Authorization and security policy
 
-Status: queued; A4.1 reader consolidation completed on 2026-11-06; writer audit remains pending.
+Status: queued; A4.1 single-factor MFA refusal completed on 2026-11-06; assurance/projection audit remains.
 
 [Index and delivery rules](PLAN-IDENTITY.md) · [Item-by-item reconciliation](../activities/202611061100-plan-reconciliation-split.md)
 
@@ -32,7 +32,7 @@ STS and SCIM now delegate evidence reading to MfaEvidencePolicy; see the [SCIM c
 
 Evidence: [ScimServiceCollectionExtensions.cs](../../src/scim/ScimServiceCollectionExtensions.cs), [MfaEvidence.cs](../../src/sts/Security/MfaEvidence.cs), [CredentialMutationSecurityTests.cs](../../src/tests/CredentialMutationSecurityTests.cs).
 
-- [ ] **A4.1 · partial** — Audit the remaining amr writers and their composition with MfaEvidencePolicy; STS and SCIM reader consolidation is complete. Specifically review PasskeyAssurancePolicy emitting hwk without user verification while MfaEvidencePolicy accepts hwk as MFA evidence. Preserve distinct remembered-MFA versus fresh credential-minting requirements; establish an executable regression before changing accepted evidence.
+- [ ] **A4.1 · partial** — Reader consolidation and single-factor MFA refusal are complete ([activity](../activities/202611061124-single-factor-mfa-refusal.md)). Continue the amr-writer audit through cookie/token projection and AAL/ACR: AmrBasedAssuranceLevelResolver maps possession methods to the strongest level, and passkeys emit hwk without hardware/software distinction. Review issuance order and renewal of evidence/remembered markers with integration regressions. Preserve remembered-MFA versus fresh credential-minting requirements.
 - [ ] **A4.2 · partial** — Complete a browser-to-Management/SCIM MFA authorization test chain. Reuse CredentialMutationSecurityTests for stale credential mutations rather than recreating its covered cases.
 
 ## D1 — CSP from telemetry to enforcement
