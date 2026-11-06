@@ -178,7 +178,7 @@ public sealed class SessionTicketMariaDbOutageTests
         new AuthenticationProperties { ExpiresUtc = DateTimeOffset.UtcNow.AddHours(1) }, "test");
     private static string Key(string sid) => "identity:oidc-session:v1:" + sid;
 
-    internal sealed class LocalMariaDb : IAsyncDisposable
+    internal sealed class LocalMariaDb(bool memoryStorage = false) : IAsyncDisposable
     {
         private readonly string _name = "identity-session-test-" + Guid.NewGuid().ToString("N");
         private bool _created;
@@ -190,10 +190,12 @@ public sealed class SessionTicketMariaDbOutageTests
             listener.Start();
             var port = ((System.Net.IPEndPoint)listener.LocalEndpoint).Port;
             listener.Stop();
-            await DockerAsync("create", "--name", _name, "--publish", $"127.0.0.1:{port}:3306",
+            await DockerAsync(["create", "--name", _name,
+                .. (memoryStorage ? new[] { "--tmpfs", "/var/lib/mysql:rw,size=536870912" } : Array.Empty<string>()),
+                "--publish", $"127.0.0.1:{port}:3306",
                 "--env", "MARIADB_RANDOM_ROOT_PASSWORD=yes", "--env", "MARIADB_DATABASE=session_test",
                 "--env", "MARIADB_USER=session_test", "--env", "MARIADB_PASSWORD=disposable-test-only",
-                "mariadb:10.11");
+                "mariadb:10.11"]);
             _created = true;
             await DockerAsync("start", _name);
             await SetConnectionAndWaitAsync();
@@ -236,6 +238,12 @@ public sealed class SessionTicketMariaDbOutageTests
             logs.BeginOutputReadLine();
             logs.BeginErrorReadLine();
             try { await ready.Task.WaitAsync(TimeSpan.FromSeconds(60)); }
+            catch (TimeoutException error)
+            {
+                var state = (await DockerAsync("inspect", "--format",
+                    "status={{.State.Status}} exit={{.State.ExitCode}} oom={{.State.OOMKilled}}", _name)).Trim();
+                throw new TimeoutException($"Disposable MariaDB did not signal readiness: {state}", error);
+            }
             finally
             {
                 if (!logs.HasExited) logs.Kill();

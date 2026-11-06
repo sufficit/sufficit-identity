@@ -34,7 +34,7 @@ public sealed class MariaDbHistoricalHostTests
         var assembly = Path.GetFullPath(Environment.GetEnvironmentVariable(HostVariable)!);
         Assert.True(File.Exists(assembly));
         Assert.NotEqual(typeof(HostBootstrap).Assembly.Location, assembly);
-        await using var server = new SessionTicketMariaDbOutageTests.LocalMariaDb();
+        await using var server = new SessionTicketMariaDbOutageTests.LocalMariaDb(memoryStorage: true);
         await server.CreateAsync();
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseMySql(server.ConnectionString, new MariaDbServerVersion(new Version(10, 11)),
@@ -54,6 +54,28 @@ public sealed class MariaDbHistoricalHostTests
         };
         user.PasswordHash = new PasswordHasher<ApplicationUser>().HashPassword(user, password);
         db.Users.Add(user);
+        var mfaUser = new ApplicationUser
+        {
+            Id = "historical-mfa-user", UserName = "mfa@example.invalid", Email = "mfa@example.invalid",
+            NormalizedUserName = "MFA@EXAMPLE.INVALID", NormalizedEmail = "MFA@EXAMPLE.INVALID",
+            EmailConfirmed = true, TwoFactorEnabled = true, SecurityStamp = Guid.NewGuid().ToString(),
+            ConcurrencyStamp = Guid.NewGuid().ToString(), CreatedAtUtc = DateTime.UtcNow,
+        };
+        mfaUser.PasswordHash = new PasswordHasher<ApplicationUser>().HashPassword(mfaUser, password);
+        db.Users.Add(mfaUser);
+        // Legacy-format fixture accepted by the historical Development configuration.
+        // Recovery-code redemption writes through the host's actual protected user store.
+        const string recoveryCode = "fictional-recovery-code";
+        db.UserTokens.Add(new IdentityUserToken<string>
+        {
+            UserId = mfaUser.Id, LoginProvider = "[AspNetUserStore]", Name = "RecoveryCodes",
+            Value = recoveryCode,
+        });
+        db.UserTokens.Add(new IdentityUserToken<string>
+        {
+            UserId = mfaUser.Id, LoginProvider = "[AspNetUserStore]", Name = "AuthenticatorKey",
+            Value = "JBSWY3DPEHPK3PXP",
+        });
         await db.SaveChangesAsync();
         var directory = Path.Combine(Path.GetTempPath(), "identity-historical-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
@@ -96,6 +118,8 @@ public sealed class MariaDbHistoricalHostTests
                 Assert.True(response.IsSuccessStatusCode,
                     $"Readiness returned {response.StatusCode}: {await response.Content.ReadAsStringAsync()}");
                 await AssertPasswordLoginAsync(http, username, password);
+                await AssertRecoveryLoginAsync(address, mfaUser.UserName, password, recoveryCode, consumed: false);
+                await AssertRecoveryLoginAsync(address, mfaUser.UserName, password, recoveryCode, consumed: true);
                 Assert.Equal(applied, (await db.Database.GetAppliedMigrationsAsync()).ToArray());
                 Assert.Empty(await db.Database.GetPendingMigrationsAsync());
             }
@@ -135,6 +159,55 @@ public sealed class MariaDbHistoricalHostTests
         using var profile = await http.GetAsync("/manage");
         Assert.Equal(HttpStatusCode.OK, profile.StatusCode);
         Assert.Contains(username, await profile.Content.ReadAsStringAsync());
+    }
+
+    private static async Task AssertRecoveryLoginAsync(Uri address, string username, string password,
+        string recoveryCode, bool consumed)
+    {
+        using var handler = new HttpClientHandler { AllowAutoRedirect = false, CookieContainer = new CookieContainer() };
+        using var http = new HttpClient(handler) { BaseAddress = address, Timeout = TimeSpan.FromSeconds(15) };
+        async Task<string> TokenAsync(string path, string action)
+        {
+            using var response = await http.GetAsync(path);
+            response.EnsureSuccessStatusCode();
+            var document = new HtmlParser().ParseDocument(await response.Content.ReadAsStringAsync());
+            var token = document.QuerySelector($"form[action='{action}'] input[name='__RequestVerificationToken']")?.GetAttribute("value");
+            Assert.False(string.IsNullOrWhiteSpace(token));
+            return token!;
+        }
+        using var login = await http.PostAsync("/account/login/password", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["UserName"] = username, ["Password"] = password, ["ReturnUrl"] = "/manage",
+            ["__RequestVerificationToken"] = await TokenAsync("/account/login", "/account/login/password"),
+        }));
+        Assert.Equal(HttpStatusCode.Redirect, login.StatusCode);
+        Assert.StartsWith("/account/loginwith2fa", login.Headers.Location?.ToString());
+        using var pending = await http.GetAsync("/manage");
+        Assert.DoesNotContain(username, await pending.Content.ReadAsStringAsync());
+        async Task<HttpResponseMessage> RedeemAsync(string code) => await http.PostAsync(
+            "/account/login/recoverycode", new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["Code"] = code, ["ReturnUrl"] = "/manage",
+                ["__RequestVerificationToken"] = await TokenAsync("/account/loginwithrecoverycode", "/account/login/recoverycode"),
+            }));
+        using var invalid = await RedeemAsync("invalid-fixture-code");
+        Assert.Equal(HttpStatusCode.Redirect, invalid.StatusCode);
+        Assert.Contains("invalid_code", invalid.Headers.Location?.ToString());
+        using var result = await RedeemAsync(recoveryCode);
+        Assert.Equal(HttpStatusCode.Redirect, result.StatusCode);
+        if (consumed)
+        {
+            Assert.Contains("invalid_code", result.Headers.Location?.ToString());
+            using var rejected = await http.GetAsync("/manage");
+            Assert.DoesNotContain(username, await rejected.Content.ReadAsStringAsync());
+        }
+        else
+        {
+            Assert.StartsWith("/account/authenticationcontinue", result.Headers.Location?.ToString());
+            using var profile = await http.GetAsync("/manage");
+            Assert.Equal(HttpStatusCode.OK, profile.StatusCode);
+            Assert.Contains(username, await profile.Content.ReadAsStringAsync());
+        }
     }
 
 }
