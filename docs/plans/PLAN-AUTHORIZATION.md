@@ -1,6 +1,6 @@
 # PLAN — Authorization and security policy
 
-Status: queued; A4.1 assurance derivation/session ownership completed on 2026-11-06; issuance and existing-token audit remains.
+Status: queued; A4.1 and A4.2 completed on 2026-11-06. A2 and D1 remain pending.
 
 [Index and delivery rules](PLAN-IDENTITY.md) · [Item-by-item reconciliation](../activities/202611061100-plan-reconciliation-split.md)
 
@@ -28,12 +28,9 @@ Evidence: [ClientManagementContracts.cs](../../src/application/Sufficit.Identity
 
 ## A4 — Step-up enforcement and one MFA evidence policy
 
-STS and SCIM now delegate evidence reading to MfaEvidencePolicy; see the [SCIM consolidation activity](../activities/202611061120-scim-shared-mfa-evidence.md). Stale-credential tests exist, but the requested browser-to-Management/SCIM end-to-end chain is not established.
+A4.1 and A4.2 are closed in the [MFA evidence and browser-chain activity](../activities/202611061148-mfa-evidence-browser-chain.md). The shared reader, factor policy, session ownership, verified passkey issuance, conservative AAL/ACR consumers and Chromium-to-Management/SCIM chain are validated. Deployment and historical-token revocation are separate operational actions.
 
-Evidence: [ScimServiceCollectionExtensions.cs](../../src/scim/ScimServiceCollectionExtensions.cs), [MfaEvidence.cs](../../src/sts/Security/MfaEvidence.cs), [CredentialMutationSecurityTests.cs](../../src/tests/CredentialMutationSecurityTests.cs).
-
-- [ ] **A4.1 · partial** — Reader consolidation, single-factor refusal and conservative assurance/session ownership are complete ([activity](../activities/202611061129-session-assurance-evidence-ownership.md)). Finish the writer audit: passkeys still emit hwk without hardware/software distinction; verify when passkey authentication evidence is set relative to cookie issuance. Review existing cookies/refresh tokens and direct AAL/ACR consumers (including AuthorizationReauthenticationPolicy.CurrentAssuranceLevel) rather than assuming the corrected factory retroactively repairs issued evidence. Preserve remembered-MFA versus fresh credential-minting requirements.
-- [ ] **A4.2 · partial** — Complete a browser-to-Management/SCIM MFA authorization test chain. Reuse CredentialMutationSecurityTests for stale credential mutations rather than recreating its covered cases.
+Earlier delivery records: [reader consolidation](../activities/202611061120-scim-shared-mfa-evidence.md), [single-factor refusal](../activities/202611061124-single-factor-mfa-refusal.md), [session ownership](../activities/202611061129-session-assurance-evidence-ownership.md).
 
 ## D1 — CSP from telemetry to enforcement
 

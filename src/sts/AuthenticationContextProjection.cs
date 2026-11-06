@@ -69,24 +69,14 @@ internal sealed class AuthenticationContextProjector(
             destination.SetClaim(AuthenticationTimeClaimType, unixSeconds);
         }
 
-        var authenticationContext = source.FindFirst(
-            AuthenticationContextClassClaimType)?.Value;
-        if (string.IsNullOrWhiteSpace(authenticationContext))
-        {
-            // The session stamps the level by enum name (for example "Loa2");
-            // spell it through the mapper instead of concatenating the name.
-            var assuranceLevel = source.FindFirst(
-                OidcSessionClaimsPrincipalFactory.AssuranceLevelClaimType)?.Value;
-            if (Enum.TryParse<CaepAssuranceLevel>(
-                    assuranceLevel,
-                    ignoreCase: false,
-                    out var level))
-                authenticationContext = authenticationContextClasses.Map(level);
-        }
-        if (!string.IsNullOrWhiteSpace(authenticationContext))
-            destination.SetClaim(
-                AuthenticationContextClassClaimType,
-                authenticationContext);
+        // Tokens (including refreshes) must not replay an over-stated ACR
+        // from an older cookie/grant. Re-derive from the retained methods.
+        var level = new AmrBasedAssuranceLevelResolver().Resolve(source);
+        destination.SetClaim(AuthenticationContextClassClaimType,
+            authenticationContextClasses.Map(level));
+        destination.SetClaim(MfaEvidencePolicy.RememberedSecondFactorClaimType,
+            MfaEvidencePolicy.IsSecondFactorRemembered(source) ? "true" : null);
+
     }
 
     private static IEnumerable<string> SplitValues(string value) =>

@@ -18,4 +18,7 @@
     <PackageReference Include="NUnit3TestAdapter" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="../Sufficit.Identity.Tests.csproj" />
+  </ItemGroup>
 </Project>

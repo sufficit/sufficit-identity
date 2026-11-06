@@ -65,9 +65,9 @@ internal sealed class PasskeyAssurancePolicy(AccountPasskeyOptions options)
 
     public IReadOnlyCollection<string> AuthenticationMethods(
         PasskeyAssertionEvidence evidence) =>
-        // "hwk" and "passkey" are possession; "mfa" says a second, different
-        // factor was presented, and only user verification is that factor.
+        // The ceremony does not attest hardware-backed key storage. Emit the
+        // protocol method only; UV supplies the additional factor for MFA.
         evidence.UserVerified
-            ? ["passkey", "hwk", "mfa"]
-            : ["passkey", "hwk"];
+            ? ["passkey", "mfa"]
+            : ["passkey"];
 }

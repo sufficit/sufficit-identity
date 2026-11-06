@@ -48,13 +48,7 @@ internal static class AuthorizationReauthenticationPolicy
     /// </summary>
     private static CaepAssuranceLevel CurrentAssuranceLevel(
         ClaimsPrincipal principal) =>
-        Enum.TryParse<CaepAssuranceLevel>(
-            principal.FindFirst(
-                OidcSessionClaimsPrincipalFactory.AssuranceLevelClaimType)?.Value,
-            ignoreCase: false,
-            out var level)
-            ? level
-            : CaepAssuranceLevel.Loa1;
+        new AmrBasedAssuranceLevelResolver().Resolve(principal);
 
     public static bool IsRequired(
         OpenIddictRequest request,

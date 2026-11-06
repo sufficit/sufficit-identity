@@ -233,6 +233,12 @@ public sealed class TwoReplicaSmokeTests
         var signedIn = await AuthenticateAsync(browser.B, antiforgery, assertion);
         Assert.True(signedIn.GetProperty("succeeded").GetBoolean(), signedIn.ToString());
 
+        var claims = await browser.B.GetFromJsonAsync<JsonElement>("/test-only/claims");
+        Assert.Contains(claims.EnumerateArray(), claim =>
+            claim.GetProperty("type").GetString() == "amr" && claim.GetProperty("value").GetString() == "mfa");
+        Assert.Contains(claims.EnumerateArray(), claim =>
+            claim.GetProperty("type").GetString() == "acr" && claim.GetProperty("value").GetString() == "urn:identity:acr:loa3");
+
         // Replay against both replicas: the captured assertion, and a freshly
         // signed one (higher counter) over the same challenge — the latter
         // can only be refused because the challenge itself is spent.

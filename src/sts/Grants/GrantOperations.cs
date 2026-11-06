@@ -247,7 +247,9 @@ public sealed class GrantOperations(
         Claims.Email,
         Claims.Name,
         Claims.PreferredUsername,
-        Claims.Role
+        Claims.Role,
+        "amr", "acr", "aal", "auth_time", SessionIdClaimType,
+        Sufficit.Identity.Application.Security.MfaEvidencePolicy.RememberedSecondFactorClaimType
     };
 
     /// <summary>

@@ -24,8 +24,8 @@ that already completed MFA (`src/sts/ServiceCollectionExtensions.cs:559-602`).
 | Password + device with remembered MFA | `pwd`, `mfa` | `{prefix}loa2` |
 | Password + TOTP | `pwd`, `otp`, `mfa` | `{prefix}loa2` |
 | Password + recovery code | `pwd`, `rc`, `mfa` | `{prefix}loa2` |
-| Passkey with user verification | `passkey`, `hwk`, `mfa` | `{prefix}loa3` |
-| Passkey without user verification (opt-in) | `passkey`, `hwk` | `{prefix}loa1` |
+| Passkey with user verification | `passkey`, `mfa` | `{prefix}loa3` |
+| Passkey without user verification (opt-in) | `passkey` | `{prefix}loa1` |
 | Password grant (legacy) | `pwd` | `{prefix}loa1` |
 
 `{prefix}` is `Sufficit:Identity:AuthenticationContext:AcrPrefix`, default
@@ -65,11 +65,22 @@ not a standardized assurance certification.
 Renewal requires an authenticated principal of the same subject with a matching,
 non-expired durable session. Fresh request evidence takes precedence and replaces
 the remembered marker. The factory derives AAL afresh and maps fallback ACR from it.
-AuthenticationContextProjector copies the resulting AMR/ACR/time into token claims.
+`SufficitSignInManager.PerformPasskeyAssertionAsync` records signed, validated
+passkey evidence before the framework builds the cookie. Passkeys do not assert
+hardware or software key protection; that property is not established here.
 
-Already-issued cookies and tokens are not revoked by this code change. Their
-existing evidence and the direct authorization/refresh consumers require separate
-review; these tests do not establish a production rollout or full browser ceremony.
+AuthenticationContextProjector copies AMR/time and the remembered marker, and
+re-derives ACR from evidence for authorization codes, refresh and user token
+exchange. GrantOperations excludes persisted authentication claims from token
+construction. Cookie security-stamp renewal also normalizes AAL/ACR. The authorize
+step-up check uses the evidence-aware resolver instead of trusting an old stamp.
+
+Already-issued tokens are not revoked by this code change. A correctly signed
+historical `mfa` assertion cannot reveal whether the old issuer overstated it;
+deployments investigating such sessions must revoke the affected sessions/tokens
+and require reauthentication. Resource servers holding already-issued access tokens
+retain their own validation behavior until expiry or revocation. No rollout or
+bulk revocation is implied by these code tests.
 
 ## Gaps
 
@@ -77,14 +88,21 @@ review; these tests do not establish a production rollout or full browser ceremo
   configurable, but there is no built-in mapping to ISO/IEC 29115 values or to
   `http://schemas.openid.net/pape/policies/2007/06/multi-factor`; a relying
   party must be told what `loa1`–`loa3` mean.
-- Passkeys currently emit `hwk` without distinguishing software-backed from
-  hardware-backed credentials. Audit issuance ordering through the actual
-  passkey cookie ceremony and existing refresh-token evidence (remaining A4.1).
-- `acr_values` in the request does not select an authentication policy; only
-  `max_age` and `prompt=login` force re-authentication.
+- The provider does not attest a hardware/software distinction for passkeys.
+  The private `passkey` method identifies the WebAuthn ceremony without asserting it.
+- Recognized `acr_values` above current evidence request bounded reauthentication;
+  unsupported values are ignored. The returned ACR states the achieved level.
 
 ## Tests
 
 `AuthenticationContextProjectionTests`, `AuthorizationReauthenticationPolicyTests`,
 `ManagementApplicationAuthorizationTests`, `ScimMfaEvidenceTests`,
-`MfaRequirementTests`, `PasskeyAssurancePolicyTests`, `RememberedSecondFactorTests`.
+`MfaRequirementTests`, `PasskeyAssurancePolicyTests`, `RememberedSecondFactorTests`,
+`TwoReplicaSmokeTests`, and the isolated Chromium
+[MfaAuthorizationChainTests](../../src/tests/Sufficit.Identity.BrowserTests/MfaAuthorizationChainTests.cs).
+
+The browser suite starts its own SQLite/Kestrel host and a virtual WebAuthn
+authenticator. It checks invalid signatures, verified/unverified sign-in, cookie
+round trips, authorization code + PKCE, Management/SCIM responses and refresh.
+The dedicated CI step runs this suite without production credentials or a deployed
+server. Other browser suites retain their separate live-server requirements.

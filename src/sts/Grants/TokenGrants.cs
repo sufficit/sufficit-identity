@@ -293,6 +293,8 @@ public sealed class UserTokenGrantsHandler : ITokenGrantHandler
                 nameType: Claims.Name,
                 roleType: Claims.Role);
 
+            httpContext.RequestServices.GetRequiredService<IAuthenticationContextProjector>()
+                .Project(result.Principal!, identity);
             await ops.AddPersistedClaimsAsync(identity, user);
         }
 

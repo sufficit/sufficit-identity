@@ -24,9 +24,6 @@ public sealed class AspNetCoreIdentityPasskeyService(
     IAccountLookupPolicy accountLookup,
     AccountPasskeyOptions options,
     IPasskeyAssurancePolicy assurance,
-    IAuthenticationContextAccessor authenticationContextAccessor,
-    IAuthenticationContextClassMapper authenticationContextClasses,
-    TimeProvider timeProvider,
     ILogger<AspNetCoreIdentityPasskeyService> logger)
     : IAccountPasskeyService, IPasskeyAuthenticationService
 {
@@ -433,12 +430,6 @@ public sealed class AspNetCoreIdentityPasskeyService(
 
         if (result.Succeeded)
         {
-            authenticationContextAccessor.Set(new AuthenticationContextEvidence(
-                assurance.AuthenticationMethods(evidence.Value),
-                timeProvider.GetUtcNow(),
-                authenticationContextClasses.Map(evidence.Value.UserVerified
-                    ? CaepAssuranceLevel.PhishingResistant
-                    : CaepAssuranceLevel.Loa1)));
             logger.LogInformation(
                 "A user signed in with a passkey. UserVerified={UserVerified}.",
                 evidence.Value.UserVerified);
@@ -459,12 +450,8 @@ public sealed class AspNetCoreIdentityPasskeyService(
                 "Sign-in is not allowed for this account.");
         }
 
-        // F-8 (eval 2026-08-14): a user with TOTP enabled still needs the
-        // second step after a successful passkey ceremony. Signal it with a
-        // structured code instead of falling into the generic failure — the
-        // login page branches on the CODE, never on localized prose (the old
-        // UI matched a "duas etapas" substring that no current error string
-        // even contained, so the affordance was silently dead).
+        // Preserve the framework's structured result if a composed sign-in
+        // policy requests another step; the UI branches on the error code.
         if (result.RequiresTwoFactor)
         {
             return PasskeyAuthenticationResult.Failure(

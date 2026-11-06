@@ -6,6 +6,8 @@ using System.Security.Claims;
 using Microsoft.Extensions.Options;
 using Sufficit.Identity.Core.Entities;
 using Sufficit.Identity.Core.Services;
+using Sufficit.Identity.Application.Accounts;
+using Sufficit.Identity.Application.Security;
 
 namespace Sufficit.Identity.STS;
 
@@ -32,7 +34,11 @@ public sealed class SufficitSignInManager(
     ILogger<SignInManager<ApplicationUser>> logger,
     IAuthenticationSchemeProvider schemes,
     IUserConfirmation<ApplicationUser> confirmation,
-    SystemUserStore systemUsers)
+    SystemUserStore systemUsers,
+    IPasskeyAssurancePolicy passkeyAssurance,
+    IAuthenticationContextAccessor authenticationContext,
+    IAuthenticationContextClassMapper authenticationClasses,
+    TimeProvider timeProvider)
     : SignInManager<ApplicationUser>(
         userManager,
         contextAccessor,
@@ -42,6 +48,23 @@ public sealed class SufficitSignInManager(
         schemes,
         confirmation)
 {
+    public override async Task<PasskeyAssertionResult<ApplicationUser>> PerformPasskeyAssertionAsync(string credentialJson)
+    {
+        var result = await base.PerformPasskeyAssertionAsync(credentialJson);
+        if (result.Succeeded)
+        {
+            // Identity calls this virtual method before it constructs the
+            // application cookie. Only signed, validated flags become evidence.
+            var evidence = passkeyAssurance.Read(credentialJson)
+                ?? throw new InvalidOperationException("Validated passkey evidence is missing.");
+            authenticationContext.Set(new AuthenticationContextEvidence(
+                passkeyAssurance.AuthenticationMethods(evidence), timeProvider.GetUtcNow(),
+                authenticationClasses.Map(evidence.UserVerified
+                    ? CaepAssuranceLevel.PhishingResistant : CaepAssuranceLevel.Loa1)));
+        }
+        return result;
+    }
+
     public Task<SignInResult> SignInOrTwoFactorForExternalAsync(
         ApplicationUser user,
         string loginProvider,

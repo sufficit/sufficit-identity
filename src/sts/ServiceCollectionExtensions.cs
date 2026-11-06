@@ -617,7 +617,8 @@ public static partial class ServiceCollectionExtensions
                     90));
                 cookie.SlidingExpiration = options.UserSessions.SlidingExpiration;
             });
-        services.Configure<SecurityStampValidatorOptions>(options =>
+        services.AddOptions<SecurityStampValidatorOptions>()
+            .Configure<IAuthenticationContextClassMapper>((options, authenticationClasses) =>
         {
             // Administrative lockout updates the user's security stamp. Check
             // it on every cookie-authenticated request so a blocked account
@@ -680,6 +681,15 @@ public static partial class ServiceCollectionExtensions
                         newIdentity.AddClaim(claim);
                     }
                 }
+
+                // Preserve validated ceremony evidence, then normalize old
+                // assurance stamps rather than carrying an overstated AAL/ACR.
+                var principal = new ClaimsPrincipal(newIdentity);
+                var level = new AmrBasedAssuranceLevelResolver().Resolve(principal);
+                newIdentity.SetClaim(OidcSessionClaimsPrincipalFactory.AssuranceLevelClaimType,
+                    level.ToString());
+                newIdentity.SetClaim(AuthenticationContextProjector.AuthenticationContextClassClaimType,
+                    authenticationClasses.Map(level));
 
                 return Task.CompletedTask;
             };

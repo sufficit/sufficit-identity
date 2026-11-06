@@ -48,7 +48,7 @@ public sealed class PasskeyAssurancePolicyTests
         // amr=mfa asserts that a second, different factor was presented. An
         // authenticator that only confirmed somebody touched it proved one.
         Assert.DoesNotContain("mfa", policy.AuthenticationMethods(touched.Value));
-        Assert.Contains("hwk", policy.AuthenticationMethods(touched.Value));
+        Assert.DoesNotContain("hwk", policy.AuthenticationMethods(touched.Value));
 
         var verified = policy.Read(Assertion(UserPresent | UserVerified));
         Assert.NotNull(verified);

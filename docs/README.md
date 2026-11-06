@@ -39,6 +39,8 @@ accounts for all 105 original items, seven closure criteria and the operational 
 
 ## Completed work (activities/)
 
+- [MFA evidence and browser authorization chain](activities/202611061148-mfa-evidence-browser-chain.md) — A4.1/A4.2 closure: verified passkey issuance, normalized evidence, Chromium-to-Management/SCIM and refresh.
+
 - [Session assurance and evidence ownership](activities/202611061129-session-assurance-evidence-ownership.md) — conservative AAL and authenticated same-user renewal evidence.
 
 - [Single-factor MFA refusal](activities/202611061124-single-factor-mfa-refusal.md) — rejects possession-only passkey and other single-method evidence at MFA gates.

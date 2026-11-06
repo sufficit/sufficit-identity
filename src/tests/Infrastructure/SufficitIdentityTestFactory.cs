@@ -225,6 +225,13 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
                 context.Configuration.GetSection("Sufficit:Identity:Cors")
                     .Get<CorsOptions>() ?? new CorsOptions());
 
+            // Opt-in real management/SCIM composition for the browser MFA chain.
+            if (context.Configuration.GetValue<bool>("Sufficit:Identity:Management:Enabled"))
+                services.AddSufficitIdentityManagement(context.Configuration);
+            if (context.Configuration.GetValue<bool>("Sufficit:Identity:Scim:Enabled"))
+                Sufficit.Identity.Scim.ScimServiceCollectionExtensions.AddSufficitIdentityScim(
+                    services, context.Configuration);
+
             ReplaceDatabaseWithSqlite(services, DatabaseConnectionString);
 
             // AuthorizationController lives in the STS assembly, which is not

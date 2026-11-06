@@ -37,7 +37,7 @@ public sealed class AuthenticationContextProjectionTests
         Assert.Equal(
             ["pwd", "mfa"],
             destination.FindAll("amr").Select(claim => claim.Value));
-        Assert.Equal("urn:example:acr:loa2", destination.FindFirst("acr")?.Value);
+        Assert.Equal("urn:identity:acr:loa2", destination.FindFirst("acr")?.Value);
         Assert.Equal("123456", destination.FindFirst("auth_time")?.Value);
     }
 
@@ -182,7 +182,7 @@ public sealed class AuthenticationContextProjectionTests
         // such as "...acr:loaLoa2".
         var sourceIdentity = new ClaimsIdentity(
         [
-            new Claim("amr", "pwd"),
+            new Claim("amr", "pwd mfa"),
             new Claim(OidcSessionClaimsPrincipalFactory.AssuranceLevelClaimType, "Loa2"),
         ]);
         var destination = new ClaimsIdentity();
@@ -283,11 +283,60 @@ public sealed class AuthenticationContextProjectionTests
     }
 
     [Fact]
+    public async Task Cookie_renewal_normalizes_old_assurance_without_losing_remembered_evidence()
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(new Dictionary<string, string?>());
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        var options = factory.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<SecurityStampValidatorOptions>>().Value;
+        var context = new SecurityStampRefreshingPrincipalContext
+        {
+            CurrentPrincipal = new ClaimsPrincipal(new ClaimsIdentity(new[]
+            {
+                new Claim("amr", "passkey hwk"), new Claim("aal", "PhishingResistant"),
+                new Claim("acr", "urn:identity:acr:loa3"), new Claim("auth_time", "123456"),
+                new Claim("identity:mfa_remembered", "true"), new Claim("sid", "renewed-session")
+            }, "test")),
+            NewPrincipal = new ClaimsPrincipal(new ClaimsIdentity())
+        };
+        await options.OnRefreshingPrincipal!(context);
+        Assert.Equal("Loa1", context.NewPrincipal.FindFirst("aal")?.Value);
+        Assert.Equal("urn:identity:acr:loa1", context.NewPrincipal.FindFirst("acr")?.Value);
+        Assert.Equal("true", context.NewPrincipal.FindFirst("identity:mfa_remembered")?.Value);
+        Assert.Equal("123456", context.NewPrincipal.FindFirst("auth_time")?.Value);
+    }
+
+    [Fact]
+    public void Refresh_projection_downgrades_stale_acr_and_retains_remembered_marker()
+    {
+        var source = new ClaimsPrincipal(new ClaimsIdentity(new[]
+        {
+            new Claim("amr", "passkey hwk"), new Claim("acr", "urn:identity:acr:loa3"),
+            new Claim("auth_time", "123456"), new Claim("identity:mfa_remembered", "true")
+        }));
+        var token = new ClaimsIdentity();
+        new AuthenticationContextProjector(new ConfigurableAuthenticationContextClassMapper(
+            new AuthenticationContextOptions())).Project(source, token);
+        Assert.Equal("urn:identity:acr:loa1", token.FindFirst("acr")?.Value);
+        Assert.Equal("123456", token.FindFirst("auth_time")?.Value);
+        Assert.Equal("true", token.FindFirst("identity:mfa_remembered")?.Value);
+    }
+
+    [Fact]
     public async Task Password_grant_projects_amr_acr_and_auth_time_into_access_token()
     {
         using var factory = SufficitIdentityTestFactory.CreateIsolated(
             new Dictionary<string, string?>());
         await ((IAsyncLifetime)factory).InitializeAsync();
+        using (var scope = factory.Services.CreateScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var user = (await users.FindByNameAsync(TestDataSeeder.DefaultUsername))!;
+            Assert.True((await users.AddClaimsAsync(user, new[]
+            {
+                new Claim("amr", "mfa"), new Claim("acr", "urn:identity:acr:loa3"),
+                new Claim("aal", "PhishingResistant"), new Claim("auth_time", "1")
+            })).Succeeded);
+        }
         var client = factory.CreateClient();
         var (tokenStatus, tokenBody) = await client.PostFormAsync(
             "/connect/token",

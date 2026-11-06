@@ -79,6 +79,8 @@ public sealed class AuthorizationReauthenticationPolicyTests
             [
                 new Claim("auth_time", Now.ToUnixTimeSeconds().ToString()),
                 new Claim("aal", sessionLevel),
+                new Claim("amr", sessionLevel == "PhishingResistant" ? "passkey mfa" :
+                    sessionLevel == "Loa2" ? "pwd mfa" : "pwd"),
             ],
             "test"));
 
@@ -89,6 +91,19 @@ public sealed class AuthorizationReauthenticationPolicyTests
                 principal,
                 Now,
                 Classes));
+    }
+
+    [Theory]
+    [InlineData("PhishingResistant")]
+    [InlineData("999")]
+    public void Old_cookie_stamp_does_not_bypass_step_up(string stamp)
+    {
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(new[]
+        {
+            new Claim("amr", "passkey hwk"), new Claim("aal", stamp)
+        }, "test"));
+        Assert.True(AuthorizationReauthenticationPolicy.IsRequired(
+            new OpenIddictRequest { AcrValues = "urn:identity:acr:loa2" }, principal, Now, Classes));
     }
 
     [Fact]
