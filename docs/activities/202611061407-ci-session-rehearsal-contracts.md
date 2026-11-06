@@ -53,3 +53,18 @@ Test and documentation changes only; no additional production deployment.
 Production remains at revision 206fbb94d331c3ff37c50ddcb591593fdca8d954.
 Clock-skew and cluster-failover scenarios remain pending.
 Delivery commit title: `Align session rehearsals with CI synchronization contracts`.
+
+## Remote verification completed
+
+Code/test revision: `dce1c037687fa780d216dbdd38907f6d58f31788`.
+[CI 42258934109](https://github.com/sufficit/sufficit-identity/actions/runs/42258934109)
+completed successfully: **2104 passed, 5 skipped**, plus **2 MFA browser tests**.
+The five opt-in local-service integration cases were separately executed locally
+in the 27-test run above. Browser-host checks, MariaDB canonical/additive SQL,
+production container build, API-only smoke and dependency audit all passed.
+Gitleaks passed remotely and again locally after the commit (1392 commits scanned).
+[CodeQL 42258934051](https://github.com/sufficit/sufficit-identity/actions/runs/42258934051)
+also completed successfully.
+
+All three repair checkpoints completed. This final evidence-only update does not
+change the tested code or the deployed production revision.

@@ -17,15 +17,6 @@ a fresh production inventory. Source/tests present does not mean deployed.
 
 Deployment evidence: [2026-11-06 publication](../activities/202611061353-production-session-publication.md).
 
-## Active checkpoint — CI repair before clock-skew coverage
-
-1. completed — Fix the two synchronization-contract failures and verify the historical gitleaks false positive.
-2. completed — Run synchronization/session/Markdown checks and full-history secret scanning.
-3. **in progress** — Record evidence, commit/push and inspect the new CI result.
-
-Clock-skew coverage is deferred behind this concrete CI failure, not dropped.
-HA failover remains pending. No production code/deployment is required.
-
 CI repair evidence: [synchronization and historical scan](../activities/202611061407-ci-session-rehearsal-contracts.md).
 
 ## F1 — Posture contributors inside the feature contract
