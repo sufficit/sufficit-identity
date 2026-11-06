@@ -261,3 +261,20 @@ This verifies acknowledged data preservation through explicit promotion, not
 automatic Sentinel/Cluster election, client endpoint discovery, split-brain,
 unacknowledged-write loss or Galera failover.
 [Promotion evidence](../activities/202611061437-session-redis-replica-promotion.md).
+
+## Replica that misses invalidation
+
+The paired promotion scenario deliberately detaches a synchronized replica
+before revocation, using REPLICAOF NO ONE. The original primary then deletes the
+durable row and its own cache entry, while the detached replica retains the exact
+protected ticket bytes. After primary loss a fresh client targets that replica.
+
+Inside the original TTL the old ticket may still be returned. Renewal consults
+the absent durable row and cannot recreate it or replace the cached bytes.
+After the original deadline, the ticket is rejected; a new sign-in still works.
+The real-Redis expiry wait is explicitly justified in the synchronization guard.
+
+This deterministic detachment models a missing invalidation, not automatic
+election, packet-loss injection or a partition-healing protocol. Production
+revocation is still best effort within the configured cache window.
+[Execution evidence](../activities/202611061440-session-replica-missed-invalidation.md).

@@ -128,7 +128,15 @@ public sealed class SessionTicketRedisIntegrationTests
 
     [LocalRedisFact]
     [Trait("Category", "RedisIntegration")]
-    public async Task Acknowledged_revocation_survives_primary_loss_and_replica_promotion()
+    public Task Acknowledged_revocation_survives_primary_loss_and_replica_promotion() =>
+        RehearsePromotionAsync(missInvalidation: false);
+
+    [LocalRedisFact]
+    [Trait("Category", "RedisIntegration")]
+    public Task Replica_missing_invalidation_accepts_stale_ticket_only_until_original_deadline() =>
+        RehearsePromotionAsync(missInvalidation: true);
+
+    private static async Task RehearsePromotionAsync(bool missInvalidation)
     {
         using var primary = new LocalRedis();
         using var replica = new LocalRedis();
@@ -153,23 +161,37 @@ public sealed class SessionTicketRedisIntegrationTests
         var replicaCache = replicaServices.GetRequiredService<IDistributedCache>();
         var protection = new EphemeralDataProtectionProvider();
         OidcUserSessionTicketStore Store(IDistributedCache cache) => new(repository, protection,
-            cache, new HttpContextAccessor(), new SufficitIdentityOptions(),
+            cache, new HttpContextAccessor(), new SufficitIdentityOptions
+            {
+                UserSessions = new() { CacheLifetimeSeconds = 15 },
+            },
             TimeProvider.System, NullLogger<OidcUserSessionTicketStore>.Instance);
         var original = Store(primaryCache);
         var ticket = new AuthenticationTicket(new ClaimsPrincipal(new ClaimsIdentity(
             [new Claim("sub", "test-user"), new Claim("sid", "promoted-session")], "test")),
             new AuthenticationProperties { ExpiresUtc = DateTimeOffset.UtcNow.AddHours(1) }, "test");
+        var publicationStarted = DateTimeOffset.UtcNow;
         var sid = await original.StoreAsync(ticket);
+        var originalBytes = await primaryCache.GetAsync(Key(sid));
+        Assert.NotNull(originalBytes);
         // SET follows the ticket mutation in the primary stream; WAIT on the same
         // connection confirms that its replication offset has reached the replica.
         Assert.Equal(new[] { "+OK", ":1" },
             await primary.CommandsAsync("SET rehearsal-barrier created", "WAIT 1 5000"));
         Assert.NotNull(await replicaCache.GetAsync(Key(sid)));
 
+        if (missInvalidation)
+        {
+            // Deterministically stop this replica consuming the primary stream.
+            // It retains the ticket but cannot receive the upcoming deletion.
+            Assert.Equal(new[] { "+OK" }, await replica.CommandsAsync("REPLICAOF NO ONE"));
+        }
         await original.RemoveAsync(sid);
         Assert.Null(await repository.FindAsync(sid, default));
-        Assert.Equal(new[] { "+OK", ":1" },
-            await primary.CommandsAsync("SET rehearsal-barrier revoked", "WAIT 1 5000"));
+        Assert.Null(await primaryCache.GetAsync(Key(sid)));
+        if (!missInvalidation)
+            Assert.Equal(new[] { "+OK", ":1" },
+                await primary.CommandsAsync("SET rehearsal-barrier revoked", "WAIT 1 5000"));
         primary.Stop();
         Assert.Equal(new[] { "+OK" }, await replica.CommandsAsync("REPLICAOF NO ONE"));
 
@@ -177,8 +199,20 @@ public sealed class SessionTicketRedisIntegrationTests
         // promotion evidence, not an automatic client-discovery/election test.
         using var promotedServices = CacheServices(replica.Port);
         var promotedCache = promotedServices.GetRequiredService<IDistributedCache>();
-        Assert.Null(await promotedCache.GetAsync(Key(sid)));
         var promoted = Store(promotedCache);
+        if (missInvalidation)
+        {
+            Assert.Equal(originalBytes, await promotedCache.GetAsync(Key(sid)));
+            Assert.NotNull(await promoted.RetrieveAsync(sid));
+            await promoted.RenewAsync(sid, ticket);
+            Assert.Null(await repository.FindAsync(sid, default));
+            Assert.Equal(originalBytes, await promotedCache.GetAsync(Key(sid)));
+            // Wait for the original real Redis TTL, not for asynchronous work.
+            // Promotion and rejected renewal must not grant a new cache window.
+            var remaining = publicationStarted.AddSeconds(15).AddMilliseconds(250) - DateTimeOffset.UtcNow;
+            if (remaining > TimeSpan.Zero) await Task.Delay(remaining);
+        }
+        Assert.Null(await promotedCache.GetAsync(Key(sid)));
         Assert.Null(await promoted.RetrieveAsync(sid));
         await promoted.RenewAsync(sid, ticket);
         Assert.Null(await promotedCache.GetAsync(Key(sid)));
