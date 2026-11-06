@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
@@ -46,7 +48,7 @@ public sealed class OidcUserSessionRepositoryTests : IDisposable
         renewed.UserAgent = "different-device";
         renewed.ProtectedTicket = [4, 5, 6];
         renewed.ExpiresUtc = Initial.AddDays(2);
-        await _repository.UpsertAsync(renewed, default);
+        Assert.True(await _repository.RenewAsync(renewed, default));
         var persisted = Assert.IsType<OidcUserSession>(await _repository.FindAsync("sid", default));
         Assert.Equal(Initial, persisted.CreatedAtUtc);
         Assert.Equal("192.0.2.1", persisted.RemoteIpAddress);
@@ -64,7 +66,7 @@ public sealed class OidcUserSessionRepositoryTests : IDisposable
         var snapshot = (await _repository.FindAsync("sid", default))!;
         var renewed = Session("sid", "user");
         renewed.ProtectedTicket = [9];
-        await _repository.UpsertAsync(renewed, default);
+        Assert.True(await _repository.RenewAsync(renewed, default));
         await _repository.TouchAsync(snapshot, Initial.AddMinutes(2), default);
         Assert.Equal(new byte[] { 9 }, (await _repository.FindAsync("sid", default))!.ProtectedTicket);
         await _repository.DeleteAsync("sid", default);
@@ -102,6 +104,35 @@ public sealed class OidcUserSessionRepositoryTests : IDisposable
             NullLogger<OidcUserSessionTicketStore>.Instance);
         Assert.Null(await store.RetrieveAsync("discard", default(CancellationToken)));
         Assert.Null(await _repository.FindAsync("discard", default));
+    }
+
+    [Fact]
+    public async Task Late_renewal_after_revocation_does_not_recreate_database_or_cache_ticket()
+    {
+        var cache = _services.GetRequiredService<IDistributedCache>();
+        var store = new OidcUserSessionTicketStore(_repository,
+            new EphemeralDataProtectionProvider(), cache,
+            new HttpContextAccessor(), new SufficitIdentityOptions(), TimeProvider.System,
+            NullLogger<OidcUserSessionTicketStore>.Instance);
+        var ticket = new AuthenticationTicket(new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim("sub", "test-user"), new Claim("sid", "late-renewal")], "test")),
+            new AuthenticationProperties { ExpiresUtc = DateTimeOffset.UtcNow.AddHours(1) }, "test");
+        var sid = await store.StoreAsync(ticket);
+        await store.RemoveAsync(sid);
+        await store.RenewAsync(sid, ticket);
+        Assert.Null(await _repository.FindAsync(sid, default));
+        Assert.Null(await cache.GetAsync("identity:oidc-session:v1:" + sid));
+        Assert.Null(await store.RetrieveAsync(sid));
+    }
+
+    [Fact]
+    public async Task Renewal_cannot_change_the_session_owner()
+    {
+        await _repository.UpsertAsync(Session("sid", "original-user"), default);
+        Assert.False(await _repository.RenewAsync(Session("sid", "other-user"), default));
+        var stored = (await _repository.FindAsync("sid", default))!;
+        Assert.Equal("original-user", stored.Subject);
+        Assert.Equal(new byte[] { 1, 2, 3 }, stored.ProtectedTicket);
     }
 
     private static OidcUserSession Session(string sid, string subject) => new()

@@ -12,6 +12,7 @@ namespace Sufficit.Identity.STS;
 /// </summary>
 internal interface IOidcUserSessionRepository
 {
+    Task<bool> RenewAsync(OidcUserSession session, CancellationToken cancellationToken);
     Task UpsertAsync(OidcUserSession session, CancellationToken cancellationToken);
     Task<OidcUserSession?> FindAsync(string sessionId, CancellationToken cancellationToken);
     Task DeleteSnapshotAsync(OidcUserSession session, CancellationToken cancellationToken);
@@ -44,6 +45,20 @@ internal sealed class OidcUserSessionRepository(IDbContextFactory<AppDbContext> 
             // Renewing a ticket preserves the original creation/device metadata.
         }
         await database.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<bool> RenewAsync(OidcUserSession session, CancellationToken cancellationToken)
+    {
+        await using var database = await databaseFactory.CreateDbContextAsync(cancellationToken);
+        // A single conditional update cannot insert a row removed by revocation
+        // or transfer an existing session to a different subject.
+        var updated = await database.OidcUserSessions
+            .Where(s => s.SessionId == session.SessionId && s.Subject == session.Subject)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(s => s.LastActivityUtc, session.LastActivityUtc)
+                .SetProperty(s => s.ExpiresUtc, session.ExpiresUtc)
+                .SetProperty(s => s.ProtectedTicket, session.ProtectedTicket), cancellationToken);
+        return updated != 0;
     }
 
     public async Task<OidcUserSession?> FindAsync(string sessionId, CancellationToken cancellationToken)

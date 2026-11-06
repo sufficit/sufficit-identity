@@ -96,6 +96,12 @@ queries EF directly. Its protector purpose and cache-key format are unchanged.
 
 A touch attaches the previously read snapshot and changes only activity; it does
 not overwrite a concurrently renewed protected ticket or insert a removed row.
-The existing ticket renewal upsert and subject-ID-selection/deletion sequence
-are preserved. This extraction does not make renewal/revocation/cache writes
-atomic; their races remain in the runtime plan's F4.2/F4.3 verification scope.
+Renewal uses one conditional update matching session ID and subject, without an
+insert fallback. If revocation already deleted the row, renewal cannot recreate
+it and the ticket store does not cache the rejected renewal. Creation/device
+metadata remains unchanged. Fresh sign-in retains its separate upsert path.
+
+Database mutation and cache writes are still not atomic: a renewal accepted
+before revocation can write its cache entry after invalidation. The
+subject-ID-selection/deletion sequence also remains unchanged. These races
+remain in the runtime plan's F4.2/F4.3 scope.

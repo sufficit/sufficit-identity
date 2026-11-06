@@ -112,7 +112,7 @@ internal sealed class OidcUserSessionTicketStore(
         ArgumentNullException.ThrowIfNull(ticket);
         cancellationToken.ThrowIfCancellationRequested();
         var sid = ResolveSessionId(ticket);
-        await PersistAsync(sid, ticket, cancellationToken);
+        await repository.UpsertAsync(CreateSession(sid, ticket), cancellationToken);
         await TrySetCacheAsync(sid, ticket, cancellationToken);
         return sid;
     }
@@ -122,11 +122,11 @@ internal sealed class OidcUserSessionTicketStore(
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
         ArgumentNullException.ThrowIfNull(ticket);
         cancellationToken.ThrowIfCancellationRequested();
-        // The cookie handler passes back the key it received from StoreAsync
-        // (= the sid). An upsert keeps the row stable across RefreshSignInAsync
-        // and sliding renewal while refreshing the protected ticket + metadata.
-        await PersistAsync(key, ticket, cancellationToken);
-        await TrySetCacheAsync(key, ticket, cancellationToken);
+        // Renewal never creates a session: a revoked row must remain absent.
+        if (await repository.RenewAsync(CreateSession(key, ticket), cancellationToken))
+        {
+            await TrySetCacheAsync(key, ticket, cancellationToken);
+        }
     }
 
     public async Task<AuthenticationTicket?> RetrieveAsync(string key, CancellationToken cancellationToken)
@@ -254,10 +254,10 @@ internal sealed class OidcUserSessionTicketStore(
         return WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
     }
 
-    private Task PersistAsync(string sid, AuthenticationTicket ticket, CancellationToken cancellationToken)
+    private OidcUserSession CreateSession(string sid, AuthenticationTicket ticket)
     {
         var now = timeProvider.GetUtcNow().UtcDateTime;
-        return repository.UpsertAsync(new OidcUserSession
+        return new OidcUserSession
         {
             SessionId = sid,
             Subject = ticket.Principal.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
@@ -268,7 +268,7 @@ internal sealed class OidcUserSessionTicketStore(
             LastActivityUtc = now,
             ExpiresUtc = ResolveExpiration(ticket),
             ProtectedTicket = _protector.Protect(TicketSerializer.Default.Serialize(ticket)),
-        }, cancellationToken);
+        };
     }
 
     private DateTime? ResolveExpiration(AuthenticationTicket ticket)
