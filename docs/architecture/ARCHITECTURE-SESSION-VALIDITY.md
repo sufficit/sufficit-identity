@@ -180,3 +180,28 @@ See the [dated results](../activities/202611061339-session-redis-outage-rehearsa
 The [persisted-cache activity](../activities/202611061343-persisted-session-cache-recovery.md)
 records the RDB restoration test. The local fixture retains only its own
 temporary snapshot between restarts and removes it on disposal.
+
+## Disposable MariaDB outage rehearsal
+
+`SessionTicketMariaDbOutageTests` uses an owned Docker container from
+`mariadb:10.11`, publishing only on loopback with a stable port across restart.
+It never takes an external connection string. Opt in with:
+
+```sh
+SUFFICIT_TEST_MARIADB_DOCKER=1 dotnet test src/tests/Sufficit.Identity.Tests.csproj --no-restore -p:SufficitUseLocalSui=false --filter FullyQualifiedName~SessionTicketMariaDbOutageTests
+```
+
+The fixture creates the current EF schema, disables connection pooling/retries
+to isolate connection failures, then stops/restarts only its own container.
+A warm ticket cache can still return a ticket while the database is unavailable.
+A cold read fails; create/renew/revoke errors propagate without reporting a
+successful mutation. Failed creation does not publish a cache ticket, and a
+failed revocation does not delete its cache entry as though the durable delete
+had committed. On recovery the original row remains and can be revoked.
+
+The test also exercises conditional renewal and selected-row bulk deletion on
+the real MariaDB provider. Memory cache isolates the database failure; Redis
+rehearsals remain separate. It does not prove combined outage, Galera failover,
+retry-policy or production HTTP behavior. It explicitly skips without opt-in,
+and removes its container and anonymous volumes on disposal. See the
+[dated results](../activities/202611061349-session-mariadb-outage.md).
