@@ -108,4 +108,6 @@ The owner must supply/approve the representative workload and its acceptance
 thresholds before a volume result can be called acceptable. This item authorizes
 no production data export, destructive repair or retirement of old releases.
 
-Latest authorized publication: [20261106-56d0463](../activities/202611061728-production-publication.md), completed across all three apps nodes.
+Latest authorized publication: [20261106-e1aeb174](../activities/202611062045-production-publication.md), completed across all three apps nodes.
+All three publication checkpoints (package, sequential activation, verification)
+are complete. Galera policy activation remains a separate runtime gate.
