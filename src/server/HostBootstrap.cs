@@ -10,9 +10,7 @@ namespace Sufficit.Identity.Server;
 /// repair command, and applying migrations under a MySQL advisory lock.
 /// </summary>
 /// <remarks>
-/// Extracted from Program.cs so the composition root stays a readable sequence
-/// of registrations and pipeline steps instead of also carrying its helpers.
-/// Pure move: same code, same callers, same order.
+/// Keeps database maintenance routines separate from HTTP pipeline composition.
 /// </remarks>
 internal static partial class HostBootstrap
 {

@@ -58,12 +58,11 @@ implicit claims of this local verification. Other runtime sections remain open.
 
 ## F14 — Security-critical protocol annotations
 
-DatabaseOptions migration comments were reconciled with the executable guard in the [schema-guard activity](../activities/202611061446-production-schema-guard.md). Other code comments still mix historical design narratives with current behavior. Audit targeted security assertions against composition and executable tests; do not bulk-delete useful rationale.
-
-Evidence: [OidcUserSessionTicketStore.cs](../../src/sts/OidcUserSessionTicketStore.cs), [ProtocolFeature.cs](../../src/sts/Features/ProtocolFeature.cs).
-
-- [ ] **F14.1 · pending** — Remove comments claiming a guard is unconditional where composition makes it conditional
-- [ ] **F14.2 · pending** — Review security comments against executable tests and delete the historical "item fixed" narratives that no longer describe current behaviour
+The targeted F14.1/F14.2 review is complete; findings, corrected comments and
+verification are archived in the [security annotation activity](../activities/202611061723-security-annotation-reconciliation.md).
+The review covered schema provisioning/template guidance, cookie/session cache
+semantics, protocol-feature hook dispatch and signing/encryption composition.
+Future security changes must keep these annotations aligned with executable behavior.
 
 ## Validation required when executing
 

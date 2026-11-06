@@ -15,7 +15,7 @@ namespace Sufficit.Identity.STS;
 /// Server-side <see cref="ITicketStore"/> for the ASP.NET Core Identity
 /// application cookie (<c>IdentityConstants.ApplicationScheme</c>), wired via
 /// <c>CookieAuthenticationOptions.SessionStore</c>. The browser receives only
-/// the opaque OIDC <c>sid</c> as its session cookie value; the full
+/// a protected cookie ticket containing the session-store reference; the full
 /// <see cref="AuthenticationTicket"/> lives in the <see cref="OidcUserSession"/>
 /// table, DataProtection-protected and serialized exactly as
 /// <see cref="PasskeyAuthenticationTicketStore"/> does for the 2FA cookie.
@@ -25,11 +25,9 @@ namespace Sufficit.Identity.STS;
 /// The store key <strong>is the <c>sid</c></strong> already minted by
 /// <see cref="OidcSessionClaimsPrincipalFactory"/> and carried in the ticket's
 /// <see cref="OidcSessionClaimsPrincipalFactory.SessionIdClaimType"/> claim.
-/// Using the <c>sid</c> as the key keeps every existing behavior intact: the
-/// <c>sid</c> stays byte-identical across a refresh-token grant, the logout
-/// fan-out continues to read the same value off the cookie, and the ID-token
-/// <c>sid</c> matches the cookie value. The store simply gives that value a
-/// durable, enumerable, revocable row.
+/// The session-store key and ID-token <c>sid</c> identify the same durable,
+/// enumerable session row. Cookie authentication protects its own reference
+/// ticket; the wire cookie value is not the raw <c>sid</c>.
 /// </para>
 /// <para>
 /// <b>Lifecycle.</b> <see cref="StoreAsync"/> runs on sign-in (insert),

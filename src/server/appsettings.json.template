@@ -80,13 +80,13 @@
         "Mode": "Enforce"
       },
       "ConnectionStringName": "DefaultConnection",
-      "_Database": "Schema provisioning policy. In Development the host ALWAYS applies pending EF Core migrations on startup (MigrateAsync). In production it does so ONLY when Database:AutoMigrate=true (default false — conservative for the legacy shared Duende/Skoruba database, which predates the EF model). When AutoMigrate is false in production, provision schema from the checked-in canonical SQL (docs/migration/sql/*) before each deploy. CRITICAL: when enabling AutoMigrate, ALWAYS set AllowedDatabaseNames to the concrete database name(s) the migrator may touch — if the connection string points elsewhere (e.g. the production database by a config typo), the process refuses to start rather than migrate the wrong database. Empty AllowedDatabaseNames disables the guard (Development only).",
+      "_Database": "Schema provisioning policy. Development applies pending EF migrations on startup. Outside Development the HTTP host rejects AutoMigrate=true; use the dedicated --migrate-only job for EF migrations, or the reviewed canonical SQL rollout procedure. Configure AllowedDatabaseNames for the intended target; when nonempty, the migrator rejects any other database name.",
       "Database": {
         "_TransportMode": "Compatibility preserves rolling deployments. Set RequireVerifiedTls with SslMode=VerifyCA/VerifyFull and a trusted CA, or PrivateSocket with an explicit UnixSocket for an audited private-lab exception.",
         "TransportMode": "Compatibility",
-        "_AutoMigrate": "true applies pending EF migrations on startup outside Development. Default false — flip only after confirming the schema is aligned and AllowedDatabaseNames is set.",
+        "_AutoMigrate": "Compatibility option, default false. Outside Development, true is rejected by the HTTP host. The dedicated --migrate-only job applies migrations independently of this flag.",
         "AutoMigrate": false,
-        "_AllowedDatabaseNames": "Allow-list of database names the automatic migrator may touch (parsed from the connection string). When non-empty, a mismatch fails startup fast. Recommended in production. Empty = no guard (Development only).",
+        "_AllowedDatabaseNames": "Allow-list checked before schema migration against the database name parsed from the secret connection string. A nonempty list rejects mismatches; an empty list skips this name comparison. Configure the intended target explicitly for deployment migration jobs.",
         "AllowedDatabaseNames": [],
         "_ConnectionPool": "Explicit MySQL/MariaDB pool policy applied by the STS. MaximumSize is per process/replica. Size it against the database max_connections budget across every replica and workload.",
         "ConnectionPool": {
@@ -212,7 +212,7 @@
         "_EncryptionPassword": "Password protecting the encryption PFX file.",
         "EncryptionPassword": ""
       },
-      "_LegacyGrants": "Feature flags for OAuth 2.0 grant types outside the current OAuth 2.1 draft baseline (Resource Owner Password Credentials and the 'none' grant). OAuth 2.1 is still a draft, so compatibility remains available. Both default to FALSE (secure-by-default since EVALUATION-2026-07-21 §5 P0 #8). Opt in per environment ONLY for existing legacy clients, with telemetry and a documented migration decision.",
+      "_LegacyGrants": "Compatibility flags for Resource Owner Password Credentials and the none grant. Both default to false. Enable only for existing legacy clients with telemetry and a documented migration decision.",
       "LegacyGrants": {
         "_Password": "Enables grant_type=password. Outside the current OAuth 2.1 draft baseline, but retained for compatibility. Default false — flip to true ONLY in environments where an existing legacy client still needs it, with telemetry and a migration decision.",
         "Password": false,

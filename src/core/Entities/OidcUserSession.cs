@@ -20,8 +20,10 @@ namespace Sufficit.Identity.Core.Entities;
 /// <para>
 /// This is the store of *browser* sessions, orthogonal to the OpenIddict
 /// token/authorization records that represent *issued OAuth credentials*.
-/// Revoking a row here (<c>RemoveAsync(sid)</c>) immediately invalidates that
-/// single browser session; revoking all rows for a subject kills every device.
+/// Revoking a row here (<c>RemoveAsync(sid)</c>) removes the authoritative
+/// session. Cached tickets may remain usable until their original expiry if
+/// distributed-cache invalidation fails; cache hits do not extend that deadline.
+/// Revoking all rows for a subject applies to that subject's stored sessions.
 /// The global per-user revocation (security-stamp bump) continues to work
 /// alongside via <c>SecurityStampValidator</c>.
 /// </para>

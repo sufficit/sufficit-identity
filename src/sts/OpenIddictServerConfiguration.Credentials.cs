@@ -23,18 +23,11 @@ public static partial class ServiceCollectionExtensions
         SigningCredentials auxiliarySigningCredentials,
         bool isDevelopmentEnvironment)
     {
-        // -------------------------------------------------------------------
-        // Signing/encryption certificates (SECURITY CRITICAL). Production
-        // requires persistent X.509 certificates configured under
-        // Sufficit:Identity:Certificates (PFX files loaded from disk);
-        // ephemeral development certificates are only ever used when
-        // ASPNETCORE_ENVIRONMENT=Development, so a misconfigured
-        // production deployment fails fast at startup instead of
-        // silently signing tokens with a throwaway, regenerated-on-
-        // every-restart key.
-        // (isDevelopmentEnvironment computed once, near the top of
-        // AddSufficitIdentitySTS, and reused here via closure.)
-        // -------------------------------------------------------------------
+        // Managed signing uses the vault handlers and a bootstrap key for
+        // OpenIddict options validation. Auxiliary protocol signatures still use
+        // their configured credentials. Without managed signing, configured
+        // certificates take precedence; development certificates are a fallback
+        // only in Development. Encryption credentials are selected separately.
         if (vaultOptions.ManageSigningKeys)
         {
             // OpenIddict token signing is replaced by the vault

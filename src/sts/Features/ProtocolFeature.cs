@@ -17,7 +17,7 @@ internal sealed record ProtocolFeatureContext(
 /// <remarks>
 /// Internal to the STS on purpose: this is where OpenIddict is configured, so
 /// the contract stays out of the hosting abstractions implemented by modules
-/// outside the STS (A8, maintainer decision 2026-09-14). Every hook runs
+/// outside the STS. Every hook runs
 /// whether or not the feature is enabled; a disabled feature registers its own
 /// fallbacks and publishes its own "not supported" metadata.
 /// </remarks>
