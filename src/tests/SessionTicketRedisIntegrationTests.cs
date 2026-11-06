@@ -15,7 +15,7 @@ using Xunit;
 
 namespace Sufficit.Identity.Tests;
 
-public sealed class SessionTicketRedisIntegrationTests
+public sealed partial class SessionTicketRedisIntegrationTests
 {
     // Opt-in: the test starts/stops only its own disposable process.
     public sealed class LocalRedisFactAttribute : FactAttribute
@@ -238,13 +238,26 @@ public sealed class SessionTicketRedisIntegrationTests
     {
         private Process? _process;
         private readonly string _directory = Path.Combine(Path.GetTempPath(), "identity-redis-" + Guid.NewGuid().ToString("N"));
+        private readonly bool cluster;
+        public int BusPort { get; }
+        private readonly System.Threading.Channels.Channel<string> logs = System.Threading.Channels.Channel.CreateUnbounded<string>();
         public int Port { get; }
 
-        public LocalRedis()
+        public async Task WaitForLogAsync(string text)
+        {
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(45));
+            while (!(await logs.Reader.ReadAsync(timeout.Token)).Contains(text, StringComparison.OrdinalIgnoreCase)) { }
+        }
+
+        public LocalRedis(bool cluster = false)
         {
             using var listener = new TcpListener(IPAddress.Loopback, 0);
             listener.Start();
             Port = ((IPEndPoint)listener.LocalEndpoint).Port;
+            this.cluster = cluster;
+            using var bus = new TcpListener(IPAddress.Loopback, 0);
+            bus.Start();
+            BusPort = ((IPEndPoint)bus.LocalEndpoint).Port;
             Directory.CreateDirectory(_directory);
         }
 
@@ -257,6 +270,12 @@ public sealed class SessionTicketRedisIntegrationTests
             foreach (var argument in new[] { "--bind", "127.0.0.1", "--port", Port.ToString(),
                 "--save", "", "--appendonly", "no", "--dir", _directory, "--daemonize", "no" })
                 start.ArgumentList.Add(argument);
+            if (cluster)
+            {
+                foreach (var argument in new[] { "--cluster-enabled", "yes", "--cluster-port", BusPort.ToString(),
+                    "--cluster-node-timeout", "1000", "--cluster-require-full-coverage", "yes" })
+                    start.ArgumentList.Add(argument);
+            }
             if (primaryPort is { } upstream)
             {
                 foreach (var argument in new[] { "--replicaof", "127.0.0.1", upstream.ToString() })
@@ -269,6 +288,7 @@ public sealed class SessionTicketRedisIntegrationTests
             _process = new Process { StartInfo = start, EnableRaisingEvents = true };
             _process.OutputDataReceived += (_, e) =>
             {
+                if (e.Data is not null) logs.Writer.TryWrite(e.Data);
                 if (e.Data?.Contains("Ready to accept connections", StringComparison.OrdinalIgnoreCase) == true)
                     ready.TrySetResult();
                 if (e.Data?.Contains("sync: Finished with success", StringComparison.OrdinalIgnoreCase) == true)

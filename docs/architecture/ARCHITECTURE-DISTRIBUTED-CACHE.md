@@ -96,3 +96,13 @@ per-replica state.
 - Restarting one replica does not erase the database or leave plaintext in
   the cache.
 - Health, readiness, cache errors and invalidation lag are monitored.
+
+## Local automatic election evidence
+
+An opt-in six-node Redis Cluster rehearsal verifies primary loss, automatic replica
+election and slot discovery by the same StackExchange.Redis client. A replicated
+revocation stays absent after renewal is attempted, while a surviving session and
+a newly created session are usable. It uses a replication acknowledgement before
+primary loss and a cache lifetime longer than the discovery guard. It does not
+establish behavior for lost acknowledgements or a production recovery-time bound.
+[Scenario, invocation prerequisites and limitations](../activities/202611061906-session-redis-cluster-election.md).
