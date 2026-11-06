@@ -7,20 +7,15 @@ namespace Sufficit.Identity.STS;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Dev/test</b> always runs <c>Database.MigrateAsync()</c> at startup (so
-/// pending EF migrations are applied and the Up/Down paths are exercised
-/// end-to-end, not just <c>EnsureCreated</c> which ignores migrations).
+/// <b>Development</b> applies pending EF migrations during startup.
+/// Other environments use the dedicated <c>--migrate-only</c> process;
+/// the HTTP host does not provision schema.
 /// </para>
 /// <para>
-/// <b>Production</b> applies pending EF migrations at startup ONLY when
-/// <see cref="AutoMigrate"/> is <c>true</c> (default <c>false</c> — the
-/// conservative choice for the legacy shared Duende/Skoruba database, which
-/// predates the EF model and was migrated into). Because applying migrations
-/// to the wrong database is destructive, <see cref="AllowedDatabaseNames"/>
-/// acts as a guard: when non-empty, the actual database name (parsed from the
-/// connection string) MUST be in that allow-list or the process refuses to
-/// start. This stops a misconfigured connection string from ever pointing the
-/// migrator at the production database by accident.
+/// The HTTP host rejects <see cref="AutoMigrate"/> when enabled outside
+/// Development. The dedicated migrator does not require that legacy switch.
+/// Whenever migration is selected, a non-empty <see cref="AllowedDatabaseNames"/>
+/// list restricts the target database before schema changes are applied.
 /// </para>
 /// </remarks>
 public sealed class DatabaseOptions
@@ -35,12 +30,11 @@ public sealed class DatabaseOptions
         DatabaseTransportMode.Compatibility;
 
     /// <summary>
-    /// When <c>true</c> outside Development, the host applies pending EF Core
-    /// migrations on startup via <c>Database.MigrateAsync()</c>. Default
-    /// <c>false</c>: production keeps provisioning schema from the checked-in
-    /// canonical SQL (<c>docs/migration/sql/*</c>) until an operator
-    /// deliberately opts in. Flip to <c>true</c> only after confirming the
-    /// schema is aligned and <see cref="AllowedDatabaseNames"/> is set.
+    /// Legacy startup switch retained for configuration compatibility.
+    /// Enabling it outside Development causes the HTTP host to refuse startup.
+    /// Use the dedicated <c>--migrate-only</c> deployment process instead.
+    /// Development and the dedicated migrator select migration independently
+    /// of this flag, subject to <see cref="AllowedDatabaseNames"/>.
     /// </summary>
     public bool AutoMigrate { get; init; } = false;
 

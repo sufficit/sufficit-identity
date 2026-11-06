@@ -50,11 +50,11 @@ Production HTTP startup already rejects AutoMigrate; only migrate-only or Develo
 
 Evidence: [HostBootstrap.Schema.cs](../../src/server/HostBootstrap.Schema.cs), [MariaDbMigrationIntegrationTests.cs](../../src/tests/MariaDbMigrationIntegrationTests.cs).
 
-- [ ] **F5.2 · partial** — Extend canonical/additive MariaDB migration coverage to two-replica startup, migration failure/retry and old-binary rollback. Include a direct assertion of the existing production AutoMigrate refusal.
+- [ ] **F5.2 · partial** — Extend canonical/additive MariaDB migration coverage to two-replica startup, migration failure/retry and old-binary rollback. The [schema-guard activity](../activities/202611061446-production-schema-guard.md) closes direct Production/Staging refusal coverage and verifies the dedicated-migrator/Development boundary. Migration execution failure/retry/rollback and two-replica scenarios remain pending.
 
 ## F14 — Security-critical protocol annotations
 
-Code comments still mix historical design narratives with current behavior. Audit targeted security assertions against composition and executable tests; do not bulk-delete useful rationale.
+DatabaseOptions migration comments were reconciled with the executable guard in the [schema-guard activity](../activities/202611061446-production-schema-guard.md). Other code comments still mix historical design narratives with current behavior. Audit targeted security assertions against composition and executable tests; do not bulk-delete useful rationale.
 
 Evidence: [OidcUserSessionTicketStore.cs](../../src/sts/OidcUserSessionTicketStore.cs), [ProtocolFeature.cs](../../src/sts/Features/ProtocolFeature.cs).
 
