@@ -385,3 +385,26 @@ The [2026-11-06 gradual activation](../activities/202611062102-galera-causal-rea
 records enabling the option on all three production application hosts, after
 compatibility checks from each site and sequential restart/readiness gates.
 It does not establish behavior under a production partition or failover.
+
+### Owned weighted-quorum rehearsal
+
+Run `python3 scripts/check-galera-causal-reads.py --weighted-quorum` to create
+four disposable Galera nodes with explicit voting weights 2/1/1/2. No database
+endpoint parameter or published SQL port is used in this mode. The launcher
+pauses only containers it created, and removes containers/volumes/network on exit.
+
+The rehearsal first loses weight 2 from a weight-6 component and checks that the
+remaining primary component can revoke a row. It then loses another weight-2
+node from the accepted weight-4 component: the remaining half must become
+non-primary. Protected reads must fail with a non-primary rejection or causal
+wait timeout, while dirty reads demonstrate the legacy availability behavior.
+After resuming the nodes, every member must converge with the revoked row absent.
+A resumed process can expose a stale membership snapshot before causal reads
+recover. The fixture therefore polls only recognized availability errors for up
+to 60 seconds per node and records them; a successful stale answer fails
+immediately. This is a test convergence gate, not an application retry policy.
+
+This is a SQL/provider rehearsal with paused processes, not HTTP/ticket-cache
+integration, a bidirectional network partition or production HAProxy routing.
+The explicit fourth weight is a model parameter, not a verified production
+Google-node setting. It does not replace the outstanding production HA gates.

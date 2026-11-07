@@ -3,6 +3,7 @@
 import argparse
 import json
 import os
+import re
 from pathlib import Path
 import selectors
 import subprocess
@@ -21,13 +22,17 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--image", default="mariadb@sha256:22edfe1c78349f8cae88bbb5c2873b7e6c515be767c91c691308ce57445806f3")
     parser.add_argument("--identity-tests", action="store_true", help="Run the built Release Identity Galera session integration test")
+    parser.add_argument("--weighted-quorum", action="store_true", help="Rehearse owned four-node weighted quorum loss and recovery")
     args = parser.parse_args()
+    if args.identity_tests and args.weighted_quorum:
+        parser.error("--identity-tests and --weighted-quorum are separate rehearsals")
     prefix = "identity-galera-" + uuid.uuid4().hex[:8]
     network = prefix + "-net"
-    nodes = [prefix + "-" + str(i) for i in range(3)]
+    nodes = [prefix + "-" + str(i) for i in range(4 if args.weighted_quorum else 3)]
     created = []
     lock = None
     network_created = False
+    weights = [2, 1, 1, 2]
     # Disposable credentials, used only inside containers on this owned network.
     client = ["mysql", "-uroot", "-pdisposable-local-only", "--batch", "--skip-column-names", "--unbuffered"]
 
@@ -57,14 +62,87 @@ def main():
                     "--wsrep-node-name=" + node,
                     "--wsrep-sst-method=rsync", "--binlog-format=ROW",
                     "--default-storage-engine=InnoDB", "--innodb-autoinc-lock-mode=2",
-                    *(["--wsrep-dirty-reads=ON"] if args.identity_tests else []),
-                    "--wsrep-sync-wait=14", "--wsrep-provider-options=repl.causal_read_timeout=PT2S")
+                    *(["--wsrep-dirty-reads=ON"] if args.identity_tests or args.weighted_quorum else []),
+                    "--wsrep-sync-wait=14", "--wsrep-provider-options=repl.causal_read_timeout=PT2S" +
+                    (";pc.weight=" + str(weights[i]) if args.weighted_quorum else ""))
             created.append(node)
             command("docker", "start", node)
             ready(node, i + 1)
         for node in nodes:
-            ready(node, 3)
+            ready(node, len(nodes))
         version = sql(nodes[0], "SELECT VERSION(); SHOW GLOBAL STATUS LIKE 'wsrep_provider_version';").stdout.strip()
+        if args.weighted_quorum:
+            def status(node):
+                result = sql(node, "SET SESSION wsrep_sync_wait=0; SHOW GLOBAL STATUS WHERE Variable_name IN ('wsrep_cluster_status','wsrep_cluster_size','wsrep_cluster_weight');")
+                return dict(line.split("\t", 1) for line in result.stdout.splitlines() if "\t" in line)
+
+            def non_primary(node):
+                deadline = time.monotonic() + 120
+                while time.monotonic() < deadline:
+                    observed = status(node)
+                    if observed.get("wsrep_cluster_status") == "non-Primary":
+                        return observed
+                    time.sleep(0.5)  # Poll membership, never assert an elapsed delay.
+                raise RuntimeError("Owned minority did not lose primary status")
+
+            causal = "SET SESSION wsrep_dirty_reads=OFF; SET SESSION wsrep_sync_wait=15; "
+            initial = status(nodes[1])
+            assert initial["wsrep_cluster_weight"] == "6", initial
+            sql(nodes[1], "CREATE DATABASE rehearsal; CREATE TABLE rehearsal.sessions (id INT PRIMARY KEY) ENGINE=InnoDB; INSERT INTO rehearsal.sessions VALUES (1);")
+            for node in nodes:
+                assert sql(node, causal + "SELECT COUNT(*) FROM rehearsal.sessions;").stdout.strip() == "1"
+            # Pause only owned containers: the first failure leaves weight 4/6.
+            command("docker", "pause", nodes[0])
+            for node in nodes[1:]:
+                ready(node, 3)
+            majority = status(nodes[1])
+            assert majority["wsrep_cluster_weight"] == "4", majority
+            sql(nodes[1], causal + "DELETE FROM rehearsal.sessions WHERE id=1;")
+            assert sql(nodes[2], causal + "SELECT COUNT(*) FROM rehearsal.sessions;").stdout.strip() == "0"
+            # Lose weight 2 from that accepted weight-4 component: half is not a majority.
+            command("docker", "pause", nodes[3])
+            minorities = [non_primary(node) for node in nodes[1:3]]
+            rejection_codes = []
+            for node in nodes[1:3]:
+                rejected = sql(node, causal + "SELECT COUNT(*) FROM rehearsal.sessions;", check=False)
+                # The causal wait may expire before the non-primary SQL rejection.
+                error = re.search(r"ERROR (\d+) ", rejected.stderr)
+                assert rejected.returncode != 0 and error and error[1] in {"1047", "1205"}, rejected.stderr
+                rejection_codes.append(error[1])
+                # Legacy dirty reads still answer from a non-primary component.
+                assert sql(node, "SET SESSION wsrep_dirty_reads=ON; SET SESSION wsrep_sync_wait=0; SELECT COUNT(*) FROM rehearsal.sessions;").stdout.strip() == "0"
+            command("docker", "unpause", nodes[3])
+            for node in nodes[1:]:
+                ready(node, 3)
+            assert sql(nodes[2], causal + "SELECT COUNT(*) FROM rehearsal.sessions;").stdout.strip() == "0"
+            command("docker", "unpause", nodes[0])
+            recovery_errors = []
+            for node in nodes:
+                ready(node, 4)
+                deadline = time.monotonic() + 60
+                while True:
+                    result = sql(node, causal + "SELECT COUNT(*) FROM rehearsal.sessions;", check=False)
+                    if result.returncode == 0:
+                        # Never retry a successful but stale answer.
+                        assert result.stdout.strip() == "0", result.stdout
+                        break
+                    error = re.search(r"ERROR (\d+) ", result.stderr)
+                    assert error and error[1] in {"1047", "1205"}, result.stderr
+                    recovery_errors.append({"node": nodes.index(node), "error": error[1]})
+                    if time.monotonic() >= deadline:
+                        raise RuntimeError("Owned causal read did not recover: " + result.stderr)
+                    time.sleep(0.5)
+            # A resumed process can initially expose an old membership snapshot.
+            for node in nodes:
+                ready(node, 4)
+            recovered = status(nodes[1])
+            assert recovered["wsrep_cluster_weight"] == "6", recovered
+            print(json.dumps({"image": args.image, "version": version, "weights": weights,
+                              "initial": initial, "after_first_loss": majority,
+                              "after_second_loss": minorities, "causal_minority_read_errors": rejection_codes,
+                              "legacy_dirty_read": "accepted", "recovery_errors": recovery_errors, "recovered": recovered,
+                              "revoked_row_after_recovery": "absent on all four nodes"}))
+            return
         if args.identity_tests:
             endpoints = []
             for node in nodes[:2]:
