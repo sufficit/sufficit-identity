@@ -380,3 +380,8 @@ No production activation is implied by merging the option. The
 verified this session-local preparation on all four live SQL candidates from
 Eveo using the application credentials; existing service pools were not modified.
 [Implementation and validation](../activities/202611062018-galera-causal-read-policy.md).
+
+The [2026-11-06 gradual activation](../activities/202611062102-galera-causal-read-activation.md)
+records enabling the option on all three production application hosts, after
+compatibility checks from each site and sequential restart/readiness gates.
+It does not establish behavior under a production partition or failover.

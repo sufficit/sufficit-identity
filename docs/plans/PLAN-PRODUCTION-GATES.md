@@ -110,4 +110,4 @@ no production data export, destructive repair or retirement of old releases.
 
 Latest authorized publication: [20261106-e1aeb174](../activities/202611062045-production-publication.md), completed across all three apps nodes.
 All three publication checkpoints (package, sequential activation, verification)
-are complete. Galera policy activation remains a separate runtime gate.
+are complete. The subsequent [Galera policy activation](../activities/202611062102-galera-causal-read-activation.md) is also complete; weighted failover and sustained observation remain runtime gates.
