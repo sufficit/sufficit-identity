@@ -74,6 +74,25 @@ public sealed class SessionTicketCancellationTests
         finally { factory.Stop.TrySetResult(); await Observe(task); }
     }
 
+    [Fact]
+    public async Task Cancellation_after_cache_failure_stops_database_fallback_without_publication()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var factory = new WaitingFactory();
+        var cache = new TestCache { FailOnRead = true };
+        ITicketStore store = Store(factory, cache);
+        var task = store.RetrieveAsync("session", cancellation.Token);
+        await factory.Entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.True(cache.Entered.Task.IsCompleted);
+        cancellation.Cancel();
+        try
+        {
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => task.WaitAsync(TimeSpan.FromSeconds(5)));
+            Assert.False(cache.MutationEntered.Task.IsCompleted);
+        }
+        finally { factory.Stop.TrySetResult(); await Observe(task); }
+    }
+
     [Theory]
     [InlineData("store")]
     [InlineData("renew")]
@@ -149,6 +168,7 @@ public sealed class SessionTicketCancellationTests
     private sealed class TestCache : IDistributedCache
     {
         public bool WaitOnRead { get; init; }
+        public bool FailOnRead { get; init; }
         public bool WaitOnWrite { get; set; }
         public bool WaitOnRemove { get; set; }
         public TaskCompletionSource MutationEntered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -157,6 +177,7 @@ public sealed class SessionTicketCancellationTests
         public async Task<byte[]?> GetAsync(string key, CancellationToken token = default)
         {
             Entered.TrySetResult();
+            if (FailOnRead) throw new IOException("Injected cache failure");
             if (WaitOnRead) await Task.Delay(Timeout.InfiniteTimeSpan, token);
             return null;
         }

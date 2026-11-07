@@ -422,3 +422,9 @@ combines an injected IDistributedCache failure with real delayed Galera apply.
 The fallback refuses the stale database read, does not attempt cache publication,
 and observes revocation after database recovery even while the cache still fails.
 This extends the same owned `--identity-tests` suite; it does not emulate Redis HA.
+
+The [kernel-loss rehearsal](../activities/202611062158-kernel-loss-runtime-verification.md)
+uses `python3 scripts/check-nats-kernel-loss.py` with Docker and passwordless sudo
+for namespace-local tc. It tests real 100% egress loss, cache expiry, default
+heartbeat disconnect and subsequent delivery recovery on an owned NATS broker.
+The launcher accepts no production endpoint and leaves the host network unchanged.

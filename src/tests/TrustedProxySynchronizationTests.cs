@@ -276,9 +276,9 @@ public sealed class TrustedProxySynchronizationTests
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
             Func<TState, Exception?, string> formatter) => events.Writer.TryWrite(formatter(state, exception));
         // Await actual work notifications; timeout only guards a broken test from hanging.
-        public async Task WaitFor(Func<bool> predicate)
+        public async Task WaitFor(Func<bool> predicate, TimeSpan? timeout = null)
         {
-            while (!predicate()) await events.Reader.ReadAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(30));
+            while (!predicate()) await events.Reader.ReadAsync().AsTask().WaitAsync(timeout ?? TimeSpan.FromSeconds(30));
         }
         public async Task WaitForMessage(string text)
         {
