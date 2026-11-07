@@ -63,13 +63,15 @@ public sealed class SessionTicketGaleraIntegrationTests
             OidcUserSessionRepository Repository(ServiceProvider services) =>
                 new(services.GetRequiredService<IDbContextFactory<AppDbContext>>());
             var protection = new EphemeralDataProtectionProvider();
-            OidcUserSessionTicketStore Store(ServiceProvider services) => new(Repository(services), protection,
-                services.GetRequiredService<IDistributedCache>(), new HttpContextAccessor(),
+            OidcUserSessionTicketStore Store(ServiceProvider services, IDistributedCache? cache = null) => new(Repository(services), protection,
+                cache ?? services.GetRequiredService<IDistributedCache>(), new HttpContextAccessor(),
                 new SufficitIdentityOptions { UserSessions = new() { CacheLifetimeSeconds = 300 } },
                 TimeProvider.System, NullLogger<OidcUserSessionTicketStore>.Instance);
             var writer = Store(writerServices);
             var stale = Store(staleServices);
             var causal = Store(causalServices);
+            var unavailableCache = new UnavailableCache();
+            var fallback = Store(causalServices, unavailableCache);
             var ticket = new AuthenticationTicket(new ClaimsPrincipal(new ClaimsIdentity(
                 [new Claim("sub", "galera-user"), new Claim("sid", "galera-session")], "test")),
                 new AuthenticationProperties { ExpiresUtc = DateTimeOffset.UtcNow.AddHours(1) }, "test");
@@ -106,7 +108,18 @@ public sealed class SessionTicketGaleraIntegrationTests
             Assert.NotNull(error);
             Assert.Equal(1205, Assert.IsType<MySqlException>(error.GetBaseException()).Number);
             Assert.Null(await causalServices.GetRequiredService<IDistributedCache>().GetAsync("identity:oidc-session:v1:" + sid));
+            // A cache exception must fall back through the protected repository,
+            // never turn a stalled causal read into a stale ticket or a cache write.
+            var fallbackError = await Record.ExceptionAsync(() => fallback.RetrieveAsync(sid));
+            Assert.NotNull(fallbackError);
+            Assert.Equal(1205, Assert.IsType<MySqlException>(fallbackError.GetBaseException()).Number);
+            Assert.Equal(1, unavailableCache.Reads);
+            Assert.Equal(0, unavailableCache.Writes);
             await Execute(blocker, "UNLOCK TABLES; SET GLOBAL wsrep_desync=OFF;");
+            // Keep the cache unavailable while the database recovers.
+            Assert.Null(await fallback.RetrieveAsync(sid));
+            Assert.Equal(2, unavailableCache.Reads);
+            Assert.Equal(0, unavailableCache.Writes);
             Assert.Null(await causal.RetrieveAsync(sid));
             await causal.RenewAsync(sid, ticket);
             Assert.Null(await Repository(causalServices).FindAsync(sid, default));
@@ -180,6 +193,33 @@ public sealed class SessionTicketGaleraIntegrationTests
                 MySqlConnection.ClearPool(poolKey);
             }
         }
+    }
+
+    private sealed class UnavailableCache : IDistributedCache
+    {
+        public int Reads { get; private set; }
+        public int Writes { get; private set; }
+        public byte[]? Get(string key) { Reads++; throw new IOException("Injected owned cache outage"); }
+        public Task<byte[]?> GetAsync(string key, CancellationToken token = default)
+        {
+            token.ThrowIfCancellationRequested();
+            Reads++;
+            return Task.FromException<byte[]?>(new IOException("Injected owned cache outage"));
+        }
+        public void Set(string key, byte[] value, DistributedCacheEntryOptions options)
+        { Writes++; throw new IOException("Injected owned cache outage"); }
+        public Task SetAsync(string key, byte[] value, DistributedCacheEntryOptions options, CancellationToken token = default)
+        {
+            token.ThrowIfCancellationRequested();
+            Writes++;
+            return Task.FromException(new IOException("Injected owned cache outage"));
+        }
+        public void Refresh(string key) => throw new IOException("Injected owned cache outage");
+        public Task RefreshAsync(string key, CancellationToken token = default) =>
+            Task.FromException(new IOException("Injected owned cache outage"));
+        public void Remove(string key) => throw new IOException("Injected owned cache outage");
+        public Task RemoveAsync(string key, CancellationToken token = default) =>
+            Task.FromException(new IOException("Injected owned cache outage"));
     }
 
     private static async Task<long> Scalar(MySqlConnection connection, string sql)

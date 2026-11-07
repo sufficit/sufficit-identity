@@ -415,3 +415,9 @@ reset enabled and disabled and synchronous/asynchronous EF opens. It weakens the
 session before returning it to the owned pool and verifies policy reapplication;
 it does not claim pooled failover coverage. Run it through the existing
 `python3 scripts/check-galera-causal-reads.py --identity-tests` launcher.
+
+The [cache-outage/apply-lag scenario](../activities/202611062132-cache-outage-galera-apply-lag.md)
+combines an injected IDistributedCache failure with real delayed Galera apply.
+The fallback refuses the stale database read, does not attempt cache publication,
+and observes revocation after database recovery even while the cache still fails.
+This extends the same owned `--identity-tests` suite; it does not emulate Redis HA.
