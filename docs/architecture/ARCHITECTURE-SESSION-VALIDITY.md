@@ -406,8 +406,9 @@ immediately. This is a test convergence gate, not an application retry policy.
 
 This is a SQL/provider rehearsal with paused processes, not HTTP/ticket-cache
 integration, a bidirectional network partition or production HAProxy routing.
-The explicit fourth weight is a model parameter, not a verified production
-Google-node setting. It does not replace the outstanding production HA gates.
+The weights now match the [direct four-node inventory](../activities/202611062138-galera-voter-clock-observation.md),
+including the Google node. This does not establish equivalence of the full
+production network/provider configuration or replace the production HA gates.
 
 The [pooled-session integration regression](../activities/202611062118-galera-pooled-session-policy.md)
 verifies the same physical `CONNECTION_ID` across logical leases, with connector
