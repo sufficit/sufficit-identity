@@ -93,7 +93,7 @@ work is not reopened. F4.2/F4.3 remain open until the following evidence exists.
    injecting cluster-wide production faults without a defined recovery envelope.
 5. **completed** — Run the relevant final validation; reconcile each acceptance
    item against actual evidence and retain any concrete blockers.
-6. **in progress** — Archive completed scope as activities, preserve still-open
+6. **completed** — Archive completed scope as activities, preserve still-open
    ownership, commit/push and verify remote state.
 
 No invented SLA or clock-skew acceptance budget. Production publication already
@@ -119,3 +119,6 @@ newly discovered defect receives its own concrete reproduction and scope.
 The [production HA procedure](../runbooks/RUNBOOK-RUNTIME-HA-VALIDATION.md)
 concretely lists preflight, one-fault sequencing, abort/restore and the missing
 acceptance inputs. No production fault is claimed from the local fixtures.
+
+Delivery: `ffb6b906` pushed to main and remote verified. Step 4 remains open
+for the operational inputs listed above; the overall plan is not complete.
