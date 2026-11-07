@@ -154,7 +154,7 @@ def main():
             env = dict(os.environ, IDENTITY_TEST_OWNED_GALERA_CONNECTIONS="|".join(endpoints))
             subprocess.run(["dotnet", "test", "src/tests/Sufficit.Identity.Tests.csproj", "-c", "Release",
                             "--no-build", "--no-restore", "--filter", "FullyQualifiedName~SessionTicketGaleraIntegrationTests",
-                            "--nologo", "--verbosity", "quiet"], env=env,
+                            "--nologo", "--verbosity", "quiet", "--logger", "console;verbosity=normal"], env=env,
                            cwd=Path(__file__).resolve().parent.parent, check=True, timeout=180)
             print(json.dumps({"version": version, "identity_test": "passed"}))
             return

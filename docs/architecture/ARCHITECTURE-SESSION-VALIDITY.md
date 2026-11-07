@@ -408,3 +408,10 @@ This is a SQL/provider rehearsal with paused processes, not HTTP/ticket-cache
 integration, a bidirectional network partition or production HAProxy routing.
 The explicit fourth weight is a model parameter, not a verified production
 Google-node setting. It does not replace the outstanding production HA gates.
+
+The [pooled-session integration regression](../activities/202611062118-galera-pooled-session-policy.md)
+verifies the same physical `CONNECTION_ID` across logical leases, with connector
+reset enabled and disabled and synchronous/asynchronous EF opens. It weakens the
+session before returning it to the owned pool and verifies policy reapplication;
+it does not claim pooled failover coverage. Run it through the existing
+`python3 scripts/check-galera-causal-reads.py --identity-tests` launcher.

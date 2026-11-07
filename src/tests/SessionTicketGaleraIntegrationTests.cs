@@ -120,6 +120,76 @@ public sealed class SessionTicketGaleraIntegrationTests
         }
     }
 
+    [OwnedGaleraFact]
+    [Trait("Category", "GaleraIntegration")]
+    public async Task Pooled_logical_opens_reapply_policy_with_and_without_connector_reset()
+    {
+        var endpoint = Environment.GetEnvironmentVariable("IDENTITY_TEST_OWNED_GALERA_CONNECTIONS")!.Split('|')[0];
+        Assert.Equal("127.0.0.1", new MySqlConnectionStringBuilder(endpoint).Server);
+        foreach (var reset in new[] { true, false })
+        foreach (var asynchronous in new[] { true, false })
+        {
+            var builder = new MySqlConnectionStringBuilder(endpoint)
+            {
+                Pooling = true,
+                MaximumPoolSize = 1,
+                ConnectionReset = reset,
+                ApplicationName = "identity-owned-pool-" + Guid.NewGuid().ToString("N")
+            };
+            var options = new DbContextOptionsBuilder<AppDbContext>()
+                .UseMySql(builder.ConnectionString, new MariaDbServerVersion(new Version(10, 4, 34)))
+                .AddInterceptors(new Sufficit.Identity.STS.Diagnostics.DatabaseCausalReadInterceptor())
+                .Options;
+            using var poolKey = new MySqlConnection();
+            try
+            {
+                long physicalId;
+                await using (var first = new AppDbContext(options))
+                {
+                    // Use the actual provider connection string (including EF options)
+                    // for the control and cleanup, rather than accidentally creating a second pool.
+                    poolKey.ConnectionString = first.Database.GetDbConnection().ConnectionString;
+                    await first.Database.OpenConnectionAsync();
+                    var connection = (MySqlConnection)first.Database.GetDbConnection();
+                    physicalId = await Scalar(connection, "SELECT CONNECTION_ID()");
+                    Assert.Equal(15, await Scalar(connection, "SELECT @@SESSION.wsrep_sync_wait"));
+                    Assert.Equal(0, await Scalar(connection, "SELECT @@SESSION.wsrep_dirty_reads"));
+                    // Deliberately weaken the owned session before returning it to its pool.
+                    await Execute(connection, "SET SESSION wsrep_sync_wait=14; SET SESSION wsrep_dirty_reads=ON;");
+                }
+                // Control: the same physical connection without EF setup is unsafe,
+                // whether inherited from the pool or reset to the server defaults.
+                await using (var control = new MySqlConnection(poolKey.ConnectionString))
+                {
+                    await control.OpenAsync();
+                    Assert.Equal(physicalId, await Scalar(control, "SELECT CONNECTION_ID()"));
+                    Assert.Equal(14, await Scalar(control, "SELECT @@SESSION.wsrep_sync_wait"));
+                    Assert.Equal(1, await Scalar(control, "SELECT @@SESSION.wsrep_dirty_reads"));
+                }
+                await using var next = new AppDbContext(options);
+                if (asynchronous) await next.Database.OpenConnectionAsync();
+                else next.Database.OpenConnection();
+                var reused = (MySqlConnection)next.Database.GetDbConnection();
+                Assert.Equal(physicalId, await Scalar(reused, "SELECT CONNECTION_ID()"));
+                Assert.Equal(15, await Scalar(reused, "SELECT @@SESSION.wsrep_sync_wait"));
+                Assert.Equal(0, await Scalar(reused, "SELECT @@SESSION.wsrep_dirty_reads"));
+                Assert.Equal(1, await Scalar(reused, "SELECT @@GLOBAL.wsrep_dirty_reads"));
+            }
+            finally
+            {
+                MySqlConnection.ClearPool(poolKey);
+            }
+        }
+    }
+
+    private static async Task<long> Scalar(MySqlConnection connection, string sql)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        command.CommandTimeout = 10;
+        return Convert.ToInt64(await command.ExecuteScalarAsync());
+    }
+
     private static async Task Execute(MySqlConnection connection, string sql)
     {
         await using var command = connection.CreateCommand();
