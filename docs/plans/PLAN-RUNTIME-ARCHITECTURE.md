@@ -122,3 +122,19 @@ acceptance inputs. No production fault is claimed from the local fixtures.
 
 Delivery: `ffb6b906` pushed to main and remote verified. Step 4 remains open
 for the operational inputs listed above; the overall plan is not complete.
+
+
+### Non-disruptive observation follow-up
+
+The owner could not specify production fault tolerances. Use no intentional
+production interruption; this does not close the shared-provider failover gate.
+
+1. **completed** — Collect 12 sequential health/readiness and revision/pin checks
+   on all three application nodes, spaced by five seconds between rounds.
+   Record timestamps and failures; this is a short observational sample, not an SLO.
+2. **completed** — Archive the observed results and limitations, validate Markdown
+   coverage, commit/push only this documentation and verify remote delivery.
+
+The longer workload/skew acceptance and production fault envelope remain pending.
+
+Observed results: [short non-disruptive sample](../activities/202611062211-non-disruptive-runtime-observation.md); all 36 node checks passed.
