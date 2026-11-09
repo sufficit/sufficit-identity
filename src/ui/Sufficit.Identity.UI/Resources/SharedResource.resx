@@ -121,6 +121,8 @@
   <data name="ConfirmEmail.Title" xml:space="preserve"><value>Email confirmation</value></data>
   <data name="ConfirmEmail.Success" xml:space="preserve"><value>Email confirmed successfully!</value></data>
   <data name="ConfirmEmail.InvalidLink" xml:space="preserve"><value>Invalid or expired link.</value></data>
+  <data name="ConfirmEmail.RequestNewLink" xml:space="preserve"><value>Request a new link</value></data>
+  <data name="ConfirmEmail.Failed" xml:space="preserve"><value>Unable to confirm your email. Try again or request a new link.</value></data>
 
   <!-- ===== 2FA ===== -->
   <data name="TwoFactor.Title" xml:space="preserve"><value>Two-step verification</value></data>

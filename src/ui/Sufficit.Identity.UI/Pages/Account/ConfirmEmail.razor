@@ -13,6 +13,15 @@
         <SUIAlert ToneValue="@(_success ? SUITone.Success : SUITone.Danger)">@_status</SUIAlert>
     }
 
+    @if (_status is not null && !_success)
+    {
+        <SUIButton Href="/account/resendemailconfirmation"
+                   VariantValue="SUIVariant.Outlined"
+                   ColorValue="SUIColor.Default">
+            @L["ConfirmEmail.RequestNewLink"]
+        </SUIButton>
+    }
+
     <SUIButton Href="@LoginUrl">@L["Common.BackToLogin"]</SUIButton>
 </div>
 
@@ -40,9 +49,9 @@
                 L["ConfirmEmail.Success"],
             AccountEmailConfirmationStatus.InvalidRequest =>
                 L["ConfirmEmail.InvalidLink"],
-            _ => string.Join(
-                " ",
-                result.Errors.Select(error => error.Description)),
+            _ when result.Errors.Any(error => error.Code == "InvalidToken") =>
+                L["ConfirmEmail.InvalidLink"],
+            _ => L["ConfirmEmail.Failed"],
         };
     }
 }

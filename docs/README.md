@@ -31,6 +31,8 @@ claim cites `file:line`.
 
 ## Plans (pending work)
 
+- [Email confirmation invalid token](plans/PLAN-EMAIL-CONFIRMATION-INVALID-TOKEN.md) — investigate the reported confirmation rejection.
+
 [Identity plan index](plans/PLAN-IDENTITY.md) routes the remaining work to twelve
 focused plans. Stable A–G section IDs are preserved; each plan records source/test
 foundations, remaining scope, dependencies and acceptance evidence. The
@@ -38,6 +40,8 @@ foundations, remaining scope, dependencies and acceptance evidence. The
 accounts for all 105 original items, seven closure criteria and the operational calendar.
 
 ## Completed work (activities/)
+
+- [Email confirmation recovery](activities/202611091328-email-confirmation-recovery.md) — localized token errors and access to resend; incident cause remains unproven.
 
 - [Browser-session repository extraction](activities/202611061246-session-repository-extraction.md) — F4.1 closure: cancellable persistence boundary and real session regressions.
 
