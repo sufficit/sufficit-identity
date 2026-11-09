@@ -31,7 +31,7 @@ claim cites `file:line`.
 
 ## Plans (pending work)
 
-- [Claim confirmation deployment](plans/PLAN-CLAIM-CONFIRMATION-DEPLOY.md) — authorized rolling production rollout.
+- [Claim confirmation deployment](plans/PLAN-CLAIM-CONFIRMATION-DEPLOY.md) — completed rolling production rollout.
 
 - [Email confirmation deployment](plans/PLAN-EMAIL-CONFIRMATION-DEPLOY.md) — authorized production rollout and verification.
 
@@ -44,6 +44,8 @@ foundations, remaining scope, dependencies and acceptance evidence. The
 accounts for all 105 original items, seven closure criteria and the operational calendar.
 
 ## Completed work (activities/)
+
+- [Claim confirmation preservation deployed](activities/202611091921-claim-confirmation-deployment.md) — exact release verified healthy on all three production nodes.
 
 - [Preserve confirmation through claim changes](activities/202611091910-claim-confirmation-preservation.md) — pending confirmation links survive provisioning while credentials and browser sessions are revoked.
 
