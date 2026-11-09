@@ -318,8 +318,11 @@ The corrected UI:
   capabilities and module availability through one shared overview contract;
 - treats claims as opaque attributes and never suggests Sufficit business roles;
 - protects protocol/profile claim types from manual override;
-- rotates the target user's security stamp and revokes active tokens whenever a
-  claim assignment changes;
+- revokes active tokens whenever a claim assignment changes. Confirmed accounts
+  rotate their security stamp. Accounts awaiting email confirmation retain their
+  stamp so issued confirmation links survive provisioning; their stored browser
+  sessions are explicitly revoked through the session-management boundary,
+  including its existing bounded-cache behavior;
 - leaves manifest-managed scopes read-only and blocks scope deletion while a
   client still has permission to request it.
 

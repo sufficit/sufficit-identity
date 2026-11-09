@@ -1,4 +1,7 @@
 using System.Net;
+using Microsoft.AspNetCore.Authentication;
+using OpenIddict.Abstractions;
+using Sufficit.Identity.STS;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text.Json;
@@ -105,6 +108,80 @@ public sealed class ClaimsControllerTests
                     .Where(property => property.PropertyType == typeof(string))
                     .Select(property => property.GetValue(exception) as string))
             + " " + exception.Message;
+    }
+
+    [Theory]
+    [InlineData("create")]
+    [InlineData("update")]
+    [InlineData("delete")]
+    public async Task Unconfirmed_account_claim_changes_preserve_confirmation_and_revoke_sessions(string operation)
+    {
+        using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        using var client = factory.CreateClient();
+        string userId;
+        string confirmation;
+        string credentialId;
+        string authorizationId;
+        int claimId;
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var user = await TestDataSeeder.CreateUserAsync(users,
+                $"pending-confirmation-{Guid.NewGuid():N}", TestDataSeeder.DefaultPassword);
+            user.EmailConfirmed = false;
+            Assert.True((await users.UpdateAsync(user)).Succeeded);
+            Assert.True((await users.AddClaimAsync(user, new Claim("urn:tests:department", "before"))).Succeeded);
+            userId = user.Id;
+            confirmation = await users.GenerateEmailConfirmationTokenAsync(user);
+            claimId = await scope.ServiceProvider.GetRequiredService<AppDbContext>()
+                .Set<IdentityUserClaim<string>>().Where(c => c.UserId == userId).Select(c => c.Id).SingleAsync();
+            var authorizations = scope.ServiceProvider.GetRequiredService<IOpenIddictAuthorizationManager>();
+            var authorization = await authorizations.CreateAsync(new OpenIddictAuthorizationDescriptor
+            {
+                Subject = userId, Status = OpenIddictConstants.Statuses.Valid,
+                Type = OpenIddictConstants.AuthorizationTypes.Permanent,
+            });
+            authorizationId = (await authorizations.GetIdAsync(authorization))!;
+            var tokens = scope.ServiceProvider.GetRequiredService<IOpenIddictTokenManager>();
+            var credential = await tokens.CreateAsync(new OpenIddictTokenDescriptor
+            {
+                Subject = userId, AuthorizationId = authorizationId,
+                Status = OpenIddictConstants.Statuses.Valid,
+                Type = OpenIddictConstants.TokenTypeHints.RefreshToken,
+                ExpirationDate = DateTimeOffset.UtcNow.AddHours(1),
+            });
+            credentialId = (await tokens.GetIdAsync(credential))!;
+        }
+        var store = factory.Services.GetRequiredService<OidcUserSessionTicketStore>();
+        var ticket = new AuthenticationTicket(new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.NameIdentifier, userId)], IdentityConstants.ApplicationScheme)),
+            new AuthenticationProperties { ExpiresUtc = DateTimeOffset.UtcNow.AddHours(1) },
+            IdentityConstants.ApplicationScheme);
+        var sessionId = await store.StoreAsync(ticket);
+        Assert.NotNull(await store.RetrieveAsync(sessionId));
+
+        using var response = operation switch
+        {
+            "create" => await client.PostAsJsonAsync("/api/claims", new CreateClaimRequest
+                { UserId = userId, Type = "urn:tests:office", Value = "north" }),
+            "update" => await client.PutAsJsonAsync($"/api/claims/{claimId}", new UpdateClaimRequest
+                { Type = "urn:tests:department", Value = "after" }),
+            _ => await client.DeleteAsync($"/api/claims/{claimId}"),
+        };
+        response.EnsureSuccessStatusCode();
+        await using var verification = factory.Services.CreateAsyncScope();
+        var verifiedUsers = verification.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var verifiedUser = (await verifiedUsers.FindByIdAsync(userId))!;
+        Assert.True((await verifiedUsers.ConfirmEmailAsync(verifiedUser, confirmation)).Succeeded);
+        Assert.True((await verifiedUsers.FindByIdAsync(userId))!.EmailConfirmed);
+        var verifiedTokens = verification.ServiceProvider.GetRequiredService<IOpenIddictTokenManager>();
+        Assert.Equal(OpenIddictConstants.Statuses.Revoked,
+            await verifiedTokens.GetStatusAsync((await verifiedTokens.FindByIdAsync(credentialId))!));
+        var verifiedAuthorizations = verification.ServiceProvider.GetRequiredService<IOpenIddictAuthorizationManager>();
+        Assert.Equal(OpenIddictConstants.Statuses.Valid,
+            await verifiedAuthorizations.GetStatusAsync((await verifiedAuthorizations.FindByIdAsync(authorizationId))!));
+        Assert.Null(await store.RetrieveAsync(sessionId));
     }
 
     [Fact]

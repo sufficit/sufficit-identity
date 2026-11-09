@@ -21,11 +21,35 @@ internal sealed partial class ClaimManagementService(
     AppDbContext database,
     UserManager<ApplicationUser> userManager,
     IIdentityUserSessionRevoker sessionRevoker,
+    ISessionManagement browserSessions,
     ISecurityEventTrigger securityEvents,
     IOptions<Sufficit.Identity.Management.ManagementOptions> managementOptions,
     ILogger<ClaimManagementService> logger,
     ManagementOperationGuard guard) : IClaimManagementService
 {
+    private async Task<long> InvalidateClaimSessionsAsync(
+        string userId,
+        CancellationToken cancellationToken)
+    {
+        var user = await userManager.FindByIdAsync(userId)
+            ?? throw new InvalidOperationException("Claim owner no longer exists.");
+        // Confirmation tokens contain the security stamp. Provisioning claims
+        // before the address is proven must not invalidate the issued link.
+        // UpdateAsync still advances the concurrency stamp for concurrent edits.
+        EnsureIdentitySucceeded(
+            user.EmailConfirmed
+                ? await userManager.UpdateSecurityStampAsync(user)
+                : await userManager.UpdateAsync(user),
+            "claim_session_invalidation_failed");
+        if (!user.EmailConfirmed)
+        {
+            await browserSessions.RevokeAllBySubjectAsync(
+                user.Id, exceptSessionId: null, cancellationToken);
+        }
+
+        return await sessionRevoker.RevokeTokensAsync(user.Id, cancellationToken);
+    }
+
     private const int ClaimTypeMaxLength = 256;
     private const int ClaimValueMaxLength = 4096;
 
@@ -294,10 +318,7 @@ internal sealed partial class ClaimManagementService(
             claimSet.Add(claim);
             await database.SaveChangesAsync(cancellationToken);
 
-            EnsureIdentitySucceeded(
-                await userManager.UpdateSecurityStampAsync(user),
-                "claim_session_invalidation_failed");
-            var revokedTokens = await sessionRevoker.RevokeTokensAsync(
+            var revokedTokens = await InvalidateClaimSessionsAsync(
                 userId,
                 cancellationToken);
 
@@ -424,10 +445,7 @@ internal sealed partial class ClaimManagementService(
         try
         {
             database.Remove(claim);
-            EnsureIdentitySucceeded(
-                await userManager.UpdateSecurityStampAsync(user),
-                "claim_session_invalidation_failed");
-            var revokedTokens = await sessionRevoker.RevokeTokensAsync(
+            var revokedTokens = await InvalidateClaimSessionsAsync(
                 user.Id,
                 cancellationToken);
             database.ManagementAuditEvents.Add(
@@ -559,10 +577,7 @@ internal sealed partial class ClaimManagementService(
             claim.ClaimValue = value;
             await database.SaveChangesAsync(cancellationToken);
 
-            EnsureIdentitySucceeded(
-                await userManager.UpdateSecurityStampAsync(user),
-                "claim_session_invalidation_failed");
-            var revokedTokens = await sessionRevoker.RevokeTokensAsync(
+            var revokedTokens = await InvalidateClaimSessionsAsync(
                 user.Id,
                 cancellationToken);
 

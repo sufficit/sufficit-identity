@@ -166,8 +166,10 @@ persistência SCIM própria e opaca, deliberadamente separada de roles e
 autoridades empresariais.
 
 Claims são atribuições persistidas nas contas. Sua criação, edição e remoção
-atualizam o security stamp e revogam tokens pelo serviço de aplicação; o valor
-nunca é duplicado na auditoria. A interface de claims existe no contexto do
+revogam tokens pelo serviço de aplicação. Contas com e-mail confirmado também
+atualizam o security stamp. Enquanto a confirmação está pendente, preservam o
+stamp para manter o link válido e removem explicitamente as sessões de navegador
+pelo serviço de sessões. O valor nunca é duplicado na auditoria. A interface de claims existe no contexto do
 detalhe de cada usuário e transporta esse contexto na query string, sem uma
 lista global paralela. Scopes são definições
 do OpenIddict. A UI distingue
