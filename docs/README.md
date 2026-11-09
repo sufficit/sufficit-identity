@@ -43,6 +43,8 @@ accounts for all 105 original items, seven closure criteria and the operational 
 
 ## Completed work (activities/)
 
+- [Email confirmation recovery deployed](activities/202611091333-email-confirmation-deployment.md) — all three production nodes verified and public recovery action observed.
+
 - [Email confirmation recovery](activities/202611091328-email-confirmation-recovery.md) — localized token errors and access to resend; incident cause remains unproven.
 
 - [Browser-session repository extraction](activities/202611061246-session-repository-extraction.md) — F4.1 closure: cancellable persistence boundary and real session regressions.
