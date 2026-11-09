@@ -31,6 +31,8 @@ claim cites `file:line`.
 
 ## Plans (pending work)
 
+- [Claim confirmation deployment](plans/PLAN-CLAIM-CONFIRMATION-DEPLOY.md) — authorized rolling production rollout.
+
 - [Email confirmation deployment](plans/PLAN-EMAIL-CONFIRMATION-DEPLOY.md) — authorized production rollout and verification.
 
 - [Email confirmation invalid token](plans/PLAN-EMAIL-CONFIRMATION-INVALID-TOKEN.md) — investigate the reported confirmation rejection.
