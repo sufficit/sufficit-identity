@@ -27,3 +27,7 @@ Integrated the original heads of PRs [#110](https://github.com/sufficit/sufficit
 All local .NET commands that may restore must select package mode using `SufficitUseLocalSui=false` in this workspace. An intermediate audit without that setting rewrote UI locks for the sibling checkout and caused Docker NU1004; package-mode regeneration and the subsequent full Docker build passed.
 
 Local TRX evidence: `/tmp/identity-pr-validation/`. Remote CI is separate from these local checks. Integration does not establish deployment or production behavior.
+
+## Delivery
+
+Published to main in `eae4f3267ab4f552df1be2949d569fb0870277ba`, after the six original merge commits. Individual GitHub PR reads confirmed all six `merged=true`, `state=closed`; the repository pull-request API returned no open PRs. GitHub [CI](https://github.com/sufficit/sufficit-identity/actions/runs/43067463037) and [CodeQL](https://github.com/sufficit/sufficit-identity/actions/runs/43067463039) started after push; their completion is not asserted here.
