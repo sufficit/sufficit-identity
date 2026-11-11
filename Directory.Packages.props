@@ -94,7 +94,7 @@
          (version-less, CPM-controlled) <PackageReference> for
          SQLitePCLRaw.bundle_e_sqlite3 so ONLY that project's resolution is
          forced onto this version — see the comment there. -->
-    <PackageVersion Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.13" />
+    <PackageVersion Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />
 
     <!-- Browser tests (Playwright + axe-core) -->
     <PackageVersion Include="coverlet.collector" Version="10.1.0" />
