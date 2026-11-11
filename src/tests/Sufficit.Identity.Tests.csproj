@@ -9,6 +9,8 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Http" />
+    <!-- Override the older transitive test-host floor for OpenIddict 7.8. -->
+    <PackageReference Include="Microsoft.Extensions.ObjectPool" />
     <PackageReference Include="Markdig" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit" />

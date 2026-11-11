@@ -60,6 +60,11 @@ updates:
       - ci
     commit-message:
       prefix: "chore(ci)"
+    groups:
+      # CodeQL init and analyze must always use the same action version.
+      codeql:
+        patterns:
+          - "github/codeql-action/*"
 
   # ---- Docker base images ----
   # The Dockerfile pins base images by SHA256 digest; Dependabot updates the

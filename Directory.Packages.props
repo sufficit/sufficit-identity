@@ -53,6 +53,8 @@
 
     <!-- Vault REST client (Sufficit.Identity.Vault.Client) -->
     <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.14" />
+    <!-- Align the test-host dependency with OpenIddict Http.Resilience requirements. -->
+    <PackageVersion Include="Microsoft.Extensions.ObjectPool" Version="10.0.14" />
     <PackageVersion Include="Microsoft.Extensions.Caching.Memory" Version="10.0.14" />
 
     <!-- Logging / config -->
