@@ -39,6 +39,7 @@
     <ProjectReference Include="..\server\Sufficit.Identity.Server.csproj" />
     <ProjectReference Include="..\scim\Sufficit.Identity.Scim.csproj" />
     <ProjectReference Include="..\ui\Sufficit.Identity.UI.Abstractions\Sufficit.Identity.UI.Abstractions.csproj" />
+    <ProjectReference Include="..\aspnetcore-introspection\Sufficit.Identity.AspNetCore.Authentication.OAuth2Introspection.csproj" />
   </ItemGroup>
 
   <!-- Sufficit.Identity.BrowserTests nests inside this project's directory,

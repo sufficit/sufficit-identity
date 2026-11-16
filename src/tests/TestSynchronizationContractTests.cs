@@ -42,6 +42,8 @@ public sealed class TestSynchronizationContractTests
         {
             ["SessionTicketMariaDbOutageTests.PersistedCache.cs"] =
                 (1, "Waits for the original real Redis TTL while MariaDB is offline; not background-work synchronization."),
+            ["OAuth2IntrospectionPackageTests.cs"] =
+                (1, "Waits for a real token exp deadline to pass so the cached entry must expire; not background-work synchronization."),
             ["SessionTicketCancellationTests.cs"] =
                 (2, "Infinite delays block until explicit cancellation; no elapsed-time assertion."),
             ["SessionTicketRedisIntegrationTests.cs"] =
