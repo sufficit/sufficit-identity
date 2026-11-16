@@ -43,6 +43,10 @@ jobs:
       # Destructive operations are restricted by the integration test to this
       # loopback CI service and the fixed identity_legacy_rehearsal database.
       SUFFICIT_IDENTITY_ALLOW_EPHEMERAL_DATABASE_REHEARSAL: "true"
+      # Every in-process test host builds file providers; with inotify they
+      # exhaust the runner's 128-instance limit and hundreds of tests fail
+      # with IOException. Polling keeps the hosts independent of that limit.
+      DOTNET_USE_POLLING_FILE_WATCHER: "true"
 
     steps:
       - name: Checkout sufficit-identity
