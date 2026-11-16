@@ -15,7 +15,7 @@ namespace Sufficit.Identity.Tests;
 /// <summary>Package Sufficit.Identity.AspNetCore.Authentication.OAuth2Introspection.</summary>
 public sealed class OAuth2IntrospectionPackageTests
 {
-    private sealed class Endpoint(Func<int, HttpResponseMessage> answer, TimeSpan delay = default) : HttpMessageHandler
+    private sealed class Endpoint(Func<int, HttpResponseMessage> answer, Task? gate = null) : HttpMessageHandler
     {
         public int Calls;
         public string? LastBody;
@@ -23,7 +23,7 @@ public sealed class OAuth2IntrospectionPackageTests
         {
             var n = Interlocked.Increment(ref Calls);
             LastBody = await request.Content!.ReadAsStringAsync(ct);
-            if (delay > TimeSpan.Zero) await Task.Delay(delay, ct);
+            if (gate is not null) await gate.WaitAsync(ct);
             return answer(n);
         }
     }
@@ -103,9 +103,12 @@ public sealed class OAuth2IntrospectionPackageTests
     [Fact]
     public async Task Concurrent_lookups_of_one_token_share_one_call()
     {
-        var endpoint = new Endpoint(_ => Json(Active()), TimeSpan.FromMilliseconds(200));
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var endpoint = new Endpoint(_ => Json(Active()), gate.Task);
         var client = Client(endpoint);
-        var results = await Task.WhenAll(Enumerable.Range(0, 32).Select(_ => client.IntrospectAsync("tok", Options(cache: false))));
+        var pending = Enumerable.Range(0, 32).Select(_ => client.IntrospectAsync("tok", Options(cache: false))).ToArray();
+        gate.SetResult();
+        var results = await Task.WhenAll(pending);
         Assert.All(results, r => Assert.True(r.IsActive));
         Assert.Equal(1, endpoint.Calls);
     }

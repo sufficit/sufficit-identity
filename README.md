@@ -135,4 +135,6 @@ CI runs on GitHub Actions with real MariaDB 10.4.34, `-warnaserror`, SHA-verifie
 
 See the [documentation index](docs/README.md) for architecture, design, runbooks, active plans, and completed work records.
 
+Resource servers that validate Sufficit tokens by introspection (with caching and request coalescing) use the [OAuth2 introspection package](src/aspnetcore-introspection/README.md).
+
 Contributors and coding agents: read the [contributor instructions](AGENTS.md) first. External protocol conformance runs in the [OpenID conformance environment](conformance/README.md).
