@@ -1278,6 +1278,9 @@
       "sufficit.identity.application.abstractions": {
         "type": "Project"
       },
+      "sufficit.identity.aspnetcore.authentication.oauth2introspection": {
+        "type": "Project"
+      },
       "sufficit.identity.core": {
         "type": "Project",
         "dependencies": {
@@ -1360,6 +1363,7 @@
           "Microsoft.NET.Test.Sdk": "[18.12.0, )",
           "SQLitePCLRaw.bundle_e_sqlite3": "[2.1.13, )",
           "Sufficit.Identity.Application.Abstractions": "[0.4.0-alpha, )",
+          "Sufficit.Identity.AspNetCore.Authentication.OAuth2Introspection": "[0.4.0-alpha, )",
           "Sufficit.Identity.Hosting.Abstractions": "[0.4.0-alpha, )",
           "Sufficit.Identity.Scim": "[0.4.0-alpha, )",
           "Sufficit.Identity.Server": "[0.4.0-alpha, )",

@@ -1,2 +1,4 @@
 # Historical natural-language sentence, not a credential; exact finding only.
 1cb1ecde0e14b06b6789c4d838f41f0701dd056e:docs/plans/PLAN-KEYS-VAULT.md:generic-api-key:26
+# Solution project GUID next to the package name "...OAuth2Introspection"; Visual Studio project id, not a credential. Exact finding only.
+12117d51f6cbd4a939fa5068c552c4cbb3a0c308:Sufficit.Identity.sln:sufficit-introspection-secret-uuid:54
