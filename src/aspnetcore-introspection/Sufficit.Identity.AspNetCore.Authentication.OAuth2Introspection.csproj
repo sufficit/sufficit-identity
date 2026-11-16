@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Sufficit.Identity.AspNetCore.Authentication.OAuth2Introspection</RootNamespace>
+    <AssemblyName>Sufficit.Identity.AspNetCore.Authentication.OAuth2Introspection</AssemblyName>
+    <Description>Sufficit Identity — ASP.NET Core authentication handler that validates reference (opaque) tokens through OAuth 2.0 Token Introspection (RFC 7662), modelled on Duende.AspNetCore.Authentication.OAuth2Introspection: distributed cache of active results, coalescing of concurrent lookups for the same token, and an explicit "identity unavailable" outcome (HTTP 503) instead of reporting an outage as an invalid token.</Description>
+    <PackageTags>oauth2;introspection;rfc7662;authentication;aspnetcore;sufficit</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Sufficit.Identity.Tests" />
+  </ItemGroup>
+
+</Project>

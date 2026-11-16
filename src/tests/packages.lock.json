@@ -1226,6 +1226,9 @@
       "sufficit.identity.application.abstractions": {
         "type": "Project"
       },
+      "sufficit.identity.aspnetcore.authentication.oauth2introspection": {
+        "type": "Project"
+      },
       "sufficit.identity.core": {
         "type": "Project",
         "dependencies": {

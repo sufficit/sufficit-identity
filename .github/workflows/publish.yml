@@ -7,6 +7,10 @@ name: Publish Packages
 #
 # Application.Abstractions ships alongside because the vault client depends on it;
 # publishing one without the other produces an unrestorable package.
+#
+# Sufficit.Identity.AspNetCore.Authentication.OAuth2Introspection is the shared
+# resource-server handler (cached, coalescing RFC 7662 introspection) used by
+# Sufficit APIs that accept reference tokens (Fleet, provisioning, ...).
 
 on:
   push:
@@ -14,6 +18,7 @@ on:
     paths:
       - 'src/vault-client/**'
       - 'src/application/Sufficit.Identity.Application.Abstractions/**'
+      - 'src/aspnetcore-introspection/**'
       - 'Directory.Build.props'
       - 'Directory.Packages.props'
       - '.github/workflows/publish.yml'
@@ -93,7 +98,8 @@ jobs:
           set -euo pipefail
           for project in \
             src/application/Sufficit.Identity.Application.Abstractions/Sufficit.Identity.Application.Abstractions.csproj \
-            src/vault-client/Sufficit.Identity.Vault.Client.csproj; do
+            src/vault-client/Sufficit.Identity.Vault.Client.csproj \
+            src/aspnetcore-introspection/Sufficit.Identity.AspNetCore.Authentication.OAuth2Introspection.csproj; do
             dotnet pack "${project}" \
               --configuration Release \
               --output "${NUPKGS_DIR}" \
