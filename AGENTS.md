@@ -16,3 +16,5 @@ organization. Follow the generic product boundary in `PRODUCT.md`.
   missing `.md` files (`src/tests/MarkdownCoverageTests.cs`). Only historical
   records are exempt, via `.markdown-coverage-ignore`.
 - Agent skill: [temporary management token](.claude/skills/identity-temporary-token/SKILL.md).
+
+For a Fleet PR review, see [Fleet guidance](FLEET.md).
