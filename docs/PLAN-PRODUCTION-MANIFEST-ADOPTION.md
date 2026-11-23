@@ -105,3 +105,11 @@ Validation included 45 focused tests and 2,182 tests in the local Identity
 solution excluding the separate browser suite. The Release build passed
 with warnings treated as errors. Chrome passed lint, package build, 81 Node
 tests, 224 .NET tests and the browser suite. One Node test was skipped.
+
+The isolated Identity package `20261123-3798a917` passed the release helper
+checks. It contains revision `3798a9176366dad079c25cb757bad1b98ffd2002`
+and SUI revision `1d09b4a62a0694a6094a42bcdf78cc508c61a5f4`. Archive
+SHA-256 is `ff54c802cf6ac07cc8ed160ec400ad07a27c4209693e6eae98f4d34457155b48`.
+Production was healthy and uniform on 48becb9c when checked. The source diff
+contains no schema migrations. The prepared archive remains local pending
+rollout authorization.
