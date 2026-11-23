@@ -27,6 +27,10 @@ public sealed class IdentityProvisioningManifest
     public ClientDefinitionRolloutMode RolloutMode { get; init; } =
         ClientDefinitionRolloutMode.Observe;
     public List<IdentityScopeManifest> Scopes { get; init; } = [];
+
+    /// <summary>Existing scope names used by this manifest without managing their definitions.</summary>
+    public List<string> ReferencedScopes { get; init; } = [];
+
     public List<IdentityClientManifest> Clients { get; init; } = [];
 }
 

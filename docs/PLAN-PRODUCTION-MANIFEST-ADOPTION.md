@@ -4,8 +4,12 @@
 2. Completed. Assess adoption candidates, unmanaged consumers and differences that need API preview or owner review.
 3. Completed. Document and validate the read-only inventory and remaining adoption work on main.
 4. Completed. Run audited inventory and preview for the Chrome Extension candidate.
-5. Blocked. Resolve external scope references before applying adoption. Repeat inventory and preview and require exactly one client adoption.
-6. Pending. Review broader client coverage and shared scope ownership before changing enforcement.
+5. Completed. Verify current OAuth consumers and design explicit external scope references with pre-write validation.
+6. Completed. Implement and test the provisioner support and update the Chrome Extension manifest and OAuth request to entitlements.
+7. Completed. Commit and push verified source. Record release sequencing and any production verification still required.
+8. Pending. Publish the provisioner and preview a transitional Chrome manifest. Apply after review and verify the three referenced scope owners, both login paths and audit evidence.
+9. Pending. Release the extension, verify supported versions and retire the obsolete client permission once installed clients have migrated.
+10. Pending. Review broader client coverage and shared scope ownership before changing enforcement.
 
 ## Production snapshot, 23 November 2026
 
@@ -67,3 +71,37 @@ production registration still has no provisioning owner. Adoption is blocked
 on a provisioner change that can validate referenced existing scopes without
 rewriting them. A future acceptance check must require exactly one Adopted
 client, zero scope operations, and a read-back of the original scope owners.
+
+## External scope references and Chrome migration
+
+`referencedScopes` is optional in manifest version 1. It names custom scopes
+that must exist in the target Identity database. Inventory, preview and apply
+validate their existence, and apply checks them before any manifest writes.
+A scope name can appear in one of `scopes` or `referencedScopes`. Existing
+scope-grant authorization still applies to the client’s requested permissions.
+References produce no scope operations, so the owning manifest and attributes
+are preserved.
+
+Chrome Extension commit `64e05f3` uses `entitlements` for new sign-ins.
+Its manifest references chrome.phone, endpoints.phone and entitlements. The API
+audience still comes from chrome.phone. Production inspection found that the
+current client permits directives and lacks entitlements. Fifteen enabled
+registrations still permit directives across Identity. This change is scoped
+to the extension’s migration.
+
+Release order:
+
+1. Publish the Identity provisioner and obtain a fresh audited inventory and
+   preview. Use a transitional copy of the versioned Chrome manifest that also
+   references directives and retains that client permission during the store
+   rollout. Require exactly one client adoption and zero mutations to scopes.
+2. Confirm the grant diff and apply with an authorized operator. Verify client
+   ownership, preserved scope owners, and both login paths.
+3. Publish the Chrome Extension through its own store workflow. Retire the old
+   client permission after confirming the supported installed versions can sign
+   in using entitlements. The tracked Chrome manifest records that final state.
+
+Validation included 45 focused tests and 2,182 tests in the local Identity
+solution excluding the separate browser suite. The Release build passed
+with warnings treated as errors. Chrome passed lint, package build, 81 Node
+tests, 224 .NET tests and the browser suite. One Node test was skipped.

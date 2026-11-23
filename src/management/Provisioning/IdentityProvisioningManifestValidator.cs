@@ -164,6 +164,17 @@ public static partial class IdentityProvisioningManifestValidator
             }
         }
 
+        ValidateUniqueStrings(manifest.ReferencedScopes, "referencedScopes", 200, errors);
+        var referencedScopes = new HashSet<string>(
+            manifest.ReferencedScopes ?? [], StringComparer.Ordinal);
+        foreach (var scope in referencedScopes)
+        {
+            if (declaredScopes.Contains(scope))
+                errors.Add($"referencedScopes overlaps the scope definition '{scope}'.");
+            if (RetiredIdentityScopes.Contains(scope))
+                errors.Add($"referencedScopes references retired scope '{scope}'.");
+        }
+
         var declaredClients = new HashSet<string>(StringComparer.Ordinal);
 
         for (var index = 0; index < clients.Count; index++)
@@ -342,7 +353,8 @@ public static partial class IdentityProvisioningManifestValidator
 
             foreach (var scope in client.Scopes ?? [])
             {
-                if (!StandardScopes.Contains(scope) && !declaredScopes.Contains(scope))
+                if (!StandardScopes.Contains(scope) && !declaredScopes.Contains(scope)
+                    && !referencedScopes.Contains(scope))
                 {
                     errors.Add(
                         $"{path}.scopes references undeclared custom scope '{scope}'.");

@@ -99,6 +99,8 @@ public sealed partial class OpenIddictManifestProvisioner
             _reservedScopePolicy,
             _clientDefinitionValidator);
 
+        await VerifyReferencedScopesAsync(manifest, cancellationToken);
+
         var declaredIds = manifest.Clients
             .Select(client => client.ClientId)
             .ToHashSet(StringComparer.Ordinal);
@@ -215,6 +217,8 @@ public sealed partial class OpenIddictManifestProvisioner
             _reservedScopePolicy,
             _clientDefinitionValidator);
 
+        await VerifyReferencedScopesAsync(manifest, cancellationToken);
+
         var changes = new List<IdentityManifestChange>(
             manifest.Scopes.Count + manifest.Clients.Count);
 
@@ -243,6 +247,21 @@ public sealed partial class OpenIddictManifestProvisioner
         }
 
         return new IdentityProvisioningPlan(changes);
+    }
+
+    private async Task VerifyReferencedScopesAsync(
+        IdentityProvisioningManifest manifest,
+        CancellationToken cancellationToken)
+    {
+        var errors = new List<string>();
+        foreach (var name in manifest.ReferencedScopes)
+        {
+            if (await _scopes.FindByNameAsync(name, cancellationToken) is null)
+                errors.Add($"referencedScopes requires existing scope '{name}'.");
+        }
+
+        if (errors.Count > 0)
+            throw new IdentityProvisioningManifestException(errors);
     }
 
     private async Task<IdentityManifestChange> ProcessScopeAsync(
