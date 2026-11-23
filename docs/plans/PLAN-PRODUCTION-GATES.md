@@ -69,7 +69,7 @@ The seven original rows are preserved; A2/C2 remain their single task owners.
 
 | When | Action | Owner |
 |---|---|---|
-| ~2026-11-03 | Delete the 10 disabled underscore client ids if they issued no token since 2026-10-27 | [`202610271500`](../activities/202610271500-hyphenated-client-ids.md) |
+| ~2026-11-03 | Completed 2026-11-23. All ten disabled registrations retired via the management API; [verification](../activities/202611231252-november-operational-review.md#authorized-client-retirement) | [`202610271500`](../activities/202610271500-hyphenated-client-ids.md) |
 | ~2026-11-04 | Read the observed scope-grant rows; set `ClientScopeGrants:Mode=Enforce` | A2 |
 | after the client-id cleanup | Remove the legacy client/scope acceptance in endpoints (`LegacyClientId`) and background (`Legacy*`) | [`202610271500`](../activities/202610271500-hyphenated-client-ids.md) |
 | from 2026-11-20 | Drop `certificate.pfx` and `certificate-old.pfx` from `EncryptionPaths` | C2 |
@@ -78,7 +78,7 @@ The seven original rows are preserved; A2/C2 remain their single task owners.
 | open | Inventory the production provisioning manifests and adopt existing clients explicitly | A2 |
 
 
-Before action, refresh last-use/expiry evidence and follow [production evidence](../runbooks/RUNBOOK-PRODUCTION-EVIDENCE.md). The November 3/4 rows are overdue for verification, not automatically authorized deletion/enforcement.
+Before action, refresh last-use/expiry evidence and follow [production evidence](../runbooks/RUNBOOK-PRODUCTION-EVIDENCE.md). The November 4 enforcement decision remains open.
 
 ## Validation required when executing
 

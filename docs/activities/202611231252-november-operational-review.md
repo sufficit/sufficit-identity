@@ -41,3 +41,13 @@ The November 9 email-confirmation correction and the two confirmation deployment
 have complete activity records. Their remaining evidence was merged into those
 activities and their redundant plan files were retired. The production decisions
 above are tracked in the existing authorization, keys and production plans.
+
+## Authorized client retirement
+
+On 23 November the operator authorized retirement of the ten
+disabled registrations and their five remaining authorizations. The management
+API returned 204 for each deletion. Its transaction deletes dependent tokens,
+authorizations and credentials before deleting the application. Independent
+database checks found zero remaining legacy registrations and all ten named
+successors. The management audit recorded successful deletions for ten distinct
+target client IDs between 15:57:20 and 15:57:25 UTC.
