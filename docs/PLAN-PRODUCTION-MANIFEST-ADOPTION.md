@@ -7,9 +7,10 @@
 5. Completed. Verify current OAuth consumers and design explicit external scope references with pre-write validation.
 6. Completed. Implement and test the provisioner support and update the Chrome Extension manifest and OAuth request to entitlements.
 7. Completed. Commit and push verified source. Record release sequencing and any production verification still required.
-8. Pending. Publish the provisioner and preview a transitional Chrome manifest. Apply after review and verify the three referenced scope owners, both login paths and audit evidence.
-9. Pending. Release the extension, verify supported versions and retire the obsolete client permission once installed clients have migrated.
-10. Pending. Review broader client coverage and shared scope ownership before changing enforcement.
+8. Completed. Publish the provisioner on all three nodes and verify production health.
+9. Pending fresh preview credential. Obtain audited preview of a transitional Chrome manifest, apply after review and verify the referenced scope owners, both login paths and audit evidence.
+10. Pending. Release the extension, verify supported versions and retire the obsolete client permission once installed clients have migrated.
+11. Pending. Review broader client coverage and shared scope ownership before changing enforcement.
 
 ## Production snapshot, 23 November 2026
 
@@ -111,5 +112,28 @@ checks. It contains revision `3798a9176366dad079c25cb757bad1b98ffd2002`
 and SUI revision `1d09b4a62a0694a6094a42bcdf78cc508c61a5f4`. Archive
 SHA-256 is `ff54c802cf6ac07cc8ed160ec400ad07a27c4209693e6eae98f4d34457155b48`.
 Production was healthy and uniform on 48becb9c when checked. The source diff
-contains no schema migrations. The prepared archive remains local pending
-rollout authorization.
+contains no schema migrations. The production rollout is recorded below.
+
+## Provisioner rollout, 23 November 2026
+
+The maintainer authorized the production rollout. GitHub CI, CodeQL and package
+publication succeeded for revision 3798a917 before activation. Staging validated
+the archive and inherited four local configuration files on each node. The
+cluster lease serialized activation across Eveo, Apoint and Castrum. Direct
+health probes briefly returned HTTP 502 during restarts. Each node recovered
+before activation advanced and the previous release was retained for rollback.
+
+All three nodes report revision 3798a917 and passed liveness and readiness.
+Certificate and JWKS hashes match the baseline. Public health, readiness,
+discovery and login returned HTTP 200. The preview API returned HTTP 401
+without a current operator credential.
+
+The Chrome client still permits directives and lacks entitlements. Endpoints
+owns chrome.phone and endpoints.phone, Telephony Panel owns entitlements,
+and Cloud Mobile owns directives. The transitional preview input is the
+manifest at 64e05f3 with directives appended once to referencedScopes and
+to the client's scope list. It contains zero managed scope definitions.
+Encoding the JSON as sorted keys, compact separators and UTF-8 produces SHA-256
+`981d8054f95b17b0b17dd7924cfdf389bcf2b31812c234c2d302c6bea2e4af49`.
+The authorized scope of this rollout was the provisioner publication.
+The Chrome adoption and permission change await audited preview.
