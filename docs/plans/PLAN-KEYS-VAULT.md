@@ -6,7 +6,7 @@ Status: C1.2 completed on 2026-11-06; remaining items queued.
 
 ## Scope and order
 
-The re-wrap/data-key race is tested; review remaining lifecycle gaps before new key providers. The old token-decryption certificates must stay until their recorded expiry gate is rechecked.
+The re-wrap/data-key race is tested; review remaining lifecycle gaps before new key providers. The legacy token-decryption certificates were retired from the decryption list after the expiry and renewal checks.
 
 ## Acceptance
 
@@ -35,9 +35,7 @@ Evidence: [IdentityCertificateMaterial.cs](../../src/sts/IdentityCertificateMate
 
 Production observations on 23 November: [operational review](../activities/202611231252-november-operational-review.md).
 
-- [ ] **C2.1 · operational** — Drop `certificate.pfx` and `certificate-old.pfx` from `EncryptionPaths`: the 2026-10-23 record places the last valid token expiry at 2026-11-19 17:39 UTC. Recheck issuance/expiry before removal; the recorded earliest date is 2026-11-20
-
-Execution and test evidence: [legacy decryption retirement](../PLAN-LEGACY-DECRYPTION-RETIREMENT.md).
+- [x] **C2.1 · completed 2026-11-23** — Removed both legacy entries from `EncryptionPaths` and verified post-cutover refresh. See [production verification](../activities/202611231319-legacy-decryption-retirement.md).
 
 - [ ] **C2.2 · partial** — Extend the already purpose-separated token certificates into an explicitly managed active/retiring lifecycle with stable kid/JWKS behavior and a KMS/HSM-backed production provider. Preserve existing overlap support.
 - [ ] **C2.3 · partial** — Verify the token, Data Protection and TLS material inventory and test cross-purpose compromise/rollback. Token signing/encryption separation is delivered; identify residual gaps before changing key architecture.
