@@ -1,10 +1,10 @@
-# Retire legacy OAuth resource identifiers
+# Retirement of legacy OAuth resource identifiers
 1. Completed. Gather current caller, manifest and token evidence for Endpoints and Background.
 2. Completed. Remove the obsolete compatibility paths and validate the modern and legacy cases in both repositories.
 3. Completed. Validate and push the source changes, then record the production packaging findings.
 4. Completed. Rebuild the changed assemblies against the exact installed dependencies.
 5. Completed. Roll out and verify Background on Eveo and Endpoints on Eveo and Castrum.
-6. Pending. Publish the validated Endpoints candidate on Apoint after target-specific approval. Verify health, the installed hash and the current Provisioning client.
+6. Completed. Publish the validated Endpoints candidate on Apoint with the maintainer’s approval. Verify health, DLL hashes and the current Provisioning client.
 
 ## Evidence
 
@@ -53,8 +53,11 @@
 - Apoint was healthy and its distinct baseline matched all 176 hashes of its
   own local artifact. Its 599 C# input checksums matched d8a351e. The isolated
   candidate includes the same authorization change, passed 281 tests and
-  has zero missing assembly references. The ignored candidate remains at
-  `publish-legacy-oauth-apoint-20261123140419` in the Endpoints repository.
-  Candidate DLL SHA-256 is
+  has zero missing assembly references. The Endpoints DLL SHA-256 is
   `2268674cfa0508cea167a014b4ac8fb0a5201ec7896e06a7eb8c809b3861f001`.
-  The Apoint deployment policy requires explicit approval for this node.
+  The maintainer authorized the rollout. Staging, configuration preservation,
+  promotion and readiness succeeded. Of the 176 verified DLL hashes, only the
+  Endpoints DLL changed. All three Endpoints nodes reported Healthy.
+  The current Provisioning client obtained a token with HTTP 200 and the
+  read-only query on Apoint returned HTTP 204. Apoint retained rollback at
+  `/opt/sufficit-endpoints.before-a3f618b08d8243ac9cbb7a8469e4349a`.

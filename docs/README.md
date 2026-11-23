@@ -39,6 +39,8 @@ accounts for all 105 original items, seven closure criteria and the operational 
 
 ## Completed work (activities/)
 
+- [Legacy OAuth aliases retired](activities/202611231443-legacy-resource-identifiers.md) — Background and all three Endpoints nodes.
+
 - [November operational review](activities/202611231252-november-operational-review.md) — disabled clients, scope grant auditing and legacy token decryption.
 
 - [Password reset error page deployed](activities/202611231226-password-reset-rollout.md) — production verification on three nodes and in Chrome.

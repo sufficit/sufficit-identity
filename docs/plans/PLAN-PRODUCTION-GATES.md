@@ -71,7 +71,7 @@ The seven original rows are preserved; A2/C2 remain their single task owners.
 |---|---|---|
 | ~2026-11-03 | Completed 2026-11-23. All ten disabled registrations retired via the management API; [verification](../activities/202611231252-november-operational-review.md#authorized-client-retirement) | [`202610271500`](../activities/202610271500-hyphenated-client-ids.md) |
 | ~2026-11-04 | Completed 2026-11-23. Activated Enforce on all three nodes. See [scope grant enforcement](../activities/202611231304-scope-grant-enforcement.md) | A2 |
-| after the client-id cleanup | Source changes merged. Production rollout remains open in the [legacy identifier retirement plan](../PLAN-LEGACY-RESOURCE-IDENTIFIERS.md) | [`202610271500`](../activities/202610271500-hyphenated-client-ids.md) |
+| after the client-id cleanup | Completed 2026-11-23. Retired the legacy aliases in Background and on all three Endpoints nodes. See the [rollout evidence](../activities/202611231443-legacy-resource-identifiers.md) | [`202610271500`](../activities/202610271500-hyphenated-client-ids.md) |
 | from 2026-11-20 | Completed 2026-11-23. Retired both previous entries from `EncryptionPaths`. See [production verification](../activities/202611231319-legacy-decryption-retirement.md) | C2 |
 | when the August agent authorizations stop refreshing | Remove the `sufficit_ai_openai_bridge` scope and permission | [`202610271500`](../activities/202610271500-hyphenated-client-ids.md) |
 | before 2027-04-30 | Migrate every `client_secret_plaintext_deprecated` caller to `secretReference`; the adapter refuses after that date | A2 |
