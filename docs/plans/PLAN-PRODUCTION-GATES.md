@@ -70,7 +70,7 @@ The seven original rows are preserved; A2/C2 remain their single task owners.
 | When | Action | Owner |
 |---|---|---|
 | ~2026-11-03 | Completed 2026-11-23. All ten disabled registrations retired via the management API; [verification](../activities/202611231252-november-operational-review.md#authorized-client-retirement) | [`202610271500`](../activities/202610271500-hyphenated-client-ids.md) |
-| ~2026-11-04 | Read the observed scope-grant rows; set `ClientScopeGrants:Mode=Enforce` | A2 |
+| ~2026-11-04 | Completed 2026-11-23. Activated Enforce on all three nodes. See [scope grant enforcement](../activities/202611231304-scope-grant-enforcement.md) | A2 |
 | after the client-id cleanup | Remove the legacy client/scope acceptance in endpoints (`LegacyClientId`) and background (`Legacy*`) | [`202610271500`](../activities/202610271500-hyphenated-client-ids.md) |
 | from 2026-11-20 | Drop `certificate.pfx` and `certificate-old.pfx` from `EncryptionPaths` | C2 |
 | when the August agent authorizations stop refreshing | Remove the `sufficit_ai_openai_bridge` scope and permission | [`202610271500`](../activities/202610271500-hyphenated-client-ids.md) |
@@ -78,7 +78,7 @@ The seven original rows are preserved; A2/C2 remain their single task owners.
 | open | Inventory the production provisioning manifests and adopt existing clients explicitly | A2 |
 
 
-Before action, refresh last-use/expiry evidence and follow [production evidence](../runbooks/RUNBOOK-PRODUCTION-EVIDENCE.md). The November 4 enforcement decision remains open.
+Before action, refresh last-use/expiry evidence and follow [production evidence](../runbooks/RUNBOOK-PRODUCTION-EVIDENCE.md).
 
 ## Validation required when executing
 

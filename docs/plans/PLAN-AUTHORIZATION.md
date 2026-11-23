@@ -17,14 +17,14 @@ a fresh production inventory. Source/tests present does not mean deployed.
 
 ## A2 — Operator-aware client scope and secret authorization
 
-Create/update, rotation and additional credentials support secretReference. Plaintext HTTP compatibility is audited and expires. The October deployment record does not prove that the November enforcement gate ran.
+Create/update, rotation and additional credentials support secretReference. Plaintext HTTP compatibility is audited and expires. The November production rollout completed A2.1.
 
 Evidence: [ClientManagementContracts.cs](../../src/application/Sufficit.Identity.Application.Abstractions/Management/Clients/ClientManagementContracts.cs), [ClientSecretReferenceTests.cs](../../src/tests/ClientSecretReferenceTests.cs), [202610281800-operator-scope-grant.md](../activities/202610281800-operator-scope-grant.md).
 
 
 Production observations on 23 November: [operational review](../activities/202611231252-november-operational-review.md).
 
-- [ ] **A2.1 · operational** — Reconcile the observed denials (audit `reasonCode like 'scope_grant_%'`, `operationOutcome = 'observed'`), then set `ClientScopeGrants:Mode=Enforce` on the three nodes
+- [x] **A2.1 · completed 2026-11-23** — Reconciled the audit and activated Enforce on all three nodes. See [scope grant enforcement](../activities/202611231304-scope-grant-enforcement.md).
 - [ ] **A2.2 · operational** — Migrate plaintext-secret callers (`client_secret_plaintext_deprecated`) to `secretReference` and remove the adapter after `ClientSecrets:PlaintextExpiresAtUtc`
 - [ ] **A2.3 · operational** — Inventory the real production manifests and adopt existing managed clients explicitly before enabling client-definition enforcement
 A2.4 is closed in the [client lifecycle reference activity](../activities/202611061213-client-lifecycle-secret-references.md).
