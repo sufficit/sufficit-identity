@@ -218,4 +218,4 @@ must never silently become the current roadmap.
 
 Entrega verificada: [edição do grant de usuários de sistema](activities/202610291300-system-enrollment-client-edit.md).
 
-- [Access token format by audience](PLAN-DEVICE-TOKEN-FORMAT.md)
+- [Access token format by audience](activities/202611231310-device-token-format.md)
