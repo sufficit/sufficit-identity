@@ -3,8 +3,9 @@
 1. Completed. Inventory tracked manifests and reconcile declared clients with production registrations and management ownership.
 2. Completed. Assess adoption candidates, unmanaged consumers and differences that need API preview or owner review.
 3. Completed. Document and validate the read-only inventory and remaining adoption work on main.
-4. Pending operator access. Run audited inventory and preview. Reconcile the shared scope ownership, approve exact changes, apply the selected adoption and verify the resulting client.
-5. Pending. Account for active clients outside the tracked manifests before deciding any wider enforcement scope.
+4. Completed. Run audited inventory and preview for the Chrome Extension candidate.
+5. Blocked. Resolve external scope references before applying adoption. Repeat inventory and preview and require exactly one client adoption.
+6. Pending. Review broader client coverage and shared scope ownership before changing enforcement.
 
 ## Production snapshot, 23 November 2026
 
@@ -45,3 +46,24 @@ The live inventory endpoint returned HTTP 401 without operator credentials.
 Audited inventory and preview require `identity.provisioning.preview`.
 This snapshot used read-only database queries and did not exercise the API
 preview or confirm full descriptor equality. No application or scope was changed.
+
+## Audited Chrome Extension preview, 23 November 2026
+
+The inventory endpoint rejected the versioned manifest from commit
+`83620f9b59e13466e6e1e55082888b3fd91e1061` with HTTP 400. Its client asks
+for chrome.phone, endpoints.phone and directives. The validator requires
+custom scopes to be declared in the same manifest. Production attributes
+the first two scopes to the Endpoints manifest and the third to Cloud Mobile.
+
+A diagnostic request included the current resource sets, descriptions and
+entitlement claims of all three scopes. Inventory returned HTTP 200 and
+DeclaredUnmanaged for SufficitChromeExtension. Preview returned HTTP 200
+with one Adopted client and three Update scope operations. The provisioner
+stamps the submitting manifest as owner on those scope updates. The diagnostic
+request is unsuitable for apply.
+
+The management audit contains a successful inventory and preview, and the
+production registration still has no provisioning owner. Adoption is blocked
+on a provisioner change that can validate referenced existing scopes without
+rewriting them. A future acceptance check must require exactly one Adopted
+client, zero scope operations, and a read-back of the original scope owners.
