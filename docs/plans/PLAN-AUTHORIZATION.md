@@ -27,6 +27,10 @@ Production observations on 23 November: [operational review](../activities/20261
 - [x] **A2.1 · completed 2026-11-23** — Reconciled the audit and activated Enforce on all three nodes. See [scope grant enforcement](../activities/202611231304-scope-grant-enforcement.md).
 - [ ] **A2.2 · operational** — Migrate plaintext-secret callers (`client_secret_plaintext_deprecated`) to `secretReference` and remove the adapter after `ClientSecrets:PlaintextExpiresAtUtc`
 - [ ] **A2.3 · operational** — Inventory the real production manifests and adopt existing managed clients explicitly before enabling client-definition enforcement
+
+The production reconciliation and adoption checkpoints are in the
+[manifest adoption plan](../PLAN-PRODUCTION-MANIFEST-ADOPTION.md).
+
 A2.4 is closed in the [client lifecycle reference activity](../activities/202611061213-client-lifecycle-secret-references.md).
 
 ## A4 — Step-up enforcement and one MFA evidence policy
