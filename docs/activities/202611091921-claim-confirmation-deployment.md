@@ -43,4 +43,5 @@ still require a fresh resend. Documentation-only follow-up commits do not change
 the deployed revision.
 
 See [source correction](202611091910-claim-confirmation-preservation.md) and
-[deployment plan](../plans/PLAN-CLAIM-CONFIRMATION-DEPLOY.md).
+[cluster deployment procedure](../runbooks/RUNBOOK-CLUSTER-ROLLING-DEPLOY.md).
+All nodes started healthy at revision `d04ff98072e7ead121cb49dd7fb6859ea4cc175e`.

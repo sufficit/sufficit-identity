@@ -21,6 +21,9 @@ Create/update, rotation and additional credentials support secretReference. Plai
 
 Evidence: [ClientManagementContracts.cs](../../src/application/Sufficit.Identity.Application.Abstractions/Management/Clients/ClientManagementContracts.cs), [ClientSecretReferenceTests.cs](../../src/tests/ClientSecretReferenceTests.cs), [202610281800-operator-scope-grant.md](../activities/202610281800-operator-scope-grant.md).
 
+
+Production observations on 23 November: [operational review](../activities/202611231252-november-operational-review.md).
+
 - [ ] **A2.1 · operational** — Reconcile the observed denials (audit `reasonCode like 'scope_grant_%'`, `operationOutcome = 'observed'`), then set `ClientScopeGrants:Mode=Enforce` on the three nodes
 - [ ] **A2.2 · operational** — Migrate plaintext-secret callers (`client_secret_plaintext_deprecated`) to `secretReference` and remove the adapter after `ClientSecrets:PlaintextExpiresAtUtc`
 - [ ] **A2.3 · operational** — Inventory the real production manifests and adopt existing managed clients explicitly before enabling client-definition enforcement

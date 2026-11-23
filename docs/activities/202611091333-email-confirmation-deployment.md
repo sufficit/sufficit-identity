@@ -49,6 +49,7 @@ remains unknown; deployment publishes the recovery behavior, not a bypass of
 validation. See the [correction evidence](202611091328-email-confirmation-recovery.md).
 
 Eight Markdown coverage tests passed with no warnings. The source correction
-already passed 43 focused tests. The [deployment plan](../plans/PLAN-EMAIL-CONFIRMATION-DEPLOY.md)
-records completed checkpoints. Follow-up documentation commits do not change the
-published application revision.
+already passed 43 focused tests.
+The baseline revision was `e1aeb17488af8b82af3fd270853a51c88cb94b15`.
+Packaging, preparation, activation and verification followed the
+[cluster deployment procedure](../runbooks/RUNBOOK-CLUSTER-ROLLING-DEPLOY.md).

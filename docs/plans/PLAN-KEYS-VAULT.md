@@ -32,6 +32,9 @@ Purpose-separated token certificates and overlap were delivered. Retain provider
 
 Evidence: [IdentityCertificateMaterial.cs](../../src/sts/IdentityCertificateMaterial.cs), [CertificatesOptions.cs](../../src/sts/Options/CertificatesOptions.cs), [202610231600-encryption-certificate-separation.md](../activities/202610231600-encryption-certificate-separation.md).
 
+
+Production observations on 23 November: [operational review](../activities/202611231252-november-operational-review.md).
+
 - [ ] **C2.1 · operational** — Drop `certificate.pfx` and `certificate-old.pfx` from `EncryptionPaths`: the 2026-10-23 record places the last valid token expiry at 2026-11-19 17:39 UTC. Recheck issuance/expiry before removal; the recorded earliest date is 2026-11-20
 - [ ] **C2.2 · partial** — Extend the already purpose-separated token certificates into an explicitly managed active/retiring lifecycle with stable kid/JWKS behavior and a KMS/HSM-backed production provider. Preserve existing overlap support.
 - [ ] **C2.3 · partial** — Verify the token, Data Protection and TLS material inventory and test cross-purpose compromise/rollback. Token signing/encryption separation is delivered; identify residual gaps before changing key architecture.

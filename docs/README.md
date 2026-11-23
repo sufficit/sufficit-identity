@@ -31,12 +31,6 @@ claim cites `file:line`.
 
 ## Plans (pending work)
 
-- [Claim confirmation deployment](plans/PLAN-CLAIM-CONFIRMATION-DEPLOY.md) — completed rolling production rollout.
-
-- [Email confirmation deployment](plans/PLAN-EMAIL-CONFIRMATION-DEPLOY.md) — authorized production rollout and verification.
-
-- [Email confirmation invalid token](plans/PLAN-EMAIL-CONFIRMATION-INVALID-TOKEN.md) — investigate the reported confirmation rejection.
-
 [Identity plan index](plans/PLAN-IDENTITY.md) routes the remaining work to twelve
 focused plans. Stable A–G section IDs are preserved; each plan records source/test
 foundations, remaining scope, dependencies and acceptance evidence. The
@@ -44,6 +38,8 @@ foundations, remaining scope, dependencies and acceptance evidence. The
 accounts for all 105 original items, seven closure criteria and the operational calendar.
 
 ## Completed work (activities/)
+
+- [November operational review](activities/202611231252-november-operational-review.md) — disabled clients, scope grant auditing and legacy token decryption.
 
 - [Password reset error page deployed](activities/202611231226-password-reset-rollout.md) — production verification on three nodes and in Chrome.
 

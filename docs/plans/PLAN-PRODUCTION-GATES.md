@@ -61,6 +61,9 @@ Evidence: [RUNBOOK-PRODUCTION-EVIDENCE.md](../runbooks/RUNBOOK-PRODUCTION-EVIDEN
 
 ## Calendar carried forward
 
+Production observations on 23 November: [operational review](../activities/202611231252-november-operational-review.md).
+
+
 All dates below are original eligibility dates, not verified execution dates.
 The seven original rows are preserved; A2/C2 remain their single task owners.
 

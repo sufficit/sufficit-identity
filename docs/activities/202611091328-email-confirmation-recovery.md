@@ -37,7 +37,11 @@ This record accompanies the UI/test change in the same commit. Source delivery
 is separate from deployment. A new confirmation link can already be requested
 through the existing `/account/resendemailconfirmation` route.
 
-The [investigation plan](../plans/PLAN-EMAIL-CONFIRMATION-INVALID-TOKEN.md) retains
-incident limitations. Token issuance timing and provider-level evidence are still
-needed to diagnose this specific rejection; the UI correction does not make an
-invalid production token valid.
+Generation and decoding both use Base64Url over UTF-8. Diagnosing the original
+rejection would require the token issuance time and the provider's rejection reason.
+
+The focused validation used:
+
+```sh
+dotnet test src/tests/Sufficit.Identity.Tests.csproj --no-restore --verbosity quiet --filter 'FullyQualifiedName~EmailConfirmationFormTests|FullyQualifiedName~PublicAuthenticationBoundaryTests|FullyQualifiedName~ExternalIdentityLinkingTests|FullyQualifiedName~MarkdownCoverageTests'
+```
