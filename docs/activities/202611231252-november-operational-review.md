@@ -51,3 +51,36 @@ authorizations and credentials before deleting the application. Independent
 database checks found zero remaining legacy registrations and all ten named
 successors. The management audit recorded successful deletions for ten distinct
 target client IDs between 15:57:20 and 15:57:25 UTC.
+
+## Scope enforcement and decryption review at 16:00 UTC
+
+All three application nodes configured Observe and 18 privileged scope entries
+under Management/ClientScopeGrants. Each node listed the dedicated decryption
+key first, followed by the two legacy certificates. The service environments
+contained no scope-grant or encryption-path overrides.
+
+The management audit contained zero rows matching either the scope grant reason
+prefix or the observe authorization marker. Client/scope capability events
+since 28 October included two successful client creates, two creates denied
+for a missing general capability and the ten authorized retirements.
+Those retirements do not exercise scope expansion. Switching to Enforce
+would reject privileged scope additions by operators lacking the grant
+capability. Existing privileged grants retained on a client edit have focused
+regression coverage. Activation is an outstanding production decision.
+
+For retained valid or inactive tokens with a future or open-ended expiry, the
+database aggregated the public key identifier from five-part encrypted payload
+headers. The snapshot contained 478 access tokens and one device code, all
+with the same key identifier beginning 5B741AE3, matching the October dedicated
+certificate record. No qualifying recorded token had an unknown creation time
+or a creation date before 24 October. A separate snapshot counted 12,895 valid
+refresh tokens with no stored payload, preventing direct verification of their
+key identifiers. Signed-only tokens are outside the decryption-key count.
+
+The Release run of ClientScopeGrantAuthorizationTests and CertificateRotationTests
+passed all 17 tests. The review made no production configuration change.
+For a subsequent certificate cutover, retain the files, back up the per-node
+configuration, change only EncryptionPaths and verify a pre-cutover refresh
+token from an operator-controlled test account before completing the rollout.
+Restoring the previous list and restarting under the cluster procedure is the
+configuration rollback. This review did not exercise that refresh flow.
