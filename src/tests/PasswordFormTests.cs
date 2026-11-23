@@ -10,6 +10,8 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.DependencyInjection;
 using Sufficit.Identity.Application.Accounts;
 using Sufficit.Identity.Core.Entities;
+using Sufficit.Identity.Hosting;
+using Sufficit.Identity.Server;
 using Sufficit.Identity.Tests.Infrastructure;
 using Sufficit.Identity.UI;
 using Xunit;
@@ -101,6 +103,45 @@ public sealed class PasswordFormTests(SufficitIdentityTestFactory factory)
             scenario == "success" ? password : TestDataSeeder.DefaultPassword));
     }
 
+    [Theory]
+    [InlineData("pt-BR", "Não foi possível redefinir a senha", "Solicitar novo link")]
+    [InlineData("en-US", "Unable to reset your password", "Request a new link")]
+    [InlineData("pt-BR", null, null)]
+    public async Task Rejected_reset_post_shows_recovery_only_for_browser_navigation(
+        string culture, string? title, string? action)
+    {
+        using var ui = CreateUiHost(factory, "Production");
+        using var client = ui.CreateClient();
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/account/resetpassword?code=DO-NOT-REFLECT")
+        {
+            Content = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["_handler"] = "reset",
+                ["_model.Password"] = "DO-NOT-REFLECT-PASSWORD",
+            }),
+        };
+        request.Headers.Accept.ParseAdd(title is null ? "application/json" : "text/html");
+        request.Headers.AcceptLanguage.ParseAdd(culture);
+
+        using var response = await client.SendAsync(request);
+        var html = WebUtility.HtmlDecode(await response.Content.ReadAsStringAsync());
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        if (title is null)
+        {
+            Assert.Empty(html);
+            return;
+        }
+
+        Assert.Contains(title, html);
+        Assert.Equal("text/html", response.Content.Headers.ContentType?.MediaType);
+        Assert.True(response.Headers.CacheControl?.NoStore);
+        Assert.Equal("no-referrer", Assert.Single(response.Headers.GetValues("Referrer-Policy")));
+        Assert.Contains(action!, html);
+        Assert.Contains("href=\"/account/forgotpassword\"", html);
+        Assert.DoesNotContain("DO-NOT-REFLECT", html);
+    }
+
     [Fact]
     public async Task Invalid_reset_token_does_not_reveal_password_manager_account()
     {
@@ -121,6 +162,8 @@ public sealed class PasswordFormTests(SufficitIdentityTestFactory factory)
             ["code"] = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes("invalid-token")),
         });
         var html = await client.GetStringAsync(url);
+        Assert.Contains("Link de redefinição inválido ou expirado.", WebUtility.HtmlDecode(html));
+        Assert.Contains("href=\"/account/forgotpassword\"", html);
         Assert.DoesNotContain("password-account", html);
         Assert.DoesNotContain(email, WebUtility.HtmlDecode(html));
         Assert.DoesNotContain("reset-password-form", html);
@@ -154,8 +197,9 @@ public sealed class PasswordFormTests(SufficitIdentityTestFactory factory)
     }
 
     private static WebApplicationFactory<SufficitIdentityTestFactory> CreateUiHost(
-        SufficitIdentityTestFactory source) => source.WithWebHostBuilder(builder =>
+        SufficitIdentityTestFactory source, string? environment = null) => source.WithWebHostBuilder(builder =>
     {
+        if (environment is not null) builder.UseEnvironment(environment);
         builder.ConfigureServices(services =>
         {
             services.AddSufficitIdentityUI();
@@ -166,6 +210,9 @@ public sealed class PasswordFormTests(SufficitIdentityTestFactory factory)
             app.UseRouting();
             app.UseRequestLocalization(new RequestLocalizationOptions().SetDefaultCulture("pt-BR")
                 .AddSupportedCultures("pt-BR", "en-US").AddSupportedUICultures("pt-BR", "en-US"));
+            var pipeline = new IdentityPipelineBuilder();
+            new PublicUiIdentityModule().ConfigurePipeline(pipeline);
+            pipeline.ApplyStage(app, IdentityPipelineStage.PreAuthentication);
             app.UseAuthentication();
             app.UseAuthorization();
             app.UseAntiforgery();

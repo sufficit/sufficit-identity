@@ -35,6 +35,10 @@ public sealed class PublicUiIdentityModule : IIdentityModule
             IdentityPipelineStage.PreAuthentication,
             "browser-authorization-errors",
             app => app.UseBrowserAuthorizationErrors());
+        pipeline.Use(
+            IdentityPipelineStage.PreAuthentication,
+            "browser-password-reset-errors",
+            app => app.UseBrowserPasswordResetErrors());
         pipeline.MapEndpoints("device-browser-launch", app => app.MapDeviceBrowserLaunch());
 
         // Surfaces that share the public Blazor endpoint (the Vault UI when

@@ -461,6 +461,8 @@
   <data name="RecoveryCode.BackToAuthenticator" xml:space="preserve"><value>Back to authenticator app code</value></data>
   <data name="ResendEmail.Success" xml:space="preserve"><value>If the email exists, a new confirmation link has been sent.</value></data>
   <data name="ResendEmail.Email" xml:space="preserve"><value>Email</value></data>
+  <data name="PasswordResetError.Title" xml:space="preserve"><value>Unable to reset your password</value></data>
+  <data name="PasswordResetError.Explanation" xml:space="preserve"><value>If you have already set a new password, try signing in with it. Otherwise, request a new reset link.</value></data>
   <data name="ResetPassword.RequestNewLink" xml:space="preserve"><value>Request a new link</value></data>
   <data name="Device.PageTitle" xml:space="preserve"><value>Confirm access — Identity</value></data>
   <data name="Device.ApprovedTitle" xml:space="preserve"><value>Access authorized</value></data>

@@ -21,14 +21,23 @@
             </div>
         </header>
         <main class="content">
-            <section class="auth-card authorization-error" aria-labelledby="authorization-error-title" data-authorization-error="@(RetryAfterSeconds.HasValue ? null : "refused")">
+            <section class="auth-card authorization-error" aria-labelledby="authorization-error-title" data-authorization-error="@(RetryAfterSeconds.HasValue || PasswordResetRejected ? null : "refused")">
                 <h1 id="authorization-error-title">@L[$"{ResourcePrefix}.Title"]</h1>
                 <p>@L[$"{ResourcePrefix}.Explanation"]</p>
-                <p>@L[$"{ResourcePrefix}.Recovery", RetryAfterSeconds ?? 0]</p>
-                <div class="authorization-error__actions">
-                    <SUIButton Href="/">@L["AuthorizationError.Home"]</SUIButton>
-                </div>
-                <p class="authorization-error__help">@L[RetryAfterSeconds.HasValue ? "RateLimitError.Help" : "AuthorizationError.AttemptEnded"]</p>
+                @if (PasswordResetRejected)
+                {
+                    <div class="authorization-error__actions">
+                        <SUIButton Href="/account/forgotpassword">@L["ResetPassword.RequestNewLink"]</SUIButton>
+                    </div>
+                }
+                else
+                {
+                    <p>@L[$"{ResourcePrefix}.Recovery", RetryAfterSeconds ?? 0]</p>
+                    <div class="authorization-error__actions">
+                        <SUIButton Href="/">@L["AuthorizationError.Home"]</SUIButton>
+                    </div>
+                    <p class="authorization-error__help">@L[RetryAfterSeconds.HasValue ? "RateLimitError.Help" : "AuthorizationError.AttemptEnded"]</p>
+                }
             </section>
         </main>
     </div>
@@ -37,5 +46,8 @@
 
 @code {
     [Parameter] public int? RetryAfterSeconds { get; set; }
-    private string ResourcePrefix => RetryAfterSeconds.HasValue ? "RateLimitError" : "AuthorizationError";
+    [Parameter] public bool PasswordResetRejected { get; set; }
+
+    private string ResourcePrefix => PasswordResetRejected ? "PasswordResetError"
+        : RetryAfterSeconds.HasValue ? "RateLimitError" : "AuthorizationError";
 }

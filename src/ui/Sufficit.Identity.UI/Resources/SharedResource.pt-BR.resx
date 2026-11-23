@@ -461,6 +461,8 @@
   <data name="RecoveryCode.BackToAuthenticator" xml:space="preserve"><value>Voltar para código do app autenticador</value></data>
   <data name="ResendEmail.Success" xml:space="preserve"><value>Se o e-mail existir, um novo link de confirmação foi enviado.</value></data>
   <data name="ResendEmail.Email" xml:space="preserve"><value>E-mail</value></data>
+  <data name="PasswordResetError.Title" xml:space="preserve"><value>Não foi possível redefinir a senha</value></data>
+  <data name="PasswordResetError.Explanation" xml:space="preserve"><value>Se você já definiu uma nova senha, tente entrar com ela. Caso contrário, solicite um novo link de redefinição.</value></data>
   <data name="ResetPassword.RequestNewLink" xml:space="preserve"><value>Solicitar novo link</value></data>
   <data name="Device.PageTitle" xml:space="preserve"><value>Confirmar acesso — Identity</value></data>
   <data name="Device.ApprovedTitle" xml:space="preserve"><value>Acesso autorizado</value></data>
