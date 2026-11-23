@@ -45,6 +45,8 @@ accounts for all 105 original items, seven closure criteria and the operational 
 
 ## Completed work (activities/)
 
+- [Password reset error page deployed](activities/202611231226-password-reset-rollout.md) — production verification on three nodes and in Chrome.
+
 - [Password reset HTTP 400 recovery](activities/202611231150-password-reset-http-400.md) — localized recovery guidance for rejected browser requests.
 
 - [Dependency PR resolution](activities/202611111425-dependency-pr-resolution.md) — six PRs integrated, dependency conflicts resolved and locally validated.
