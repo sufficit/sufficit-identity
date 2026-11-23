@@ -35,6 +35,25 @@ public sealed class FirstPartyUserScopeTests
     }
 
     [Fact]
+    public async Task Device_code_issues_a_signed_access_token_for_a_jwt_resource()
+    {
+        await using var factory = SufficitIdentityTestFactory.CreateIsolated(
+            new Dictionary<string, string?>
+            {
+                [$"Sufficit:Identity:Tokens:AccessTokenFormatsByResource:{TestDataSeeder.IntrospectionClientId}"] = "Jwt",
+            });
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var response = await Enroll(client);
+        var token = response.GetProperty("access_token").GetString()!;
+        var details = await Inspect(client, token);
+        Assert.True(details.GetProperty("active").GetBoolean());
+        Assert.Contains(TestDataSeeder.IntrospectionClientId, details.GetProperty("aud").ToString());
+        Assert.Equal(3, token.Split('.').Length);
+    }
+
+    [Fact]
     public async Task Legacy_device_refresh_adds_configured_scope_and_audience_preserving_subject()
     {
         await using var factory = new SufficitIdentityTestFactory();

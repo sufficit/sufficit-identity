@@ -66,9 +66,10 @@ internal sealed class ApplyAccessTokenFormat(
             return ValueTask.CompletedTask;
         }
 
+        // OpenIddict has already mapped the granted resources to access-token audiences.
         var decision = policy.Resolve(
             context.ClientId,
-            context.Principal?.GetResources() ?? []);
+            context.Principal?.GetAudiences() ?? []);
         if (decision.HasConflict)
         {
             context.Reject(

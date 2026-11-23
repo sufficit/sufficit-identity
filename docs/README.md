@@ -217,3 +217,5 @@ must never silently become the current roadmap.
 - [Limpeza centralizada de tokens e alerta de atraso](operations/RUNBOOK-TOKEN-PRUNING.md)
 
 Entrega verificada: [edição do grant de usuários de sistema](activities/202610291300-system-enrollment-client-edit.md).
+
+- [Access token format by audience](PLAN-DEVICE-TOKEN-FORMAT.md)
