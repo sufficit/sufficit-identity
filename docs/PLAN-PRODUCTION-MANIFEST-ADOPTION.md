@@ -9,7 +9,7 @@
 7. Completed. Commit and push verified source. Record release sequencing and any production verification still required.
 8. Completed. Publish the provisioner on all three nodes and verify production health.
 9. Completed. Obtain audited preview of the transitional Chrome manifest.
-10. Pending application approval and credential. Apply the reviewed transition and verify scope owners, permission grants and auditing.
+10. Completed. Apply the reviewed transition and verify scope owners, permission grants and auditing.
 11. Pending. Release the extension, verify supported versions and retire the obsolete client permission once installed clients have migrated.
 12. Pending. Review broader client coverage and shared scope ownership before changing enforcement.
 
@@ -149,3 +149,21 @@ installed versions continue using directives during the store transition.
 Inventory correlation ID was `0HNQ9KDQ9PLC4:00000001`. The client still has
 its original registration and scope grants. Applying the proposal requires
 an authorized operator with `identity.provisioning.apply`.
+
+## Transitional adoption applied
+
+The approved request with the recorded SHA-256 returned HTTP 200 and one
+Adopted operation for SufficitChromeExtension. Production read-back verified
+the new manifest owner and all 14 expected permissions, including entitlements
+and directives. It also verified the registered public type, explicit consent,
+three callbacks, PKCE and logout settings against the manifest. The initial
+raw JSON fingerprint comparison did not match. The semantic checks above
+verified the OAuth fields independently.
+
+The response had zero scope operations, and subsequent queries showed the
+same four owners for chrome.phone, endpoints.phone, entitlements and directives.
+The audit recorded both provisioning_client_adopted and provisioning_manifest_applied
+at 21:09:20 UTC. Two authorization requests without a session using PKCE
+returned HTTP 302 and the expected login_required error at the registered
+callback, one for each scope. This confirms both requests pass initial
+validation. A full interactive Chrome login is part of the extension rollout.
