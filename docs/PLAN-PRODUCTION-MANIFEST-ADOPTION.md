@@ -8,9 +8,10 @@
 6. Completed. Implement and test the provisioner support and update the Chrome Extension manifest and OAuth request to entitlements.
 7. Completed. Commit and push verified source. Record release sequencing and any production verification still required.
 8. Completed. Publish the provisioner on all three nodes and verify production health.
-9. Pending fresh preview credential. Obtain audited preview of a transitional Chrome manifest, apply after review and verify the referenced scope owners, both login paths and audit evidence.
-10. Pending. Release the extension, verify supported versions and retire the obsolete client permission once installed clients have migrated.
-11. Pending. Review broader client coverage and shared scope ownership before changing enforcement.
+9. Completed. Obtain audited preview of the transitional Chrome manifest.
+10. Pending application approval and credential. Apply the reviewed transition and verify scope owners, permission grants and auditing.
+11. Pending. Release the extension, verify supported versions and retire the obsolete client permission once installed clients have migrated.
+12. Pending. Review broader client coverage and shared scope ownership before changing enforcement.
 
 ## Production snapshot, 23 November 2026
 
@@ -137,3 +138,14 @@ Encoding the JSON as sorted keys, compact separators and UTF-8 produces SHA-256
 `981d8054f95b17b0b17dd7924cfdf389bcf2b31812c234c2d302c6bea2e4af49`.
 The authorized scope of this rollout was the provisioner publication.
 The Chrome adoption and permission change await audited preview.
+
+## Transitional adoption preview
+
+Production inventory and preview returned HTTP 200 for the pinned transitional
+manifest. Inventory reported DeclaredUnmanaged for SufficitChromeExtension.
+Preview returned exactly one change, Adopted for the Chrome client. It returned
+zero scope operations. This proposal adds the entitlements grant and lets
+installed versions continue using directives during the store transition.
+Inventory correlation ID was `0HNQ9KDQ9PLC4:00000001`. The client still has
+its original registration and scope grants. Applying the proposal requires
+an authorized operator with `identity.provisioning.apply`.
