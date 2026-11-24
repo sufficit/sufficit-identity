@@ -10,7 +10,7 @@
 8. Completed. Publish the provisioner on all three nodes and verify production health.
 9. Completed. Obtain audited preview of the transitional Chrome manifest.
 10. Completed. Apply the reviewed transition and verify scope owners, permission grants and auditing.
-11. Pending. Release the extension, verify supported versions and retire the obsolete client permission once installed clients have migrated.
+11. In progress. Chrome Web Store 2.23.0 is published and the distributed package requests `entitlements`. Verify a full interactive login and migration of installed versions before retiring the `directives` client permission.
 12. Pending. Review broader client coverage and shared scope ownership before changing enforcement.
 
 ## Production snapshot, 23 November 2026
@@ -167,3 +167,16 @@ at 21:09:20 UTC. Two authorization requests without a session using PKCE
 returned HTTP 302 and the expected login_required error at the registered
 callback, one for each scope. This confirms both requests pass initial
 validation. A full interactive Chrome login is part of the extension rollout.
+
+## Chrome Web Store rollout
+
+On 24 November 2026, the Chrome Web Store API reported `PUBLISHED` for
+version `2.23.0` with 100% distribution. The CRX3 downloaded from Google's
+update service contained `manifest.json` version `2.23.0` and requested
+`openid profile email offline_access chrome.phone entitlements` in `js/oauth.js`.
+The package confirms the scope migration shipped with extension commit `8c01354`,
+which includes the OAuth change from `64e05f3`.
+
+The store percentage describes availability of the new release. A full
+interactive login and migration of installed versions remain unverified.
+Keep the transitional `directives` grant until those checks are complete.
