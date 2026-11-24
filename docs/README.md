@@ -30,6 +30,7 @@ in-house or mixed) and known gaps. The source of truth is the code: each
 claim cites `file:line`.
 
 ## Plans (pending work)
+- [Case-sensitive client identifiers in management paths](PLAN-CLIENT-ID-PATH-CASE.md)
 
 [Identity plan index](plans/PLAN-IDENTITY.md) routes the remaining work to twelve
 focused plans. Stable A–G section IDs are preserved; each plan records source/test

@@ -17,6 +17,7 @@ namespace Sufficit.Identity.Server;
 ///  * Static asset paths (<c>_framework/*</c>, <c>_content/*</c>, files with
 ///    a file extension) are skipped — they are already lowercase by convention
 ///    and an extra round-trip would slow down the dev experience.
+///  * Client management API paths preserve case-sensitive resource identifiers.
 ///  * Endpoints advertised by OpenIddict (<c>/connect/*</c>,
 ///    <c>/.well-known/*</c>) are <b>accepted</b> case-insensitively but still
 ///    redirected to the canonical lowercase form, so the URL the user/client
@@ -48,6 +49,13 @@ public sealed class LowercasePathMiddleware
 
         // No path or already lowercase → nothing to do.
         if (string.IsNullOrEmpty(path) || path == "/" || !NeedsLowercasing(path))
+        {
+            await _next(context);
+            return;
+        }
+
+        // Management clients are identified by an opaque, case-sensitive OAuth client ID.
+        if (path.StartsWith("/api/clients/", StringComparison.OrdinalIgnoreCase))
         {
             await _next(context);
             return;

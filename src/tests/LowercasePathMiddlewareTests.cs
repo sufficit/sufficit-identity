@@ -54,6 +54,28 @@ public sealed class LowercasePathMiddlewareTests
     }
 
     [Theory]
+    [InlineData("GET")]
+    [InlineData("PUT")]
+    public async Task Preserves_case_sensitive_management_client_id(string method)
+    {
+        const string path = "/api/clients/ExamplePortalClient";
+        string? pathSeen = null;
+        var middleware = new LowercasePathMiddleware(context =>
+        {
+            pathSeen = context.Request.Path.Value;
+            return Task.CompletedTask;
+        });
+        var context = Context(path);
+        context.Request.Method = method;
+
+        await middleware.InvokeAsync(context);
+
+        Assert.Equal(StatusCodes.Status200OK, context.Response.StatusCode);
+        Assert.False(context.Response.Headers.ContainsKey("Location"));
+        Assert.Equal(path, pathSeen);
+    }
+
+    [Theory]
     [InlineData("//evil.example/Login")]
     [InlineData("/\\evil.example/Login")]
     [InlineData("/%2Fevil.example/login")]
