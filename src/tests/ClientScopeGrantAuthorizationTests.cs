@@ -292,6 +292,36 @@ public sealed class ClientScopeGrantAuthorizationTests
     }
 
     [Fact]
+    public async Task Scope_addition_checks_both_editor_and_privileged_scope_authority()
+    {
+        using var factory = new ManagementTestFactory(
+            bypassAuthz: false, extraConfiguration: GrantConfiguration("Enforce"));
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        await using var services = factory.Services.CreateAsyncScope();
+        var provider = services.ServiceProvider;
+        var clients = provider.GetRequiredService<IClientManagementService>();
+        var scopedClients = provider.GetRequiredService<IClientScopeManagementService>();
+        var scopes = provider.GetRequiredService<IOpenIddictScopeManager>();
+        await scopes.CreateAsync(new OpenIddictScopeDescriptor { Name = PrivilegedScope });
+        var id = $"grant-addition-{Guid.NewGuid():N}";
+        var created = await clients.CreateAsync(
+            PublicClient(id, "openid"), Operator(ManagementCapabilities.ClientsCreate));
+
+        await Assert.ThrowsAsync<ManagementAccessException>(() =>
+            scopedClients.AddScopeAsync(id, PrivilegedScope, created.Version!,
+                Operator(ManagementCapabilities.ScopesGrant), default));
+        var refused = await Assert.ThrowsAsync<ManagementAccessException>(() =>
+            scopedClients.AddScopeAsync(id, PrivilegedScope, created.Version!,
+                Operator(ManagementCapabilities.ClientsUpdate), default));
+        Assert.Equal(ClientScopeGrantReasonCodes.CapabilityMissing, refused.Decision.ReasonCode);
+
+        await scopedClients.AddScopeAsync(id, PrivilegedScope, created.Version!,
+            Operator(ManagementCapabilities.ClientsUpdate, ManagementCapabilities.ScopesGrant), default);
+        var updated = await clients.GetByClientIdAsync(id, Operator(ManagementCapabilities.ClientsRead));
+        Assert.Contains($"scp:{PrivilegedScope}", updated.Permissions);
+    }
+
+    [Fact]
     public async Task Management_observe_allows_and_records_would_deny()
     {
         using var factory = new ManagementTestFactory(

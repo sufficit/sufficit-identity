@@ -83,6 +83,19 @@ Para passar a `Enforce`: consultar as linhas observadas
 a capacidade a quem deve tê-la ou corrigir o cliente/manifesto, e então trocar
 o modo.
 
+## Adicionar um escopo sem regravar o cliente
+
+Envie `PUT /api/clients/{clientId}/scopes/{scopeName}` com
+`{"expectedVersion":"<versão retornada pela consulta do cliente>"}`.
+A operação retorna `204` após conceder o escopo. Repetir a concessão já
+aplicada retorna `204` sem gravar outro evento. Quando o escopo ainda falta
+e a versão mudou, a API retorna `409` e é necessário reler o cliente.
+
+A operação preserva as permissões e os parâmetros OAuth existentes, exige
+a capacidade de atualizar o cliente e aplica a política de concessão ao
+novo escopo. O escopo precisa estar cadastrado. Clientes gerenciados por
+manifesto continuam sendo alterados pelo manifesto.
+
 ## Segredo por referência
 
 `POST /api/clients` e `PUT /api/clients/{clientId}` aceitam:

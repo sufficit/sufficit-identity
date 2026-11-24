@@ -145,6 +145,20 @@ public sealed class ClientsController(
         return Ok(result);
     }
 
+    /// <summary>Adds one scope while preserving the client's other settings.</summary>
+    [HttpPut("{clientId}/scopes/{scopeName}")]
+    public async Task<IActionResult> AddScope(
+        string clientId,
+        string scopeName,
+        [FromBody] AddClientScopeRequest request,
+        [FromServices] IClientScopeManagementService scopeManagement,
+        CancellationToken cancellationToken)
+    {
+        await scopeManagement.AddScopeAsync(clientId, scopeName, request.ExpectedVersion,
+            RequestContext(), cancellationToken);
+        return NoContent();
+    }
+
     /// <summary>
     /// Lists the client's authentication methods and every independently
     /// managed shared credential. Secret values are never returned.
@@ -432,6 +446,8 @@ public sealed class CreateClientRequest
     /// </summary>
     public int? DelegationMaxAuthAgeHours { get; set; }
 }
+
+public sealed record AddClientScopeRequest([Required] string ExpectedVersion);
 
 public sealed class UpdateClientRequest
 {

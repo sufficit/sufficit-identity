@@ -22,6 +22,7 @@ namespace Sufficit.Identity.Management.Clients;
 
 internal sealed partial class ClientManagementService(
     IOpenIddictApplicationManager applications,
+    IOpenIddictScopeManager scopes,
     IOpenIddictApplicationCache<OpenIddictEntityFrameworkCoreApplication>
         applicationCache,
     AppDbContext database,
@@ -34,7 +35,7 @@ internal sealed partial class ClientManagementService(
     IManagementEntitlementResolver entitlements,
     IClientScopeGrantAuthorization scopeGrants,
     IManagementClientSecretReferenceResolver secretReferences,
-    IDisabledClientRegistry? disabledClients = null) : IClientManagementService
+    IDisabledClientRegistry? disabledClients = null) : IClientManagementService, IClientScopeManagementService
 {
 
     private static (string? Search, string Type, string Grant, string Scope,

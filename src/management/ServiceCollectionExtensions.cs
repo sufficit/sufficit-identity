@@ -177,6 +177,7 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<ManagementOperationExecutor>();
         services.TryAddScoped<ClientCredentialRegistry>();
         services.TryAddScoped<IClientManagementService, ClientManagementService>();
+        services.TryAddScoped<IClientScopeManagementService, ClientManagementService>();
         services.TryAddScoped<IManagementClientSecretReferenceResolver,
             VaultClientSecretReferenceResolver>();
         services.TryAddScoped<PlaintextClientSecretAdapter>();
