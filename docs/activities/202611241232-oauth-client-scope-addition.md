@@ -5,7 +5,7 @@
    configuration preservation, replay and stale writes.
 2. Complete — run Release tests and push to main.
 3. Complete — publish to the Identity cluster and verify the public endpoint.
-4. Blocked pending a fresh operator token — use delegated management authorization to grant the requested
+4. Complete — use delegated management authorization to grant the requested
    scope, verify the client and activate the consumer.
 
 Local Release validation covered the API contract and the scope grant policy.
@@ -19,7 +19,12 @@ a schema migration. All three nodes reported the exact revision
 `cc3a96746c123a4c5adb73d521c93f03429b0875`, healthy readiness and the same
 certificate and JWKS digests. The public route advertised PUT and rejected
 an unauthenticated PUT with 401. The previous delegated token had already
-expired before deployment. The production scope grant remains pending.
+expired before deployment.
 
 The full local test project passed 2,186 tests, with 20 skipped by their
 environment requirements.
+
+The delegated production grant returned HTTP 204. Independent reads confirmed
+exactly one additional client permission, with all other fields unchanged except
+the concurrency version. The consumer requested the new scope on three
+healthy Blazor nodes. A public authorization request reached the Identity login.

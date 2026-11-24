@@ -39,6 +39,8 @@ accounts for all 105 original items, seven closure criteria and the operational 
 
 ## Completed work (activities/)
 
+- [Add a scope to an existing OAuth client](activities/202611241232-oauth-client-scope-addition.md) — audited rollout and production verification.
+
 - [Case-sensitive client identifiers in management paths](activities/202611241212-client-id-path-case.md) — production rollout and authenticated verification.
 
 - [Legacy OAuth aliases retired](activities/202611231443-legacy-resource-identifiers.md) — Background and all three Endpoints nodes.
