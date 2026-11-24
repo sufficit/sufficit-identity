@@ -30,8 +30,6 @@ in-house or mixed) and known gaps. The source of truth is the code: each
 claim cites `file:line`.
 
 ## Plans (pending work)
-- [Case-sensitive client identifiers in management paths](PLAN-CLIENT-ID-PATH-CASE.md)
-
 [Identity plan index](plans/PLAN-IDENTITY.md) routes the remaining work to twelve
 focused plans. Stable A–G section IDs are preserved; each plan records source/test
 foundations, remaining scope, dependencies and acceptance evidence. The
@@ -39,6 +37,8 @@ foundations, remaining scope, dependencies and acceptance evidence. The
 accounts for all 105 original items, seven closure criteria and the operational calendar.
 
 ## Completed work (activities/)
+
+- [Case-sensitive client identifiers in management paths](activities/202611241212-client-id-path-case.md) — production rollout and authenticated verification.
 
 - [Legacy OAuth aliases retired](activities/202611231443-legacy-resource-identifiers.md) — Background and all three Endpoints nodes.
 
