@@ -10,7 +10,7 @@
 8. Completed. Publish the provisioner on all three nodes and verify production health.
 9. Completed. Obtain audited preview of the transitional Chrome manifest.
 10. Completed. Apply the reviewed transition and verify scope owners, permission grants and auditing.
-11. In progress. Chrome Web Store 2.23.0 is published and the distributed package requests `entitlements`. Verify a full interactive login and migration of installed versions before retiring the `directives` client permission.
+11. In progress. Chrome Web Store 2.23.0 is published and the distributed package requests `entitlements`. The maintainer confirmed a successful interactive login. Verify migration of installed versions before retiring the `directives` client permission.
 12. Pending. Review broader client coverage and shared scope ownership before changing enforcement.
 
 ## Production snapshot, 23 November 2026
@@ -166,7 +166,7 @@ The audit recorded both provisioning_client_adopted and provisioning_manifest_ap
 at 21:09:20 UTC. Two authorization requests without a session using PKCE
 returned HTTP 302 and the expected login_required error at the registered
 callback, one for each scope. This confirms both requests pass initial
-validation. A full interactive Chrome login is part of the extension rollout.
+validation. The interactive login result is recorded below.
 
 ## Chrome Web Store rollout
 
@@ -177,6 +177,10 @@ update service contained `manifest.json` version `2.23.0` and requested
 The package confirms the scope migration shipped with extension commit `8c01354`,
 which includes the OAuth change from `64e05f3`.
 
-The store percentage describes availability of the new release. A full
-interactive login and migration of installed versions remain unverified.
-Keep the transitional `directives` grant until those checks are complete.
+The maintainer confirmed a successful interactive login in the extension with
+their own account after the rollout. This validates the tested installation.
+The store percentage describes availability of the new release. The installed
+version distribution remains unverified. The extension's version diagnostics can
+be disabled and cover only clients that report events, so missing diagnostics
+cannot establish that older installations have migrated. Keep the transitional
+`directives` grant until legacy client usage has been assessed.
