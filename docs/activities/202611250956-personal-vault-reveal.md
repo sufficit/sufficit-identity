@@ -39,7 +39,23 @@ sem introduzir novas superfícies na lista.
 - Removido do índice o link para o plano anterior de adição de escopo OAuth,
   cujo encerramento já tinha uma atividade vinculada.
 
-## Limites
+## Publicação em produção
 
-Validação local com dados fictícios. A entrega do código é pela branch `main`.
-A disponibilidade em produção depende da publicação e do deploy.
+O [runbook de publicação gradual](../runbooks/RUNBOOK-CLUSTER-ROLLING-DEPLOY.md)
+ativou a release `20261125T132053Z-f7533ad` nos três nós, um de cada vez. A
+revisão é `f7533ad4487a7e01e8d3a17148bb11abd9041a86` e o SHA-256 do artefato
+é `8c0e09a16bc006e425fe62d79678599b6c7f256caf00a9e3bff40ecefdfbb1c8`.
+O preparo verificou o mesmo artefato em cada nó e herdou quatro arquivos de
+configuração da release anterior `20261124T152335Z-cc3a967`. A revisão
+dispensou migração de banco.
+
+Os três serviços ficaram ativos na revisão esperada, com liveness e readiness
+saudáveis e os mesmos hashes de certificado e JWKS da verificação anterior.
+As sondas diretas observaram respostas HTTP 502 durante as reinicializações e
+todos os nós se recuperaram no prazo do wrapper.
+
+No endereço público, saúde, prontidão e descoberta OIDC responderam HTTP 200.
+O POST sem sessão em `/vault/reveal` passou de HTTP 404 antes da ativação a
+HTTP 302 para a página de login, e o JavaScript do Vault servido em produção
+coincidiu byte a byte com o código publicado. A validação autenticada com
+código TOTP e leitura de segredo usou dados fictícios no ambiente local.
