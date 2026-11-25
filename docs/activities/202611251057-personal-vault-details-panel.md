@@ -32,5 +32,23 @@ A autorização vale por 15 minutos na mesma sessão.
 - Checksums do Pomelo, propagação de lockfiles, cobertura de migrações SQL
   e auditoria de dependências verificados.
 
-A entrega do código é pela branch `main`. A disponibilidade da nova
-interface em produção depende da publicação.
+## Publicação em produção
+
+A release `20261125T135939Z-facea97` foi ativada em sequência nos três nós
+pelo [runbook de publicação gradual](../runbooks/RUNBOOK-CLUSTER-ROLLING-DEPLOY.md).
+A revisão publicada é `facea979561b65233de2a483771c809772ea7043` e o SHA-256
+do pacote é `c94dc1df507fea63d69d0bb4725c55d3d378389220050fb499b6a1ac44a701bc`.
+O preparo verificou o mesmo pacote em cada nó e herdou quatro arquivos de
+configuração da release anterior `20261125T132053Z-f7533ad`. A revisão
+dispensou migração de banco.
+
+Cada nó reportou o serviço ativo e saudável, com a revisão esperada e os
+mesmos hashes de certificado e JWKS da checagem inicial. As sondas diretas
+observaram HTTP 502 durante as reinicializações e os nós se recuperaram no
+prazo do wrapper.
+
+No endereço público, saúde, prontidão e descoberta OIDC responderam HTTP 200.
+O CSS servido coincide byte a byte com a revisão publicada. O GET de
+`/vault` e o POST de `/vault/reveal` sem sessão redirecionaram para o login.
+A navegação autenticada e a visualização com TOTP foram verificadas em
+Chromium com dados fictícios no ambiente local.
