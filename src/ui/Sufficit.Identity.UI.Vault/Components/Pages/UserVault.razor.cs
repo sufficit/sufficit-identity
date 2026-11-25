@@ -2,13 +2,13 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Localization;
 using Sufficit.Blazor.UI.Components;
+using Sufficit.Blazor.UI.Services;
 using Sufficit.Identity.Management.Vault;
 
 namespace Sufficit.Identity.UI.Vault.Components.Pages;
 
 public partial class UserVault
 {
-    private PersonalSecretReveal? reveal;
     private const string Namespace = "personal";
     private string PersonalSecretHint => $"{L["Vault.UserVault.PersonalSecretHintPrefix"].Value} example/api-key.";
     private PersonalSecretForm form = new();
@@ -177,11 +177,10 @@ public partial class UserVault
         _ => SUIColor.Default
     };
 
-    private async Task RevealAsync(string name)
-    {
-        if (reveal is not null)
-            await reveal.OpenAsync(name);
-    }
+    private Task RevealAsync(string name) => Dialogs.ShowAsync<PersonalSecretReveal>(
+        L["Vault.Reveal.Title"].Value,
+        new Dictionary<string, object?> { [nameof(PersonalSecretReveal.SecretName)] = name },
+        new SUIDialogOptions { Icon = "shield" });
 
     private async Task SaveAsync()
     {

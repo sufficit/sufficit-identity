@@ -106,13 +106,20 @@
 .vault-search-field > svg { position: absolute; inset-inline-start: 12px; inset-block-end: 13px; z-index: 1; pointer-events: none; color: var(--vault-muted); }
 .vault-search-field .sui-field__input { padding-inline-start: 40px; }
 
-.vault-layout .vault-reveal { box-sizing: border-box; width: min(460px, calc(100% - 24px)); padding: 24px; color: var(--vault-ink); }
-.vault-reveal::backdrop { background: rgb(0 0 0 / 45%); }
-.vault-reveal h2 { margin: 0 0 8px; font-size: 1.2rem; }
-.vault-reveal__name { margin-top: 0; overflow-wrap: anywhere; }
-.vault-reveal__code { display: block; width: 9ch; margin: 6px 0 12px; padding: 8px; font: inherit; }
-.vault-reveal__value { max-height: 40vh; overflow: auto; padding: 12px; border: 1px solid var(--vault-line); border-radius: 8px; white-space: pre-wrap; overflow-wrap: anywhere; }
-.vault-reveal__actions { display: flex; justify-content: end; margin-top: 16px; }
+.vault-reveal { display: grid; gap: 16px; padding: 16px 20px 20px; color: var(--sui-text-primary); }
+.vault-reveal__name, .vault-reveal [data-loading] { margin: 0; }
+.vault-reveal__name { overflow-wrap: anywhere; color: var(--sui-text-secondary); }
+.vault-reveal__value {
+    max-height: 40vh;
+    overflow: auto;
+    margin: 0;
+    padding: 12px;
+    border: 1px solid var(--sui-border);
+    border-radius: var(--sui-radius-control, 8px);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+.vault-reveal .vault-reveal__actions { padding: 0; border: 0; }
 
 /* Personal Vault inventory and details */
 .vault-shell:has(> .vault-personal) {

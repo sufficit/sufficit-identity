@@ -9,18 +9,19 @@ export async function readClipboard() {
     }
 }
 
-export function openSecretReveal(dialog, name) {
-    if (dialog.open) return;
-
+export function mountSecretReveal(content, name) {
     const lifecycle = new AbortController();
     const { signal } = lifecycle;
-    const form = dialog.querySelector("[data-challenge]");
+    const form = content.querySelector("[data-challenge]");
     const code = form.elements.namedItem("code");
-    const loading = dialog.querySelector("[data-loading]");
-    const error = dialog.querySelector("[data-error-message]");
-    const setup = dialog.querySelector("[data-setup]");
-    const value = dialog.querySelector("[data-value]");
-    const submit = form.querySelector('button[type="submit"]');
+    const loading = content.querySelector("[data-loading]");
+    const errorContainer = content.querySelector("[data-error-container]");
+    const error = content.querySelector("[data-error-message]");
+    const setup = content.querySelector("[data-setup]");
+    const value = content.querySelector("[data-value]");
+    const confirm = content.querySelector("[data-confirm]");
+    const submit = confirm.querySelector("button");
+    const close = content.querySelector("[data-close]");
     let expiry;
     let expiresAt = 0;
 
@@ -32,15 +33,28 @@ export function openSecretReveal(dialog, name) {
     }
 
     function cleanUp() {
+        removed.disconnect();
         lifecycle.abort();
         clearValue();
         code.value = "";
     }
 
+    function setChallenge(visible) {
+        form.hidden = !visible;
+        confirm.hidden = !visible;
+        code.disabled = !visible;
+        submit.disabled = !visible;
+    }
+
     function challenge() {
         clearValue();
-        form.hidden = false;
+        setChallenge(true);
         code.focus();
+    }
+
+    function showError(message) {
+        error.textContent = message;
+        errorContainer.hidden = false;
     }
 
     async function request() {
@@ -49,8 +63,10 @@ export function openSecretReveal(dialog, name) {
         code.value = "";
         const start = performance.now();
         loading.hidden = false;
-        error.hidden = true;
+        errorContainer.hidden = true;
+        code.removeAttribute("aria-invalid");
         submit.disabled = true;
+        code.disabled = true;
         try {
             const response = await fetch(form.action, {
                 method: "POST",
@@ -62,7 +78,7 @@ export function openSecretReveal(dialog, name) {
             data.delete("code");
             if (!response.ok) throw new Error();
             const result = await response.json();
-            if (signal.aborted || !dialog.open) return;
+            if (signal.aborted || !content.isConnected) return;
 
             switch (result.status) {
                 case "Revealed": {
@@ -71,9 +87,10 @@ export function openSecretReveal(dialog, name) {
                         challenge();
                         break;
                     }
-                    form.hidden = true;
+                    setChallenge(false);
                     value.textContent = result.value;
                     value.hidden = false;
+                    close.focus();
                     expiresAt = Date.now() + remaining;
                     expiry = setTimeout(challenge, remaining);
                     break;
@@ -82,56 +99,55 @@ export function openSecretReveal(dialog, name) {
                     challenge();
                     break;
                 case "InvalidCode":
-                    error.textContent = dialog.dataset.invalid;
-                    error.hidden = false;
+                    code.setAttribute("aria-invalid", "true");
+                    showError(content.dataset.invalid);
                     challenge();
                     break;
                 default: {
                     const messages = {
-                        AuthenticatorRequired: dialog.dataset.authenticator,
-                        Unauthorized: dialog.dataset.unauthorized,
-                        LockedOut: dialog.dataset.locked,
-                        NotFound: dialog.dataset.notFound
+                        AuthenticatorRequired: content.dataset.authenticator,
+                        Unauthorized: content.dataset.unauthorized,
+                        LockedOut: content.dataset.locked,
+                        NotFound: content.dataset.notFound
                     };
-                    form.hidden = true;
+                    setChallenge(false);
                     setup.hidden = result.status !== "AuthenticatorRequired";
-                    error.textContent = messages[result.status] ?? dialog.dataset.error;
-                    error.hidden = false;
+                    showError(messages[result.status] ?? content.dataset.error);
                     break;
                 }
             }
         } catch {
-            if (!signal.aborted && dialog.open) {
-                error.textContent = dialog.dataset.error;
-                error.hidden = false;
-            }
+            if (!signal.aborted && content.isConnected) showError(content.dataset.error);
         } finally {
             data.delete("code");
             if (!signal.aborted) {
                 loading.hidden = true;
-                submit.disabled = false;
+                submit.disabled = form.hidden;
+                code.disabled = form.hidden;
             }
         }
     }
 
-    form.hidden = true;
-    setup.hidden = true;
-    clearValue();
-    dialog.querySelector("[data-name]").textContent = name;
-    dialog.addEventListener("close", cleanUp, { once: true, signal });
-    dialog.addEventListener("cancel", cleanUp, { once: true, signal });
-    dialog.querySelector("[data-close]").addEventListener("submit", cleanUp, { once: true, signal });
-    window.addEventListener("pagehide", () => {
+    const removed = new MutationObserver(() => {
+        if (!content.isConnected) cleanUp();
+    });
+    removed.observe(document.body, { childList: true, subtree: true });
+    window.addEventListener("pagehide", event => {
         cleanUp();
-        dialog.close();
+        if (event.persisted) {
+            window.addEventListener("pageshow", () => {
+                if (content.isConnected) close.click();
+            }, { once: true });
+        }
     }, { once: true, signal });
     document.addEventListener("visibilitychange", () => {
         if (!document.hidden && expiresAt && Date.now() >= expiresAt) challenge();
     }, { signal });
+    close.addEventListener("click", cleanUp, { once: true, signal });
     form.addEventListener("submit", event => {
         event.preventDefault();
         if (!submit.disabled) void request();
     }, { signal });
-    dialog.showModal();
+    setChallenge(false);
     void request();
 }

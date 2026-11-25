@@ -126,6 +126,7 @@ public static class ServiceCollectionExtensions
             MapEmbeddedAsset(app, "/_content/Sufficit.Identity.UI.Vault/_framework/blazor.web.js",
                 "Sufficit.Identity.UI.Vault.Assets.blazor.web.js", "text/javascript; charset=utf-8");
             app.UseAntiforgery();
+            app.UseStaticFiles();
             app.MapRazorComponents<Components.App>()
                 .AddInteractiveServerRenderMode();
         }

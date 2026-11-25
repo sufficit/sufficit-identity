@@ -4,6 +4,7 @@
 @layout VaultLayout
 @inject VaultDataSource Data
 @inject ISUIToast Toast
+@inject ISUIDialogService Dialogs
 
 <PageTitle>@L["Vault.UserVault.PageTitle"].Value | Sufficit Identity</PageTitle>
 <div class="vault-personal">
@@ -93,7 +94,9 @@
         </div>
     }
 
-    <PersonalSecretReveal @ref="reveal" />
+    <SUIDialogHost CloseLabel="@L["Vault.Reveal.Close"].Value" />
+    @* Seed request verification when the page is prerendered. The dialog opens on the circuit. *@
+    <div hidden><AntiforgeryToken /></div>
     <div class="vault-personal-workspace">
         <SUICard Elevation="0" Class="vault-personal-inventory" aria-busy="@loading">
             <SUICardHeader Title="@L["Vault.UserVault.AddedSecretsHeading"].Value"
