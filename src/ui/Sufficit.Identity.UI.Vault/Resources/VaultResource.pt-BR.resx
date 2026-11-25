@@ -114,8 +114,8 @@
   <data name="Vault.Routes.NotFoundDescription" xml:space="preserve"><value>O endereço do Vault não existe.</value></data>
   <data name="Vault.Routes.NotFoundTitle" xml:space="preserve"><value>Página não encontrada</value></data>
   <data name="Vault.UserVault.ActiveBadge" xml:space="preserve"><value>Ativa</value></data>
-  <data name="Vault.UserVault.AddedSecretsDescription" xml:space="preserve"><value>Metadados para confirmar existência e última rotação.</value></data>
-  <data name="Vault.UserVault.AddedSecretsHeading" xml:space="preserve"><value>Segredos adicionados por você</value></data>
+  <data name="Vault.UserVault.AddedSecretsDescription" xml:space="preserve"><value>Segredos que você adicionou.</value></data>
+  <data name="Vault.UserVault.AddedSecretsHeading" xml:space="preserve"><value>Segredos pessoais</value></data>
   <data name="Vault.UserVault.AddOrReplaceHeading" xml:space="preserve"><value>Adicionar ou substituir segredo</value></data>
   <data name="Vault.UserVault.AdminEntryBody" xml:space="preserve"><value>Gerencie segredos globais usados por serviços e integrações. Credenciais pessoais permanecem isoladas por usuário.</value></data>
   <data name="Vault.UserVault.AdminEntryHeading" xml:space="preserve"><value>Administração global</value></data>
@@ -154,7 +154,7 @@
   <data name="Vault.UserVault.Validation.ValueMaxLength" xml:space="preserve"><value>O valor excede o limite de 16 KiB.</value></data>
   <data name="Vault.UserVault.Validation.ValueRequired" xml:space="preserve"><value>Informe um valor.</value></data>
   <data name="Vault.UserVault.ValueLabel" xml:space="preserve"><value>Valor</value></data>
-  <data name="Vault.UserVault.ValuePlaceholder" xml:space="preserve"><value>Não será exibido novamente</value></data>
+  <data name="Vault.UserVault.ValuePlaceholder" xml:space="preserve"><value>Digite o novo valor</value></data>
   <data name="Vault.Entry.Title" xml:space="preserve"><value>Salvar chave da conexão</value></data>
   <data name="Vault.Entry.Description" xml:space="preserve"><value>Cole a chave aqui e salve. O valor não passa pela conversa.</value></data>
   <data name="Vault.Entry.InvalidLink" xml:space="preserve"><value>Este link não identifica um cadastro válido. Peça um novo link ao assistente.</value></data>
@@ -169,11 +169,11 @@
   <data name="Vault.App.Reconnecting" xml:space="preserve"><value>Reconectando ao Vault…</value></data>
   <data name="Vault.Common.RevealValue" xml:space="preserve"><value>Mostrar valor</value></data>
   <data name="Vault.Common.HideValue" xml:space="preserve"><value>Ocultar valor</value></data>
-  <data name="Vault.Reveal.NoticeTitle" xml:space="preserve"><value>Os valores dos segredos pessoais ficam ocultos.</value></data>
-  <data name="Vault.Reveal.NoticeBody" xml:space="preserve"><value>Selecione Visualizar e confirme o código do seu aplicativo autenticador. A confirmação libera a visualização por 15 minutos nesta sessão.</value></data>
+  <data name="Vault.Reveal.NoticeTitle" xml:space="preserve"><value>Visualização protegida</value></data>
+  <data name="Vault.Reveal.NoticeBody" xml:space="preserve"><value>Confirme o código do seu app autenticador. A visualização fica liberada por 15 minutos nesta sessão.</value></data>
   <data name="Vault.Reveal.Title" xml:space="preserve"><value>Visualizar segredo pessoal</value></data>
   <data name="Vault.Reveal.Open" xml:space="preserve"><value>Visualizar</value></data>
-  <data name="Vault.Reveal.ForName" xml:space="preserve"><value>Visualizar {0}</value></data>
+  <data name="Vault.Reveal.ForName" xml:space="preserve"><value>Visualizar segredo {0}</value></data>
   <data name="Vault.Reveal.Challenge" xml:space="preserve"><value>Digite o código atual do aplicativo autenticador.</value></data>
   <data name="Vault.Reveal.Code" xml:space="preserve"><value>Código do autenticador</value></data>
   <data name="Vault.Reveal.Confirm" xml:space="preserve"><value>Confirmar e visualizar</value></data>
@@ -187,4 +187,25 @@
   <data name="Vault.Reveal.Unavailable" xml:space="preserve"><value>Não foi possível visualizar o segredo. Feche esta janela e tente de novo.</value></data>
   <data name="Vault.Reveal.Unauthorized" xml:space="preserve"><value>Entre novamente para visualizar seus segredos.</value></data>
   <data name="Vault.Reveal.NotFound" xml:space="preserve"><value>Este segredo está indisponível ou expirou.</value></data>
+  <data name="Vault.UserVault.ManagedCredentialSummary" xml:space="preserve"><value>Gerenciadas pelos aplicativos</value></data>
+  <data name="Vault.Personal.Add" xml:space="preserve"><value>Adicionar segredo</value></data>
+  <data name="Vault.Personal.Cancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="Vault.Personal.TwoFactor" xml:space="preserve"><value>2FA exigido</value></data>
+  <data name="Vault.Personal.Search" xml:space="preserve"><value>Buscar segredo</value></data>
+  <data name="Vault.Personal.Filters" xml:space="preserve"><value>Filtrar por tipo</value></data>
+  <data name="Vault.Personal.Filter.All" xml:space="preserve"><value>Todos</value></data>
+  <data name="Vault.Personal.Filter.Passwords" xml:space="preserve"><value>Senhas</value></data>
+  <data name="Vault.Personal.Filter.KeysAndTokens" xml:space="preserve"><value>Chaves e tokens</value></data>
+  <data name="Vault.Personal.Kind.Password" xml:space="preserve"><value>Senha</value></data>
+  <data name="Vault.Personal.Kind.ApiKey" xml:space="preserve"><value>Chave de API</value></data>
+  <data name="Vault.Personal.Kind.Token" xml:space="preserve"><value>Token</value></data>
+  <data name="Vault.Personal.Kind.Session" xml:space="preserve"><value>Sessão</value></data>
+  <data name="Vault.Personal.Kind.Other" xml:space="preserve"><value>Segredo</value></data>
+  <data name="Vault.Personal.NoResults" xml:space="preserve"><value>Nenhum segredo corresponde à busca</value></data>
+  <data name="Vault.Personal.More" xml:space="preserve"><value>Mais ações do segredo</value></data>
+  <data name="Vault.Personal.Replace" xml:space="preserve"><value>Substituir valor</value></data>
+  <data name="Vault.Personal.ConfirmRemove" xml:space="preserve"><value>Remover este segredo? A remoção é definitiva.</value></data>
+  <data name="Vault.Personal.LastUpdated" xml:space="preserve"><value>Última atualização</value></data>
+  <data name="Vault.Personal.ValueHidden" xml:space="preserve"><value>Valor oculto</value></data>
+  <data name="Vault.Personal.Reveal" xml:space="preserve"><value>Visualizar segredo</value></data>
 </root>

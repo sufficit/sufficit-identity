@@ -114,8 +114,8 @@
   <data name="Vault.Routes.NotFoundDescription" xml:space="preserve"><value>This Vault address does not exist.</value></data>
   <data name="Vault.Routes.NotFoundTitle" xml:space="preserve"><value>Page not found</value></data>
   <data name="Vault.UserVault.ActiveBadge" xml:space="preserve"><value>Active</value></data>
-  <data name="Vault.UserVault.AddedSecretsDescription" xml:space="preserve"><value>Metadata to confirm existence and last rotation.</value></data>
-  <data name="Vault.UserVault.AddedSecretsHeading" xml:space="preserve"><value>Secrets added by you</value></data>
+  <data name="Vault.UserVault.AddedSecretsDescription" xml:space="preserve"><value>Secrets you added.</value></data>
+  <data name="Vault.UserVault.AddedSecretsHeading" xml:space="preserve"><value>Personal secrets</value></data>
   <data name="Vault.UserVault.AddOrReplaceHeading" xml:space="preserve"><value>Add or replace secret</value></data>
   <data name="Vault.UserVault.AdminEntryBody" xml:space="preserve"><value>Manage global secrets used by services and integrations. Personal credentials remain isolated per user.</value></data>
   <data name="Vault.UserVault.AdminEntryHeading" xml:space="preserve"><value>Global administration</value></data>
@@ -154,7 +154,7 @@
   <data name="Vault.UserVault.Validation.ValueMaxLength" xml:space="preserve"><value>The value exceeds the 16 KiB limit.</value></data>
   <data name="Vault.UserVault.Validation.ValueRequired" xml:space="preserve"><value>Enter a value.</value></data>
   <data name="Vault.UserVault.ValueLabel" xml:space="preserve"><value>Value</value></data>
-  <data name="Vault.UserVault.ValuePlaceholder" xml:space="preserve"><value>Won't be shown again</value></data>
+  <data name="Vault.UserVault.ValuePlaceholder" xml:space="preserve"><value>Enter the new value</value></data>
   <data name="Vault.Entry.Title" xml:space="preserve"><value>Save connection key</value></data>
   <data name="Vault.Entry.Description" xml:space="preserve"><value>Paste the key here and save. Its value does not go through the conversation.</value></data>
   <data name="Vault.Entry.InvalidLink" xml:space="preserve"><value>This link does not identify a valid entry. Ask the assistant for a new link.</value></data>
@@ -169,11 +169,11 @@
   <data name="Vault.App.Reconnecting" xml:space="preserve"><value>Reconnecting to the Vault…</value></data>
   <data name="Vault.Common.RevealValue" xml:space="preserve"><value>Show value</value></data>
   <data name="Vault.Common.HideValue" xml:space="preserve"><value>Hide value</value></data>
-  <data name="Vault.Reveal.NoticeTitle" xml:space="preserve"><value>Personal secret values are hidden.</value></data>
-  <data name="Vault.Reveal.NoticeBody" xml:space="preserve"><value>Select Reveal and confirm the code from your authenticator app. This unlocks viewing for 15 minutes in this session.</value></data>
+  <data name="Vault.Reveal.NoticeTitle" xml:space="preserve"><value>Protected viewing</value></data>
+  <data name="Vault.Reveal.NoticeBody" xml:space="preserve"><value>Confirm the code from your authenticator app. This unlocks viewing for 15 minutes in this session.</value></data>
   <data name="Vault.Reveal.Title" xml:space="preserve"><value>Reveal personal secret</value></data>
   <data name="Vault.Reveal.Open" xml:space="preserve"><value>Reveal</value></data>
-  <data name="Vault.Reveal.ForName" xml:space="preserve"><value>Reveal {0}</value></data>
+  <data name="Vault.Reveal.ForName" xml:space="preserve"><value>Reveal secret {0}</value></data>
   <data name="Vault.Reveal.Challenge" xml:space="preserve"><value>Enter the current code from your authenticator app.</value></data>
   <data name="Vault.Reveal.Code" xml:space="preserve"><value>Authenticator code</value></data>
   <data name="Vault.Reveal.Confirm" xml:space="preserve"><value>Confirm and reveal</value></data>
@@ -187,4 +187,25 @@
   <data name="Vault.Reveal.Unavailable" xml:space="preserve"><value>Unable to reveal this secret. Close this window and try again.</value></data>
   <data name="Vault.Reveal.Unauthorized" xml:space="preserve"><value>Sign in again to reveal your secrets.</value></data>
   <data name="Vault.Reveal.NotFound" xml:space="preserve"><value>This secret is unavailable or has expired.</value></data>
+  <data name="Vault.UserVault.ManagedCredentialSummary" xml:space="preserve"><value>Managed by connected apps</value></data>
+  <data name="Vault.Personal.Add" xml:space="preserve"><value>Add secret</value></data>
+  <data name="Vault.Personal.Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Vault.Personal.TwoFactor" xml:space="preserve"><value>2FA required</value></data>
+  <data name="Vault.Personal.Search" xml:space="preserve"><value>Search secrets</value></data>
+  <data name="Vault.Personal.Filters" xml:space="preserve"><value>Filter by type</value></data>
+  <data name="Vault.Personal.Filter.All" xml:space="preserve"><value>All</value></data>
+  <data name="Vault.Personal.Filter.Passwords" xml:space="preserve"><value>Passwords</value></data>
+  <data name="Vault.Personal.Filter.KeysAndTokens" xml:space="preserve"><value>Keys and tokens</value></data>
+  <data name="Vault.Personal.Kind.Password" xml:space="preserve"><value>Password</value></data>
+  <data name="Vault.Personal.Kind.ApiKey" xml:space="preserve"><value>API key</value></data>
+  <data name="Vault.Personal.Kind.Token" xml:space="preserve"><value>Token</value></data>
+  <data name="Vault.Personal.Kind.Session" xml:space="preserve"><value>Session</value></data>
+  <data name="Vault.Personal.Kind.Other" xml:space="preserve"><value>Secret</value></data>
+  <data name="Vault.Personal.NoResults" xml:space="preserve"><value>No secrets match your search</value></data>
+  <data name="Vault.Personal.More" xml:space="preserve"><value>More secret actions</value></data>
+  <data name="Vault.Personal.Replace" xml:space="preserve"><value>Replace value</value></data>
+  <data name="Vault.Personal.ConfirmRemove" xml:space="preserve"><value>Remove this secret? This action is permanent.</value></data>
+  <data name="Vault.Personal.LastUpdated" xml:space="preserve"><value>Last updated</value></data>
+  <data name="Vault.Personal.ValueHidden" xml:space="preserve"><value>Value hidden</value></data>
+  <data name="Vault.Personal.Reveal" xml:space="preserve"><value>Reveal secret</value></data>
 </root>

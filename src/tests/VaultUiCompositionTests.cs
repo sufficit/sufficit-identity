@@ -15,6 +15,9 @@ public sealed class VaultUiCompositionTests
         var userPage = File.ReadAllText(Path.Combine(
             root, "src", "ui", "Sufficit.Identity.UI.Vault", "Components",
             "Pages", "UserVault.razor"));
+        var connected = File.ReadAllText(Path.Combine(
+            root, "src", "ui", "Sufficit.Identity.UI.Vault", "Components",
+            "Pages", "VaultConnectedCredentials.razor"));
         var adminPage = File.ReadAllText(Path.Combine(
             root, "src", "ui", "Sufficit.Identity.UI.Vault", "Components",
             "Pages", "AdminVault.razor"));
@@ -46,11 +49,17 @@ public sealed class VaultUiCompositionTests
         Assert.DoesNotContain("DbContext", userPage, StringComparison.Ordinal);
         Assert.DoesNotContain("Ciphertext", userPage, StringComparison.Ordinal);
         Assert.Contains("@page \"/vault\"", userPage, StringComparison.Ordinal);
-        AssertLocalized(userPage, portuguese,
+        AssertLocalized(connected, portuguese,
             "Vault.UserVault.ManagedCredentialHeading", "Credenciais conectadas");
-        AssertLocalized(userPage, portuguese,
+        AssertLocalized(connected, portuguese,
             "Vault.UserVault.ManagedByApp", "Gerenciada pelo aplicativo");
-        Assert.Contains("LoadPersonalOverviewAsync", userPage,
+        Assert.Contains("<VaultConnectedCredentials", userPage, StringComparison.Ordinal);
+        var userPageLogic = File.ReadAllText(Path.Combine(
+            root, "src", "ui", "Sufficit.Identity.UI.Vault", "Components",
+            "Pages", "UserVault.razor.cs"));
+        Assert.DoesNotContain("DbContext", userPageLogic, StringComparison.Ordinal);
+        Assert.DoesNotContain("Ciphertext", userPageLogic, StringComparison.Ordinal);
+        Assert.Contains("LoadPersonalOverviewAsync", userPageLogic,
             StringComparison.Ordinal);
         Assert.Contains("<AuthorizeView Policy=\"@VaultUiPolicies.Admin\">",
             userPage, StringComparison.Ordinal);

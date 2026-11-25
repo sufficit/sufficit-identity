@@ -39,6 +39,8 @@ accounts for all 105 original items, seven closure criteria and the operational 
 
 ## Completed work (activities/)
 
+- [Personal Vault details panel](activities/202611251057-personal-vault-details-panel.md) — searchable inventory and protected reveal.
+
 - [Personal Vault reveal](activities/202611250956-personal-vault-reveal.md) — authenticator confirmation and a 15-minute browser session grant.
 
 - [Add a scope to an existing OAuth client](activities/202611241232-oauth-client-scope-addition.md) — audited rollout and production verification.
