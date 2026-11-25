@@ -756,6 +756,8 @@ public static partial class ServiceCollectionExtensions
             AspNetCoreIdentityAccountExternalIdentityService>();
         services.AddScoped<IAccountTwoFactorService,
             AspNetCoreIdentityAccountTwoFactorService>();
+        services.AddScoped<Sufficit.Identity.Management.Vault.IPersonalVaultReveal,
+            PersonalVaultReveal>();
         // ---- Client ID Metadata Documents (CIMD, A10, eval 2026-08-14) ----
         // draft-ietf-oauth-client-id-metadata-document-02: the client_id IS
         // an HTTPS URL serving its metadata; fetched on first use and

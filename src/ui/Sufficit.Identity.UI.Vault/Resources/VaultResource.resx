@@ -122,7 +122,7 @@
   <data name="Vault.UserVault.CredentialPlural" xml:space="preserve"><value>credentials</value></data>
   <data name="Vault.UserVault.CredentialSingular" xml:space="preserve"><value>credential</value></data>
   <data name="Vault.UserVault.CredentialUpdatedOn" xml:space="preserve"><value>{0} · Updated on {1}</value></data>
-  <data name="Vault.UserVault.Description" xml:space="preserve"><value>Track connected credentials and store personal secrets without exposing their values.</value></data>
+  <data name="Vault.UserVault.Description" xml:space="preserve"><value>Track connected credentials and manage your personal secrets.</value></data>
   <data name="Vault.UserVault.EncryptedBadge" xml:space="preserve"><value>Encrypted</value></data>
   <data name="Vault.UserVault.ExpiredBadge" xml:space="preserve"><value>Expired</value></data>
   <data name="Vault.UserVault.LoadErrorTitle" xml:space="preserve"><value>Could not load your Vault.</value></data>
@@ -132,8 +132,6 @@
   <data name="Vault.UserVault.ManagedCredentialDescription" xml:space="preserve"><value>Metadata of credentials kept by apps and integrations.</value></data>
   <data name="Vault.UserVault.ManagedCredentialHeading" xml:space="preserve"><value>Connected credentials</value></data>
   <data name="Vault.UserVault.ManagedRemoveHint" xml:space="preserve"><value>To remove a connected credential, disconnect the account in the app that created it.</value></data>
-  <data name="Vault.UserVault.MetadataOnlyBody" xml:space="preserve"><value>Values remain encrypted on the server and are never returned by the listing.</value></data>
-  <data name="Vault.UserVault.MetadataOnlyTitle" xml:space="preserve"><value>Only metadata appears on this page.</value></data>
   <data name="Vault.UserVault.NameHelperText" xml:space="preserve"><value>Use letters, numbers, and at least one slash.</value></data>
   <data name="Vault.UserVault.NameLabel" xml:space="preserve"><value>Name</value></data>
   <data name="Vault.UserVault.NamePlaceholder" xml:space="preserve"><value>e.g.: vendor/api-key</value></data>
@@ -171,4 +169,22 @@
   <data name="Vault.App.Reconnecting" xml:space="preserve"><value>Reconnecting to the Vault…</value></data>
   <data name="Vault.Common.RevealValue" xml:space="preserve"><value>Show value</value></data>
   <data name="Vault.Common.HideValue" xml:space="preserve"><value>Hide value</value></data>
+  <data name="Vault.Reveal.NoticeTitle" xml:space="preserve"><value>Personal secret values are hidden.</value></data>
+  <data name="Vault.Reveal.NoticeBody" xml:space="preserve"><value>Select Reveal and confirm the code from your authenticator app. This unlocks viewing for 15 minutes in this session.</value></data>
+  <data name="Vault.Reveal.Title" xml:space="preserve"><value>Reveal personal secret</value></data>
+  <data name="Vault.Reveal.Open" xml:space="preserve"><value>Reveal</value></data>
+  <data name="Vault.Reveal.ForName" xml:space="preserve"><value>Reveal {0}</value></data>
+  <data name="Vault.Reveal.Challenge" xml:space="preserve"><value>Enter the current code from your authenticator app.</value></data>
+  <data name="Vault.Reveal.Code" xml:space="preserve"><value>Authenticator code</value></data>
+  <data name="Vault.Reveal.Confirm" xml:space="preserve"><value>Confirm and reveal</value></data>
+  <data name="Vault.Reveal.Loading" xml:space="preserve"><value>Checking access…</value></data>
+  <data name="Vault.Reveal.Value" xml:space="preserve"><value>Secret value</value></data>
+  <data name="Vault.Reveal.Close" xml:space="preserve"><value>Close</value></data>
+  <data name="Vault.Reveal.InvalidCode" xml:space="preserve"><value>Invalid code. Check your authenticator and try again.</value></data>
+  <data name="Vault.Reveal.LockedOut" xml:space="preserve"><value>Too many failed attempts. Wait and try again.</value></data>
+  <data name="Vault.Reveal.AuthenticatorRequired" xml:space="preserve"><value>Set up an authenticator app on your account to reveal secrets.</value></data>
+  <data name="Vault.Reveal.Configure" xml:space="preserve"><value>Set up authenticator</value></data>
+  <data name="Vault.Reveal.Unavailable" xml:space="preserve"><value>Unable to reveal this secret. Close this window and try again.</value></data>
+  <data name="Vault.Reveal.Unauthorized" xml:space="preserve"><value>Sign in again to reveal your secrets.</value></data>
+  <data name="Vault.Reveal.NotFound" xml:space="preserve"><value>This secret is unavailable or has expired.</value></data>
 </root>

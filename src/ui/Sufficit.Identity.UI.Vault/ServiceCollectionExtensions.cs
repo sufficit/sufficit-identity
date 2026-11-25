@@ -114,6 +114,8 @@ public static class ServiceCollectionExtensions
             "Sufficit.Identity.UI.Vault.Assets.vault-entry.js",
             "text/javascript; charset=utf-8");
 
+        app.MapPersonalVaultReveal();
+
         // When the public UI is embedded, it owns the single root Razor
         // component endpoint and adds this assembly as an additional route
         // assembly. Registering a second root map here creates duplicate
@@ -121,6 +123,9 @@ public static class ServiceCollectionExtensions
         // with AmbiguousMatchException during every interactive page load.
         if (mapEndpoints)
         {
+            MapEmbeddedAsset(app, "/_content/Sufficit.Identity.UI.Vault/_framework/blazor.web.js",
+                "Sufficit.Identity.UI.Vault.Assets.blazor.web.js", "text/javascript; charset=utf-8");
+            app.UseAntiforgery();
             app.MapRazorComponents<Components.App>()
                 .AddInteractiveServerRenderMode();
         }

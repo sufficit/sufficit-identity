@@ -122,7 +122,7 @@
   <data name="Vault.UserVault.CredentialPlural" xml:space="preserve"><value>credenciais</value></data>
   <data name="Vault.UserVault.CredentialSingular" xml:space="preserve"><value>credencial</value></data>
   <data name="Vault.UserVault.CredentialUpdatedOn" xml:space="preserve"><value>{0} · Atualizada em {1}</value></data>
-  <data name="Vault.UserVault.Description" xml:space="preserve"><value>Acompanhe credenciais conectadas e guarde segredos pessoais sem expor seus valores.</value></data>
+  <data name="Vault.UserVault.Description" xml:space="preserve"><value>Acompanhe credenciais conectadas e gerencie seus segredos pessoais.</value></data>
   <data name="Vault.UserVault.EncryptedBadge" xml:space="preserve"><value>Criptografado</value></data>
   <data name="Vault.UserVault.ExpiredBadge" xml:space="preserve"><value>Expirada</value></data>
   <data name="Vault.UserVault.LoadErrorTitle" xml:space="preserve"><value>Não foi possível carregar seu Vault.</value></data>
@@ -132,8 +132,6 @@
   <data name="Vault.UserVault.ManagedCredentialDescription" xml:space="preserve"><value>Metadados de credenciais mantidas por aplicativos e integrações.</value></data>
   <data name="Vault.UserVault.ManagedCredentialHeading" xml:space="preserve"><value>Credenciais conectadas</value></data>
   <data name="Vault.UserVault.ManagedRemoveHint" xml:space="preserve"><value>Para remover uma credencial conectada, desconecte a conta no aplicativo que a criou.</value></data>
-  <data name="Vault.UserVault.MetadataOnlyBody" xml:space="preserve"><value>Os valores permanecem criptografados no servidor e nunca são devolvidos pela listagem.</value></data>
-  <data name="Vault.UserVault.MetadataOnlyTitle" xml:space="preserve"><value>Somente metadados aparecem nesta página.</value></data>
   <data name="Vault.UserVault.NameHelperText" xml:space="preserve"><value>Use letras, números e pelo menos uma barra.</value></data>
   <data name="Vault.UserVault.NameLabel" xml:space="preserve"><value>Nome</value></data>
   <data name="Vault.UserVault.NamePlaceholder" xml:space="preserve"><value>ex.: fornecedor/api-key</value></data>
@@ -171,4 +169,22 @@
   <data name="Vault.App.Reconnecting" xml:space="preserve"><value>Reconectando ao Vault…</value></data>
   <data name="Vault.Common.RevealValue" xml:space="preserve"><value>Mostrar valor</value></data>
   <data name="Vault.Common.HideValue" xml:space="preserve"><value>Ocultar valor</value></data>
+  <data name="Vault.Reveal.NoticeTitle" xml:space="preserve"><value>Os valores dos segredos pessoais ficam ocultos.</value></data>
+  <data name="Vault.Reveal.NoticeBody" xml:space="preserve"><value>Selecione Visualizar e confirme o código do seu aplicativo autenticador. A confirmação libera a visualização por 15 minutos nesta sessão.</value></data>
+  <data name="Vault.Reveal.Title" xml:space="preserve"><value>Visualizar segredo pessoal</value></data>
+  <data name="Vault.Reveal.Open" xml:space="preserve"><value>Visualizar</value></data>
+  <data name="Vault.Reveal.ForName" xml:space="preserve"><value>Visualizar {0}</value></data>
+  <data name="Vault.Reveal.Challenge" xml:space="preserve"><value>Digite o código atual do aplicativo autenticador.</value></data>
+  <data name="Vault.Reveal.Code" xml:space="preserve"><value>Código do autenticador</value></data>
+  <data name="Vault.Reveal.Confirm" xml:space="preserve"><value>Confirmar e visualizar</value></data>
+  <data name="Vault.Reveal.Loading" xml:space="preserve"><value>Verificando acesso…</value></data>
+  <data name="Vault.Reveal.Value" xml:space="preserve"><value>Valor do segredo</value></data>
+  <data name="Vault.Reveal.Close" xml:space="preserve"><value>Fechar</value></data>
+  <data name="Vault.Reveal.InvalidCode" xml:space="preserve"><value>Código inválido. Consulte o autenticador e tente de novo.</value></data>
+  <data name="Vault.Reveal.LockedOut" xml:space="preserve"><value>Muitas tentativas sem sucesso. Aguarde e tente de novo.</value></data>
+  <data name="Vault.Reveal.AuthenticatorRequired" xml:space="preserve"><value>Configure um aplicativo autenticador na sua conta para visualizar segredos.</value></data>
+  <data name="Vault.Reveal.Configure" xml:space="preserve"><value>Configurar autenticador</value></data>
+  <data name="Vault.Reveal.Unavailable" xml:space="preserve"><value>Não foi possível visualizar o segredo. Feche esta janela e tente de novo.</value></data>
+  <data name="Vault.Reveal.Unauthorized" xml:space="preserve"><value>Entre novamente para visualizar seus segredos.</value></data>
+  <data name="Vault.Reveal.NotFound" xml:space="preserve"><value>Este segredo está indisponível ou expirou.</value></data>
 </root>

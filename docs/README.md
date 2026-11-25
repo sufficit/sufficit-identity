@@ -30,7 +30,7 @@ in-house or mixed) and known gaps. The source of truth is the code: each
 claim cites `file:line`.
 
 ## Plans (pending work)
-- [Add a scope to an existing OAuth client](PLAN-CLIENT-SCOPE-ADDITION.md)
+
 [Identity plan index](plans/PLAN-IDENTITY.md) routes the remaining work to twelve
 focused plans. Stable A–G section IDs are preserved; each plan records source/test
 foundations, remaining scope, dependencies and acceptance evidence. The
@@ -38,6 +38,8 @@ foundations, remaining scope, dependencies and acceptance evidence. The
 accounts for all 105 original items, seven closure criteria and the operational calendar.
 
 ## Completed work (activities/)
+
+- [Personal Vault reveal](activities/202611250956-personal-vault-reveal.md) — authenticator confirmation and a 15-minute browser session grant.
 
 - [Add a scope to an existing OAuth client](activities/202611241232-oauth-client-scope-addition.md) — audited rollout and production verification.
 
